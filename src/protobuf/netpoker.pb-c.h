@@ -19,6 +19,7 @@ typedef struct Card Card;
 typedef struct Hand Hand;
 typedef struct Pos Pos;
 typedef struct Player Player;
+typedef struct GameState GameState;
 
 
 /* --- enums --- */
@@ -71,6 +72,18 @@ struct  Player
 #define PLAYER__INIT \
  { PROTOBUF_C_MESSAGE_INIT (&player__descriptor) \
 , (char *)protobuf_c_empty_string, 0, NULL, NULL, 0 }
+
+
+struct  GameState
+{
+  ProtobufCMessage base;
+  int32_t pot;
+  size_t n_players;
+  Player **players;
+};
+#define GAME_STATE__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&game_state__descriptor) \
+, 0, 0,NULL }
 
 
 /* Card methods */
@@ -149,6 +162,25 @@ Player *
 void   player__free_unpacked
                      (Player *message,
                       ProtobufCAllocator *allocator);
+/* GameState methods */
+void   game_state__init
+                     (GameState         *message);
+size_t game_state__get_packed_size
+                     (const GameState   *message);
+size_t game_state__pack
+                     (const GameState   *message,
+                      uint8_t             *out);
+size_t game_state__pack_to_buffer
+                     (const GameState   *message,
+                      ProtobufCBuffer     *buffer);
+GameState *
+       game_state__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   game_state__free_unpacked
+                     (GameState *message,
+                      ProtobufCAllocator *allocator);
 /* --- per-message closures --- */
 
 typedef void (*Card_Closure)
@@ -163,6 +195,9 @@ typedef void (*Pos_Closure)
 typedef void (*Player_Closure)
                  (const Player *message,
                   void *closure_data);
+typedef void (*GameState_Closure)
+                 (const GameState *message,
+                  void *closure_data);
 
 /* --- services --- */
 
@@ -173,6 +208,7 @@ extern const ProtobufCMessageDescriptor card__descriptor;
 extern const ProtobufCMessageDescriptor hand__descriptor;
 extern const ProtobufCMessageDescriptor pos__descriptor;
 extern const ProtobufCMessageDescriptor player__descriptor;
+extern const ProtobufCMessageDescriptor game_state__descriptor;
 
 PROTOBUF_C__END_DECLS
 

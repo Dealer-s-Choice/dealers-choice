@@ -53,4 +53,9 @@ struct player_t {
   int chips;
 };
 
+struct game_state_t {
+  int pot;
+  struct player_t players[MAX_PLAYERS];
+};
+
 #endif

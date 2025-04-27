@@ -30,78 +30,154 @@
 
 const char *default_port = "61357";
 
-uint8_t *serialize_player(const struct player_t *src, size_t *size_out) {
-  Player msg = PLAYER__INIT;
-  Pos pos = POS__INIT;
-  Hand hand = HAND__INIT;
-  Card cards[HAND_SIZE];
-  Card *card_ptrs[HAND_SIZE];
+static void fill_player_message(struct player_message_builder_t *builder,
+                                const struct player_t *src) {
+  player__init(&builder->msg);
+  pos__init(&builder->pos);
+  hand__init(&builder->hand);
 
-  // Fill in name
-  msg.name = (char *)src->name;
+  // Name
+  builder->msg.name = (char *)src->name;
 
-  // Fill in id
-  msg.id = src->id;
+  // ID and Chips
+  builder->msg.id = src->id;
+  builder->msg.chips = src->chips;
 
-  // Fill in position
-  pos.x = src->pos.x;
-  pos.y = src->pos.y;
-  msg.pos = &pos;
+  // Position
+  builder->pos.x = src->pos.x;
+  builder->pos.y = src->pos.y;
+  builder->msg.pos = &builder->pos;
 
-  // Fill in cards
+  // Hand
   for (int i = 0; i < HAND_SIZE; ++i) {
-    card__init(&cards[i]);
-    cards[i].face_val = src->hand.card[i].face_val;
-    cards[i].suit = src->hand.card[i].suit;
-    card_ptrs[i] = &cards[i]; // pointer to each card
+    card__init(&builder->cards[i]);
+    builder->cards[i].face_val = src->hand.card[i].face_val;
+    builder->cards[i].suit = src->hand.card[i].suit;
+    builder->card_ptrs[i] = &builder->cards[i];
   }
 
-  hand.n_card = HAND_SIZE;
-  hand.card = card_ptrs;
-  msg.hand = &hand;
+  builder->hand.n_card = HAND_SIZE;
+  builder->hand.card = builder->card_ptrs;
+  builder->msg.hand = &builder->hand;
+}
 
-  // Fill in chips
-  msg.chips = src->chips;
+uint8_t *serialize_game_state(const struct game_state_t *src, size_t *size_out) {
+  GameState msg = GAME_STATE__INIT;
+
+  // Pot
+  msg.pot = src->pot;
+
+  // Players
+  Player *player_msgs[MAX_PLAYERS];
+  struct player_message_builder_t builders[MAX_PLAYERS];
+
+  for (int i = 0; i < MAX_PLAYERS; ++i) {
+    fill_player_message(&builders[i], &src->players[i]);
+    player_msgs[i] = &builders[i].msg;
+  }
+
+  msg.n_players = MAX_PLAYERS;
+  msg.players = player_msgs;
 
   // Serialize to buffer
-  *size_out = player__get_packed_size(&msg);
+  *size_out = game_state__get_packed_size(&msg);
   uint8_t *buffer = malloc(*size_out);
   if (!buffer) {
     *size_out = 0;
     return NULL;
   }
 
-  player__pack(&msg, buffer);
+  game_state__pack(&msg, buffer);
+  return buffer;
+}
+
+struct game_state_t deserialize_game_state(const uint8_t *data, size_t size) {
+  struct game_state_t result = {0};
+
+  GameState *msg = game_state__unpack(NULL, size, data);
+  if (!msg) {
+    fprintf(stderr, "Failed to unpack GameState message\n");
+    return result;
+  }
+
+  result.pot = msg->pot;
+
+  size_t n = msg->n_players < MAX_PLAYERS ? msg->n_players : MAX_PLAYERS;
+  for (size_t i = 0; i < n; ++i) {
+    Player *pmsg = msg->players[i];
+    if (!pmsg)
+      continue;
+
+    if (pmsg->name)
+      snprintf(result.players[i].name, sizeof(result.players[i].name), "%s", pmsg->name);
+
+    result.players[i].id = pmsg->id;
+    result.players[i].chips = pmsg->chips;
+
+    if (pmsg->pos) {
+      result.players[i].pos.x = pmsg->pos->x;
+      result.players[i].pos.y = pmsg->pos->y;
+    }
+
+    if (pmsg->hand) {
+      size_t m = pmsg->hand->n_card < HAND_SIZE ? pmsg->hand->n_card : HAND_SIZE;
+      for (size_t j = 0; j < m; ++j) {
+        result.players[i].hand.card[j].face_val = pmsg->hand->card[j]->face_val;
+        result.players[i].hand.card[j].suit = pmsg->hand->card[j]->suit;
+      }
+    }
+  }
+
+  game_state__free_unpacked(msg, NULL);
+  return result;
+}
+
+uint8_t *serialize_player(const struct player_t *src, size_t *size_out) {
+  struct player_message_builder_t builder;
+  fill_player_message(&builder, src);
+
+  // Serialize to buffer
+  *size_out = player__get_packed_size(&builder.msg);
+  uint8_t *buffer = malloc(*size_out);
+  if (!buffer) {
+    *size_out = 0;
+    return NULL;
+  }
+
+  player__pack(&builder.msg, buffer);
   return buffer;
 }
 
 struct player_t deserialize_player(const uint8_t *data, size_t size) {
-  struct player_t player = {0};
-  Player *pb = player__unpack(NULL, size, data);
-  if (!pb) {
-    fprintf(stderr, "Failed to unpack Player\n");
-    return player;
+  struct player_t result = {0};
+
+  Player *msg = player__unpack(NULL, size, data);
+  if (!msg) {
+    fprintf(stderr, "Failed to unpack Player message\n");
+    return result;
   }
 
-  strncpy(player.name, pb->name, sizeof(player.name) - 1);
-  player.id = pb->id;
+  if (msg->name)
+    snprintf(result.name, sizeof(result.name), "%s", msg->name);
 
-  if (pb->pos) {
-    player.pos.x = pb->pos->x;
-    player.pos.y = pb->pos->y;
+  result.id = msg->id;
+  result.chips = msg->chips;
+
+  if (msg->pos) {
+    result.pos.x = msg->pos->x;
+    result.pos.y = msg->pos->y;
   }
 
-  if (pb->hand && pb->hand->n_card <= HAND_SIZE) {
-    for (size_t i = 0; i < pb->hand->n_card; i++) {
-      player.hand.card[i].face_val = pb->hand->card[i]->face_val;
-      player.hand.card[i].suit = pb->hand->card[i]->suit;
+  if (msg->hand) {
+    size_t n = msg->hand->n_card < HAND_SIZE ? msg->hand->n_card : HAND_SIZE;
+    for (size_t i = 0; i < n; ++i) {
+      result.hand.card[i].face_val = msg->hand->card[i]->face_val;
+      result.hand.card[i].suit = msg->hand->card[i]->suit;
     }
   }
 
-  player.chips = pb->chips;
-
-  player__free_unpacked(pb, NULL);
-  return player;
+  player__free_unpacked(msg, NULL);
+  return result;
 }
 
 /**

@@ -45,6 +45,15 @@
 
 extern const char *default_port;
 
+struct player_message_builder_t {
+  // These types come from the generated protobuf header file
+  Player msg;
+  Pos pos;
+  Hand hand;
+  Card cards[HAND_SIZE];
+  Card *card_ptrs[HAND_SIZE];
+};
+
 uint8_t *serialize_player(const struct player_t *src, size_t *size_out);
 
 struct player_t deserialize_player(const uint8_t *data, size_t size);
