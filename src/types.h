@@ -31,8 +31,6 @@
 
 #include <pokeval.h>
 
-#include "netpoker.pb-c.h"
-
 #define MAX_PLAYERS 5
 
 #define WINDOW_WIDTH 1024

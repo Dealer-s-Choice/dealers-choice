@@ -21,8 +21,8 @@ if platform_is_windows
   win_deps += cc.find_library('ws2_32')
 endif
 
-definitions = ['-D_DEFAULT_SOURCE']
-add_project_arguments(definitions, language: 'c')
+# definitions = ['-D_DEFAULT_SOURCE']
+# add_project_arguments(definitions, language: 'c')
 
 extra_flags = [
   '-fno-common',
