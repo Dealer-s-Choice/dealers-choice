@@ -26,14 +26,7 @@
 
 */
 
-#include <deckhandler.h>
-#include <pokeval.h>
-#include <stdio.h>
-#include <string.h>
-
-
 #include "net.h"
-#include "netpoker.pb-c.h"
 #include "types.h"
 
 int run_server(void);

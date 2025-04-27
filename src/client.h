@@ -27,11 +27,9 @@
 */
 
 #include <deckhandler.h>
-#include <stdio.h>
-#include <string.h>
 
 #include "graphics.h"
 #include "net.h"
-#include "netpoker.pb-c.h"
+#include "types.h"
 
 int run_client(void);

@@ -26,23 +26,9 @@
 
 */
 
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
-
 #include "net.h"
 
 const char *default_port = "61357";
-
-void close_socket_checked(socket_t sockfd) {
-#ifdef _WIN32
-  if (closesocket(sockfd) != 0)
-    perror("closesocket");
-#else
-  if (close(sockfd) != 0)
-    perror("close");
-#endif
-}
 
 uint8_t *serialize_player(const struct player_t *src, size_t *size_out) {
   Player msg = PLAYER__INIT;
@@ -118,30 +104,6 @@ struct player_t deserialize_player(const uint8_t *data, size_t size) {
   return player;
 }
 
-ssize_t send_all(int sockfd, const void *buf, size_t len) {
-  size_t total_sent = 0;
-  const char *p = (const char *)buf;
-
-  while (total_sent < len) {
-    ssize_t n = send(sockfd, p + total_sent, len - total_sent, 0);
-    if (n <= 0)
-      return -1; // Error or disconnect
-    total_sent += n;
-  }
-  return total_sent;
-}
-
-int recv_all(int sock, void *buffer, size_t length) {
-  size_t received = 0;
-  while (received < length) {
-    ssize_t ret = recv(sock, (char *)buffer + received, length - received, 0);
-    if (ret <= 0)
-      return -1;
-    received += ret;
-  }
-  return 0;
-}
-
 /**
  * Sends a block of data reliably over a TCP socket.
  *
@@ -161,6 +123,22 @@ int send_all_tcp(TCPsocket sock, const void *data, size_t length) {
       return -1;
     }
     total_sent += sent;
+  }
+
+  return 0;
+}
+
+int recv_all_tcp(TCPsocket sock, void *data, size_t length) {
+  uint8_t *buf = (uint8_t *)data;
+  size_t total_received = 0;
+
+  while (total_received < length) {
+    int received = SDLNet_TCP_Recv(sock, buf + total_received, (int)(length - total_received));
+    if (received <= 0) {
+      fprintf(stderr, "SDLNet_TCP_Recv failed or connection closed: %s\n", SDLNet_GetError());
+      return -1;
+    }
+    total_received += received;
   }
 
   return 0;
