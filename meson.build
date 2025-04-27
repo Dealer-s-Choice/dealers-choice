@@ -56,14 +56,28 @@ foreach dep : dep_names
   net_shared_dep += dependency(dep)
 endforeach
 
-net_shared_inc = include_directories('src/protobuf')
+net_shared_inc = include_directories(['src', 'src/protobuf'])
 
 subdir('src')
 
-executable(
-  'dealers_choice',
-  ['src/main.c', net_shared_src],
+_lib = static_library(
+  'game',
+  net_shared_src,
   dependencies: net_shared_dep,
   include_directories: net_shared_inc,
+  )
+
+game_dep = declare_dependency(
+  link_with: _lib,
+  dependencies: net_shared_dep,
+  include_directories: net_shared_inc,
+  )
+
+executable(
+  'dealers_choice',
+  ['src/main.c',],
+  dependencies: game_dep,
   install: false,
 )
+
+subdir('tests')

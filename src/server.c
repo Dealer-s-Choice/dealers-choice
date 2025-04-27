@@ -27,7 +27,6 @@
 */
 
 #include <SDL2/SDL.h>
-#include <SDL2/SDL_net.h>
 #include <deckhandler.h>
 #include <pokeval.h>
 #include <stdio.h>
@@ -62,7 +61,7 @@ static void init_players(struct player_t *player) {
 
   for (int i = 0; i < MAX_PLAYERS; i++) {
     player[i] = (struct player_t){
-        .name = "Testy", .id = -1, .pos = preset_player_pos.pos[i], .chips = 20000};
+        .name = "Testy", .id = i, .pos = preset_player_pos.pos[i], .chips = 20000};
   }
 }
 

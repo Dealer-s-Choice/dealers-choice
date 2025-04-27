@@ -26,8 +26,8 @@
 
 */
 
-#ifndef __NETPOKER_H
-#define __NETPOKER_H
+#ifndef __TYPES_H
+#define __TYPES_H
 
 #include <pokeval.h>
 

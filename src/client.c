@@ -26,7 +26,6 @@
 
 */
 
-#include <SDL2/SDL_net.h>
 #include <deckhandler.h>
 #include <stdio.h>
 #include <stdlib.h>
