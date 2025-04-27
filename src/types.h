@@ -1,6 +1,6 @@
 /*
  types.h
- https://github.com/Dealer-s-Choiceaapokerhands
+ https://github.com/Dealer-s-Choice/dealers_choice
 
  MIT License
 
