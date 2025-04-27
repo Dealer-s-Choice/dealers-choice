@@ -1,0 +1,2 @@
+option('gen_protobuf', type : 'boolean', value : false,
+       description : 'Generate protobuf c source')

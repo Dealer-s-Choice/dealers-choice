@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+message Card {
+  int32 face_val = 1;
+  int32 suit = 2;
+}
+
+message Hand {
+  repeated Card card = 1;
+}
+
+message Pos {
+  int32 x = 1;
+  int32 y = 2;
+}
+
+message Player {
+  string name = 1;
+  int32 id = 2;
+  Pos pos = 3;
+  Hand hand = 4;
+  int32 chips = 5;
+}

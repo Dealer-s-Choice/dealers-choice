@@ -1,0 +1,62 @@
+name: Windows
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
+
+on:
+  push:
+    branches: [ trunk ]
+    paths:
+    - '**'
+    - '!**.yml'
+    - '!**.md'
+    - '**/windows.yml'
+
+  pull_request:
+    branches: [ trunk ]
+    paths:
+    - '**'
+    - '!**.yml'
+    - '!**.md'
+    - '**/windows.yml'
+
+jobs:
+  MSYS2:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: msys2/setup-msys2@v2
+      with:
+        msystem: mingw64
+        install: >-
+          git
+        pacboy: >-
+          gcc:p
+          meson:p
+          ninja:p
+          pkgconf:p
+        update: true
+
+    - name: Install dependencies
+      shell: msys2 {0}
+      run: |
+        pacman --noconfirm --needed -S \
+          mingw-w64-x86_64-protobuf-c \
+          mingw-w64-x86_64-SDL2 \
+          mingw-w64-x86_64-SDL2_net \
+          mingw-w64-x86_64-SDL2_ttf
+
+    - name: Meson setup
+      shell: msys2 {0}
+      run: |
+        meson setup _build -Db_sanitize=none
+
+    - name: Build
+      shell: msys2 {0}
+      run: |
+        meson compile -C _build
+
+    - name: Test
+      shell: msys2 {0}
+      run: |
+        meson test -v -C _build
