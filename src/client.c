@@ -83,15 +83,20 @@ int run_client(void) {
   puts("received full player data");
 
   // Deserialize
-  struct player_t player = deserialize_player(data, size);
+  struct game_state_t game_state = deserialize_game_state(data, size);
 
-  printf("Deserialized name: %s\n", player.name);
-  printf("Deserialized chips: %d\n", player.chips);
-  printf("Deserialized id: %d\n", player.id);
-  printf("Deserialized pos x,y: %d, %d\n", player.pos.x, player.pos.y);
-  for (int i = 0; i < HAND_SIZE; ++i) {
-    printf("Card %d: face=%d, suit=%s\n", i + 1, player.hand.card[i].face_val,
-           get_card_unicode_suit(player.hand.card[i]));
+  for (int n = 0; n < MAX_PLAYERS; n++) {
+    if (game_state.player[n].id == -1)
+      continue;
+    printf("Deserialized name: %s\n", game_state.player[n].name);
+    printf("Deserialized chips: %d\n", game_state.player[n].chips);
+    printf("Deserialized id: %d\n", game_state.player[n].id);
+    printf("Deserialized pos x,y: %d, %d\n", game_state.player[n].pos.x,
+           game_state.player[n].pos.y);
+    for (int i = 0; i < HAND_SIZE; ++i) {
+      printf("Card %d: face=%d, suit=%s\n", i + 1, game_state.player[n].hand.card[i].face_val,
+             get_card_unicode_suit(game_state.player[n].hand.card[i]));
+    }
   }
 
   free(data);
@@ -102,7 +107,7 @@ int run_client(void) {
 
   struct sdl_context_t sdl_context;
   init_sdl_window(&sdl_context, "Net Poker");
-  run_sdl_loop(sdl_context.renderer, &player);
+  run_sdl_loop(&sdl_context, &game_state);
   do_sdl_cleanup(&sdl_context);
 
   return 0;

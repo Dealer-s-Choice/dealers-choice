@@ -40,7 +40,7 @@ struct sdl_context_t {
 
 void init_sdl_window(struct sdl_context_t *sdl_context, const char *title);
 
-void run_sdl_loop(SDL_Renderer *renderer, struct player_t *player);
+void run_sdl_loop(struct sdl_context_t *sdl_context, struct game_state_t *game_state);
 
 void do_sdl_cleanup(struct sdl_context_t *sdl_context);
 
