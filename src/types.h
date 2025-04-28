@@ -55,7 +55,7 @@ struct player_t {
 
 struct game_state_t {
   int pot;
-  struct player_t players[MAX_PLAYERS];
+  struct player_t player[MAX_PLAYERS];
 };
 
 #endif

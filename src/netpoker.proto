@@ -24,5 +24,5 @@ message Player {
 
 message GameState {
   int32 pot = 1;
-  repeated Player players = 2;
+  repeated Player player = 2;
 }

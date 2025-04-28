@@ -54,8 +54,10 @@ struct player_message_builder_t {
   Card *card_ptrs[HAND_SIZE];
 };
 
-uint8_t *serialize_player(const struct player_t *src, size_t *size_out);
+uint8_t *serialize_game_state(const struct game_state_t *src, size_t *size_out);
+struct game_state_t deserialize_game_state(const uint8_t *data, size_t size);
 
+uint8_t *serialize_player(const struct player_t *src, size_t *size_out);
 struct player_t deserialize_player(const uint8_t *data, size_t size);
 
 int send_all_tcp(TCPsocket sock, const void *data, size_t length);

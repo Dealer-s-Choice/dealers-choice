@@ -67,17 +67,17 @@ uint8_t *serialize_game_state(const struct game_state_t *src, size_t *size_out) 
   // Pot
   msg.pot = src->pot;
 
-  // Players
+  // player
   Player *player_msgs[MAX_PLAYERS];
   struct player_message_builder_t builders[MAX_PLAYERS];
 
   for (int i = 0; i < MAX_PLAYERS; ++i) {
-    fill_player_message(&builders[i], &src->players[i]);
+    fill_player_message(&builders[i], &src->player[i]);
     player_msgs[i] = &builders[i].msg;
   }
 
-  msg.n_players = MAX_PLAYERS;
-  msg.players = player_msgs;
+  msg.n_player = MAX_PLAYERS;
+  msg.player = player_msgs;
 
   // Serialize to buffer
   *size_out = game_state__get_packed_size(&msg);
@@ -102,28 +102,28 @@ struct game_state_t deserialize_game_state(const uint8_t *data, size_t size) {
 
   result.pot = msg->pot;
 
-  size_t n = msg->n_players < MAX_PLAYERS ? msg->n_players : MAX_PLAYERS;
+  size_t n = msg->n_player < MAX_PLAYERS ? msg->n_player : MAX_PLAYERS;
   for (size_t i = 0; i < n; ++i) {
-    Player *pmsg = msg->players[i];
+    Player *pmsg = msg->player[i];
     if (!pmsg)
       continue;
 
     if (pmsg->name)
-      snprintf(result.players[i].name, sizeof(result.players[i].name), "%s", pmsg->name);
+      snprintf(result.player[i].name, sizeof(result.player[i].name), "%s", pmsg->name);
 
-    result.players[i].id = pmsg->id;
-    result.players[i].chips = pmsg->chips;
+    result.player[i].id = pmsg->id;
+    result.player[i].chips = pmsg->chips;
 
     if (pmsg->pos) {
-      result.players[i].pos.x = pmsg->pos->x;
-      result.players[i].pos.y = pmsg->pos->y;
+      result.player[i].pos.x = pmsg->pos->x;
+      result.player[i].pos.y = pmsg->pos->y;
     }
 
     if (pmsg->hand) {
       size_t m = pmsg->hand->n_card < HAND_SIZE ? pmsg->hand->n_card : HAND_SIZE;
       for (size_t j = 0; j < m; ++j) {
-        result.players[i].hand.card[j].face_val = pmsg->hand->card[j]->face_val;
-        result.players[i].hand.card[j].suit = pmsg->hand->card[j]->suit;
+        result.player[i].hand.card[j].face_val = pmsg->hand->card[j]->face_val;
+        result.player[i].hand.card[j].suit = pmsg->hand->card[j]->suit;
       }
     }
   }

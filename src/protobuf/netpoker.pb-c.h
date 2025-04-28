@@ -78,8 +78,8 @@ struct  GameState
 {
   ProtobufCMessage base;
   int32_t pot;
-  size_t n_players;
-  Player **players;
+  size_t n_player;
+  Player **player;
 };
 #define GAME_STATE__INIT \
  { PROTOBUF_C_MESSAGE_INIT (&game_state__descriptor) \

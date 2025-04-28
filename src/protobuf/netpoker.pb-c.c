@@ -477,12 +477,12 @@ static const ProtobufCFieldDescriptor game_state__field_descriptors[2] =
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
   {
-    "players",
+    "player",
     2,
     PROTOBUF_C_LABEL_REPEATED,
     PROTOBUF_C_TYPE_MESSAGE,
-    offsetof(GameState, n_players),
-    offsetof(GameState, players),
+    offsetof(GameState, n_player),
+    offsetof(GameState, player),
     &player__descriptor,
     NULL,
     0,             /* flags */
@@ -490,7 +490,7 @@ static const ProtobufCFieldDescriptor game_state__field_descriptors[2] =
   },
 };
 static const unsigned game_state__field_indices_by_name[] = {
-  1,   /* field[1] = players */
+  1,   /* field[1] = player */
   0,   /* field[0] = pot */
 };
 static const ProtobufCIntRange game_state__number_ranges[1 + 1] =
