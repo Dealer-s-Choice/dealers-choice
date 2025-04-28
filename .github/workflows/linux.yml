@@ -49,7 +49,7 @@ jobs:
       run: meson setup _build
 
     - name: Build
-      run: meson compile -v -C _build
+      run: meson compile -C _build
 
     - name: Test
       run: meson test -v -C _build
