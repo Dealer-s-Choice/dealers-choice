@@ -88,6 +88,30 @@ static void init_game_state(struct game_state_t *game_state) {
   }
 }
 
+static void broadcast_game_state(TCPsocket *clients, int client_count,
+                                 const struct game_state_t *game_state) {
+  size_t size = 0;
+  uint8_t *data = serialize_game_state(game_state, &size);
+  if (!data)
+    return;
+
+  uint32_t size_net = htonl(size);
+
+  for (int i = 0; i < client_count; ++i) {
+    if (!clients[i])
+      continue;
+
+    if (send_all_tcp(clients[i], &size_net, sizeof(size_net)) == -1 ||
+        send_all_tcp(clients[i], data, size) == -1) {
+      fprintf(stderr, "Failed to send game state to client %d\n", i);
+      SDLNet_TCP_Close(clients[i]);
+      clients[i] = NULL;
+    }
+  }
+
+  free(data);
+}
+
 int run_server(void) {
   struct game_state_t game_state = {0};
   init_game_state(&game_state);
@@ -154,19 +178,7 @@ int run_server(void) {
         game_state.player[client_count].hand.card[i] = deck.card[i + (5 * client_count)];
       }
 
-      // Serialize and send
-      size_t size = 0;
-      uint8_t *data = serialize_game_state(&game_state, &size);
-      uint32_t size_net = htonl(size);
-
-      if (send_all_tcp(new_client, &size_net, sizeof(size_net)) == -1 ||
-          send_all_tcp(new_client, data, size) == -1) {
-        fprintf(stderr, "Failed to send hand to client %d\n", client_count);
-        SDLNet_TCP_Close(new_client);
-        free(data);
-        continue;
-      }
-      free(data);
+      broadcast_game_state(clients, client_count + 1, &game_state);
 
       printf("Sent 5-card hand to player %d\n", client_count);
       client_count++;

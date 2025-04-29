@@ -35,7 +35,7 @@
 #include "graphics.h"
 
 int run_client(void) {
-  if (SDL_Init(0) == -1 || SDLNet_Init() == -1) {
+  if (SDL_Init(SDL_INIT_VIDEO) == -1 || SDLNet_Init() == -1) {
     fprintf(stderr, "SDL or SDL_net init failed: %s\n", SDLNet_GetError());
     return 1;
   }
@@ -43,72 +43,62 @@ int run_client(void) {
   IPaddress server_ip;
   if (SDLNet_ResolveHost(&server_ip, "127.0.0.1", 61357) == -1) {
     fprintf(stderr, "Failed to resolve server: %s\n", SDLNet_GetError());
-    SDLNet_Quit();
-    SDL_Quit();
     return 1;
   }
 
-  TCPsocket client = SDLNet_TCP_Open(&server_ip);
-  if (!client) {
-    fprintf(stderr, "Failed to open client socket: %s\n", SDLNet_GetError());
-    SDLNet_Quit();
-    SDL_Quit();
+  TCPsocket client_socket = SDLNet_TCP_Open(&server_ip);
+  if (!client_socket) {
+    fprintf(stderr, "Failed to connect to server: %s\n", SDLNet_GetError());
     return 1;
   }
 
-  // Receive size first
+  SDLNet_SocketSet socket_set = SDLNet_AllocSocketSet(1);
+  if (!socket_set) {
+    fprintf(stderr, "Failed to allocate socket set: %s\n", SDLNet_GetError());
+    SDLNet_TCP_Close(client_socket);
+    return 1;
+  }
+
+  SDLNet_TCP_AddSocket(socket_set, client_socket);
+
+  // Receive initial game state
+  struct game_state_t game_state = {0};
   uint32_t size_net = 0;
-  if (recv_all_tcp(client, &size_net, sizeof(size_net)) != 0) {
-    // handle error
+  if (SDLNet_TCP_Recv(client_socket, &size_net, sizeof(size_net)) != sizeof(size_net)) {
+    fprintf(stderr, "Failed to receive game state size\n");
+    goto cleanup;
   }
 
-  printf("before conversion: %d\n", size_net);
-  size_t size = ntohl(size_net);
-  printf("after conversion: %zu\n", size);
-
-  uint8_t *data = malloc(size);
-  if (!data) {
-    perror("malloc");
-    SDLNet_TCP_Close(client);
-    SDLNet_Quit();
-    SDL_Quit();
-    return 1;
+  uint32_t size = ntohl(size_net);
+  uint8_t *buffer = malloc(size);
+  if (!buffer) {
+    fprintf(stderr, "Out of memory\n");
+    goto cleanup;
   }
 
-  // Now receive the serialized player data
-  if (recv_all_tcp(client, data, size) != 0) {
-    // handle error
-  }
-
-  puts("received full player data");
-
-  // Deserialize
-  struct game_state_t game_state = deserialize_game_state(data, size);
-
-  for (int n = 0; n < MAX_PLAYERS; n++) {
-    if (game_state.player[n].id == -1)
-      continue;
-    printf("Deserialized name: %s\n", game_state.player[n].name);
-    printf("Deserialized chips: %d\n", game_state.player[n].chips);
-    printf("Deserialized id: %d\n", game_state.player[n].id);
-    printf("Deserialized pos x,y: %d, %d\n", game_state.player[n].pos.x,
-           game_state.player[n].pos.y);
-    for (int i = 0; i < HAND_SIZE; ++i) {
-      printf("Card %d: face=%d, suit=%s\n", i + 1, game_state.player[n].hand.card[i].face_val,
-             get_card_unicode_suit(game_state.player[n].hand.card[i]));
+  size_t received = 0;
+  while (received < size) {
+    int r = SDLNet_TCP_Recv(client_socket, buffer + received, size - received);
+    if (r <= 0) {
+      fprintf(stderr, "Connection lost while receiving\n");
+      free(buffer);
+      goto cleanup;
     }
+    received += r;
   }
 
-  free(data);
-
-  SDLNet_TCP_Close(client);
-  SDLNet_Quit();
-  SDL_Quit();
+  game_state = deserialize_game_state(buffer, size);
+  free(buffer);
 
   struct sdl_context_t sdl_context;
-  init_sdl_window(&sdl_context, "Net Poker");
-  run_sdl_loop(&sdl_context, &game_state);
-  do_sdl_cleanup(&sdl_context);
+  init_sdl_window(&sdl_context, "Dealer's Choice");
+  run_sdl_loop(&sdl_context, &game_state, client_socket, socket_set);
 
+cleanup:
+  SDLNet_TCP_DelSocket(socket_set, client_socket);
+  SDLNet_FreeSocketSet(socket_set);
+  SDLNet_TCP_Close(client_socket);
+  SDLNet_Quit();
+  SDL_Quit();
   return 0;
 }

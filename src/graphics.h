@@ -31,6 +31,7 @@
 
 #include <SDL2/SDL.h>
 
+#include "net.h"
 #include "types.h"
 
 struct sdl_context_t {
@@ -40,7 +41,8 @@ struct sdl_context_t {
 
 void init_sdl_window(struct sdl_context_t *sdl_context, const char *title);
 
-void run_sdl_loop(struct sdl_context_t *sdl_context, struct game_state_t *game_state);
+void run_sdl_loop(struct sdl_context_t *sdl_context, struct game_state_t *game_state,
+                  TCPsocket client_socket, SDLNet_SocketSet socket_set);
 
 void do_sdl_cleanup(struct sdl_context_t *sdl_context);
 
