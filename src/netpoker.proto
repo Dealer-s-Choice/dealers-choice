@@ -21,3 +21,8 @@ message Player {
   Hand hand = 4;
   int32 chips = 5;
 }
+
+message GameState {
+  int32 pot = 1;
+  repeated Player player = 2;
+}

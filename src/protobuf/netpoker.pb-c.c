@@ -187,6 +187,51 @@ void   player__free_unpacked
   assert(message->base.descriptor == &player__descriptor);
   protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
 }
+void   game_state__init
+                     (GameState         *message)
+{
+  static const GameState init_value = GAME_STATE__INIT;
+  *message = init_value;
+}
+size_t game_state__get_packed_size
+                     (const GameState *message)
+{
+  assert(message->base.descriptor == &game_state__descriptor);
+  return protobuf_c_message_get_packed_size ((const ProtobufCMessage*)(message));
+}
+size_t game_state__pack
+                     (const GameState *message,
+                      uint8_t       *out)
+{
+  assert(message->base.descriptor == &game_state__descriptor);
+  return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
+}
+size_t game_state__pack_to_buffer
+                     (const GameState *message,
+                      ProtobufCBuffer *buffer)
+{
+  assert(message->base.descriptor == &game_state__descriptor);
+  return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
+}
+GameState *
+       game_state__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data)
+{
+  return (GameState *)
+     protobuf_c_message_unpack (&game_state__descriptor,
+                                allocator, len, data);
+}
+void   game_state__free_unpacked
+                     (GameState *message,
+                      ProtobufCAllocator *allocator)
+{
+  if(!message)
+    return;
+  assert(message->base.descriptor == &game_state__descriptor);
+  protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
+}
 static const ProtobufCFieldDescriptor card__field_descriptors[2] =
 {
   {
@@ -415,5 +460,56 @@ const ProtobufCMessageDescriptor player__descriptor =
   player__field_indices_by_name,
   1,  player__number_ranges,
   (ProtobufCMessageInit) player__init,
+  NULL,NULL,NULL    /* reserved[123] */
+};
+static const ProtobufCFieldDescriptor game_state__field_descriptors[2] =
+{
+  {
+    "pot",
+    1,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_INT32,
+    0,   /* quantifier_offset */
+    offsetof(GameState, pot),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "player",
+    2,
+    PROTOBUF_C_LABEL_REPEATED,
+    PROTOBUF_C_TYPE_MESSAGE,
+    offsetof(GameState, n_player),
+    offsetof(GameState, player),
+    &player__descriptor,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+};
+static const unsigned game_state__field_indices_by_name[] = {
+  1,   /* field[1] = player */
+  0,   /* field[0] = pot */
+};
+static const ProtobufCIntRange game_state__number_ranges[1 + 1] =
+{
+  { 1, 0 },
+  { 0, 2 }
+};
+const ProtobufCMessageDescriptor game_state__descriptor =
+{
+  PROTOBUF_C__MESSAGE_DESCRIPTOR_MAGIC,
+  "GameState",
+  "GameState",
+  "GameState",
+  "",
+  sizeof(GameState),
+  2,
+  game_state__field_descriptors,
+  game_state__field_indices_by_name,
+  1,  game_state__number_ranges,
+  (ProtobufCMessageInit) game_state__init,
   NULL,NULL,NULL    /* reserved[123] */
 };

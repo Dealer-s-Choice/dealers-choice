@@ -27,7 +27,6 @@
 */
 
 #include <SDL2/SDL.h>
-#include <SDL2/SDL_net.h>
 #include <deckhandler.h>
 #include <pokeval.h>
 #include <stdio.h>
@@ -37,7 +36,30 @@
 
 #define MAX_CLIENTS 5
 
-static void init_players(struct player_t *player) {
+#include <SDL2/SDL_net.h>
+#include <stdio.h>
+
+// On Windows, this is defined in <ws2tcpip.h>. Rather than include the file
+// let's just do this...
+#ifndef INET6_ADDRSTRLEN
+#define INET6_ADDRSTRLEN 46
+#endif
+
+static void print_ipaddress(const IPaddress *ip) {
+  char ipaddr[INET6_ADDRSTRLEN];
+  Uint32 host = SDL_SwapBE32(ip->host);
+
+  if (host == 0) {
+    snprintf(ipaddr, sizeof(ipaddr), "0.0.0.0");
+  } else {
+    snprintf(ipaddr, sizeof(ipaddr), "%u.%u.%u.%u", (host >> 24) & 0xFF, (host >> 16) & 0xFF,
+             (host >> 8) & 0xFF, host & 0xFF);
+  }
+
+  printf("%s:%u\n", ipaddr, SDL_SwapBE16(ip->port));
+}
+
+static void init_game_state(struct game_state_t *game_state) {
   const struct preset_player_pos_t preset_player_pos = {
       .pos = {
           // P0: bottom center
@@ -50,10 +72,10 @@ static void init_players(struct player_t *player) {
           {.x = 20, .y = WINDOW_HEIGHT / 3},
 
           // P3: top-right
-          {.x = WINDOW_WIDTH - 70, .y = 20},
+          {.x = WINDOW_WIDTH / 2 + 20, .y = 35},
 
           // P4: right, 1/3 down
-          {.x = WINDOW_WIDTH - 70, .y = WINDOW_HEIGHT / 3},
+          {.x = WINDOW_WIDTH / 2 + 20, .y = WINDOW_HEIGHT / 3 + 15},
       }};
 
   // This offers only a little extra protection if changes are made.
@@ -61,14 +83,15 @@ static void init_players(struct player_t *player) {
                  "preset_player_pos.pos has wrong number of elements");
 
   for (int i = 0; i < MAX_PLAYERS; i++) {
-    player[i] = (struct player_t){
+    game_state->player[i] = (struct player_t){
         .name = "Testy", .id = -1, .pos = preset_player_pos.pos[i], .chips = 20000};
   }
 }
 
 int run_server(void) {
-  struct player_t player[MAX_PLAYERS];
-  init_players(player);
+  struct game_state_t game_state = {0};
+  init_game_state(&game_state);
+  game_state.pot = 500;
 
   if (SDL_Init(0) == -1 || SDLNet_Init() == -1) {
     fprintf(stderr, "SDL or SDL_net init failed: %s\n", SDLNet_GetError());
@@ -90,6 +113,9 @@ int run_server(void) {
     SDL_Quit();
     return 1;
   }
+
+  printf("Server listening on ");
+  print_ipaddress(&ip);
 
   TCPsocket clients[MAX_CLIENTS] = {0};
   SDLNet_SocketSet socket_set = SDLNet_AllocSocketSet(MAX_CLIENTS + 1);
@@ -121,14 +147,16 @@ int run_server(void) {
                (ipaddr >> 16) & 0xFF, (ipaddr >> 8) & 0xFF, ipaddr & 0xFF, port);
       }
 
+      game_state.player[client_count].id = client_count;
+
       // Deal hand
       for (int i = 0; i < 5; i++) {
-        player[client_count].hand.card[i] = deck.card[i + (5 * client_count)];
+        game_state.player[client_count].hand.card[i] = deck.card[i + (5 * client_count)];
       }
 
       // Serialize and send
       size_t size = 0;
-      uint8_t *data = serialize_player(&player[client_count], &size);
+      uint8_t *data = serialize_game_state(&game_state, &size);
       uint32_t size_net = htonl(size);
 
       if (send_all_tcp(new_client, &size_net, sizeof(size_net)) == -1 ||
@@ -138,6 +166,7 @@ int run_server(void) {
         free(data);
         continue;
       }
+      free(data);
 
       printf("Sent 5-card hand to player %d\n", client_count);
       client_count++;
