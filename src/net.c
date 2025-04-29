@@ -61,6 +61,30 @@ static void fill_player_message(struct player_message_builder_t *builder,
   builder->msg.hand = &builder->hand;
 }
 
+static void fill_player_from_message(struct player_t *dst, const Player *msg) {
+  if (!msg)
+    return;
+
+  if (msg->name)
+    snprintf(dst->name, sizeof(dst->name), "%s", msg->name);
+
+  dst->id = msg->id;
+  dst->chips = msg->chips;
+
+  if (msg->pos) {
+    dst->pos.x = msg->pos->x;
+    dst->pos.y = msg->pos->y;
+  }
+
+  if (msg->hand) {
+    size_t n = msg->hand->n_card < HAND_SIZE ? msg->hand->n_card : HAND_SIZE;
+    for (size_t i = 0; i < n; ++i) {
+      dst->hand.card[i].face_val = msg->hand->card[i]->face_val;
+      dst->hand.card[i].suit = msg->hand->card[i]->suit;
+    }
+  }
+}
+
 uint8_t *serialize_game_state(const struct game_state_t *src, size_t *size_out) {
   GameState msg = GAME_STATE__INIT;
 
@@ -108,24 +132,7 @@ struct game_state_t deserialize_game_state(const uint8_t *data, size_t size) {
     if (!pmsg)
       continue;
 
-    if (pmsg->name)
-      snprintf(result.player[i].name, sizeof(result.player[i].name), "%s", pmsg->name);
-
-    result.player[i].id = pmsg->id;
-    result.player[i].chips = pmsg->chips;
-
-    if (pmsg->pos) {
-      result.player[i].pos.x = pmsg->pos->x;
-      result.player[i].pos.y = pmsg->pos->y;
-    }
-
-    if (pmsg->hand) {
-      size_t m = pmsg->hand->n_card < HAND_SIZE ? pmsg->hand->n_card : HAND_SIZE;
-      for (size_t j = 0; j < m; ++j) {
-        result.player[i].hand.card[j].face_val = pmsg->hand->card[j]->face_val;
-        result.player[i].hand.card[j].suit = pmsg->hand->card[j]->suit;
-      }
-    }
+    fill_player_from_message(&result.player[i], pmsg);
   }
 
   game_state__free_unpacked(msg, NULL);
@@ -157,24 +164,7 @@ struct player_t deserialize_player(const uint8_t *data, size_t size) {
     return result;
   }
 
-  if (msg->name)
-    snprintf(result.name, sizeof(result.name), "%s", msg->name);
-
-  result.id = msg->id;
-  result.chips = msg->chips;
-
-  if (msg->pos) {
-    result.pos.x = msg->pos->x;
-    result.pos.y = msg->pos->y;
-  }
-
-  if (msg->hand) {
-    size_t n = msg->hand->n_card < HAND_SIZE ? msg->hand->n_card : HAND_SIZE;
-    for (size_t i = 0; i < n; ++i) {
-      result.hand.card[i].face_val = msg->hand->card[i]->face_val;
-      result.hand.card[i].suit = msg->hand->card[i]->suit;
-    }
-  }
+  fill_player_from_message(&result, msg);
 
   player__free_unpacked(msg, NULL);
   return result;

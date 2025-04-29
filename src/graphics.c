@@ -42,29 +42,77 @@ void init_sdl_window(struct sdl_context_t *sdl_context, const char *title) {
   return;
 }
 
+static struct pos_t get_window_center_pos(SDL_Window *window) {
+  struct pos_t pos, w_center_pos;
+  SDL_GetWindowSize(window, &pos.x, &pos.y);
+  w_center_pos.x = pos.x / 2;
+  w_center_pos.y = pos.y / 2;
+  return w_center_pos;
+}
+
+struct font_args_t {
+  const char *file;
+  const int ptsize;
+};
+
+enum { CARD, OTHER, NUM_FONTS };
+
+const struct font_args_t font_args[NUM_FONTS] = {
+    [CARD] = {.file = "../src/LiberationMono-Regular.ttf", .ptsize = 38},
+    [OTHER] = {.file = "../src/LiberationSerif-Bold.ttf", .ptsize = 30},
+};
+
+struct font_t {
+  TTF_Font *fonts[NUM_FONTS];
+};
+
+TTF_Font *open_font(const struct font_args_t *args) {
+  TTF_Font *font = TTF_OpenFont(args->file, args->ptsize);
+  if (!font)
+    fprintf(stderr, "Failed to load font (%s): %s\n", args->file, TTF_GetError());
+  return font;
+}
+
+void render_text_centered(SDL_Renderer *renderer, TTF_Font *font, const char *text, SDL_Color color,
+                          struct pos_t center) {
+  SDL_Surface *surface = TTF_RenderUTF8_Blended(font, text, color);
+  if (!surface) {
+    fprintf(stderr, "TTF_RenderUTF8_Blended failed: %s\n", TTF_GetError());
+    return;
+  }
+
+  SDL_Texture *texture = SDL_CreateTextureFromSurface(renderer, surface);
+  if (!texture) {
+    fprintf(stderr, "SDL_CreateTextureFromSurface failed: %s\n", SDL_GetError());
+    SDL_FreeSurface(surface);
+    return;
+  }
+
+  int w, h;
+  SDL_QueryTexture(texture, NULL, NULL, &w, &h);
+
+  SDL_Rect dst = {.x = center.x - w / 2, .y = center.y - h / 2, .w = w, .h = h};
+
+  SDL_RenderCopy(renderer, texture, NULL, &dst);
+
+  SDL_DestroyTexture(texture);
+  SDL_FreeSurface(surface);
+}
+
 void run_sdl_loop(struct sdl_context_t *sdl_context, struct game_state_t *game_state) {
   if (TTF_Init() == -1) {
     fprintf(stderr, "TTF_Init: %s\n", TTF_GetError());
     return;
   }
 
-  TTF_Font *card_font =
-      TTF_OpenFont("../src/LiberationMono-Regular.ttf", 38); // make sure this card_font file exists
-  if (!card_font) {
-    fprintf(stderr, "Failed to load card_font: %s\n", TTF_GetError());
-    return;
+  struct font_t font;
+  for (int i = 0; i < NUM_FONTS; ++i) {
+    font.fonts[i] = open_font(&font_args[i]);
+    if (!font.fonts[i])
+      return; // or handle error
   }
 
-  TTF_Font *other_font = TTF_OpenFont("../src/LiberationSerif-Bold.ttf", 30);
-  if (!other_font) {
-    fprintf(stderr, "Failed to load card_font: %s\n", TTF_GetError());
-    return;
-  }
-
-  struct pos_t w_pos, w_center_pos;
-  SDL_GetWindowSize(sdl_context->window, &w_pos.x, &w_pos.y);
-  w_center_pos.x = w_pos.x / 2;
-  w_center_pos.y = w_pos.y / 2;
+  struct pos_t w_center_pos = get_window_center_pos(sdl_context->window);
 
   int running = 1;
   while (running) {
@@ -109,7 +157,7 @@ void run_sdl_loop(struct sdl_context_t *sdl_context, struct game_state_t *game_s
           textColor = (SDL_Color){0, 0, 0, 255}; // Black
         }
 
-        SDL_Surface *textSurface = TTF_RenderUTF8_Blended(card_font, text, textColor);
+        SDL_Surface *textSurface = TTF_RenderUTF8_Blended(font.fonts[CARD], text, textColor);
         SDL_Texture *textTexture = SDL_CreateTextureFromSurface(sdl_context->renderer, textSurface);
 
         SDL_Rect textRect = {card_x + (80 - textSurface->w) / 2, card_y + (50 - textSurface->h) / 2,
@@ -121,32 +169,18 @@ void run_sdl_loop(struct sdl_context_t *sdl_context, struct game_state_t *game_s
       }
     }
 
-    char text[128];
-    snprintf(text, sizeof(text), "pot: %d", game_state->pot);
-    SDL_Color textColor = (SDL_Color){0, 0, 0, 255};
-    SDL_Surface *textSurface = TTF_RenderUTF8_Blended(other_font, text, textColor);
-    SDL_Texture *textTexture = SDL_CreateTextureFromSurface(sdl_context->renderer, textSurface);
-
-    int textW = 0, textH = 0;
-    SDL_QueryTexture(textTexture, NULL, NULL, &textW, &textH);
-
-    SDL_Rect textRect = {
-        w_center_pos.x - textW / 2, // Center it horizontally
-        w_center_pos.y - textH / 2, // Center it vertically
-        textW,
-        textH,
-    };
-
-    SDL_RenderCopy(sdl_context->renderer, textTexture, NULL, &textRect);
-    SDL_FreeSurface(textSurface);
-    SDL_DestroyTexture(textTexture);
+    char buffer[128];
+    snprintf(buffer, sizeof(buffer), "pot: %d", game_state->pot);
+    SDL_Color black = {0, 0, 0, 255};
+    render_text_centered(sdl_context->renderer, font.fonts[OTHER], buffer, black, w_center_pos);
 
     SDL_RenderPresent(sdl_context->renderer);
     SDL_Delay(16);
   }
 
-  TTF_CloseFont(card_font);
-  TTF_CloseFont(other_font);
+  for (int i = 0; i < NUM_FONTS; ++i)
+    TTF_CloseFont(font.fonts[i]);
+
   TTF_Quit();
 }
 
