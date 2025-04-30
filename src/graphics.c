@@ -99,6 +99,23 @@ void render_text_centered(SDL_Renderer *renderer, TTF_Font *font, const char *te
   SDL_FreeSurface(surface);
 }
 
+static void recv_game_state(TCPsocket client_socket, SDLNet_SocketSet socket_set,
+                            struct game_state_t *game_state) {
+  if (SDLNet_CheckSockets(socket_set, 0) > 0 && SDLNet_SocketReady(client_socket)) {
+    uint32_t size_net = 0;
+    if (recv_all_tcp(client_socket, &size_net, sizeof(size_net)) == 0) {
+      uint32_t size = ntohl(size_net);
+      uint8_t *buffer = malloc(size);
+      if (buffer) {
+        if (recv_all_tcp(client_socket, buffer, size) == 0)
+          *game_state = deserialize_game_state(buffer, size);
+
+        free(buffer);
+      }
+    }
+  }
+}
+
 void run_sdl_loop(struct sdl_context_t *sdl_context, struct game_state_t *game_state,
                   TCPsocket client_socket, SDLNet_SocketSet socket_set) {
   if (TTF_Init() == -1) {
@@ -117,26 +134,7 @@ void run_sdl_loop(struct sdl_context_t *sdl_context, struct game_state_t *game_s
 
   int running = 1;
   while (running) {
-    if (SDLNet_CheckSockets(socket_set, 0) > 0 && SDLNet_SocketReady(client_socket)) {
-      uint32_t size_net = 0;
-      if (SDLNet_TCP_Recv(client_socket, &size_net, sizeof(size_net)) == sizeof(size_net)) {
-        uint32_t size = ntohl(size_net);
-        uint8_t *buffer = malloc(size);
-        if (buffer) {
-          size_t received = 0;
-          while (received < size) {
-            int r = SDLNet_TCP_Recv(client_socket, buffer + received, size - received);
-            if (r <= 0)
-              break;
-            received += r;
-          }
-          if (received == size) {
-            *game_state = deserialize_game_state(buffer, size);
-          }
-          free(buffer);
-        }
-      }
-    }
+    recv_game_state(client_socket, socket_set, game_state);
 
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
