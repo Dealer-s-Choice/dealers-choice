@@ -24,8 +24,8 @@ void test_player(void) {
 
 void test_game_state(void) {
   struct game_state_t game_state = {0};
-  game_state =
-      (struct game_state_t){.pot = 500, .player[0] = {.name = "Foo", .id = 1, .chips = 20000}};
+  game_state = (struct game_state_t){
+      .pot = 500, .at_menu = true, .player[0] = {.name = "Foo", .id = 1, .chips = 20000}};
 
   size_t size = 0;
   uint8_t *data = serialize_game_state(&game_state, &size);
@@ -41,6 +41,7 @@ void test_game_state(void) {
   free(data);
 
   assert(game_state_receiver.pot == 500);
+  assert(game_state_receiver.at_menu == true);
   assert(strcmp(game_state_receiver.player[0].name, "Foo") == 0);
   assert(game_state_receiver.player[0].id == 1);
   assert(game_state_receiver.player[0].chips == 20000);

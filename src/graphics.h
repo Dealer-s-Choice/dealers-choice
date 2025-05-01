@@ -30,6 +30,10 @@
 #define __GRAPHICS_H
 
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_ttf.h>
+#include <lauxlib.h>
+#include <lua.h>
+#include <lualib.h>
 
 #include "net.h"
 #include "types.h"
@@ -38,6 +42,21 @@ struct sdl_context_t {
   SDL_Renderer *renderer;
   SDL_Window *window;
 };
+
+struct font_args_t {
+  const char *file;
+  const int ptsize;
+};
+
+enum { CARD, OTHER, NUM_FONTS };
+
+extern const struct font_args_t font_args[NUM_FONTS];
+
+struct font_t {
+  TTF_Font *fonts[NUM_FONTS];
+};
+
+TTF_Font *open_font(const struct font_args_t *args);
 
 void init_sdl_window(struct sdl_context_t *sdl_context, const char *title);
 

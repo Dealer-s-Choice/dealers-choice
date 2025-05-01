@@ -462,7 +462,7 @@ const ProtobufCMessageDescriptor player__descriptor =
   (ProtobufCMessageInit) player__init,
   NULL,NULL,NULL    /* reserved[123] */
 };
-static const ProtobufCFieldDescriptor game_state__field_descriptors[2] =
+static const ProtobufCFieldDescriptor game_state__field_descriptors[3] =
 {
   {
     "pot",
@@ -477,8 +477,20 @@ static const ProtobufCFieldDescriptor game_state__field_descriptors[2] =
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
   {
-    "player",
+    "at_menu",
     2,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_BOOL,
+    0,   /* quantifier_offset */
+    offsetof(GameState, at_menu),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "player",
+    3,
     PROTOBUF_C_LABEL_REPEATED,
     PROTOBUF_C_TYPE_MESSAGE,
     offsetof(GameState, n_player),
@@ -490,13 +502,14 @@ static const ProtobufCFieldDescriptor game_state__field_descriptors[2] =
   },
 };
 static const unsigned game_state__field_indices_by_name[] = {
-  1,   /* field[1] = player */
+  1,   /* field[1] = at_menu */
+  2,   /* field[2] = player */
   0,   /* field[0] = pot */
 };
 static const ProtobufCIntRange game_state__number_ranges[1 + 1] =
 {
   { 1, 0 },
-  { 0, 2 }
+  { 0, 3 }
 };
 const ProtobufCMessageDescriptor game_state__descriptor =
 {
@@ -506,7 +519,7 @@ const ProtobufCMessageDescriptor game_state__descriptor =
   "GameState",
   "",
   sizeof(GameState),
-  2,
+  3,
   game_state__field_descriptors,
   game_state__field_indices_by_name,
   1,  game_state__number_ranges,

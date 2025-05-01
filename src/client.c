@@ -34,7 +34,7 @@
 #include "client.h"
 #include "graphics.h"
 
-int run_client(void) {
+int run_client(struct sdl_context_t *sdl_context) {
   if (SDL_Init(SDL_INIT_VIDEO) == -1 || SDLNet_Init() == -1) {
     fprintf(stderr, "SDL or SDL_net init failed: %s\n", SDLNet_GetError());
     return 1;
@@ -90,9 +90,7 @@ int run_client(void) {
   game_state = deserialize_game_state(buffer, size);
   free(buffer);
 
-  struct sdl_context_t sdl_context;
-  init_sdl_window(&sdl_context, "Dealer's Choice");
-  run_sdl_loop(&sdl_context, &game_state, client_socket, socket_set);
+  run_sdl_loop(sdl_context, &game_state, client_socket, socket_set);
 
 cleanup:
   SDLNet_TCP_DelSocket(socket_set, client_socket);

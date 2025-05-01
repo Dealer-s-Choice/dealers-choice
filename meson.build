@@ -47,6 +47,7 @@ protobuf_dep = dependency('libprotobuf-c')
 net_shared_dep = [pokeval_dep, win_deps]
 dep_names = [
   'libprotobuf-c',
+  'lua-5.4',
   'SDL2',
   'SDL2_ttf',
   'sdl2_net',

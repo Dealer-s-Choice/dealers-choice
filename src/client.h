@@ -32,4 +32,4 @@
 #include "net.h"
 #include "types.h"
 
-int run_client(void);
+int run_client(struct sdl_context_t *sdl_context);
