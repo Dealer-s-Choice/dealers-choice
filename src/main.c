@@ -36,106 +36,9 @@
 
 #define MAX_INPUT_LENGTH 64
 
-SDL_Rect make_rect(int x, int y, int w, int h) {
-  SDL_Rect r = {x, y, w, h};
-  return r;
-}
+enum { RUN_CLIENT = 20 };
 
-bool point_in_rect(int x, int y, SDL_Rect *r) {
-  return x >= r->x && x <= (r->x + r->w) && y >= r->y && y <= (r->y + r->h);
-}
-
-void render_text(SDL_Renderer *renderer, TTF_Font *font, const char *text, SDL_Color color,
-                 SDL_Rect *dest) {
-  if (!text || strlen(text) == 0) {
-    fprintf(stderr, "Warning: Empty or null text passed to render_text.\n");
-    return;
-  }
-  SDL_Surface *surface = TTF_RenderUTF8_Blended(font, text, color);
-  if (!surface) {
-    fprintf(stderr, "TTF_RenderUTF8_Blended error: %s\n", TTF_GetError());
-    return;
-  }
-
-  SDL_Texture *texture = SDL_CreateTextureFromSurface(renderer, surface);
-  if (!texture) {
-    fprintf(stderr, "SDL_CreateTextureFromSurface error: %s\n", SDL_GetError());
-    SDL_FreeSurface(surface);
-    return;
-  }
-
-  dest->w = surface->w;
-  dest->h = surface->h;
-
-  SDL_RenderCopy(renderer, texture, NULL, dest);
-
-  SDL_FreeSurface(surface);
-  SDL_DestroyTexture(texture);
-}
-
-struct button_t {
-  const char *text;
-  SDL_Renderer *renderer;
-  SDL_Color bg_color;
-  SDL_Color fg_color;
-  SDL_Rect rect;
-  TTF_Font *font;
-  struct pos_t pos;
-};
-
-void make_button(struct button_t *button) {
-  // Draw the filled background
-  SDL_SetRenderDrawColor(button->renderer, button->bg_color.r, button->bg_color.g,
-                         button->bg_color.b, button->bg_color.a);
-  SDL_RenderFillRect(button->renderer, &button->rect);
-
-  // 3D border effect
-  SDL_SetRenderDrawColor(button->renderer, 255, 255, 255, 255); // Top-left (light)
-  SDL_RenderDrawLine(button->renderer, button->rect.x, button->rect.y,
-                     button->rect.x + button->rect.w - 1, button->rect.y); // Top
-  SDL_RenderDrawLine(button->renderer, button->rect.x, button->rect.y, button->rect.x,
-                     button->rect.y + button->rect.h - 1); // Left
-
-  SDL_SetRenderDrawColor(button->renderer, 64, 64, 64, 255); // Bottom-right (dark)
-  SDL_RenderDrawLine(button->renderer, button->rect.x, button->rect.y + button->rect.h - 1,
-                     button->rect.x + button->rect.w - 1,
-                     button->rect.y + button->rect.h - 1); // Bottom
-  SDL_RenderDrawLine(button->renderer, button->rect.x + button->rect.w - 1, button->rect.y,
-                     button->rect.x + button->rect.w - 1,
-                     button->rect.y + button->rect.h - 1); // Right
-
-  // Render the text centered on the button
-  SDL_Surface *textSurface = TTF_RenderUTF8_Blended(button->font, button->text, button->fg_color);
-  if (!textSurface)
-    return;
-
-  SDL_Texture *textTexture = SDL_CreateTextureFromSurface(button->renderer, textSurface);
-
-  int text_x = button->rect.x + (button->rect.w - textSurface->w) / 2;
-  int text_y = button->rect.y + (button->rect.h - textSurface->h) / 2;
-  SDL_Rect textRect = {text_x, text_y, textSurface->w, textSurface->h};
-
-  SDL_RenderCopy(button->renderer, textTexture, NULL, &textRect);
-
-  SDL_FreeSurface(textSurface);
-  SDL_DestroyTexture(textTexture);
-}
-
-int main(int argc, char *argv[]) {
-  if (argc == 2) {
-    if (strcmp("--server", argv[1]) == 0)
-      return run_server();
-    else
-      printf("Usage:\n\n\
-  %s --server",
-             argv[0]);
-  }
-
-  if (SDL_Init(SDL_INIT_VIDEO) == -1 || SDLNet_Init() == -1) {
-    fprintf(stderr, "SDL or SDL_net init failed: %s\n", SDLNet_GetError());
-    return 1;
-  }
-
+static int menu_display_connect(char *input_text) {
   struct sdl_context_t sdl_context;
   init_sdl_window(&sdl_context, "Dealer's Choice", 500, 500);
 
@@ -162,7 +65,6 @@ int main(int argc, char *argv[]) {
   };
 
   SDL_Rect input_box = make_rect(100, 220, 200, 40);
-  char input_text[MAX_INPUT_LENGTH] = "127.0.0.1";
   SDL_StartTextInput();
 
   bool running = true;
@@ -191,8 +93,7 @@ int main(int argc, char *argv[]) {
           SDL_StopTextInput();
           TTF_CloseFont(font.fonts[OTHER]);
           do_sdl_cleanup(&sdl_context);
-          return run_client(input_text);
-          break;
+          return RUN_CLIENT;
         }
       }
     }
@@ -219,6 +120,28 @@ int main(int argc, char *argv[]) {
   TTF_Quit();
   SDL_StopTextInput();
   do_sdl_cleanup(&sdl_context);
+  return 0;
+}
+
+int main(int argc, char *argv[]) {
+  if (argc == 2) {
+    if (strcmp("--server", argv[1]) == 0)
+      return run_server();
+    else
+      printf("Usage:\n\n\
+  %s --server",
+             argv[0]);
+  }
+
+  if (SDL_Init(SDL_INIT_VIDEO) == -1 || SDLNet_Init() == -1) {
+    fprintf(stderr, "SDL or SDL_net init failed: %s\n", SDLNet_GetError());
+    return 1;
+  }
+
+  char addr[MAX_INPUT_LENGTH] = "127.0.0.1";
+  if (menu_display_connect(addr) == RUN_CLIENT)
+    run_client(addr);
+
   SDL_Quit();
   return 0;
 }

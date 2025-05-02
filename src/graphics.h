@@ -81,6 +81,24 @@ TTF_Font *open_font(const struct font_args_t *args);
 
 void init_sdl_window(struct sdl_context_t *sdl_context, const char *title, int w, int h);
 
+SDL_Rect make_rect(int x, int y, int w, int h);
+
+bool point_in_rect(int x, int y, SDL_Rect *r);
+
+void render_text(SDL_Renderer *renderer, TTF_Font *font, const char *text, SDL_Color color,
+                 SDL_Rect *dest);
+
+struct button_t {
+  const char *text;
+  SDL_Renderer *renderer;
+  SDL_Color bg_color;
+  SDL_Color fg_color;
+  SDL_Rect rect;
+  TTF_Font *font;
+  struct pos_t pos;
+};
+void make_button(struct button_t *button);
+
 void run_sdl_loop(struct game_state_t *game_state, TCPsocket client_socket,
                   SDLNet_SocketSet socket_set);
 

@@ -131,6 +131,81 @@ static void recv_game_state(TCPsocket client_socket, SDLNet_SocketSet socket_set
   }
 }
 
+SDL_Rect make_rect(int x, int y, int w, int h) {
+  SDL_Rect r = {x, y, w, h};
+  return r;
+}
+
+bool point_in_rect(int x, int y, SDL_Rect *r) {
+  return x >= r->x && x <= (r->x + r->w) && y >= r->y && y <= (r->y + r->h);
+}
+
+void render_text(SDL_Renderer *renderer, TTF_Font *font, const char *text, SDL_Color color,
+                 SDL_Rect *dest) {
+  if (!text || strlen(text) == 0) {
+    fprintf(stderr, "Warning: Empty or null text passed to render_text.\n");
+    return;
+  }
+  SDL_Surface *surface = TTF_RenderUTF8_Blended(font, text, color);
+  if (!surface) {
+    fprintf(stderr, "TTF_RenderUTF8_Blended error: %s\n", TTF_GetError());
+    return;
+  }
+
+  SDL_Texture *texture = SDL_CreateTextureFromSurface(renderer, surface);
+  if (!texture) {
+    fprintf(stderr, "SDL_CreateTextureFromSurface error: %s\n", SDL_GetError());
+    SDL_FreeSurface(surface);
+    return;
+  }
+
+  dest->w = surface->w;
+  dest->h = surface->h;
+
+  SDL_RenderCopy(renderer, texture, NULL, dest);
+
+  SDL_FreeSurface(surface);
+  SDL_DestroyTexture(texture);
+}
+
+void make_button(struct button_t *button) {
+  // Draw the filled background
+  SDL_SetRenderDrawColor(button->renderer, button->bg_color.r, button->bg_color.g,
+                         button->bg_color.b, button->bg_color.a);
+  SDL_RenderFillRect(button->renderer, &button->rect);
+
+  // 3D border effect
+  SDL_SetRenderDrawColor(button->renderer, 255, 255, 255, 255); // Top-left (light)
+  SDL_RenderDrawLine(button->renderer, button->rect.x, button->rect.y,
+                     button->rect.x + button->rect.w - 1, button->rect.y); // Top
+  SDL_RenderDrawLine(button->renderer, button->rect.x, button->rect.y, button->rect.x,
+                     button->rect.y + button->rect.h - 1); // Left
+
+  SDL_SetRenderDrawColor(button->renderer, 64, 64, 64, 255); // Bottom-right (dark)
+  SDL_RenderDrawLine(button->renderer, button->rect.x, button->rect.y + button->rect.h - 1,
+                     button->rect.x + button->rect.w - 1,
+                     button->rect.y + button->rect.h - 1); // Bottom
+  SDL_RenderDrawLine(button->renderer, button->rect.x + button->rect.w - 1, button->rect.y,
+                     button->rect.x + button->rect.w - 1,
+                     button->rect.y + button->rect.h - 1); // Right
+
+  // Render the text centered on the button
+  SDL_Surface *textSurface = TTF_RenderUTF8_Blended(button->font, button->text, button->fg_color);
+  if (!textSurface)
+    return;
+
+  SDL_Texture *textTexture = SDL_CreateTextureFromSurface(button->renderer, textSurface);
+
+  int text_x = button->rect.x + (button->rect.w - textSurface->w) / 2;
+  int text_y = button->rect.y + (button->rect.h - textSurface->h) / 2;
+  SDL_Rect textRect = {text_x, text_y, textSurface->w, textSurface->h};
+
+  SDL_RenderCopy(button->renderer, textTexture, NULL, &textRect);
+
+  SDL_FreeSurface(textSurface);
+  SDL_DestroyTexture(textTexture);
+}
+
 void run_sdl_loop(struct game_state_t *game_state, TCPsocket client_socket,
                   SDLNet_SocketSet socket_set) {
   struct sdl_context_t sdl_context;
