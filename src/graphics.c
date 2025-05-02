@@ -142,11 +142,10 @@ bool point_in_rect(int x, int y, SDL_Rect *r) {
 
 void render_text(SDL_Renderer *renderer, TTF_Font *font, const char *text, SDL_Color color,
                  SDL_Rect *dest) {
-  if (!text || strlen(text) == 0) {
-    fprintf(stderr, "Warning: Empty or null text passed to render_text.\n");
-    return;
-  }
-  SDL_Surface *surface = TTF_RenderUTF8_Blended(font, text, color);
+  if (!text)
+    text = "";
+
+  SDL_Surface *surface = TTF_RenderUTF8_Blended(font, *text ? text : " ", color);
   if (!surface) {
     fprintf(stderr, "TTF_RenderUTF8_Blended error: %s\n", TTF_GetError());
     return;
@@ -163,6 +162,18 @@ void render_text(SDL_Renderer *renderer, TTF_Font *font, const char *text, SDL_C
   dest->h = surface->h;
 
   SDL_RenderCopy(renderer, texture, NULL, dest);
+
+  int text_width;
+  TTF_SizeUTF8(font, text, &text_width, NULL);
+
+  // Blink cursor every ~500ms
+  if ((SDL_GetTicks() / 500) % 2 == 0) {
+    SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, 255);
+    int cursor_x = dest->x + text_width;
+    int cursor_y = dest->y;
+    int cursor_h = dest->h;
+    SDL_RenderDrawLine(renderer, cursor_x, cursor_y, cursor_x, cursor_y + cursor_h);
+  }
 
   SDL_FreeSurface(surface);
   SDL_DestroyTexture(texture);
