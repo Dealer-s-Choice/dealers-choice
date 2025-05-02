@@ -293,8 +293,6 @@ void run_sdl_loop(struct game_state_t *game_state, TCPsocket client_socket,
 
   for (int i = 0; i < NUM_FONTS; ++i)
     TTF_CloseFont(font.fonts[i]);
-
-  TTF_Quit();
 }
 
 void do_sdl_cleanup(struct sdl_context_t *sdl_context) {

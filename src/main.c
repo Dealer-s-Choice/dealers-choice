@@ -42,11 +42,6 @@ static int menu_display_connect(char *input_text) {
   struct sdl_context_t sdl_context;
   init_sdl_window(&sdl_context, "Dealer's Choice", 500, 500);
 
-  if (TTF_Init() == -1) {
-    fprintf(stderr, "TTF_Init: %s\n", TTF_GetError());
-    return -1;
-  }
-
   struct font_t font;
 
   font.fonts[OTHER] = open_font(&font_args[OTHER]);
@@ -70,7 +65,6 @@ static int menu_display_connect(char *input_text) {
   bool running = true;
   while (running) {
     SDL_Event e;
-    bool do_connect = false;
     while (SDL_PollEvent(&e)) {
       if (e.type == SDL_QUIT) {
         running = false;
@@ -79,7 +73,7 @@ static int menu_display_connect(char *input_text) {
         int my = e.button.y;
 
         if (point_in_rect(mx, my, &connect_button)) {
-          do_connect = true;
+          running = false;
         }
       } else if (e.type == SDL_TEXTINPUT) {
         if (strlen(input_text) + strlen(e.text.text) < MAX_INPUT_LENGTH) {
@@ -88,12 +82,8 @@ static int menu_display_connect(char *input_text) {
       } else if (e.type == SDL_KEYDOWN) {
         if (e.key.keysym.sym == SDLK_BACKSPACE && strlen(input_text) > 0) {
           input_text[strlen(input_text) - 1] = '\0';
-        } else if (e.key.keysym.sym == SDLK_RETURN || do_connect) {
-          printf("Attempting to connect to: %s\n", input_text);
-          SDL_StopTextInput();
-          TTF_CloseFont(font.fonts[OTHER]);
-          do_sdl_cleanup(&sdl_context);
-          return RUN_CLIENT;
+        } else if (e.key.keysym.sym == SDLK_RETURN) {
+          running = false;
         }
       }
     }
@@ -116,11 +106,11 @@ static int menu_display_connect(char *input_text) {
     SDL_Delay(16);
   }
 
-  TTF_CloseFont(font.fonts[OTHER]);
-  TTF_Quit();
   SDL_StopTextInput();
+  TTF_CloseFont(font.fonts[OTHER]);
   do_sdl_cleanup(&sdl_context);
-  return 0;
+
+  return RUN_CLIENT;
 }
 
 int main(int argc, char *argv[]) {
@@ -138,10 +128,18 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  char addr[MAX_INPUT_LENGTH] = "127.0.0.1";
-  if (menu_display_connect(addr) == RUN_CLIENT)
-    run_client(addr);
+  if (TTF_Init() == -1) {
+    fprintf(stderr, "TTF_Init: %s\n", TTF_GetError());
+    return -1;
+  }
 
+  char addr[MAX_INPUT_LENGTH] = "127.0.0.1";
+  if (menu_display_connect(addr) == RUN_CLIENT) {
+    printf("Attempting to connect to: %s\n", addr);
+    run_client(addr);
+  }
+
+  TTF_Quit();
   SDL_Quit();
   return 0;
 }
