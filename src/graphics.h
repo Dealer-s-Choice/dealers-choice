@@ -35,6 +35,30 @@
 #include "net.h"
 #include "types.h"
 
+typedef enum {
+  COLOR_WHITE,
+  COLOR_LIGHTGRAY,
+  COLOR_GRAY,
+  COLOR_DARKGRAY,
+  COLOR_BLACK,
+  COLOR_RED,
+  COLOR_GREEN,
+  COLOR_GREEN_ONE,
+  COLOR_BLUE,
+  COLOR_YELLOW,
+  COLOR_CYAN,
+  COLOR_MAGENTA,
+  COLOR_ORANGE,
+  COLOR_PURPLE,
+  COLOR_BROWN,
+  COLOR_PINK,
+  COLOR_TEAL,
+  COLOR_COUNT // keep this last
+} ColorName;
+
+SDL_Color get_color(ColorName name);
+const char *get_color_name(ColorName name);
+
 struct sdl_context_t {
   SDL_Renderer *renderer;
   SDL_Window *window;
@@ -57,8 +81,8 @@ TTF_Font *open_font(const struct font_args_t *args);
 
 void init_sdl_window(struct sdl_context_t *sdl_context, const char *title, int w, int h);
 
-void run_sdl_loop(struct game_state_t *game_state,
-                  TCPsocket client_socket, SDLNet_SocketSet socket_set);
+void run_sdl_loop(struct game_state_t *game_state, TCPsocket client_socket,
+                  SDLNet_SocketSet socket_set);
 
 void do_sdl_cleanup(struct sdl_context_t *sdl_context);
 

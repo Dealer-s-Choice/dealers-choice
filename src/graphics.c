@@ -28,6 +28,34 @@
 
 #include "graphics.h"
 
+static const SDL_Color color_table[COLOR_COUNT] = {
+    [COLOR_WHITE] = {255, 255, 255, 255}, [COLOR_LIGHTGRAY] = {200, 200, 200, 255},
+    [COLOR_GRAY] = {128, 128, 128, 255},  [COLOR_DARKGRAY] = {64, 64, 64, 255},
+    [COLOR_BLACK] = {0, 0, 0, 255},       [COLOR_RED] = {255, 0, 0, 255},
+    [COLOR_GREEN] = {0, 255, 0, 255},     [COLOR_GREEN_ONE] = {40, 120, 70, 255},
+    [COLOR_BLUE] = {0, 0, 255, 255},      [COLOR_YELLOW] = {255, 255, 0, 255},
+    [COLOR_CYAN] = {0, 255, 255, 255},    [COLOR_MAGENTA] = {255, 0, 255, 255},
+    [COLOR_ORANGE] = {255, 165, 0, 255},  [COLOR_PURPLE] = {128, 0, 128, 255},
+    [COLOR_BROWN] = {165, 42, 42, 255},   [COLOR_PINK] = {255, 192, 203, 255},
+    [COLOR_TEAL] = {0, 128, 128, 255},
+};
+
+static const char *color_names[COLOR_COUNT] = {
+    "white",  "lightgray", "gray",    "darkgray", "black",  "red",   "green", "green_one", "blue",
+    "yellow", "cyan",      "magenta", "orange",   "purple", "brown", "pink",  "teal"};
+
+SDL_Color get_color(ColorName name) {
+  if (name < 0 || name >= COLOR_COUNT)
+    return (SDL_Color){0, 0, 0, 255}; // fallback
+  return color_table[name];
+}
+
+const char *get_color_name(ColorName name) {
+  if (name < 0 || name >= COLOR_COUNT)
+    return "unknown";
+  return color_names[name];
+}
+
 const struct font_args_t font_args[] = {
     [CARD] = {.file = "../src/LiberationMono-Regular.ttf", .ptsize = 38},
     [OTHER] = {.file = "../src/LiberationSerif-Bold.ttf", .ptsize = 30},
@@ -35,8 +63,8 @@ const struct font_args_t font_args[] = {
 
 void init_sdl_window(struct sdl_context_t *sdl_context, const char *title, int w, int h) {
   SDL_Init(SDL_INIT_VIDEO);
-  sdl_context->window =
-      SDL_CreateWindow(title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, w, h, SDL_WINDOW_SHOWN);
+  sdl_context->window = SDL_CreateWindow(title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, w,
+                                         h, SDL_WINDOW_SHOWN);
   if (!sdl_context->window)
     puts(SDL_GetError());
   sdl_context->renderer = SDL_CreateRenderer(sdl_context->window, -1, SDL_RENDERER_ACCELERATED);
@@ -103,8 +131,8 @@ static void recv_game_state(TCPsocket client_socket, SDLNet_SocketSet socket_set
   }
 }
 
-void run_sdl_loop(struct game_state_t *game_state,
-                  TCPsocket client_socket, SDLNet_SocketSet socket_set) {
+void run_sdl_loop(struct game_state_t *game_state, TCPsocket client_socket,
+                  SDLNet_SocketSet socket_set) {
   struct sdl_context_t sdl_context;
   init_sdl_window(&sdl_context, "Dealer's Choice", WINDOW_WIDTH, WINDOW_HEIGHT);
 

@@ -34,7 +34,6 @@
 #include "main.h"
 #include "server.h"
 
-
 #define MAX_INPUT_LENGTH 64
 
 SDL_Rect make_rect(int x, int y, int w, int h) {
@@ -46,22 +45,23 @@ bool point_in_rect(int x, int y, SDL_Rect *r) {
   return x >= r->x && x <= (r->x + r->w) && y >= r->y && y <= (r->y + r->h);
 }
 
-void render_text(SDL_Renderer *renderer, TTF_Font *font, const char *text, SDL_Color color, SDL_Rect *dest) {
+void render_text(SDL_Renderer *renderer, TTF_Font *font, const char *text, SDL_Color color,
+                 SDL_Rect *dest) {
   if (!text || strlen(text) == 0) {
-      fprintf(stderr, "Warning: Empty or null text passed to render_text.\n");
-      return;
+    fprintf(stderr, "Warning: Empty or null text passed to render_text.\n");
+    return;
   }
   SDL_Surface *surface = TTF_RenderUTF8_Blended(font, text, color);
   if (!surface) {
-      fprintf(stderr, "TTF_RenderUTF8_Blended error: %s\n", TTF_GetError());
-      return;
+    fprintf(stderr, "TTF_RenderUTF8_Blended error: %s\n", TTF_GetError());
+    return;
   }
 
   SDL_Texture *texture = SDL_CreateTextureFromSurface(renderer, surface);
   if (!texture) {
-      fprintf(stderr, "SDL_CreateTextureFromSurface error: %s\n", SDL_GetError());
-      SDL_FreeSurface(surface);
-      return;
+    fprintf(stderr, "SDL_CreateTextureFromSurface error: %s\n", SDL_GetError());
+    SDL_FreeSurface(surface);
+    return;
   }
 
   dest->w = surface->w;
@@ -84,10 +84,41 @@ struct button_t {
 };
 
 void make_button(struct button_t *button) {
-  SDL_SetRenderDrawColor(button->renderer, button->bg_color.r, button->bg_color.g, button->bg_color.b, button->bg_color.a);
+  // Draw the filled background
+  SDL_SetRenderDrawColor(button->renderer, button->bg_color.r, button->bg_color.g,
+                         button->bg_color.b, button->bg_color.a);
   SDL_RenderFillRect(button->renderer, &button->rect);
-  SDL_Rect connect_text_pos = {button->pos.x, button->pos.y, 0, 0};
-  render_text(button->renderer, button->font, button->text, button->fg_color, &connect_text_pos);
+
+  // 3D border effect
+  SDL_SetRenderDrawColor(button->renderer, 255, 255, 255, 255); // Top-left (light)
+  SDL_RenderDrawLine(button->renderer, button->rect.x, button->rect.y,
+                     button->rect.x + button->rect.w - 1, button->rect.y); // Top
+  SDL_RenderDrawLine(button->renderer, button->rect.x, button->rect.y, button->rect.x,
+                     button->rect.y + button->rect.h - 1); // Left
+
+  SDL_SetRenderDrawColor(button->renderer, 64, 64, 64, 255); // Bottom-right (dark)
+  SDL_RenderDrawLine(button->renderer, button->rect.x, button->rect.y + button->rect.h - 1,
+                     button->rect.x + button->rect.w - 1,
+                     button->rect.y + button->rect.h - 1); // Bottom
+  SDL_RenderDrawLine(button->renderer, button->rect.x + button->rect.w - 1, button->rect.y,
+                     button->rect.x + button->rect.w - 1,
+                     button->rect.y + button->rect.h - 1); // Right
+
+  // Render the text centered on the button
+  SDL_Surface *textSurface = TTF_RenderUTF8_Blended(button->font, button->text, button->fg_color);
+  if (!textSurface)
+    return;
+
+  SDL_Texture *textTexture = SDL_CreateTextureFromSurface(button->renderer, textSurface);
+
+  int text_x = button->rect.x + (button->rect.w - textSurface->w) / 2;
+  int text_y = button->rect.y + (button->rect.h - textSurface->h) / 2;
+  SDL_Rect textRect = {text_x, text_y, textSurface->w, textSurface->h};
+
+  SDL_RenderCopy(button->renderer, textTexture, NULL, &textRect);
+
+  SDL_FreeSurface(textSurface);
+  SDL_DestroyTexture(textTexture);
 }
 
 int main(int argc, char *argv[]) {
@@ -95,9 +126,9 @@ int main(int argc, char *argv[]) {
     if (strcmp("--server", argv[1]) == 0)
       return run_server();
     else
-      printf(
-"Usage:\n\n\
-  %s --server", argv[0]);
+      printf("Usage:\n\n\
+  %s --server",
+             argv[0]);
   }
 
   if (SDL_Init(SDL_INIT_VIDEO) == -1 || SDLNet_Init() == -1) {
@@ -120,16 +151,24 @@ int main(int argc, char *argv[]) {
     return -1;
 
   SDL_Rect connect_button = make_rect(100, 160, 120, 40);
+  struct button_t button_connect = {
+      .text = "Connect",
+      .renderer = sdl_context.renderer,
+      .bg_color = get_color(COLOR_BLACK),
+      .fg_color = get_color(COLOR_YELLOW),
+      .rect = connect_button,
+      .pos = {100, 160},
+      .font = font.fonts[OTHER],
+  };
+
   SDL_Rect input_box = make_rect(100, 220, 200, 40);
-
-  bool running = true;
-
   char input_text[MAX_INPUT_LENGTH] = "127.0.0.1";
-
   SDL_StartTextInput();
 
+  bool running = true;
   while (running) {
     SDL_Event e;
+    bool do_connect = false;
     while (SDL_PollEvent(&e)) {
       if (e.type == SDL_QUIT) {
         running = false;
@@ -138,7 +177,7 @@ int main(int argc, char *argv[]) {
         int my = e.button.y;
 
         if (point_in_rect(mx, my, &connect_button)) {
-          printf("Connect selected!\n");
+          do_connect = true;
         }
       } else if (e.type == SDL_TEXTINPUT) {
         if (strlen(input_text) + strlen(e.text.text) < MAX_INPUT_LENGTH) {
@@ -147,7 +186,7 @@ int main(int argc, char *argv[]) {
       } else if (e.type == SDL_KEYDOWN) {
         if (e.key.keysym.sym == SDLK_BACKSPACE && strlen(input_text) > 0) {
           input_text[strlen(input_text) - 1] = '\0';
-        } else if (e.key.keysym.sym == SDLK_RETURN) {
+        } else if (e.key.keysym.sym == SDLK_RETURN || do_connect) {
           printf("Attempting to connect to: %s\n", input_text);
           SDL_StopTextInput();
           TTF_CloseFont(font.fonts[OTHER]);
@@ -159,28 +198,18 @@ int main(int argc, char *argv[]) {
     }
 
     // Clear screen
-    SDL_SetRenderDrawColor(sdl_context.renderer, 30, 30, 30, 255);
+    SDL_SetRenderDrawColor(sdl_context.renderer, get_color(COLOR_GREEN_ONE).r,
+                           get_color(COLOR_GREEN_ONE).g, get_color(COLOR_GREEN_ONE).b,
+                           get_color(COLOR_GREEN_ONE).a);
     SDL_RenderClear(sdl_context.renderer);
 
-    SDL_Color white = {255, 255, 255, 255};
-    SDL_Color gray = {200, 200, 200, 255};
-
-    struct button_t button_connect = (struct button_t){
-      .text = "Connect",
-      .renderer = sdl_context.renderer,
-      .bg_color = { 70, 70, 70, 255 },
-      .fg_color = white,
-      .rect = connect_button,
-      .pos.x = 100,
-      .pos.y = 160,
-      .font = font.fonts[OTHER],
-    };
     make_button(&button_connect);
 
     SDL_SetRenderDrawColor(sdl_context.renderer, 255, 255, 255, 255);
     SDL_RenderDrawRect(sdl_context.renderer, &input_box);
     SDL_Rect input_text_pos = {input_box.x, input_box.y, 0, 0};
-    render_text(sdl_context.renderer, font.fonts[OTHER], input_text, gray, &input_text_pos);
+    render_text(sdl_context.renderer, font.fonts[OTHER], input_text, get_color(COLOR_WHITE),
+                &input_text_pos);
 
     SDL_RenderPresent(sdl_context.renderer);
     SDL_Delay(16);
