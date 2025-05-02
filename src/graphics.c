@@ -33,15 +33,15 @@ const struct font_args_t font_args[] = {
     [OTHER] = {.file = "../src/LiberationSerif-Bold.ttf", .ptsize = 30},
 };
 
-void init_sdl_window(struct sdl_context_t *sdl_context, const char *title) {
+void init_sdl_window(struct sdl_context_t *sdl_context, const char *title, int w, int h) {
   SDL_Init(SDL_INIT_VIDEO);
-  const char *client = strstr(title, "Client");
-  int win_pos_x = (client != NULL) ? WINDOW_WIDTH / 2 + 10 : SDL_WINDOWPOS_CENTERED;
-  int win_pos_y = (client != NULL) ? WINDOW_HEIGHT / 2 + 10 : SDL_WINDOWPOS_CENTERED;
   sdl_context->window =
-      SDL_CreateWindow(title, win_pos_x, win_pos_y, WINDOW_WIDTH, WINDOW_HEIGHT, SDL_WINDOW_SHOWN);
+      SDL_CreateWindow(title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, w, h, SDL_WINDOW_SHOWN);
+  if (!sdl_context->window)
+    puts(SDL_GetError());
   sdl_context->renderer = SDL_CreateRenderer(sdl_context->window, -1, SDL_RENDERER_ACCELERATED);
-
+  if (!sdl_context->renderer)
+    puts(SDL_GetError());
   return;
 }
 
@@ -103,8 +103,11 @@ static void recv_game_state(TCPsocket client_socket, SDLNet_SocketSet socket_set
   }
 }
 
-void run_sdl_loop(struct sdl_context_t *sdl_context, struct game_state_t *game_state,
+void run_sdl_loop(struct game_state_t *game_state,
                   TCPsocket client_socket, SDLNet_SocketSet socket_set) {
+  struct sdl_context_t sdl_context;
+  init_sdl_window(&sdl_context, "Dealer's Choice", WINDOW_WIDTH, WINDOW_HEIGHT);
+
   struct font_t font;
   for (int i = 0; i < NUM_FONTS; ++i) {
     font.fonts[i] = open_font(&font_args[i]);
@@ -112,7 +115,7 @@ void run_sdl_loop(struct sdl_context_t *sdl_context, struct game_state_t *game_s
       return; // or handle error
   }
 
-  struct pos_t w_center_pos = get_window_center_pos(sdl_context->window);
+  struct pos_t w_center_pos = get_window_center_pos(sdl_context.window);
 
   int running = 1;
   while (running) {
@@ -126,10 +129,10 @@ void run_sdl_loop(struct sdl_context_t *sdl_context, struct game_state_t *game_s
     }
 
     // Background: dark green (poker table color)
-    SDL_SetRenderDrawColor(sdl_context->renderer, 0, 125, 0, 255);
-    SDL_RenderClear(sdl_context->renderer);
+    SDL_SetRenderDrawColor(sdl_context.renderer, 0, 125, 0, 255);
+    SDL_RenderClear(sdl_context.renderer);
 
-    if (game_state->at_menu) {
+    if (!game_state->at_menu) {
     } else {
 
       for (int player_n = 0; player_n < MAX_PLAYERS; player_n++) {
@@ -142,10 +145,10 @@ void run_sdl_loop(struct sdl_context_t *sdl_context, struct game_state_t *game_s
 
           // Draw white card box
           SDL_Rect card_rect = {card_x, card_y, 80, 50};
-          SDL_SetRenderDrawColor(sdl_context->renderer, 255, 255, 255, 255);
-          SDL_RenderFillRect(sdl_context->renderer, &card_rect);
-          SDL_SetRenderDrawColor(sdl_context->renderer, 0, 0, 0, 255);
-          SDL_RenderDrawRect(sdl_context->renderer, &card_rect);
+          SDL_SetRenderDrawColor(sdl_context.renderer, 255, 255, 255, 255);
+          SDL_RenderFillRect(sdl_context.renderer, &card_rect);
+          SDL_SetRenderDrawColor(sdl_context.renderer, 0, 0, 0, 255);
+          SDL_RenderDrawRect(sdl_context.renderer, &card_rect);
 
           // Render face + suit
           const char *face = get_card_face_str(game_state->player[player_n].hand.card[i].face_val);
@@ -164,12 +167,12 @@ void run_sdl_loop(struct sdl_context_t *sdl_context, struct game_state_t *game_s
 
           SDL_Surface *textSurface = TTF_RenderUTF8_Blended(font.fonts[CARD], text, textColor);
           SDL_Texture *textTexture =
-              SDL_CreateTextureFromSurface(sdl_context->renderer, textSurface);
+              SDL_CreateTextureFromSurface(sdl_context.renderer, textSurface);
 
           SDL_Rect textRect = {card_x + (80 - textSurface->w) / 2,
                                card_y + (50 - textSurface->h) / 2, textSurface->w, textSurface->h};
 
-          SDL_RenderCopy(sdl_context->renderer, textTexture, NULL, &textRect);
+          SDL_RenderCopy(sdl_context.renderer, textTexture, NULL, &textRect);
           SDL_FreeSurface(textSurface);
           SDL_DestroyTexture(textTexture);
         }
@@ -178,10 +181,10 @@ void run_sdl_loop(struct sdl_context_t *sdl_context, struct game_state_t *game_s
       char buffer[128];
       snprintf(buffer, sizeof(buffer), "pot: %d", game_state->pot);
       SDL_Color black = {0, 0, 0, 255};
-      render_text_centered(sdl_context->renderer, font.fonts[OTHER], buffer, black, w_center_pos);
+      render_text_centered(sdl_context.renderer, font.fonts[OTHER], buffer, black, w_center_pos);
     }
 
-    SDL_RenderPresent(sdl_context->renderer);
+    SDL_RenderPresent(sdl_context.renderer);
     SDL_Delay(16);
   }
 
@@ -194,5 +197,4 @@ void run_sdl_loop(struct sdl_context_t *sdl_context, struct game_state_t *game_s
 void do_sdl_cleanup(struct sdl_context_t *sdl_context) {
   SDL_DestroyRenderer(sdl_context->renderer);
   SDL_DestroyWindow(sdl_context->window);
-  SDL_Quit();
 }

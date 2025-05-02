@@ -34,81 +34,67 @@
 #include "main.h"
 #include "server.h"
 
-lua_State *init_lua() {
-  lua_State *L = luaL_newstate();
-  luaL_openlibs(L);
-  if (luaL_dofile(L, "../src/main.lua") != LUA_OK) {
-    fprintf(stderr, "Lua error: %s\n", lua_tostring(L, -1));
-    return NULL;
-  }
-  return L;
+
+#define MAX_INPUT_LENGTH 64
+
+SDL_Rect make_rect(int x, int y, int w, int h) {
+  SDL_Rect r = {x, y, w, h};
+  return r;
 }
 
-const char *send_input(lua_State *L, const char *key) {
-  lua_getglobal(L, "Menu");
-  lua_getfield(L, -1, "handle_input");
-  lua_pushvalue(L, -2); // self
-  lua_pushstring(L, key);
-  if (lua_pcall(L, 2, 1, 0) != LUA_OK) {
-    fprintf(stderr, "Lua error: %s\n", lua_tostring(L, -1));
-    return NULL;
-  }
-
-  const char *result = NULL;
-  if (!lua_isnil(L, -1))
-    result = lua_tostring(L, -1);
-  lua_pop(L, 2); // result + Menu
-  return result;
+bool point_in_rect(int x, int y, SDL_Rect *r) {
+  return x >= r->x && x <= (r->x + r->w) && y >= r->y && y <= (r->y + r->h);
 }
 
-int render_menu(SDL_Renderer *renderer, TTF_Font *font, lua_State *L) {
-  lua_getglobal(L, "Menu");
-  lua_getfield(L, -1, "get_labels");
-  lua_pushvalue(L, -2); // self
-  if (lua_pcall(L, 1, 1, 0) != LUA_OK) {
-    fprintf(stderr, "Lua error: %s\n", lua_tostring(L, -1));
-    return -1;
+void render_text(SDL_Renderer *renderer, TTF_Font *font, const char *text, SDL_Color color, SDL_Rect *dest) {
+  if (!text || strlen(text) == 0) {
+      fprintf(stderr, "Warning: Empty or null text passed to render_text.\n");
+      return;
+  }
+  SDL_Surface *surface = TTF_RenderUTF8_Blended(font, text, color);
+  if (!surface) {
+      fprintf(stderr, "TTF_RenderUTF8_Blended error: %s\n", TTF_GetError());
+      return;
   }
 
-  SDL_Color color = {255, 255, 255, 255};
-  SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-  SDL_RenderClear(renderer);
-
-  if (lua_istable(L, -1)) {
-    int y = 100;
-    lua_pushnil(L);
-    while (lua_next(L, -2)) {
-      const char *text = lua_tostring(L, -1);
-      SDL_Surface *surf = TTF_RenderUTF8_Blended(font, text, color);
-      SDL_Texture *tex = SDL_CreateTextureFromSurface(renderer, surf);
-      SDL_Rect dst = {100, y, surf->w, surf->h};
-      SDL_RenderCopy(renderer, tex, NULL, &dst);
-      SDL_FreeSurface(surf);
-      SDL_DestroyTexture(tex);
-      lua_pop(L, 1);
-      y += 40;
-    }
+  SDL_Texture *texture = SDL_CreateTextureFromSurface(renderer, surface);
+  if (!texture) {
+      fprintf(stderr, "SDL_CreateTextureFromSurface error: %s\n", SDL_GetError());
+      SDL_FreeSurface(surface);
+      return;
   }
 
-  SDL_RenderPresent(renderer);
-  lua_pop(L, 2); // table + Menu
-  return 0;
+  dest->w = surface->w;
+  dest->h = surface->h;
+
+  SDL_RenderCopy(renderer, texture, NULL, dest);
+
+  SDL_FreeSurface(surface);
+  SDL_DestroyTexture(texture);
 }
 
 int main(int argc, char *argv[]) {
-  (void)argc;
-  (void)argv;
+  if (argc == 2) {
+    if (strcmp("--server", argv[1]) == 0)
+      return run_server();
+    else
+      printf(
+"Usage:\n\n\
+  %s --server", argv[0]);
+  }
+
+  if (SDL_Init(SDL_INIT_VIDEO) == -1 || SDLNet_Init() == -1) {
+    fprintf(stderr, "SDL or SDL_net init failed: %s\n", SDLNet_GetError());
+    return 1;
+  }
 
   struct sdl_context_t sdl_context;
-  init_sdl_window(&sdl_context, "Dealer's Choice");
+  init_sdl_window(&sdl_context, "Dealer's Choice", 500, 500);
+
   if (TTF_Init() == -1) {
     fprintf(stderr, "TTF_Init: %s\n", TTF_GetError());
     return -1;
   }
-
-  lua_State *L = init_lua();
-  if (!L)
-    return 1;
 
   struct font_t font;
 
@@ -116,43 +102,71 @@ int main(int argc, char *argv[]) {
   if (!font.fonts[OTHER])
     return -1;
 
+  SDL_Rect connect_button = make_rect(100, 160, 120, 40);
+  SDL_Rect input_box = make_rect(100, 220, 200, 40);
+
   bool running = true;
-  const char *action = NULL;
-  while (running && !action) {
+
+  char input_text[MAX_INPUT_LENGTH] = "127.0.0.1";
+
+  SDL_StartTextInput();
+
+  while (running) {
     SDL_Event e;
     while (SDL_PollEvent(&e)) {
-      if (e.type == SDL_QUIT)
+      if (e.type == SDL_QUIT) {
         running = false;
-      if (e.type == SDL_KEYDOWN) {
-        switch (e.key.keysym.sym) {
-        case SDLK_UP:
-          action = send_input(L, "up");
-          break;
-        case SDLK_DOWN:
-          action = send_input(L, "down");
-          break;
-        case SDLK_RETURN:
-          action = send_input(L, "return");
-          break;
-        case SDLK_ESCAPE:
-          running = false;
+      } else if (e.type == SDL_MOUSEBUTTONDOWN) {
+        int mx = e.button.x;
+        int my = e.button.y;
+
+        if (point_in_rect(mx, my, &connect_button)) {
+          printf("Connect selected!\n");
+        }
+      } else if (e.type == SDL_TEXTINPUT) {
+        if (strlen(input_text) + strlen(e.text.text) < MAX_INPUT_LENGTH) {
+          strcat(input_text, e.text.text);
+        }
+      } else if (e.type == SDL_KEYDOWN) {
+        if (e.key.keysym.sym == SDLK_BACKSPACE && strlen(input_text) > 0) {
+          input_text[strlen(input_text) - 1] = '\0';
+        } else if (e.key.keysym.sym == SDLK_RETURN) {
+          printf("Attempting to connect to: %s\n", input_text);
+          SDL_StopTextInput();
+          TTF_CloseFont(font.fonts[OTHER]);
+          do_sdl_cleanup(&sdl_context);
+          return run_client(input_text);
           break;
         }
       }
     }
-    render_menu(sdl_context.renderer, font.fonts[OTHER], L);
+
+    // Clear screen
+    SDL_SetRenderDrawColor(sdl_context.renderer, 30, 30, 30, 255);
+    SDL_RenderClear(sdl_context.renderer);
+
+    SDL_Color white = {255, 255, 255, 255};
+    SDL_Color gray = {200, 200, 200, 255};
+
+    // Connect button
+    SDL_SetRenderDrawColor(sdl_context.renderer, 70, 70, 70, 255);
+    SDL_RenderFillRect(sdl_context.renderer, &connect_button);
+    SDL_Rect connect_text_pos = {connect_button.x, connect_button.y, 0, 0};
+    render_text(sdl_context.renderer, font.fonts[OTHER], "Connect", white, &connect_text_pos);
+
+    SDL_SetRenderDrawColor(sdl_context.renderer, 255, 255, 255, 255);
+    SDL_RenderDrawRect(sdl_context.renderer, &input_box);
+    SDL_Rect input_text_pos = {input_box.x, input_box.y, 0, 0};
+    render_text(sdl_context.renderer, font.fonts[OTHER], input_text, gray, &input_text_pos);
+
+    SDL_RenderPresent(sdl_context.renderer);
     SDL_Delay(16);
   }
 
-  if (action)
-    printf("Action chosen: %s\n", action);
-
-  lua_close(L);
   TTF_CloseFont(font.fonts[OTHER]);
-  SDL_DestroyRenderer(sdl_context.renderer);
-  SDL_DestroyWindow(sdl_context.window);
   TTF_Quit();
+  SDL_StopTextInput();
+  do_sdl_cleanup(&sdl_context);
   SDL_Quit();
-
   return 0;
 }
