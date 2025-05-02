@@ -73,6 +73,23 @@ void render_text(SDL_Renderer *renderer, TTF_Font *font, const char *text, SDL_C
   SDL_DestroyTexture(texture);
 }
 
+struct button_t {
+  const char *text;
+  SDL_Renderer *renderer;
+  SDL_Color bg_color;
+  SDL_Color fg_color;
+  SDL_Rect rect;
+  TTF_Font *font;
+  struct pos_t pos;
+};
+
+void make_button(struct button_t *button) {
+  SDL_SetRenderDrawColor(button->renderer, button->bg_color.r, button->bg_color.g, button->bg_color.b, button->bg_color.a);
+  SDL_RenderFillRect(button->renderer, &button->rect);
+  SDL_Rect connect_text_pos = {button->pos.x, button->pos.y, 0, 0};
+  render_text(button->renderer, button->font, button->text, button->fg_color, &connect_text_pos);
+}
+
 int main(int argc, char *argv[]) {
   if (argc == 2) {
     if (strcmp("--server", argv[1]) == 0)
@@ -148,11 +165,17 @@ int main(int argc, char *argv[]) {
     SDL_Color white = {255, 255, 255, 255};
     SDL_Color gray = {200, 200, 200, 255};
 
-    // Connect button
-    SDL_SetRenderDrawColor(sdl_context.renderer, 70, 70, 70, 255);
-    SDL_RenderFillRect(sdl_context.renderer, &connect_button);
-    SDL_Rect connect_text_pos = {connect_button.x, connect_button.y, 0, 0};
-    render_text(sdl_context.renderer, font.fonts[OTHER], "Connect", white, &connect_text_pos);
+    struct button_t button_connect = (struct button_t){
+      .text = "Connect",
+      .renderer = sdl_context.renderer,
+      .bg_color = { 70, 70, 70, 255 },
+      .fg_color = white,
+      .rect = connect_button,
+      .pos.x = 100,
+      .pos.y = 160,
+      .font = font.fonts[OTHER],
+    };
+    make_button(&button_connect);
 
     SDL_SetRenderDrawColor(sdl_context.renderer, 255, 255, 255, 255);
     SDL_RenderDrawRect(sdl_context.renderer, &input_box);
