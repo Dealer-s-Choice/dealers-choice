@@ -79,6 +79,8 @@ struct font_t {
 
 TTF_Font *open_font(const struct font_args_t *args);
 
+void clear_screen(SDL_Renderer *renderer);
+
 void init_sdl_window(struct sdl_context_t *sdl_context, const char *title, int w, int h);
 
 SDL_Rect make_rect(int x, int y, int w, int h);
@@ -100,8 +102,8 @@ struct button_t {
 };
 void make_button(struct button_t *button);
 
-void run_sdl_loop(struct game_state_t *game_state, TCPsocket client_socket,
-                  SDLNet_SocketSet socket_set);
+void run_sdl_loop(struct game_state_t *game_state, struct sdl_context_t *sdl_context,
+                  struct font_t *font, TCPsocket client_socket, SDLNet_SocketSet socket_set);
 
 void do_sdl_cleanup(struct sdl_context_t *sdl_context);
 

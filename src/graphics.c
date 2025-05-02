@@ -32,7 +32,7 @@ static const SDL_Color color_table[COLOR_COUNT] = {
     [COLOR_WHITE] = {255, 255, 255, 255}, [COLOR_LIGHTGRAY] = {200, 200, 200, 255},
     [COLOR_GRAY] = {128, 128, 128, 255},  [COLOR_DARKGRAY] = {64, 64, 64, 255},
     [COLOR_BLACK] = {0, 0, 0, 255},       [COLOR_RED] = {255, 0, 0, 255},
-    [COLOR_GREEN] = {0, 255, 0, 255},     [COLOR_GREEN_ONE] = {40, 120, 70, 255},
+    [COLOR_GREEN] = {0, 255, 0, 255},     [COLOR_GREEN_ONE] = {0, 125, 0, 255},
     [COLOR_BLUE] = {0, 0, 255, 255},      [COLOR_YELLOW] = {255, 255, 0, 255},
     [COLOR_CYAN] = {0, 255, 255, 255},    [COLOR_MAGENTA] = {255, 0, 255, 255},
     [COLOR_ORANGE] = {255, 165, 0, 255},  [COLOR_PURPLE] = {128, 0, 128, 255},
@@ -60,6 +60,12 @@ const struct font_args_t font_args[] = {
     [CARD] = {.file = "../src/LiberationMono-Regular.ttf", .ptsize = 38},
     [OTHER] = {.file = "../src/LiberationSerif-Bold.ttf", .ptsize = 30},
 };
+
+void clear_screen(SDL_Renderer *renderer) {
+  SDL_SetRenderDrawColor(renderer, get_color(COLOR_GREEN_ONE).r, get_color(COLOR_GREEN_ONE).g,
+                         get_color(COLOR_GREEN_ONE).b, get_color(COLOR_GREEN_ONE).a);
+  SDL_RenderClear(renderer);
+}
 
 void init_sdl_window(struct sdl_context_t *sdl_context, const char *title, int w, int h) {
   SDL_Init(SDL_INIT_VIDEO);
@@ -239,19 +245,9 @@ void make_button(struct button_t *button) {
   SDL_DestroyTexture(textTexture);
 }
 
-void run_sdl_loop(struct game_state_t *game_state, TCPsocket client_socket,
-                  SDLNet_SocketSet socket_set) {
-  struct sdl_context_t sdl_context;
-  init_sdl_window(&sdl_context, "Dealer's Choice", WINDOW_WIDTH, WINDOW_HEIGHT);
-
-  struct font_t font;
-  for (int i = 0; i < NUM_FONTS; ++i) {
-    font.fonts[i] = open_font(&font_args[i]);
-    if (!font.fonts[i])
-      return; // or handle error
-  }
-
-  struct pos_t w_center_pos = get_window_center_pos(sdl_context.window);
+void run_sdl_loop(struct game_state_t *game_state, struct sdl_context_t *sdl_context,
+                  struct font_t *font, TCPsocket client_socket, SDLNet_SocketSet socket_set) {
+  struct pos_t w_center_pos = get_window_center_pos(sdl_context->window);
 
   int running = 1;
   while (running) {
@@ -264,9 +260,7 @@ void run_sdl_loop(struct game_state_t *game_state, TCPsocket client_socket,
       }
     }
 
-    // Background: dark green (poker table color)
-    SDL_SetRenderDrawColor(sdl_context.renderer, 0, 125, 0, 255);
-    SDL_RenderClear(sdl_context.renderer);
+    clear_screen(sdl_context->renderer);
 
     if (!game_state->at_menu) {
     } else {
@@ -281,10 +275,10 @@ void run_sdl_loop(struct game_state_t *game_state, TCPsocket client_socket,
 
           // Draw white card box
           SDL_Rect card_rect = {card_x, card_y, 80, 50};
-          SDL_SetRenderDrawColor(sdl_context.renderer, 255, 255, 255, 255);
-          SDL_RenderFillRect(sdl_context.renderer, &card_rect);
-          SDL_SetRenderDrawColor(sdl_context.renderer, 0, 0, 0, 255);
-          SDL_RenderDrawRect(sdl_context.renderer, &card_rect);
+          SDL_SetRenderDrawColor(sdl_context->renderer, 255, 255, 255, 255);
+          SDL_RenderFillRect(sdl_context->renderer, &card_rect);
+          SDL_SetRenderDrawColor(sdl_context->renderer, 0, 0, 0, 255);
+          SDL_RenderDrawRect(sdl_context->renderer, &card_rect);
 
           // Render face + suit
           const char *face = get_card_face_str(game_state->player[player_n].hand.card[i].face_val);
@@ -301,14 +295,14 @@ void run_sdl_loop(struct game_state_t *game_state, TCPsocket client_socket,
             textColor = (SDL_Color){0, 0, 0, 255}; // Black
           }
 
-          SDL_Surface *textSurface = TTF_RenderUTF8_Blended(font.fonts[CARD], text, textColor);
+          SDL_Surface *textSurface = TTF_RenderUTF8_Blended(font->fonts[CARD], text, textColor);
           SDL_Texture *textTexture =
-              SDL_CreateTextureFromSurface(sdl_context.renderer, textSurface);
+              SDL_CreateTextureFromSurface(sdl_context->renderer, textSurface);
 
           SDL_Rect textRect = {card_x + (80 - textSurface->w) / 2,
                                card_y + (50 - textSurface->h) / 2, textSurface->w, textSurface->h};
 
-          SDL_RenderCopy(sdl_context.renderer, textTexture, NULL, &textRect);
+          SDL_RenderCopy(sdl_context->renderer, textTexture, NULL, &textRect);
           SDL_FreeSurface(textSurface);
           SDL_DestroyTexture(textTexture);
         }
@@ -317,15 +311,12 @@ void run_sdl_loop(struct game_state_t *game_state, TCPsocket client_socket,
       char buffer[128];
       snprintf(buffer, sizeof(buffer), "pot: %d", game_state->pot);
       SDL_Color black = {0, 0, 0, 255};
-      render_text_centered(sdl_context.renderer, font.fonts[OTHER], buffer, black, w_center_pos);
+      render_text_centered(sdl_context->renderer, font->fonts[OTHER], buffer, black, w_center_pos);
     }
 
-    SDL_RenderPresent(sdl_context.renderer);
+    SDL_RenderPresent(sdl_context->renderer);
     SDL_Delay(16);
   }
-
-  for (int i = 0; i < NUM_FONTS; ++i)
-    TTF_CloseFont(font.fonts[i]);
 }
 
 void do_sdl_cleanup(struct sdl_context_t *sdl_context) {

@@ -38,25 +38,16 @@
 
 enum { RUN_CLIENT = 20 };
 
-static int menu_display_connect(char *input_text) {
-  struct sdl_context_t sdl_context;
-  init_sdl_window(&sdl_context, "Dealer's Choice", 500, 500);
-
-  struct font_t font;
-
-  font.fonts[OTHER] = open_font(&font_args[OTHER]);
-  if (!font.fonts[OTHER])
-    return -1;
-
+static int menu_display_connect(char *input_text, SDL_Renderer *renderer, struct font_t *font) {
   SDL_Rect connect_button = make_rect(100, 160, 120, 40);
   struct button_t button_connect = {
       .text = "Connect",
-      .renderer = sdl_context.renderer,
+      .renderer = renderer,
       .bg_color = get_color(COLOR_BLACK),
       .fg_color = get_color(COLOR_YELLOW),
       .rect = connect_button,
       .pos = {100, 160},
-      .font = font.fonts[OTHER],
+      .font = font->fonts[OTHER],
   };
 
   SDL_Rect input_box = make_rect(100, 220, 200, 40);
@@ -92,27 +83,20 @@ static int menu_display_connect(char *input_text) {
     }
 
     // Clear screen
-    SDL_SetRenderDrawColor(sdl_context.renderer, get_color(COLOR_GREEN_ONE).r,
-                           get_color(COLOR_GREEN_ONE).g, get_color(COLOR_GREEN_ONE).b,
-                           get_color(COLOR_GREEN_ONE).a);
-    SDL_RenderClear(sdl_context.renderer);
+    clear_screen(renderer);
 
     make_button(&button_connect);
 
-    SDL_SetRenderDrawColor(sdl_context.renderer, 255, 255, 255, 255);
-    SDL_RenderDrawRect(sdl_context.renderer, &input_box);
+    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+    SDL_RenderDrawRect(renderer, &input_box);
     SDL_Rect input_text_pos = {input_box.x, input_box.y, 0, 0};
-    render_text(sdl_context.renderer, font.fonts[OTHER], input_text, get_color(COLOR_WHITE),
-                &input_text_pos);
+    render_text(renderer, font->fonts[OTHER], input_text, get_color(COLOR_WHITE), &input_text_pos);
 
-    SDL_RenderPresent(sdl_context.renderer);
+    SDL_RenderPresent(renderer);
     SDL_Delay(16);
   }
 
   SDL_StopTextInput();
-  TTF_CloseFont(font.fonts[OTHER]);
-  do_sdl_cleanup(&sdl_context);
-
   return run_client == true ? RUN_CLIENT : 0;
 }
 
@@ -136,13 +120,26 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 
-  char addr[MAX_INPUT_LENGTH] = "127.0.0.1";
-  if (menu_display_connect(addr) == RUN_CLIENT) {
-    printf("Attempting to connect to: %s\n", addr);
-    run_client(addr);
+  struct sdl_context_t sdl_context;
+  init_sdl_window(&sdl_context, "Dealer's Choice", WINDOW_WIDTH, WINDOW_HEIGHT);
+
+  struct font_t font;
+  for (int i = 0; i < NUM_FONTS; ++i) {
+    font.fonts[i] = open_font(&font_args[i]);
+    if (!font.fonts[i])
+      return -1;
   }
 
+  char addr[MAX_INPUT_LENGTH] = "127.0.0.1";
+  if (menu_display_connect(addr, sdl_context.renderer, &font) == RUN_CLIENT) {
+    printf("Attempting to connect to: %s\n", addr);
+    run_client(addr, &sdl_context, &font);
+  }
+
+  for (int i = 0; i < NUM_FONTS; ++i)
+    TTF_CloseFont(font.fonts[i]);
   TTF_Quit();
+  do_sdl_cleanup(&sdl_context);
   SDL_Quit();
   return 0;
 }

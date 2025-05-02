@@ -34,7 +34,7 @@
 #include "client.h"
 #include "graphics.h"
 
-int run_client(const char *addr) {
+int run_client(const char *addr, struct sdl_context_t *sdl_context, struct font_t *font) {
   IPaddress server_ip;
   if (SDLNet_ResolveHost(&server_ip, addr, 61357) == -1) {
     fprintf(stderr, "Failed to resolve server: %s\n", SDLNet_GetError());
@@ -68,7 +68,7 @@ int run_client(const char *addr) {
   uint32_t size = ntohl(size_net);
   uint8_t *buffer = malloc(size);
   if (!buffer) {
-    fprintf(stderr, "Out of memory\n");
+    perror("malloc");
     goto cleanup;
   }
 
@@ -86,13 +86,12 @@ int run_client(const char *addr) {
   game_state = deserialize_game_state(buffer, size);
   free(buffer);
 
-  run_sdl_loop(&game_state, client_socket, socket_set);
+  run_sdl_loop(&game_state, sdl_context, font, client_socket, socket_set);
 
 cleanup:
   SDLNet_TCP_DelSocket(socket_set, client_socket);
   SDLNet_FreeSocketSet(socket_set);
   SDLNet_TCP_Close(client_socket);
   SDLNet_Quit();
-  SDL_Quit();
   return 0;
 }
