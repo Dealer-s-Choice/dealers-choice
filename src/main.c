@@ -39,13 +39,12 @@
 enum { RUN_CLIENT = 20 };
 
 static int menu_display_connect(char *input_text, SDL_Renderer *renderer, struct font_t *font) {
-  SDL_Rect connect_button = make_rect(100, 160, 120, 40);
   struct button_t button_connect = {
       .text = "Connect",
       .renderer = renderer,
       .bg_color = get_color(COLOR_BLACK),
       .fg_color = get_color(COLOR_YELLOW),
-      .rect = connect_button,
+      .rect = {100, 160, 120, 40},
       .pos = {100, 160},
       .font = font->fonts[OTHER],
   };
@@ -60,11 +59,11 @@ static int menu_display_connect(char *input_text, SDL_Renderer *renderer, struct
     while (SDL_PollEvent(&e)) {
       int mx = e.button.x;
       int my = e.button.y;
-      button_connect.hovered = SDL_PointInRect(&(SDL_Point){mx, my}, &connect_button);
+      button_connect.hovered = SDL_PointInRect(&(SDL_Point){mx, my}, &button_connect.rect);
       if (e.type == SDL_QUIT) {
         running = false;
       } else if (e.type == SDL_MOUSEBUTTONDOWN) {
-        if (point_in_rect(mx, my, &connect_button)) {
+        if (point_in_rect(mx, my, &button_connect.rect)) {
           run_client = true;
           running = false;
         }

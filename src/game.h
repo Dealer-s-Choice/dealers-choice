@@ -34,4 +34,8 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "graphics.h"
+
+int menu_display_game(struct game_state_t *game_state, SDL_Renderer *renderer, struct font_t *font);
+
 #endif

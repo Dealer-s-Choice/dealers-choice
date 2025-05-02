@@ -27,6 +27,7 @@
 */
 
 #include "graphics.h"
+#include "game.h"
 
 static const SDL_Color color_table[COLOR_COUNT] = {
     [COLOR_WHITE] = {255, 255, 255, 255}, [COLOR_LIGHTGRAY] = {200, 200, 200, 255},
@@ -262,7 +263,8 @@ void run_sdl_loop(struct game_state_t *game_state, struct sdl_context_t *sdl_con
 
     clear_screen(sdl_context->renderer);
 
-    if (!game_state->at_menu) {
+    if (game_state->at_menu) {
+      menu_display_game(game_state, sdl_context->renderer, font);
     } else {
 
       for (int player_n = 0; player_n < MAX_PLAYERS; player_n++) {
