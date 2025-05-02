@@ -62,17 +62,19 @@ static int menu_display_connect(char *input_text) {
   SDL_Rect input_box = make_rect(100, 220, 200, 40);
   SDL_StartTextInput();
 
+  bool run_client = false;
   bool running = true;
   while (running) {
     SDL_Event e;
     while (SDL_PollEvent(&e)) {
+      int mx = e.button.x;
+      int my = e.button.y;
+      button_connect.hovered = SDL_PointInRect(&(SDL_Point){mx, my}, &connect_button);
       if (e.type == SDL_QUIT) {
         running = false;
       } else if (e.type == SDL_MOUSEBUTTONDOWN) {
-        int mx = e.button.x;
-        int my = e.button.y;
-
         if (point_in_rect(mx, my, &connect_button)) {
+          run_client = true;
           running = false;
         }
       } else if (e.type == SDL_TEXTINPUT) {
@@ -83,6 +85,7 @@ static int menu_display_connect(char *input_text) {
         if (e.key.keysym.sym == SDLK_BACKSPACE && strlen(input_text) > 0) {
           input_text[strlen(input_text) - 1] = '\0';
         } else if (e.key.keysym.sym == SDLK_RETURN) {
+          run_client = true;
           running = false;
         }
       }
@@ -110,7 +113,7 @@ static int menu_display_connect(char *input_text) {
   TTF_CloseFont(font.fonts[OTHER]);
   do_sdl_cleanup(&sdl_context);
 
-  return RUN_CLIENT;
+  return run_client == true ? RUN_CLIENT : 0;
 }
 
 int main(int argc, char *argv[]) {

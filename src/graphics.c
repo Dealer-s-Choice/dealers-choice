@@ -174,20 +174,42 @@ void make_button(struct button_t *button) {
                          button->bg_color.b, button->bg_color.a);
   SDL_RenderFillRect(button->renderer, &button->rect);
 
-  // 3D border effect
-  SDL_SetRenderDrawColor(button->renderer, 255, 255, 255, 255); // Top-left (light)
-  SDL_RenderDrawLine(button->renderer, button->rect.x, button->rect.y,
-                     button->rect.x + button->rect.w - 1, button->rect.y); // Top
-  SDL_RenderDrawLine(button->renderer, button->rect.x, button->rect.y, button->rect.x,
-                     button->rect.y + button->rect.h - 1); // Left
+  // Adjust intensity scale based on hover state
+  float lighten_factor = button->hovered ? 0.5f : 0.3f;
+  float darken_factor = button->hovered ? 0.5f : 0.7f;
 
-  SDL_SetRenderDrawColor(button->renderer, 64, 64, 64, 255); // Bottom-right (dark)
-  SDL_RenderDrawLine(button->renderer, button->rect.x, button->rect.y + button->rect.h - 1,
-                     button->rect.x + button->rect.w - 1,
-                     button->rect.y + button->rect.h - 1); // Bottom
-  SDL_RenderDrawLine(button->renderer, button->rect.x + button->rect.w - 1, button->rect.y,
-                     button->rect.x + button->rect.w - 1,
-                     button->rect.y + button->rect.h - 1); // Right
+  // Compute lighter and darker shades of the background color
+  Uint8 light_r = button->bg_color.r + (Uint8)((255 - button->bg_color.r) * lighten_factor);
+  Uint8 light_g = button->bg_color.g + (Uint8)((255 - button->bg_color.g) * lighten_factor);
+  Uint8 light_b = button->bg_color.b + (Uint8)((255 - button->bg_color.b) * lighten_factor);
+
+  Uint8 dark_r = (Uint8)(button->bg_color.r * darken_factor);
+  Uint8 dark_g = (Uint8)(button->bg_color.g * darken_factor);
+  Uint8 dark_b = (Uint8)(button->bg_color.b * darken_factor);
+
+  // Determine border thickness (6% of smaller dimension, clamped)
+  int min_dim = button->rect.w < button->rect.h ? button->rect.w : button->rect.h;
+  int border_thickness = SDL_clamp(min_dim / 16, 1, 4);
+
+  // Draw top-left (light) border
+  SDL_SetRenderDrawColor(button->renderer, light_r, light_g, light_b, 255);
+  for (int i = 0; i < border_thickness; ++i) {
+    SDL_RenderDrawLine(button->renderer, button->rect.x, button->rect.y + i,
+                       button->rect.x + button->rect.w - 1, button->rect.y + i); // Top
+    SDL_RenderDrawLine(button->renderer, button->rect.x + i, button->rect.y, button->rect.x + i,
+                       button->rect.y + button->rect.h - 1); // Left
+  }
+
+  // Draw bottom-right (dark) border
+  SDL_SetRenderDrawColor(button->renderer, dark_r, dark_g, dark_b, 255);
+  for (int i = 0; i < border_thickness; ++i) {
+    SDL_RenderDrawLine(button->renderer, button->rect.x, button->rect.y + button->rect.h - 1 - i,
+                       button->rect.x + button->rect.w - 1,
+                       button->rect.y + button->rect.h - 1 - i); // Bottom
+    SDL_RenderDrawLine(button->renderer, button->rect.x + button->rect.w - 1 - i, button->rect.y,
+                       button->rect.x + button->rect.w - 1 - i,
+                       button->rect.y + button->rect.h - 1); // Right
+  }
 
   // Render the text centered on the button
   SDL_Surface *textSurface = TTF_RenderUTF8_Blended(button->font, button->text, button->fg_color);

@@ -96,6 +96,7 @@ struct button_t {
   SDL_Rect rect;
   TTF_Font *font;
   struct pos_t pos;
+  bool hovered;
 };
 void make_button(struct button_t *button);
 
