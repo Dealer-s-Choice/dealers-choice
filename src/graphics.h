@@ -30,19 +30,80 @@
 #define __GRAPHICS_H
 
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_ttf.h>
 
 #include "net.h"
 #include "types.h"
+
+typedef enum {
+  COLOR_WHITE,
+  COLOR_LIGHTGRAY,
+  COLOR_GRAY,
+  COLOR_DARKGRAY,
+  COLOR_BLACK,
+  COLOR_RED,
+  COLOR_GREEN,
+  COLOR_GREEN_ONE,
+  COLOR_BLUE,
+  COLOR_YELLOW,
+  COLOR_CYAN,
+  COLOR_MAGENTA,
+  COLOR_ORANGE,
+  COLOR_PURPLE,
+  COLOR_BROWN,
+  COLOR_PINK,
+  COLOR_TEAL,
+  COLOR_COUNT // keep this last
+} ColorName;
+
+SDL_Color get_color(ColorName name);
+const char *get_color_name(ColorName name);
 
 struct sdl_context_t {
   SDL_Renderer *renderer;
   SDL_Window *window;
 };
 
-void init_sdl_window(struct sdl_context_t *sdl_context, const char *title);
+struct font_args_t {
+  const char *file;
+  const int ptsize;
+};
 
-void run_sdl_loop(struct sdl_context_t *sdl_context, struct game_state_t *game_state,
-                  TCPsocket client_socket, SDLNet_SocketSet socket_set);
+enum { CARD, OTHER, NUM_FONTS };
+
+extern const struct font_args_t font_args[NUM_FONTS];
+
+struct font_t {
+  TTF_Font *fonts[NUM_FONTS];
+};
+
+TTF_Font *open_font(const struct font_args_t *args);
+
+void clear_screen(SDL_Renderer *renderer);
+
+void init_sdl_window(struct sdl_context_t *sdl_context, const char *title, int w, int h);
+
+SDL_Rect make_rect(int x, int y, int w, int h);
+
+bool point_in_rect(int x, int y, SDL_Rect *r);
+
+void render_text(SDL_Renderer *renderer, TTF_Font *font, const char *text, SDL_Color color,
+                 SDL_Rect *dest);
+
+struct button_t {
+  const char *text;
+  SDL_Renderer *renderer;
+  SDL_Color bg_color;
+  SDL_Color fg_color;
+  SDL_Rect rect;
+  TTF_Font *font;
+  struct pos_t pos;
+  bool hovered;
+};
+void make_button(struct button_t *button);
+
+void run_sdl_loop(struct game_state_t *game_state, struct sdl_context_t *sdl_context,
+                  struct font_t *font, TCPsocket client_socket, SDLNet_SocketSet socket_set);
 
 void do_sdl_cleanup(struct sdl_context_t *sdl_context);
 

@@ -34,14 +34,9 @@
 #include "client.h"
 #include "graphics.h"
 
-int run_client(void) {
-  if (SDL_Init(SDL_INIT_VIDEO) == -1 || SDLNet_Init() == -1) {
-    fprintf(stderr, "SDL or SDL_net init failed: %s\n", SDLNet_GetError());
-    return 1;
-  }
-
+int run_client(const char *addr, struct sdl_context_t *sdl_context, struct font_t *font) {
   IPaddress server_ip;
-  if (SDLNet_ResolveHost(&server_ip, "127.0.0.1", 61357) == -1) {
+  if (SDLNet_ResolveHost(&server_ip, addr, 61357) == -1) {
     fprintf(stderr, "Failed to resolve server: %s\n", SDLNet_GetError());
     return 1;
   }
@@ -59,7 +54,8 @@ int run_client(void) {
     return 1;
   }
 
-  SDLNet_TCP_AddSocket(socket_set, client_socket);
+  if (SDLNet_TCP_AddSocket(socket_set, client_socket) == -1)
+    fputs("Socket set full\n", stderr);
 
   // Receive initial game state
   struct game_state_t game_state = {0};
@@ -72,7 +68,7 @@ int run_client(void) {
   uint32_t size = ntohl(size_net);
   uint8_t *buffer = malloc(size);
   if (!buffer) {
-    fprintf(stderr, "Out of memory\n");
+    perror("malloc");
     goto cleanup;
   }
 
@@ -90,15 +86,12 @@ int run_client(void) {
   game_state = deserialize_game_state(buffer, size);
   free(buffer);
 
-  struct sdl_context_t sdl_context;
-  init_sdl_window(&sdl_context, "Dealer's Choice");
-  run_sdl_loop(&sdl_context, &game_state, client_socket, socket_set);
+  run_sdl_loop(&game_state, sdl_context, font, client_socket, socket_set);
 
 cleanup:
   SDLNet_TCP_DelSocket(socket_set, client_socket);
   SDLNet_FreeSocketSet(socket_set);
   SDLNet_TCP_Close(client_socket);
   SDLNet_Quit();
-  SDL_Quit();
   return 0;
 }

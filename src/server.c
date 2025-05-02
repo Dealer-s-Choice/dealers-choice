@@ -86,6 +86,8 @@ static void init_game_state(struct game_state_t *game_state) {
     game_state->player[i] = (struct player_t){
         .name = "Testy", .id = -1, .pos = preset_player_pos.pos[i], .chips = 20000};
   }
+
+  game_state->at_menu = true;
 }
 
 static void broadcast_game_state(TCPsocket *clients, int client_count,

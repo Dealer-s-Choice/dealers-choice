@@ -55,6 +55,7 @@ struct player_t {
 
 struct game_state_t {
   int pot;
+  bool at_menu;
   struct player_t player[MAX_PLAYERS];
 };
 

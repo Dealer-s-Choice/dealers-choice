@@ -30,17 +30,116 @@
 #include <string.h>
 
 #include "client.h"
+#include "graphics.h"
 #include "main.h"
 #include "server.h"
 
+#define MAX_INPUT_LENGTH 64
+
+enum { RUN_CLIENT = 20 };
+
+static int menu_display_connect(char *input_text, SDL_Renderer *renderer, struct font_t *font) {
+  SDL_Rect connect_button = make_rect(100, 160, 120, 40);
+  struct button_t button_connect = {
+      .text = "Connect",
+      .renderer = renderer,
+      .bg_color = get_color(COLOR_BLACK),
+      .fg_color = get_color(COLOR_YELLOW),
+      .rect = connect_button,
+      .pos = {100, 160},
+      .font = font->fonts[OTHER],
+  };
+
+  SDL_Rect input_box = make_rect(100, 220, 200, 40);
+  SDL_StartTextInput();
+
+  bool run_client = false;
+  bool running = true;
+  while (running) {
+    SDL_Event e;
+    while (SDL_PollEvent(&e)) {
+      int mx = e.button.x;
+      int my = e.button.y;
+      button_connect.hovered = SDL_PointInRect(&(SDL_Point){mx, my}, &connect_button);
+      if (e.type == SDL_QUIT) {
+        running = false;
+      } else if (e.type == SDL_MOUSEBUTTONDOWN) {
+        if (point_in_rect(mx, my, &connect_button)) {
+          run_client = true;
+          running = false;
+        }
+      } else if (e.type == SDL_TEXTINPUT) {
+        if (strlen(input_text) + strlen(e.text.text) < MAX_INPUT_LENGTH) {
+          strcat(input_text, e.text.text);
+        }
+      } else if (e.type == SDL_KEYDOWN) {
+        if (e.key.keysym.sym == SDLK_BACKSPACE && strlen(input_text) > 0) {
+          input_text[strlen(input_text) - 1] = '\0';
+        } else if (e.key.keysym.sym == SDLK_RETURN) {
+          run_client = true;
+          running = false;
+        }
+      }
+    }
+
+    // Clear screen
+    clear_screen(renderer);
+
+    make_button(&button_connect);
+
+    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+    SDL_RenderDrawRect(renderer, &input_box);
+    SDL_Rect input_text_pos = {input_box.x, input_box.y, 0, 0};
+    render_text(renderer, font->fonts[OTHER], input_text, get_color(COLOR_WHITE), &input_text_pos);
+
+    SDL_RenderPresent(renderer);
+    SDL_Delay(16);
+  }
+
+  SDL_StopTextInput();
+  return run_client == true ? RUN_CLIENT : 0;
+}
+
 int main(int argc, char *argv[]) {
   if (argc == 2) {
-    if (strcmp(argv[1], "--server") == 0)
+    if (strcmp("--server", argv[1]) == 0)
       return run_server();
-    if (strcmp(argv[1], "--client") == 0)
-      return run_client();
+    else
+      printf("Usage:\n\n\
+  %s --server",
+             argv[0]);
   }
-  puts("This program is not playable yet.");
 
+  if (SDL_Init(SDL_INIT_VIDEO) == -1 || SDLNet_Init() == -1) {
+    fprintf(stderr, "SDL or SDL_net init failed: %s\n", SDLNet_GetError());
+    return 1;
+  }
+
+  if (TTF_Init() == -1) {
+    fprintf(stderr, "TTF_Init: %s\n", TTF_GetError());
+    return -1;
+  }
+
+  struct sdl_context_t sdl_context;
+  init_sdl_window(&sdl_context, "Dealer's Choice", WINDOW_WIDTH, WINDOW_HEIGHT);
+
+  struct font_t font;
+  for (int i = 0; i < NUM_FONTS; ++i) {
+    font.fonts[i] = open_font(&font_args[i]);
+    if (!font.fonts[i])
+      return -1;
+  }
+
+  char addr[MAX_INPUT_LENGTH] = "127.0.0.1";
+  if (menu_display_connect(addr, sdl_context.renderer, &font) == RUN_CLIENT) {
+    printf("Attempting to connect to: %s\n", addr);
+    run_client(addr, &sdl_context, &font);
+  }
+
+  for (int i = 0; i < NUM_FONTS; ++i)
+    TTF_CloseFont(font.fonts[i]);
+  TTF_Quit();
+  do_sdl_cleanup(&sdl_context);
+  SDL_Quit();
   return 0;
 }
