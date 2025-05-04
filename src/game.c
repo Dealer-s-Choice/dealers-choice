@@ -32,7 +32,24 @@
 
 #include "game.h"
 
-int menu_display_game(struct game_state_t *game_state, SDL_Renderer *renderer,
+static void recv_game_state(TCPsocket client_socket, SDLNet_SocketSet socket_set,
+                            struct game_state_t *game_state) {
+  if (SDLNet_CheckSockets(socket_set, 0) > 0 && SDLNet_SocketReady(client_socket)) {
+    uint32_t size_net = 0;
+    if (recv_all_tcp(client_socket, &size_net, sizeof(size_net)) == 0) {
+      uint32_t size = ntohl(size_net);
+      uint8_t *buffer = malloc(size);
+      if (buffer) {
+        if (recv_all_tcp(client_socket, buffer, size) == 0)
+          *game_state = deserialize_game_state(buffer, size);
+
+        free(buffer);
+      }
+    }
+  }
+}
+
+static int menu_display_game(struct game_state_t *game_state, SDL_Renderer *renderer,
                       struct font_t *font) {
   struct button_t button_5_card_draw = {
       .text = "5-card draw",
@@ -71,4 +88,79 @@ int menu_display_game(struct game_state_t *game_state, SDL_Renderer *renderer,
   }
 
   return 0;
+}
+
+void run_sdl_loop(struct game_state_t *game_state, struct sdl_context_t *sdl_context,
+                  struct font_t *font, TCPsocket client_socket, SDLNet_SocketSet socket_set) {
+  struct pos_t w_center_pos = get_window_center_pos(sdl_context->window);
+
+  int running = 1;
+  while (running) {
+    recv_game_state(client_socket, socket_set, game_state);
+
+    SDL_Event event;
+    while (SDL_PollEvent(&event)) {
+      if (event.type == SDL_QUIT) {
+        running = 0;
+      }
+    }
+
+    clear_screen(sdl_context->renderer);
+
+    if (game_state->at_menu) {
+      menu_display_game(game_state, sdl_context->renderer, font);
+    } else {
+
+      for (int player_n = 0; player_n < MAX_PLAYERS; player_n++) {
+        if (game_state->player[player_n].id == -1)
+          continue;
+        // Draw each card
+        for (int i = 0; i < HAND_SIZE; ++i) {
+          int card_x = game_state->player[player_n].pos.x + i * (80 + 10);
+          int card_y = game_state->player[player_n].pos.y;
+
+          // Draw white card box
+          SDL_Rect card_rect = {card_x, card_y, 80, 50};
+          SDL_SetRenderDrawColor(sdl_context->renderer, 255, 255, 255, 255);
+          SDL_RenderFillRect(sdl_context->renderer, &card_rect);
+          SDL_SetRenderDrawColor(sdl_context->renderer, 0, 0, 0, 255);
+          SDL_RenderDrawRect(sdl_context->renderer, &card_rect);
+
+          // Render face + suit
+          const char *face = get_card_face_str(game_state->player[player_n].hand.card[i].face_val);
+          const char *suit = get_card_unicode_suit(game_state->player[player_n].hand.card[i]);
+
+          char text[8];
+          snprintf(text, sizeof(text), "%s%s", face, suit);
+
+          SDL_Color textColor;
+          if (game_state->player[player_n].hand.card[i].suit == HEARTS ||
+              game_state->player[player_n].hand.card[i].suit == DIAMONDS) {
+            textColor = (SDL_Color){255, 0, 0, 255}; // Red
+          } else {
+            textColor = (SDL_Color){0, 0, 0, 255}; // Black
+          }
+
+          SDL_Surface *textSurface = TTF_RenderUTF8_Blended(font->fonts[CARD], text, textColor);
+          SDL_Texture *textTexture =
+              SDL_CreateTextureFromSurface(sdl_context->renderer, textSurface);
+
+          SDL_Rect textRect = {card_x + (80 - textSurface->w) / 2,
+                               card_y + (50 - textSurface->h) / 2, textSurface->w, textSurface->h};
+
+          SDL_RenderCopy(sdl_context->renderer, textTexture, NULL, &textRect);
+          SDL_FreeSurface(textSurface);
+          SDL_DestroyTexture(textTexture);
+        }
+      }
+
+      char buffer[128];
+      snprintf(buffer, sizeof(buffer), "pot: %d", game_state->pot);
+      SDL_Color black = {0, 0, 0, 255};
+      render_text_centered(sdl_context->renderer, font->fonts[OTHER], buffer, black, w_center_pos);
+    }
+
+    SDL_RenderPresent(sdl_context->renderer);
+    SDL_Delay(16);
+  }
 }

@@ -102,8 +102,10 @@ struct button_t {
 };
 void make_button(struct button_t *button);
 
-void run_sdl_loop(struct game_state_t *game_state, struct sdl_context_t *sdl_context,
-                  struct font_t *font, TCPsocket client_socket, SDLNet_SocketSet socket_set);
+struct pos_t get_window_center_pos(SDL_Window *window);
+
+void render_text_centered(SDL_Renderer *renderer, TTF_Font *font, const char *text, SDL_Color color,
+                          struct pos_t center);
 
 void do_sdl_cleanup(struct sdl_context_t *sdl_context);
 

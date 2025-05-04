@@ -32,6 +32,7 @@
 #include <string.h>
 
 #include "client.h"
+#include "game.h"
 #include "graphics.h"
 
 int run_client(const char *addr, struct sdl_context_t *sdl_context, struct font_t *font) {
