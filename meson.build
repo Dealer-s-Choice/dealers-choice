@@ -54,7 +54,7 @@ dep_names = [
   'libprotobuf-c',
   'SDL2',
   'SDL2_ttf',
-  'sdl2_net',
+  'SDL2_net',
   ]
 
 foreach dep : dep_names
