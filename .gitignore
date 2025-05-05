@@ -1,3 +1,2 @@
 subprojects/**
 !subprojects/**/*.wrap
-subprojects/deckhandler.wrap

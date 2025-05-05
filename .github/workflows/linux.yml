@@ -30,6 +30,10 @@ jobs:
         cc:
           - gcc
           - clang
+        include:
+          - os: ubuntu-22.04
+            cc: gcc
+
     runs-on: ${{ matrix.os }}
     env:
       CC: ${{ matrix.cc }}

@@ -47,7 +47,7 @@ struct preset_player_pos_t {
 
 struct player_t {
   char name[256];
-  int id;
+  int8_t id;
   struct pos_t pos;
   struct hand_t hand;
   int chips;
@@ -55,6 +55,7 @@ struct player_t {
 
 struct game_state_t {
   int pot;
+  int8_t dealer_id;
   bool at_menu;
   struct player_t player[MAX_PLAYERS];
 };

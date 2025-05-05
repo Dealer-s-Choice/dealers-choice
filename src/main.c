@@ -103,10 +103,13 @@ int main(int argc, char *argv[]) {
   if (argc == 2) {
     if (strcmp("--server", argv[1]) == 0)
       return run_server();
-    else
+    else {
       printf("Usage:\n\n\
-  %s --server",
-             argv[0]);
+  %s\n\
+  %s --server\n\n",
+             argv[0], argv[0]);
+      exit(EXIT_FAILURE);
+    }
   }
 
   if (SDL_Init(SDL_INIT_VIDEO) == -1 || SDLNet_Init() == -1) {

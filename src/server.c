@@ -65,11 +65,11 @@ static void init_game_state(struct game_state_t *game_state) {
           // P0: bottom center
           {.x = WINDOW_WIDTH / 3, .y = WINDOW_HEIGHT - 80},
 
-          // P1: top-left
-          {.x = 20, .y = 20},
-
-          // P2: left, 1/3 down
+          // P1: left, 1/3 down
           {.x = 20, .y = WINDOW_HEIGHT / 3},
+
+          // P2: top-left
+          {.x = 20, .y = 20},
 
           // P3: top-right
           {.x = WINDOW_WIDTH / 2 + 20, .y = 35},
@@ -83,11 +83,23 @@ static void init_game_state(struct game_state_t *game_state) {
                  "preset_player_pos.pos has wrong number of elements");
 
   for (int i = 0; i < MAX_PLAYERS; i++) {
-    game_state->player[i] = (struct player_t){
-        .name = "Testy", .id = -1, .pos = preset_player_pos.pos[i], .chips = 20000};
+    game_state->player[i] =
+        (struct player_t){.id = -1, .pos = preset_player_pos.pos[i], .chips = 20000};
+    snprintf(game_state->player[i].name, sizeof game_state->player[i].name, "Player %d", i);
   }
 
+  game_state->dealer_id = 0;
   game_state->at_menu = true;
+}
+
+static void deal_cards_to_players(struct game_state_t *game_state, const struct dh_deck *deck) {
+  for (int p = 0; p < MAX_PLAYERS; ++p) {
+    if (game_state->player[p].id != -1) {
+      for (int i = 0; i < HAND_SIZE; ++i) {
+        game_state->player[p].hand.card[i] = deck->card[i + HAND_SIZE * p];
+      }
+    }
+  }
 }
 
 static void broadcast_game_state(TCPsocket *clients, int client_count,
@@ -158,10 +170,12 @@ int run_server(void) {
   dh_pcg_srand_auto();
   dh_shuffle_deck(&deck);
 
+  int game_started = 0;
   int client_count = 0;
-  while (client_count < MAX_CLIENTS) {
+
+  while (!game_started) {
     TCPsocket new_client = SDLNet_TCP_Accept(server);
-    if (new_client) {
+    if (new_client && client_count < MAX_CLIENTS) {
       clients[client_count] = new_client;
       SDLNet_TCP_AddSocket(socket_set, new_client);
 
@@ -175,21 +189,34 @@ int run_server(void) {
 
       game_state.player[client_count].id = client_count;
 
-      // Deal hand
-      for (int i = 0; i < 5; i++) {
-        game_state.player[client_count].hand.card[i] = deck.card[i + (5 * client_count)];
-      }
+      int32_t net_player_id = htonl(client_count);
+      send_all_tcp(new_client, &net_player_id, sizeof(int32_t));
 
       broadcast_game_state(clients, client_count + 1, &game_state);
 
-      printf("Sent 5-card hand to player %d\n", client_count);
       client_count++;
     }
 
-    SDL_Delay(100); // Prevent CPU hogging
+    if (client_count >= 2) {
+      SDLNet_CheckSockets(socket_set, 0);
+      if (SDLNet_SocketReady(clients[game_state.dealer_id])) {
+        uint8_t msg;
+        if (recv_all_tcp(clients[game_state.dealer_id], &msg, sizeof(msg)) != 0)
+          continue;
+
+        if (msg == 0x01) { // "start" signal from player
+          printf("All %d players are ready. Starting game.\n", client_count);
+          game_state.at_menu = false;
+          deal_cards_to_players(&game_state, &deck);
+          broadcast_game_state(clients, client_count, &game_state);
+        } else
+          puts("msg incorrect");
+      }
+    }
+
+    SDL_Delay(50);
   }
 
-  // Cleanup
   for (int i = 0; i < client_count; i++) {
     SDLNet_TCP_Close(clients[i]);
   }

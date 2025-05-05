@@ -32,6 +32,7 @@
 #include <string.h>
 
 #include "client.h"
+#include "game.h"
 #include "graphics.h"
 
 int run_client(const char *addr, struct sdl_context_t *sdl_context, struct font_t *font) {
@@ -57,7 +58,11 @@ int run_client(const char *addr, struct sdl_context_t *sdl_context, struct font_
   if (SDLNet_TCP_AddSocket(socket_set, client_socket) == -1)
     fputs("Socket set full\n", stderr);
 
-  // Receive initial game state
+  int32_t net_player_id;
+  recv_all_tcp(client_socket, &net_player_id, sizeof(int32_t)); // Must match exactly
+  int8_t my_id = ntohl(net_player_id);
+  printf("Assigned id %d by server\n", my_id);
+
   struct game_state_t game_state = {0};
   uint32_t size_net = 0;
   if (SDLNet_TCP_Recv(client_socket, &size_net, sizeof(size_net)) != sizeof(size_net)) {
@@ -86,7 +91,7 @@ int run_client(const char *addr, struct sdl_context_t *sdl_context, struct font_
   game_state = deserialize_game_state(buffer, size);
   free(buffer);
 
-  run_sdl_loop(&game_state, sdl_context, font, client_socket, socket_set);
+  run_sdl_loop(&game_state, sdl_context, font, client_socket, socket_set, my_id);
 
 cleanup:
   SDLNet_TCP_DelSocket(socket_set, client_socket);
