@@ -37,8 +37,10 @@
 #include "graphics.h"
 #include "net.h"
 
-// int menu_display_game(struct game_state_t *game_state, SDL_Renderer *renderer, struct font_t *font);
+// int menu_display_game(struct game_state_t *game_state, SDL_Renderer *renderer, struct font_t
+// *font);
 void run_sdl_loop(struct game_state_t *game_state, struct sdl_context_t *sdl_context,
-                  struct font_t *font, TCPsocket client_socket, SDLNet_SocketSet socket_set);
+                  struct font_t *font, TCPsocket client_socket, SDLNet_SocketSet socket_set,
+                  const int8_t my_id);
 
 #endif
