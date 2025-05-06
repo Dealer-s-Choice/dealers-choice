@@ -145,17 +145,23 @@ void run_sdl_loop(struct game_state_t *game_state, struct sdl_context_t *sdl_con
           SDL_RenderDrawRect(sdl_context->renderer, &card_rect);
 
           // Render face + suit
-          const char *face = get_card_face_str(game_state->player[player_n].hand.card[i].face_val);
-          const char *suit = get_card_unicode_suit(game_state->player[player_n].hand.card[i]);
-
-          char text[8];
-          snprintf(text, sizeof(text), "%s%s", face, suit);
-
           SDL_Color textColor;
-          if (game_state->player[player_n].hand.card[i].suit == HEARTS ||
-              game_state->player[player_n].hand.card[i].suit == DIAMONDS) {
-            textColor = (SDL_Color){255, 0, 0, 255}; // Red
+          char text[8] = {0};
+          if (game_state->player[player_n].hand.card[i].face_val != dh_card_back.face_val) {
+            const char *face =
+                get_card_face_str(game_state->player[player_n].hand.card[i].face_val);
+            const char *suit = get_card_unicode_suit(game_state->player[player_n].hand.card[i]);
+
+            snprintf(text, sizeof(text), "%s%s", face, suit);
+
+            if (game_state->player[player_n].hand.card[i].suit == HEARTS ||
+                game_state->player[player_n].hand.card[i].suit == DIAMONDS) {
+              textColor = (SDL_Color){255, 0, 0, 255}; // Red
+            } else {
+              textColor = (SDL_Color){0, 0, 0, 255}; // Black
+            }
           } else {
+            text[0] = '?';
             textColor = (SDL_Color){0, 0, 0, 255}; // Black
           }
 

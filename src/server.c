@@ -36,8 +36,14 @@
 
 #define MAX_CLIENTS 5
 
-#include <SDL2/SDL_net.h>
 #include <stdio.h>
+
+#include "server.h"
+
+struct fow_t {
+  struct hand_t hand[MAX_PLAYERS];
+  bool face_down[HAND_SIZE];
+};
 
 // On Windows, this is defined in <ws2tcpip.h>. Rather than include the file
 // let's just do this...
@@ -92,28 +98,39 @@ static void init_game_state(struct game_state_t *game_state) {
   game_state->at_menu = true;
 }
 
-static void deal_cards_to_players(struct game_state_t *game_state, const struct dh_deck *deck) {
+static struct fow_t deal_cards_to_players(struct game_state_t *game_state,
+                                          const struct dh_deck *deck) {
+  struct fow_t fow = {0};
   for (int p = 0; p < MAX_PLAYERS; ++p) {
     if (game_state->player[p].id != -1) {
       for (int i = 0; i < HAND_SIZE; ++i) {
-        game_state->player[p].hand.card[i] = deck->card[i + HAND_SIZE * p];
+        game_state->player[p].hand.card[i] = dh_card_back;
+        printf("%d\n", game_state->player[p].hand.card[i].face_val);
+        fow.hand[p].card[i] = deck->card[i + HAND_SIZE * p];
       }
     }
   }
+  return fow;
 }
 
 static void broadcast_game_state(TCPsocket *clients, int client_count,
-                                 const struct game_state_t *game_state) {
-  size_t size = 0;
-  uint8_t *data = serialize_game_state(game_state, &size);
-  if (!data)
-    return;
-
-  uint32_t size_net = htonl(size);
-
+                                 struct game_state_t *game_state, struct fow_t *fow) {
   for (int i = 0; i < client_count; ++i) {
     if (!clients[i])
       continue;
+
+    struct hand_t hand_tmp;
+    memcpy(&hand_tmp, &game_state->player[i].hand, sizeof(struct hand_t));
+    memcpy(&game_state->player[i].hand, &fow->hand[i], sizeof(struct hand_t));
+
+    size_t size = 0;
+    uint8_t *data = serialize_game_state(game_state, &size);
+    if (!data)
+      return;
+
+    memcpy(&game_state->player[i].hand, &hand_tmp, sizeof(struct hand_t));
+
+    uint32_t size_net = htonl(size);
 
     if (send_all_tcp(clients[i], &size_net, sizeof(size_net)) == -1 ||
         send_all_tcp(clients[i], data, size) == -1) {
@@ -121,9 +138,8 @@ static void broadcast_game_state(TCPsocket *clients, int client_count,
       SDLNet_TCP_Close(clients[i]);
       clients[i] = NULL;
     }
+    free(data);
   }
-
-  free(data);
 }
 
 int run_server(void) {
@@ -173,6 +189,8 @@ int run_server(void) {
   int game_started = 0;
   int client_count = 0;
 
+  struct fow_t fow = {0};
+
   while (!game_started) {
     TCPsocket new_client = SDLNet_TCP_Accept(server);
     if (new_client && client_count < MAX_CLIENTS) {
@@ -192,7 +210,7 @@ int run_server(void) {
       int32_t net_player_id = htonl(client_count);
       send_all_tcp(new_client, &net_player_id, sizeof(int32_t));
 
-      broadcast_game_state(clients, client_count + 1, &game_state);
+      broadcast_game_state(clients, client_count + 1, &game_state, &fow);
 
       client_count++;
     }
@@ -207,8 +225,8 @@ int run_server(void) {
         if (msg == 0x01) { // "start" signal from player
           printf("All %d players are ready. Starting game.\n", client_count);
           game_state.at_menu = false;
-          deal_cards_to_players(&game_state, &deck);
-          broadcast_game_state(clients, client_count, &game_state);
+          fow = deal_cards_to_players(&game_state, &deck);
+          broadcast_game_state(clients, client_count, &game_state, &fow);
         } else
           puts("msg incorrect");
       }
