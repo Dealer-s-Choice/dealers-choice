@@ -104,12 +104,56 @@ static int menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet s
   return 0;
 }
 
+static void draw_card_back_pattern(SDL_Renderer *renderer, SDL_Rect *card_rect) {
+  // Fill card with base color
+  SDL_SetRenderDrawColor(renderer, 0, 0, 128, 255); // Dark blue
+  SDL_RenderFillRect(renderer, card_rect);
+
+  // Draw border
+  SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255); // White border
+  SDL_RenderDrawRect(renderer, card_rect);
+
+  // Draw pattern (e.g., diagonal crosshatch lines)
+  SDL_SetRenderDrawColor(renderer, 200, 200, 255, 255); // Light blue
+
+  int spacing = 8;
+  for (int y = 0; y < card_rect->h; y += spacing) {
+    for (int x = 0; x < card_rect->w; x += spacing) {
+      SDL_RenderDrawLine(renderer, card_rect->x + x, card_rect->y, card_rect->x, card_rect->y + y);
+    }
+  }
+
+  for (int y = 0; y < card_rect->h; y += spacing) {
+    for (int x = 0; x < card_rect->w; x += spacing) {
+      SDL_RenderDrawLine(renderer, card_rect->x + x, card_rect->y + card_rect->h,
+                         card_rect->x + card_rect->w, card_rect->y + y);
+    }
+  }
+}
+
 void run_sdl_loop(struct game_state_t *game_state, struct sdl_context_t *sdl_context,
                   struct font_t *font, TCPsocket client_socket, SDLNet_SocketSet socket_set,
                   const int8_t my_id) {
+  // if (Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048) < 0) {
+  // fprintf(stderr, "SDL_mixer could not initialize! SDL_mixer Error: %s\n", Mix_GetError());
+  //// handle error
+  //}
+
+  // Mix_Chunk *card_sound = Mix_LoadWAV("../card_dealt_stereo.wav");
+  // if (!card_sound) {
+  // fprintf(stderr, "Failed to load card sound! SDL_mixer Error: %s\n", Mix_GetError());
+  //// handle error
+  //}
+  // Mix_VolumeChunk(card_sound, MIX_MAX_VOLUME / 2);
+
+  // if (Mix_Paused(-1)) {
+  // Mix_Resume(-1);
+  //}
+
   struct pos_t w_center_pos = get_window_center_pos(sdl_context->window);
 
   int running = 1;
+  bool cards_dealt = false;
   while (running) {
     recv_game_state(client_socket, socket_set, game_state);
     SDL_Event event;
@@ -118,7 +162,6 @@ void run_sdl_loop(struct game_state_t *game_state, struct sdl_context_t *sdl_con
         running = 0;
       }
     }
-
     clear_screen(sdl_context->renderer);
 
     if (game_state->at_menu) {
@@ -129,11 +172,12 @@ void run_sdl_loop(struct game_state_t *game_state, struct sdl_context_t *sdl_con
         continue;
       }
     } else {
-      for (int player_n = 0; player_n < MAX_PLAYERS; player_n++) {
-        if (game_state->player[player_n].id == -1)
-          continue;
-        // Show each card that has been dealt
-        for (int i = 0; i < HAND_SIZE; ++i) {
+      for (int i = 0; i < HAND_SIZE; ++i) {
+        for (int player_n = 0; player_n < MAX_PLAYERS; player_n++) {
+          if (game_state->player[player_n].id == -1)
+            continue;
+          // Show each card that has been dealt
+
           int card_x = game_state->player[player_n].pos.x + i * (80 + 10);
           int card_y = game_state->player[player_n].pos.y;
 
@@ -145,18 +189,41 @@ void run_sdl_loop(struct game_state_t *game_state, struct sdl_context_t *sdl_con
           SDL_RenderDrawRect(sdl_context->renderer, &card_rect);
 
           // Render face + suit
-          const char *face = get_card_face_str(game_state->player[player_n].hand.card[i].face_val);
-          const char *suit = get_card_unicode_suit(game_state->player[player_n].hand.card[i]);
-
-          char text[8];
-          snprintf(text, sizeof(text), "%s%s", face, suit);
-
           SDL_Color textColor;
-          if (game_state->player[player_n].hand.card[i].suit == HEARTS ||
-              game_state->player[player_n].hand.card[i].suit == DIAMONDS) {
-            textColor = (SDL_Color){255, 0, 0, 255}; // Red
+          char text[8] = {0};
+          if (game_state->player[player_n].hand.card[i].face_val != dh_card_back.face_val) {
+            const char *face =
+                get_card_face_str(game_state->player[player_n].hand.card[i].face_val);
+            const char *suit = get_card_unicode_suit(game_state->player[player_n].hand.card[i]);
+            snprintf(text, sizeof(text), "%s%s", face, suit);
+
+            if (game_state->player[player_n].hand.card[i].suit == HEARTS ||
+                game_state->player[player_n].hand.card[i].suit == DIAMONDS) {
+              textColor = (SDL_Color){255, 0, 0, 255}; // Red
+            } else {
+              textColor = (SDL_Color){0, 0, 0, 255}; // Black
+            }
           } else {
-            textColor = (SDL_Color){0, 0, 0, 255}; // Black
+            draw_card_back_pattern(sdl_context->renderer, &card_rect);
+
+            // SDL_RenderPresent(sdl_context->renderer); // Present *before* playing sound
+            // Mix_PlayChannel(-1, card_sound, 0);
+            if (!cards_dealt) {
+              Uint32 start = SDL_GetTicks();
+              while (SDL_GetTicks() - start < 300) {
+                SDL_Event e;
+                while (SDL_PollEvent(&e)) {
+                  if (e.type == SDL_QUIT) {
+                    running = 0;
+                    break;
+                  }
+                }
+              }
+              SDL_RenderPresent(sdl_context->renderer);
+              SDL_Delay(16); // Let audio play & system breathe
+            }
+
+            continue;
           }
 
           SDL_Surface *textSurface = TTF_RenderUTF8_Blended(font->fonts[CARD], text, textColor);
@@ -169,9 +236,25 @@ void run_sdl_loop(struct game_state_t *game_state, struct sdl_context_t *sdl_con
           SDL_RenderCopy(sdl_context->renderer, textTexture, NULL, &textRect);
           SDL_FreeSurface(textSurface);
           SDL_DestroyTexture(textTexture);
+
+          // Mix_PlayChannel(-1, card_sound, 0); // -1 = first available channel, 0 = play once
+          // SDL_Delay(500);
+          if (!cards_dealt) {
+            Uint32 start = SDL_GetTicks();
+            while (SDL_GetTicks() - start < 300) {
+              SDL_Event e;
+              while (SDL_PollEvent(&e)) {
+                if (e.type == SDL_QUIT)
+                  running = false;
+              }
+            }
+            SDL_RenderPresent(sdl_context->renderer);
+            SDL_Delay(16);
+          }
         }
       }
 
+      cards_dealt = true;
       char buffer[128];
       snprintf(buffer, sizeof(buffer), "pot: %d", game_state->pot);
       SDL_Color black = {0, 0, 0, 255};
@@ -181,4 +264,6 @@ void run_sdl_loop(struct game_state_t *game_state, struct sdl_context_t *sdl_con
     SDL_RenderPresent(sdl_context->renderer);
     SDL_Delay(16);
   }
+  // Mix_FreeChunk(card_sound);
+  // Mix_CloseAudio();
 }
