@@ -105,7 +105,6 @@ static struct fow_t deal_cards_to_players(struct game_state_t *game_state,
     if (game_state->player[p].id != -1) {
       for (int i = 0; i < HAND_SIZE; ++i) {
         game_state->player[p].hand.card[i] = dh_card_back;
-        printf("%d\n", game_state->player[p].hand.card[i].face_val);
         fow.hand[p].card[i] = deck->card[i + HAND_SIZE * p];
       }
     }

@@ -153,7 +153,7 @@ void run_sdl_loop(struct game_state_t *game_state, struct sdl_context_t *sdl_con
   struct pos_t w_center_pos = get_window_center_pos(sdl_context->window);
 
   int running = 1;
-  // bool cards_dealt = false;
+  bool cards_dealt = false;
   while (running) {
     recv_game_state(client_socket, socket_set, game_state);
     SDL_Event event;
@@ -172,11 +172,12 @@ void run_sdl_loop(struct game_state_t *game_state, struct sdl_context_t *sdl_con
         continue;
       }
     } else {
-      for (int player_n = 0; player_n < MAX_PLAYERS; player_n++) {
-        if (game_state->player[player_n].id == -1)
-          continue;
-        // Show each card that has been dealt
-        for (int i = 0; i < HAND_SIZE; ++i) {
+      for (int i = 0; i < HAND_SIZE; ++i) {
+        for (int player_n = 0; player_n < MAX_PLAYERS; player_n++) {
+          if (game_state->player[player_n].id == -1)
+            continue;
+          // Show each card that has been dealt
+
           int card_x = game_state->player[player_n].pos.x + i * (80 + 10);
           int card_y = game_state->player[player_n].pos.y;
 
@@ -205,20 +206,22 @@ void run_sdl_loop(struct game_state_t *game_state, struct sdl_context_t *sdl_con
           } else {
             draw_card_back_pattern(sdl_context->renderer, &card_rect);
 
-            SDL_RenderPresent(sdl_context->renderer); // Present *before* playing sound
+            // SDL_RenderPresent(sdl_context->renderer); // Present *before* playing sound
             // Mix_PlayChannel(-1, card_sound, 0);
-
-            // Uint32 start = SDL_GetTicks();
-            // while (SDL_GetTicks() - start < 500) {
-            // SDL_Event e;
-            // while (SDL_PollEvent(&e)) {
-            // if (e.type == SDL_QUIT) {
-            // running = 0;
-            // break;
-            //}
-            //}
-            // SDL_Delay(16);  // Let audio play & system breathe
-            //}
+            if (!cards_dealt) {
+              Uint32 start = SDL_GetTicks();
+              while (SDL_GetTicks() - start < 300) {
+                SDL_Event e;
+                while (SDL_PollEvent(&e)) {
+                  if (e.type == SDL_QUIT) {
+                    running = 0;
+                    break;
+                  }
+                }
+              }
+              SDL_RenderPresent(sdl_context->renderer);
+              SDL_Delay(16); // Let audio play & system breathe
+            }
 
             continue;
           }
@@ -236,21 +239,22 @@ void run_sdl_loop(struct game_state_t *game_state, struct sdl_context_t *sdl_con
 
           // Mix_PlayChannel(-1, card_sound, 0); // -1 = first available channel, 0 = play once
           // SDL_Delay(500);
-          // if (!cards_dealt) {
-          // Uint32 start = SDL_GetTicks();
-          // while (SDL_GetTicks() - start < 500) {
-          // SDL_Event e;
-          // while (SDL_PollEvent(&e)) {
-          // if (e.type == SDL_QUIT) running = false;
-          //}
-          //}
-          // SDL_RenderPresent(sdl_context->renderer);
-          // SDL_Delay(16);
-          // }
+          if (!cards_dealt) {
+            Uint32 start = SDL_GetTicks();
+            while (SDL_GetTicks() - start < 300) {
+              SDL_Event e;
+              while (SDL_PollEvent(&e)) {
+                if (e.type == SDL_QUIT)
+                  running = false;
+              }
+            }
+            SDL_RenderPresent(sdl_context->renderer);
+            SDL_Delay(16);
+          }
         }
       }
 
-      // cards_dealt = true;
+      cards_dealt = true;
       char buffer[128];
       snprintf(buffer, sizeof(buffer), "pot: %d", game_state->pot);
       SDL_Color black = {0, 0, 0, 255};
