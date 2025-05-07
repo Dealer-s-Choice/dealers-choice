@@ -72,9 +72,7 @@ static int menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet s
       int mx = e.button.x;
       int my = e.button.y;
       button_5_card_draw.enabled = (game_state->dealer_id == my_id);
-      if (button_5_card_draw.enabled)
-        button_5_card_draw.hovered =
-            SDL_PointInRect(&(SDL_Point){mx, my}, &button_5_card_draw.rect);
+      button_5_card_draw.hovered = SDL_PointInRect(&(SDL_Point){mx, my}, &button_5_card_draw.rect);
       if (e.type == SDL_QUIT) {
         return 1;
       } else if (e.type == SDL_MOUSEBUTTONDOWN) {

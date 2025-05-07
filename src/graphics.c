@@ -191,8 +191,8 @@ void render_button(struct button_t *button) {
   SDL_RenderFillRect(button->renderer, &button->rect);
 
   // Adjust intensity scale based on hover state
-  float lighten_factor = button->hovered ? 0.5f : 0.3f;
-  float darken_factor = button->hovered ? 0.5f : 0.7f;
+  float lighten_factor = (button->hovered && button->enabled) ? 0.5f : 0.3f;
+  float darken_factor = (button->hovered  && button->enabled) ? 0.5f : 0.7f;
 
   // Compute lighter and darker shades of the background color
   Uint8 light_r = button->bg_color.r + (Uint8)((255 - button->bg_color.r) * lighten_factor);
