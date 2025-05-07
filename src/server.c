@@ -144,7 +144,7 @@ static void broadcast_game_state(TCPsocket *clients, int client_count,
 int run_server(void) {
   struct game_state_t game_state = {0};
   init_game_state(&game_state);
-  game_state.pot = 500;
+  game_state.pot = 0;
 
   if (SDL_Init(0) == -1 || SDLNet_Init() == -1) {
     fprintf(stderr, "SDL or SDL_net init failed: %s\n", SDLNet_GetError());

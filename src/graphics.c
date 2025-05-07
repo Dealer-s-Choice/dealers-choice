@@ -169,6 +169,36 @@ void render_text(SDL_Renderer *renderer, TTF_Font *font, const char *text, SDL_C
   SDL_DestroyTexture(texture);
 }
 
+void render_text_plain(SDL_Renderer *renderer, TTF_Font *font, const char *text, SDL_Color color,
+                       SDL_Rect *dest) {
+  if (!text)
+    text = "";
+
+  SDL_Surface *surface = TTF_RenderUTF8_Blended(font, *text ? text : " ", color);
+  if (!surface) {
+    fprintf(stderr, "TTF_RenderUTF8_Blended error: %s\n", TTF_GetError());
+    return;
+  }
+
+  SDL_Texture *texture = SDL_CreateTextureFromSurface(renderer, surface);
+  if (!texture) {
+    fprintf(stderr, "SDL_CreateTextureFromSurface error: %s\n", SDL_GetError());
+    SDL_FreeSurface(surface);
+    return;
+  }
+
+  dest->w = surface->w;
+  dest->h = surface->h;
+
+  SDL_RenderCopy(renderer, texture, NULL, dest);
+
+  int text_width;
+  TTF_SizeUTF8(font, text, &text_width, NULL);
+
+  SDL_FreeSurface(surface);
+  SDL_DestroyTexture(texture);
+}
+
 struct button_t create_button(const char *text, SDL_Renderer *renderer, struct pos_t *pos,
                               TTF_Font *font) {
   struct button_t button = {
@@ -192,7 +222,7 @@ void render_button(struct button_t *button) {
 
   // Adjust intensity scale based on hover state
   float lighten_factor = (button->hovered && button->enabled) ? 0.5f : 0.3f;
-  float darken_factor = (button->hovered  && button->enabled) ? 0.5f : 0.7f;
+  float darken_factor = (button->hovered && button->enabled) ? 0.5f : 0.7f;
 
   // Compute lighter and darker shades of the background color
   Uint8 light_r = button->bg_color.r + (Uint8)((255 - button->bg_color.r) * lighten_factor);
@@ -244,6 +274,25 @@ void render_button(struct button_t *button) {
 
   SDL_FreeSurface(textSurface);
   SDL_DestroyTexture(textTexture);
+}
+
+void draw_silver_coin(SDL_Renderer *renderer, int centerX, int centerY) {
+  const int radius = 20; // 40px diameter
+  const int steps = 20;
+
+  // Base radial gradient for 3D shiny look
+  for (int i = 0; i < steps; ++i) {
+    float t = (float)i / (steps - 1);
+    Uint8 shade = (Uint8)(200 + 55 * (1.0 - t)); // Light center, darker edge
+    filledCircleRGBA(renderer, centerX, centerY, radius - i, shade, shade, shade, 255);
+  }
+
+  // Add bright specular highlight to simulate metal shine
+  filledCircleRGBA(renderer, centerX - radius / 3, centerY - radius / 3, radius / 5, 255, 255, 255,
+                   150);
+
+  // Outline
+  aacircleRGBA(renderer, centerX, centerY, radius, 100, 100, 100, 255);
 }
 
 void do_sdl_cleanup(struct sdl_context_t *sdl_context) {

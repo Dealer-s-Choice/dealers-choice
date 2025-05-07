@@ -292,6 +292,20 @@ void run_sdl_loop(struct game_state_t *game_state, struct sdl_context_t *sdl_con
       snprintf(buffer, sizeof(buffer), "pot: %d", game_state->pot);
       SDL_Color black = {0, 0, 0, 255};
       render_text_centered(sdl_context->renderer, font->fonts[OTHER], buffer, black, w_center_pos);
+
+      for (int i = 0; i < MAX_PLAYERS; i++) {
+        if (game_state->player[i].id == -1)
+          continue;
+
+        draw_silver_coin(sdl_context->renderer, game_state->player[i].pos.x,
+                         game_state->player[i].pos.y - 50);
+        char coins_text[24] = {0};
+        snprintf(coins_text, sizeof coins_text, " = %d", game_state->player[i].chips);
+        SDL_Rect dest = {game_state->player[i].pos.x + 30, game_state->player[i].pos.y - 50, 40,
+                         20};
+        render_text_plain(sdl_context->renderer, font->fonts[OTHER], coins_text,
+                          get_color(COLOR_BLACK), &dest);
+      }
     }
 
     SDL_RenderPresent(sdl_context->renderer);
