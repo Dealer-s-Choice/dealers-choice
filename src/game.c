@@ -32,6 +32,8 @@
 
 #include "game.h"
 
+#define CARD_DEAL_DELAY 50
+
 static void recv_game_state(TCPsocket client_socket, SDLNet_SocketSet socket_set,
                             struct game_state_t *game_state) {
   if (SDLNet_CheckSockets(socket_set, 0) > 0 && SDLNet_SocketReady(client_socket)) {
@@ -58,8 +60,8 @@ static int menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet s
       .bg_color = get_color(COLOR_BLACK),
       .fg_color = get_color(COLOR_YELLOW),
       .rect = {100, 160, 200, 40},
-      .pos = {100, 160},
       .font = font->fonts[OTHER],
+      .enabled = true,
   };
 
   bool running = true;
@@ -69,7 +71,10 @@ static int menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet s
     while (SDL_PollEvent(&e)) {
       int mx = e.button.x;
       int my = e.button.y;
-      button_5_card_draw.hovered = SDL_PointInRect(&(SDL_Point){mx, my}, &button_5_card_draw.rect);
+      button_5_card_draw.enabled = (game_state->dealer_id == my_id);
+      if (button_5_card_draw.enabled)
+        button_5_card_draw.hovered =
+            SDL_PointInRect(&(SDL_Point){mx, my}, &button_5_card_draw.rect);
       if (e.type == SDL_QUIT) {
         return 1;
       } else if (e.type == SDL_MOUSEBUTTONDOWN) {
@@ -84,7 +89,7 @@ static int menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet s
     // Clear screen
     clear_screen(renderer);
 
-    make_button(&button_5_card_draw);
+    render_button(&button_5_card_draw);
 
     for (int i = 0; i < MAX_PLAYERS; i++) {
       if (game_state->player[i].id != -1) {
@@ -149,8 +154,28 @@ void run_sdl_loop(struct game_state_t *game_state, struct sdl_context_t *sdl_con
   // if (Mix_Paused(-1)) {
   // Mix_Resume(-1);
   //}
+  enum {
+    BET,
+    PASS,
+    FOLD,
+    RAISE,
+    CALL,
+    ACTIONS_NUM,
+  };
 
   struct pos_t w_center_pos = get_window_center_pos(sdl_context->window);
+
+  const char *action[] = {
+      [BET] = "Bet", [PASS] = "Pass", [FOLD] = "Fold", [RAISE] = "Raise", [CALL] = "Call",
+  };
+
+  int x_offset = 100;
+  struct button_t action_button[ACTIONS_NUM];
+  for (int i = 0; i < ACTIONS_NUM; i++) {
+    struct pos_t butt_pos = {x_offset += 130, w_center_pos.y + 20};
+    action_button[i] =
+        create_button(action[i], sdl_context->renderer, &butt_pos, font->fonts[OTHER]);
+  }
 
   int running = 1;
   bool cards_dealt = false;
@@ -158,6 +183,13 @@ void run_sdl_loop(struct game_state_t *game_state, struct sdl_context_t *sdl_con
     recv_game_state(client_socket, socket_set, game_state);
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
+      int mx = event.button.x;
+      int my = event.button.y;
+      for (int i = 0; i < ACTIONS_NUM; i++) {
+        action_button[i].enabled = false;
+        action_button[i].hovered = SDL_PointInRect(&(SDL_Point){mx, my}, &action_button[i].rect);
+      }
+
       if (event.type == SDL_QUIT) {
         running = 0;
       }
@@ -210,7 +242,7 @@ void run_sdl_loop(struct game_state_t *game_state, struct sdl_context_t *sdl_con
             // Mix_PlayChannel(-1, card_sound, 0);
             if (!cards_dealt) {
               Uint32 start = SDL_GetTicks();
-              while (SDL_GetTicks() - start < 300) {
+              while (SDL_GetTicks() - start < CARD_DEAL_DELAY) {
                 SDL_Event e;
                 while (SDL_PollEvent(&e)) {
                   if (e.type == SDL_QUIT) {
@@ -241,7 +273,7 @@ void run_sdl_loop(struct game_state_t *game_state, struct sdl_context_t *sdl_con
           // SDL_Delay(500);
           if (!cards_dealt) {
             Uint32 start = SDL_GetTicks();
-            while (SDL_GetTicks() - start < 300) {
+            while (SDL_GetTicks() - start < CARD_DEAL_DELAY) {
               SDL_Event e;
               while (SDL_PollEvent(&e)) {
                 if (e.type == SDL_QUIT)
@@ -253,6 +285,9 @@ void run_sdl_loop(struct game_state_t *game_state, struct sdl_context_t *sdl_con
           }
         }
       }
+
+      for (int i = 0; i < ACTIONS_NUM; i++)
+        render_button(&action_button[i]);
 
       cards_dealt = true;
       char buffer[128];

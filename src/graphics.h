@@ -97,10 +97,12 @@ struct button_t {
   SDL_Color fg_color;
   SDL_Rect rect;
   TTF_Font *font;
-  struct pos_t pos;
   bool hovered;
+  bool enabled;
 };
-void make_button(struct button_t *button);
+struct button_t create_button(const char *text, SDL_Renderer *renderer, struct pos_t *pos,
+                              TTF_Font *font);
+void render_button(struct button_t *button);
 
 struct pos_t get_window_center_pos(SDL_Window *window);
 

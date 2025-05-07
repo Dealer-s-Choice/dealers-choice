@@ -169,7 +169,22 @@ void render_text(SDL_Renderer *renderer, TTF_Font *font, const char *text, SDL_C
   SDL_DestroyTexture(texture);
 }
 
-void make_button(struct button_t *button) {
+struct button_t create_button(const char *text, SDL_Renderer *renderer, struct pos_t *pos,
+                              TTF_Font *font) {
+  struct button_t button = {
+      .text = text,
+      .renderer = renderer,
+      .bg_color = get_color(COLOR_BLACK),
+      .fg_color = get_color(COLOR_YELLOW),
+      .rect = {pos->x, pos->y, 120, 40},
+      .font = font,
+      .hovered = false,
+      .enabled = false,
+  };
+  return button;
+}
+
+void render_button(struct button_t *button) {
   // Draw the filled background
   SDL_SetRenderDrawColor(button->renderer, button->bg_color.r, button->bg_color.g,
                          button->bg_color.b, button->bg_color.a);
@@ -213,7 +228,9 @@ void make_button(struct button_t *button) {
   }
 
   // Render the text centered on the button
-  SDL_Surface *textSurface = TTF_RenderUTF8_Blended(button->font, button->text, button->fg_color);
+  SDL_Surface *textSurface = TTF_RenderUTF8_Blended(
+      button->font, button->text,
+      button->enabled == true ? button->fg_color : get_color(COLOR_LIGHTGRAY));
   if (!textSurface)
     return;
 
