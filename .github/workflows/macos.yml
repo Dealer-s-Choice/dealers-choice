@@ -36,7 +36,7 @@ jobs:
           sdl2_ttf
 
     - name: Meson setup
-      run: meson setup _build
+      run: CFLAGS="-Werror" meson setup _build
 
     - name: Build
       run: meson compile -C _build
