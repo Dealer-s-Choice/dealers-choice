@@ -45,8 +45,8 @@ static int menu_display_connect(char *input_text, SDL_Renderer *renderer, struct
       .bg_color = get_color(COLOR_BLACK),
       .fg_color = get_color(COLOR_YELLOW),
       .rect = {100, 160, 120, 40},
-      .pos = {100, 160},
       .font = font->fonts[OTHER],
+      .enabled = true,
   };
 
   SDL_Rect input_box = make_rect(100, 220, 200, 40);
@@ -84,7 +84,7 @@ static int menu_display_connect(char *input_text, SDL_Renderer *renderer, struct
     // Clear screen
     clear_screen(renderer);
 
-    make_button(&button_connect);
+    render_button(&button_connect);
 
     SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
     SDL_RenderDrawRect(renderer, &input_box);
