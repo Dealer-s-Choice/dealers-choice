@@ -51,6 +51,15 @@ static void recv_game_state(TCPsocket client_socket, SDLNet_SocketSet socket_set
   }
 }
 
+static int8_t send_game_select(TCPsocket sock, uint8_t game_type) {
+  uint8_t buffer[3];
+  buffer[0] = (MSG_GAME_SELECT >> 8) & 0xFF;
+  buffer[1] = (MSG_GAME_SELECT) & 0xFF;
+  buffer[2] = game_type;
+
+  return send_all_tcp(sock, buffer, sizeof(buffer));
+}
+
 static int menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet socket_set,
                                      const int8_t my_id, struct game_state_t *game_state,
                                      SDL_Renderer *renderer, struct font_t *font) {
@@ -77,8 +86,8 @@ static int menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet s
         return 1;
       } else if (e.type == SDL_MOUSEBUTTONDOWN) {
         if (point_in_rect(mx, my, &button_5_card_draw.rect) && game_state->dealer_id == my_id) {
-          uint8_t msg = 0x01; // GAME_START
-          SDLNet_TCP_Send(client_socket, &msg, sizeof(msg));
+          if (send_game_select(client_socket, GAME_5_CARD_DRAW) != 0)
+            return -1;
           running = false;
         }
       }

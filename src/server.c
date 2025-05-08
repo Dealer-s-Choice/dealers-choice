@@ -26,19 +26,15 @@
 
 */
 
-#include <SDL2/SDL.h>
 #include <deckhandler.h>
 #include <pokeval.h>
 #include <stdio.h>
 #include <string.h>
 
+#include "game.h"
 #include "server.h"
 
 #define MAX_CLIENTS 5
-
-#include <stdio.h>
-
-#include "server.h"
 
 struct fow_t {
   struct hand_t hand[MAX_PLAYERS];
@@ -118,6 +114,21 @@ static void broadcast_game_state(TCPsocket *clients, int client_count,
   }
 }
 
+// Returns 0 on success, -1 on error, fills *out_game_type
+static int8_t recv_game_select(TCPsocket sock, uint8_t *out_game_type) {
+  uint8_t buffer[3];
+
+  if (recv_all_tcp(sock, buffer, sizeof(buffer)) != 0)
+    return -1;
+
+  uint16_t opcode = (buffer[0] << 8) | buffer[1];
+  if (opcode != MSG_GAME_SELECT)
+    return -1;
+
+  *out_game_type = buffer[2];
+  return 0;
+}
+
 int run_server(void) {
   struct game_state_t game_state = {0};
   init_game_state(&game_state);
@@ -194,17 +205,17 @@ int run_server(void) {
     if (client_count >= 2) {
       SDLNet_CheckSockets(socket_set, 0);
       if (SDLNet_SocketReady(clients[game_state.dealer_id])) {
-        uint8_t msg;
-        if (recv_all_tcp(clients[game_state.dealer_id], &msg, sizeof(msg)) != 0)
+        uint8_t game_type;
+        if (recv_game_select(clients[game_state.dealer_id], &game_type) == 0)
+          printf("Client chose game type: 0x%02x\n", game_type);
+        else {
+          fprintf(stderr, "Invalid game type sent: 0x%02x\n", game_type);
           continue;
-
-        if (msg == 0x01) { // "start" signal from player
-          printf("All %d players are ready. Starting game.\n", client_count);
-          game_state.at_menu = false;
-          fow = deal_cards_to_players(&game_state, &deck);
-          broadcast_game_state(clients, client_count, &game_state, &fow);
-        } else
-          puts("msg incorrect");
+        }
+        printf("All %d players are ready. Starting game.\n", client_count);
+        game_state.at_menu = false;
+        fow = deal_cards_to_players(&game_state, &deck);
+        broadcast_game_state(clients, client_count, &game_state, &fow);
       }
     }
 
