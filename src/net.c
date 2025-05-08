@@ -43,11 +43,6 @@ static void fill_player_message(struct player_message_builder_t *builder,
   builder->msg.id = src->id;
   builder->msg.chips = src->chips;
 
-  // Position
-  builder->pos.x = src->pos.x;
-  builder->pos.y = src->pos.y;
-  builder->msg.pos = &builder->pos;
-
   // Hand
   for (int i = 0; i < HAND_SIZE; ++i) {
     card__init(&builder->cards[i]);
@@ -70,11 +65,6 @@ static void fill_player_from_message(struct player_t *dst, const Player *msg) {
 
   dst->id = msg->id;
   dst->chips = msg->chips;
-
-  if (msg->pos) {
-    dst->pos.x = msg->pos->x;
-    dst->pos.y = msg->pos->y;
-  }
 
   if (msg->hand) {
     size_t n = msg->hand->n_card < HAND_SIZE ? msg->hand->n_card : HAND_SIZE;

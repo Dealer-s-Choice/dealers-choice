@@ -66,31 +66,8 @@ static void print_ipaddress(const IPaddress *ip) {
 }
 
 static void init_game_state(struct game_state_t *game_state) {
-  const struct preset_player_pos_t preset_player_pos = {
-      .pos = {
-          // P0: bottom center
-          {.x = WINDOW_WIDTH / 3, .y = WINDOW_HEIGHT - 80},
-
-          // P1: left, 1/3 down
-          {.x = 20, .y = WINDOW_HEIGHT / 3},
-
-          // P2: top-left
-          {.x = 20, .y = 20},
-
-          // P3: top-right
-          {.x = WINDOW_WIDTH / 2 + 20, .y = 35},
-
-          // P4: right, 1/3 down
-          {.x = WINDOW_WIDTH / 2 + 20, .y = WINDOW_HEIGHT / 3 + 15},
-      }};
-
-  // This offers only a little extra protection if changes are made.
-  _Static_assert(sizeof(preset_player_pos.pos) / sizeof(preset_player_pos.pos[0]) == 5,
-                 "preset_player_pos.pos has wrong number of elements");
-
   for (int i = 0; i < MAX_PLAYERS; i++) {
-    game_state->player[i] =
-        (struct player_t){.id = -1, .pos = preset_player_pos.pos[i], .chips = 20000};
+    game_state->player[i] = (struct player_t){.id = -1, .chips = 20000};
     snprintf(game_state->player[i].name, sizeof game_state->player[i].name, "Player %d", i);
   }
 

@@ -77,15 +77,15 @@ void init_sdl_window(struct sdl_context_t *sdl_context, const char *title, int w
   sdl_context->renderer = SDL_CreateRenderer(sdl_context->window, -1, SDL_RENDERER_ACCELERATED);
   if (!sdl_context->renderer)
     puts(SDL_GetError());
-  return;
-}
 
-struct pos_t get_window_center_pos(SDL_Window *window) {
-  struct pos_t pos, w_center_pos;
-  SDL_GetWindowSize(window, &pos.x, &pos.y);
-  w_center_pos.x = pos.x / 2;
-  w_center_pos.y = pos.y / 2;
-  return w_center_pos;
+  int x, y;
+  SDL_GetWindowSize(sdl_context->window, &x, &y);
+  sdl_context->win_center.x = x / 2;
+  sdl_context->win_center.y = y / 2;
+  sdl_context->window_width = w;
+  sdl_context->window_height = h;
+
+  return;
 }
 
 TTF_Font *open_font(const struct font_args_t *args) {

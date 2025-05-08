@@ -63,6 +63,8 @@ const char *get_color_name(ColorName name);
 struct sdl_context_t {
   SDL_Renderer *renderer;
   SDL_Window *window;
+  struct pos_t win_center;
+  int window_width, window_height;
 };
 
 struct font_args_t {
@@ -104,8 +106,6 @@ struct button_t {
 struct button_t create_button(const char *text, SDL_Renderer *renderer, struct pos_t *pos,
                               TTF_Font *font);
 void render_button(struct button_t *button);
-
-struct pos_t get_window_center_pos(SDL_Window *window);
 
 void render_text_centered(SDL_Renderer *renderer, TTF_Font *font, const char *text, SDL_Color color,
                           struct pos_t center);

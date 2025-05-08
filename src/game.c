@@ -137,6 +137,28 @@ static void draw_card_back_pattern(SDL_Renderer *renderer, SDL_Rect *card_rect) 
 void run_sdl_loop(struct game_state_t *game_state, struct sdl_context_t *sdl_context,
                   struct font_t *font, TCPsocket client_socket, SDLNet_SocketSet socket_set,
                   const int8_t my_id) {
+
+  const struct pos_t player_pos[MAX_PLAYERS] = {
+      // P0: bottom center
+      {.x = sdl_context->window_width / 3, .y = sdl_context->window_height - 80},
+
+      // P1: left, 1/3 down
+      {.x = 20, .y = sdl_context->window_height / 3},
+
+      // P2: top-left
+      {.x = 20, .y = 20},
+
+      // P3: top-right
+      {.x = sdl_context->window_width / 2 + 20, .y = 35},
+
+      // P4: right, 1/3 down
+      {.x = sdl_context->window_width / 2 + 20, .y = sdl_context->window_height / 3 + 15},
+  };
+
+  // This offers only a little extra protection if changes are made.
+  _Static_assert(sizeof(player_pos) / sizeof(player_pos[0]) == 5,
+                 "player_pos has wrong number of elements");
+
   // if (Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048) < 0) {
   // fprintf(stderr, "SDL_mixer could not initialize! SDL_mixer Error: %s\n", Mix_GetError());
   //// handle error
@@ -161,8 +183,6 @@ void run_sdl_loop(struct game_state_t *game_state, struct sdl_context_t *sdl_con
     ACTIONS_NUM,
   };
 
-  struct pos_t w_center_pos = get_window_center_pos(sdl_context->window);
-
   const char *action[] = {
       [BET] = "Bet", [PASS] = "Pass", [FOLD] = "Fold", [RAISE] = "Raise", [CALL] = "Call",
   };
@@ -170,7 +190,7 @@ void run_sdl_loop(struct game_state_t *game_state, struct sdl_context_t *sdl_con
   int x_offset = 100;
   struct button_t action_button[ACTIONS_NUM];
   for (int i = 0; i < ACTIONS_NUM; i++) {
-    struct pos_t butt_pos = {x_offset += 130, w_center_pos.y + 20};
+    struct pos_t butt_pos = {x_offset += 130, sdl_context->win_center.y + 20};
     action_button[i] =
         create_button(action[i], sdl_context->renderer, &butt_pos, font->fonts[OTHER]);
   }
@@ -208,8 +228,8 @@ void run_sdl_loop(struct game_state_t *game_state, struct sdl_context_t *sdl_con
             continue;
           // Show each card that has been dealt
 
-          int card_x = game_state->player[player_n].pos.x + i * (80 + 10);
-          int card_y = game_state->player[player_n].pos.y;
+          int card_x = player_pos[player_n].x + i * (80 + 10);
+          int card_y = player_pos[player_n].y;
 
           // Draw white card box
           SDL_Rect card_rect = {card_x, card_y, 80, 50};
@@ -291,18 +311,17 @@ void run_sdl_loop(struct game_state_t *game_state, struct sdl_context_t *sdl_con
       char buffer[128];
       snprintf(buffer, sizeof(buffer), "pot: %d", game_state->pot);
       SDL_Color black = {0, 0, 0, 255};
-      render_text_centered(sdl_context->renderer, font->fonts[OTHER], buffer, black, w_center_pos);
+      render_text_centered(sdl_context->renderer, font->fonts[OTHER], buffer, black,
+                           sdl_context->win_center);
 
       for (int i = 0; i < MAX_PLAYERS; i++) {
         if (game_state->player[i].id == -1)
           continue;
 
-        draw_silver_coin(sdl_context->renderer, game_state->player[i].pos.x,
-                         game_state->player[i].pos.y - 50);
+        draw_silver_coin(sdl_context->renderer, player_pos[i].x, player_pos[i].y - 50);
         char coins_text[24] = {0};
         snprintf(coins_text, sizeof coins_text, " = %d", game_state->player[i].chips);
-        SDL_Rect dest = {game_state->player[i].pos.x + 30, game_state->player[i].pos.y - 50, 40,
-                         20};
+        SDL_Rect dest = {player_pos[i].x + 30, player_pos[i].y - 50, 40, 20};
         render_text_plain(sdl_context->renderer, font->fonts[OTHER], coins_text,
                           get_color(COLOR_BLACK), &dest);
       }
