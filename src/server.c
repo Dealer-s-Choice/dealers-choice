@@ -241,7 +241,7 @@ int run_server(void) {
         } while (game_state.player[game_state.turn_id].id == -1); // TODO: Fix condition!
         broadcast_game_state(clients, client_count, &game_state, &fow);
 
-        Uint32 wait_ms = 5000; // wait up to 5 seconds
+        Uint32 wait_ms = 20000; // wait up to 20 seconds
         Uint32 start = SDL_GetTicks();
         while (SDL_GetTicks() - start < wait_ms) {
           SDLNet_CheckSockets(socket_set, 100); // wait up to 100ms
