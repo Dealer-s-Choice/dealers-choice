@@ -143,6 +143,21 @@ static void draw_card_back_pattern(SDL_Renderer *renderer, SDL_Rect *card_rect) 
   }
 }
 
+static int8_t send_player_action(TCPsocket sock, uint8_t action, uint32_t amount) {
+  uint8_t buffer[7];
+
+  buffer[0] = (MSG_PLAYER_ACTION >> 8) & 0xFF;
+  buffer[1] = (MSG_PLAYER_ACTION) & 0xFF;
+  buffer[2] = action;
+
+  buffer[3] = (amount >> 24) & 0xFF;
+  buffer[4] = (amount >> 16) & 0xFF;
+  buffer[5] = (amount >> 8) & 0xFF;
+  buffer[6] = (amount) & 0xFF;
+
+  return send_all_tcp(sock, buffer, sizeof(buffer));
+}
+
 void run_sdl_loop(struct game_state_t *game_state, struct sdl_context_t *sdl_context,
                   struct font_t *font, TCPsocket client_socket, SDLNet_SocketSet socket_set,
                   const int8_t my_id) {
@@ -213,12 +228,18 @@ void run_sdl_loop(struct game_state_t *game_state, struct sdl_context_t *sdl_con
       int mx = event.button.x;
       int my = event.button.y;
       for (int i = 0; i < ACTIONS_NUM; i++) {
-        action_button[i].enabled = false;
+        action_button[i].enabled = true;
         action_button[i].hovered = SDL_PointInRect(&(SDL_Point){mx, my}, &action_button[i].rect);
       }
-
       if (event.type == SDL_QUIT) {
         running = 0;
+      } else if (event.type == SDL_MOUSEBUTTONDOWN) {
+        if (point_in_rect(mx, my, &action_button[BET].rect)) {
+          puts("sending bet");
+          if (send_player_action(client_socket, ACTION_BET, 500) != 0) {
+            fprintf(stderr, "Failed to send bet\n");
+          }
+        }
       }
     }
     clear_screen(sdl_context->renderer);
@@ -313,8 +334,13 @@ void run_sdl_loop(struct game_state_t *game_state, struct sdl_context_t *sdl_con
         }
       }
 
-      for (int i = 0; i < ACTIONS_NUM; i++)
-        render_button(&action_button[i]);
+      if (game_state->turn_id == my_id) {
+        if (game_state->current_bet == 0) {
+          render_button(&action_button[BET]);
+          render_button(&action_button[PASS]);
+          render_button(&action_button[FOLD]);
+        }
+      }
 
       cards_dealt = true;
       char buffer[128];

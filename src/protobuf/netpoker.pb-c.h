@@ -78,14 +78,16 @@ struct  GameState
 {
   ProtobufCMessage base;
   int32_t pot;
+  uint32_t current_bet;
   int32_t dealer_id;
+  int32_t turn_id;
   protobuf_c_boolean at_menu;
   size_t n_player;
   Player **player;
 };
 #define GAME_STATE__INIT \
  { PROTOBUF_C_MESSAGE_INIT (&game_state__descriptor) \
-, 0, 0, 0, 0,NULL }
+, 0, 0, 0, 0, 0, 0,NULL }
 
 
 /* Card methods */

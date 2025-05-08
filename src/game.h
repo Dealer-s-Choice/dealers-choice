@@ -62,8 +62,13 @@ typedef enum {
   GAME_7_CARD_STUD = 0x04
 } game_type_t;
 
-// int menu_display_game(struct game_state_t *game_state, SDL_Renderer *renderer, struct font_t
-// *font);
+#define MSG_PLAYER_ACTION 0x0002
+
+struct player_action_msg_t {
+  uint8_t action;
+  uint32_t amount; // only used for bet/raise
+};
+
 void run_sdl_loop(struct game_state_t *game_state, struct sdl_context_t *sdl_context,
                   struct font_t *font, TCPsocket client_socket, SDLNet_SocketSet socket_set,
                   const int8_t my_id);

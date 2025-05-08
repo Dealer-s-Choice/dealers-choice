@@ -462,7 +462,7 @@ const ProtobufCMessageDescriptor player__descriptor =
   (ProtobufCMessageInit) player__init,
   NULL,NULL,NULL    /* reserved[123] */
 };
-static const ProtobufCFieldDescriptor game_state__field_descriptors[4] =
+static const ProtobufCFieldDescriptor game_state__field_descriptors[6] =
 {
   {
     "pot",
@@ -477,8 +477,20 @@ static const ProtobufCFieldDescriptor game_state__field_descriptors[4] =
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
   {
-    "dealer_id",
+    "current_bet",
     2,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_UINT32,
+    0,   /* quantifier_offset */
+    offsetof(GameState, current_bet),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "dealer_id",
+    3,
     PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_INT32,
     0,   /* quantifier_offset */
@@ -489,8 +501,20 @@ static const ProtobufCFieldDescriptor game_state__field_descriptors[4] =
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
   {
+    "turn_id",
+    4,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_INT32,
+    0,   /* quantifier_offset */
+    offsetof(GameState, turn_id),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
     "at_menu",
-    3,
+    5,
     PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_BOOL,
     0,   /* quantifier_offset */
@@ -502,7 +526,7 @@ static const ProtobufCFieldDescriptor game_state__field_descriptors[4] =
   },
   {
     "player",
-    4,
+    6,
     PROTOBUF_C_LABEL_REPEATED,
     PROTOBUF_C_TYPE_MESSAGE,
     offsetof(GameState, n_player),
@@ -514,15 +538,17 @@ static const ProtobufCFieldDescriptor game_state__field_descriptors[4] =
   },
 };
 static const unsigned game_state__field_indices_by_name[] = {
-  2,   /* field[2] = at_menu */
-  1,   /* field[1] = dealer_id */
-  3,   /* field[3] = player */
+  4,   /* field[4] = at_menu */
+  1,   /* field[1] = current_bet */
+  2,   /* field[2] = dealer_id */
+  5,   /* field[5] = player */
   0,   /* field[0] = pot */
+  3,   /* field[3] = turn_id */
 };
 static const ProtobufCIntRange game_state__number_ranges[1 + 1] =
 {
   { 1, 0 },
-  { 0, 4 }
+  { 0, 6 }
 };
 const ProtobufCMessageDescriptor game_state__descriptor =
 {
@@ -532,7 +558,7 @@ const ProtobufCMessageDescriptor game_state__descriptor =
   "GameState",
   "",
   sizeof(GameState),
-  4,
+  6,
   game_state__field_descriptors,
   game_state__field_indices_by_name,
   1,  game_state__number_ranges,

@@ -80,7 +80,9 @@ uint8_t *serialize_game_state(const struct game_state_t *src, size_t *size_out) 
 
   // Pot
   msg.pot = src->pot;
+  msg.current_bet = src->current_bet;
   msg.dealer_id = src->dealer_id;
+  msg.turn_id = src->turn_id;
   msg.at_menu = src->at_menu;
 
   // player
@@ -117,7 +119,9 @@ struct game_state_t deserialize_game_state(const uint8_t *data, size_t size) {
   }
 
   result.pot = msg->pot;
+  result.current_bet = msg->current_bet;
   result.dealer_id = msg->dealer_id;
+  result.turn_id = msg->turn_id;
   result.at_menu = msg->at_menu;
 
   size_t n = msg->n_player < MAX_PLAYERS ? msg->n_player : MAX_PLAYERS;

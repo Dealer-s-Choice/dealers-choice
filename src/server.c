@@ -68,6 +68,7 @@ static void init_game_state(struct game_state_t *game_state) {
   }
 
   game_state->dealer_id = 0;
+  game_state->current_bet = 0;
   game_state->at_menu = true;
 }
 
@@ -126,6 +127,23 @@ static int8_t recv_game_select(TCPsocket sock, uint8_t *out_game_type) {
     return -1;
 
   *out_game_type = buffer[2];
+  return 0;
+}
+
+static int8_t recv_player_action(TCPsocket sock, struct player_action_msg_t *out_action) {
+  uint8_t buffer[7];
+
+  if (recv_all_tcp(sock, buffer, sizeof(buffer)) != 0)
+    return -1;
+
+  uint16_t opcode = (buffer[0] << 8) | buffer[1];
+  if (opcode != MSG_PLAYER_ACTION)
+    return -1;
+
+  out_action->action = buffer[2];
+  out_action->amount = ((uint32_t)buffer[3] << 24) | ((uint32_t)buffer[4] << 16) |
+                       ((uint32_t)buffer[5] << 8) | ((uint32_t)buffer[6]);
+
   return 0;
 }
 
@@ -215,7 +233,35 @@ int run_server(void) {
         printf("All %d players are ready. Starting game.\n", client_count);
         game_state.at_menu = false;
         fow = deal_cards_to_players(&game_state, &deck);
+
+        do {
+          game_state.turn_id =
+              game_state.dealer_id < MAX_PLAYERS - 1 ? game_state.dealer_id + 1 : 0;
+          printf("turn_id = %d\n", game_state.turn_id);
+        } while (game_state.player[game_state.turn_id].id == -1); // TODO: Fix condition!
         broadcast_game_state(clients, client_count, &game_state, &fow);
+
+        Uint32 wait_ms = 5000; // wait up to 5 seconds
+        Uint32 start = SDL_GetTicks();
+        while (SDL_GetTicks() - start < wait_ms) {
+          SDLNet_CheckSockets(socket_set, 100); // wait up to 100ms
+          if (SDLNet_SocketReady(clients[game_state.turn_id])) {
+            puts("socket ready");
+
+            struct player_action_msg_t action;
+            if (recv_player_action(clients[game_state.turn_id], &action) == 0) {
+              printf("Received action %u with amount %u\n", action.action, action.amount);
+              game_state.player[game_state.turn_id].chips -= action.amount;
+              game_state.pot += action.amount;
+              broadcast_game_state(clients, client_count, &game_state, &fow);
+            } else {
+              fprintf(stderr, "Failed to receive player action\n");
+            }
+
+            break;
+          }
+          SDL_Delay(50); // avoid busy-waiting
+        }
       }
     }
 

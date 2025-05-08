@@ -24,7 +24,9 @@ message Player {
 
 message GameState {
   int32 pot = 1;
-  int32 dealer_id = 2;
-  bool at_menu = 3;
-  repeated Player player = 4;
+  uint32 current_bet = 2;
+  int32 dealer_id = 3;
+  int32 turn_id = 4;
+  bool at_menu = 5;
+  repeated Player player = 6;
 }

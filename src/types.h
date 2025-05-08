@@ -47,7 +47,9 @@ struct player_t {
 
 struct game_state_t {
   int pot;
+  uint32_t current_bet;
   int8_t dealer_id;
+  int32_t turn_id;
   bool at_menu;
   struct player_t player[MAX_PLAYERS];
 };
