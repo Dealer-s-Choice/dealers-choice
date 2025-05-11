@@ -49,13 +49,12 @@ pokeval_dep = dependency(
 
 protobuf_dep = dependency('libprotobuf-c')
 
-net_shared_dep = [pokeval_dep, win_deps]
+net_shared_dep = [pokeval_dep, win_deps, cc.find_library('m')]
 dep_names = [
   'libprotobuf-c',
   'SDL2',
   'SDL2_ttf',
   'SDL2_net',
-  'SDL2_gfx',
   # 'SDL2_mixer',
   ]
 

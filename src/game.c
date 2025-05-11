@@ -26,11 +26,17 @@
 
 */
 
+#include <math.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
 
 #include "game.h"
+
+// Build fails using gcc on Ubuntu 24.04 (and maybe others) without this
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
 
 #define CARD_DEAL_DELAY 50
 
@@ -158,6 +164,55 @@ static int8_t send_player_action(TCPsocket sock, uint8_t action, uint32_t amount
   return send_all_tcp(sock, buffer, sizeof(buffer));
 }
 
+static bool is_dh_card_back(struct dh_card a) {
+  return a.face_val == dh_card_back.face_val && a.suit == dh_card_back.suit;
+}
+
+static void draw_filled_circle(SDL_Renderer *renderer, int cx, int cy, int radius,
+                               SDL_Color color) {
+  SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
+  for (int y = -radius; y <= radius; y++) {
+    int dx = (int)sqrt(radius * radius - y * y);
+    SDL_RenderDrawLine(renderer, cx - dx, cy + y, cx + dx, cy + y);
+  }
+}
+
+static void draw_circle_outline(SDL_Renderer *renderer, int cx, int cy, int radius,
+                                SDL_Color color) {
+  SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
+  const int points = 100;
+  for (int i = 0; i < points; ++i) {
+    float angle1 = (2.0f * M_PI * i) / points;
+    float angle2 = (2.0f * M_PI * (i + 1)) / points;
+    int x1 = cx + (int)(radius * cos(angle1));
+    int y1 = cy + (int)(radius * sin(angle1));
+    int x2 = cx + (int)(radius * cos(angle2));
+    int y2 = cy + (int)(radius * sin(angle2));
+    SDL_RenderDrawLine(renderer, x1, y1, x2, y2);
+  }
+}
+
+static void draw_silver_coin(SDL_Renderer *renderer, int centerX, int centerY) {
+  const int radius = 20; // 40px diameter
+  const int steps = 20;
+
+  // Radial gradient from light center to darker edge
+  for (int i = 0; i < steps; ++i) {
+    float t = (float)i / (steps - 1);
+    Uint8 shade = (Uint8)(200 + 55 * (1.0f - t));
+    SDL_Color color = {shade, shade, shade, 255};
+    draw_filled_circle(renderer, centerX, centerY, radius - i, color);
+  }
+
+  // Specular highlight
+  SDL_Color highlight = {255, 255, 255, 150};
+  draw_filled_circle(renderer, centerX - radius / 3, centerY - radius / 3, radius / 5, highlight);
+
+  // Outline
+  SDL_Color outline = {100, 100, 100, 255};
+  draw_circle_outline(renderer, centerX, centerY, radius, outline);
+}
+
 void run_sdl_loop(struct game_state_t *game_state, struct sdl_context_t *sdl_context,
                   struct font_t *font, TCPsocket client_socket, SDLNet_SocketSet socket_set,
                   const int8_t my_id) {
@@ -271,7 +326,7 @@ void run_sdl_loop(struct game_state_t *game_state, struct sdl_context_t *sdl_con
           // Render face + suit
           SDL_Color textColor;
           char text[8] = {0};
-          if (game_state->player[player_n].hand.card[i].face_val != dh_card_back.face_val) {
+          if (is_dh_card_back(game_state->player[player_n].hand.card[i]) == false) {
             const char *face =
                 get_card_face_str(game_state->player[player_n].hand.card[i].face_val);
             const char *suit = get_card_unicode_suit(game_state->player[player_n].hand.card[i]);

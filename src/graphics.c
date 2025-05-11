@@ -276,26 +276,8 @@ void render_button(struct button_t *button) {
   SDL_DestroyTexture(textTexture);
 }
 
-void draw_silver_coin(SDL_Renderer *renderer, int centerX, int centerY) {
-  const int radius = 20; // 40px diameter
-  const int steps = 20;
-
-  // Base radial gradient for 3D shiny look
-  for (int i = 0; i < steps; ++i) {
-    float t = (float)i / (steps - 1);
-    Uint8 shade = (Uint8)(200 + 55 * (1.0 - t)); // Light center, darker edge
-    filledCircleRGBA(renderer, centerX, centerY, radius - i, shade, shade, shade, 255);
-  }
-
-  // Add bright specular highlight to simulate metal shine
-  filledCircleRGBA(renderer, centerX - radius / 3, centerY - radius / 3, radius / 5, 255, 255, 255,
-                   150);
-
-  // Outline
-  aacircleRGBA(renderer, centerX, centerY, radius, 100, 100, 100, 255);
-}
-
 void do_sdl_cleanup(struct sdl_context_t *sdl_context) {
   SDL_DestroyRenderer(sdl_context->renderer);
   SDL_DestroyWindow(sdl_context->window);
+  SDL_Quit();
 }

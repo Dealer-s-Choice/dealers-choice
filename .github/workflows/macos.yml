@@ -32,7 +32,6 @@ jobs:
           meson \
           protobuf-c \
           sdl2 \
-          sdl2_gfx \
           sdl2_net \
           sdl2_ttf
 

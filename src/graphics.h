@@ -30,7 +30,6 @@
 #define __GRAPHICS_H
 
 #include <SDL2/SDL.h>
-#include <SDL2/SDL2_gfxPrimitives.h>
 #include <SDL2/SDL_ttf.h>
 
 #include "net.h"
@@ -112,8 +111,6 @@ void render_text_centered(SDL_Renderer *renderer, TTF_Font *font, const char *te
 
 void render_text_plain(SDL_Renderer *renderer, TTF_Font *font, const char *text, SDL_Color color,
                        SDL_Rect *dest);
-
-void draw_silver_coin(SDL_Renderer *renderer, int centerX, int centerY);
 
 void do_sdl_cleanup(struct sdl_context_t *sdl_context);
 

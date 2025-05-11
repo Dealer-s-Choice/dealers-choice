@@ -149,6 +149,5 @@ int main(int argc, char *argv[]) {
     TTF_CloseFont(font.fonts[i]);
   TTF_Quit();
   do_sdl_cleanup(&sdl_context);
-  SDL_Quit();
   return 0;
 }
