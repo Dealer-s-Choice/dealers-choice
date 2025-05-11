@@ -40,6 +40,57 @@
 
 #define CARD_DEAL_DELAY 50
 
+void free_player_list(struct player_list_t *head) {
+  if (!head)
+    return;
+
+  struct player_list_t *current = head->next;
+  struct player_list_t *prev = head;
+
+  while (current && current != head) {
+    struct player_list_t *next = current->next;
+    free(prev);
+    prev = current;
+    current = next;
+  }
+
+  free(prev); // Free the last node (head if only one node)
+}
+
+struct player_list_t *create_player_list(const struct game_state_t *game_state) {
+  struct player_list_t *root = NULL;
+  struct player_list_t *tail = NULL;
+
+  for (int i = 0; i < MAX_PLAYERS; i++) {
+    if (game_state->player[i].id == -1)
+      continue;
+
+    struct player_list_t *new_node = malloc(sizeof(*new_node));
+    if (!new_node) {
+      perror("malloc");
+      fputs("Could not create player list\n", stderr);
+      free_player_list(root);
+      return NULL;
+    }
+
+    new_node->id = game_state->player[i].id;
+    new_node->next = NULL;
+
+    if (!root) {
+      root = new_node;
+    } else {
+      tail->next = new_node;
+    }
+
+    tail = new_node;
+  }
+
+  if (tail)
+    tail->next = root; // Close the circle
+
+  return root;
+}
+
 static void recv_game_state(TCPsocket client_socket, SDLNet_SocketSet socket_set,
                             struct game_state_t *game_state) {
   if (SDLNet_CheckSockets(socket_set, 0) > 0 && SDLNet_SocketReady(client_socket)) {
@@ -274,6 +325,8 @@ void run_sdl_loop(struct game_state_t *game_state, struct sdl_context_t *sdl_con
         create_button(action[i], sdl_context->renderer, &butt_pos, font->fonts[OTHER]);
   }
 
+  struct player_list_t *active_players = NULL;
+  struct player_list_t *dealer = NULL;
   int running = 1;
   bool cards_dealt = false;
   while (running) {
@@ -298,23 +351,30 @@ void run_sdl_loop(struct game_state_t *game_state, struct sdl_context_t *sdl_con
       }
     }
     clear_screen(sdl_context->renderer);
-
     if (game_state->at_menu) {
       if (menu_display_game_choices(client_socket, socket_set, my_id, game_state,
-                                    sdl_context->renderer, font) != 0)
+                                    sdl_context->renderer, font) != 0) {
         running = false;
-      else {
+      } else {
         continue;
       }
     } else {
-      for (int i = 0; i < HAND_SIZE; ++i) {
-        for (int player_n = 0; player_n < MAX_PLAYERS; player_n++) {
-          if (game_state->player[player_n].id == -1)
-            continue;
-          // Show each card that has been dealt
+      if (!active_players) {
+        active_players = create_player_list(game_state);
+        if (!active_players)
+          exit(EXIT_FAILURE);
+        dealer = active_players;
 
-          int card_x = player_pos[player_n].x + i * (80 + 10);
-          int card_y = player_pos[player_n].y;
+        fprintf(stderr, "active_player id: %d\n", active_players->id);
+        fprintf(stderr, "active_player id: %d\n", active_players->next->id);
+      }
+      for (int i = 0; i < HAND_SIZE; ++i) {
+        do {
+          int id = active_players->id;
+          // fprintf(stderr, "id: %d\n", id);
+          // Show each card that has been dealt
+          int card_x = player_pos[id].x + i * (80 + 10);
+          int card_y = player_pos[id].y;
 
           // Draw white card box
           SDL_Rect card_rect = {card_x, card_y, 80, 50};
@@ -326,14 +386,14 @@ void run_sdl_loop(struct game_state_t *game_state, struct sdl_context_t *sdl_con
           // Render face + suit
           SDL_Color textColor;
           char text[8] = {0};
-          if (is_dh_card_back(game_state->player[player_n].hand.card[i]) == false) {
+          if (is_dh_card_back(game_state->player[id].hand.card[i]) == false) {
             const char *face =
-                get_card_face_str(game_state->player[player_n].hand.card[i].face_val);
-            const char *suit = get_card_unicode_suit(game_state->player[player_n].hand.card[i]);
+                get_card_face_str(game_state->player[id].hand.card[i].face_val);
+            const char *suit = get_card_unicode_suit(game_state->player[id].hand.card[i]);
             snprintf(text, sizeof(text), "%s%s", face, suit);
 
-            if (game_state->player[player_n].hand.card[i].suit == HEARTS ||
-                game_state->player[player_n].hand.card[i].suit == DIAMONDS) {
+            if (game_state->player[id].hand.card[i].suit == HEARTS ||
+                game_state->player[id].hand.card[i].suit == DIAMONDS) {
               textColor = (SDL_Color){255, 0, 0, 255}; // Red
             } else {
               textColor = (SDL_Color){0, 0, 0, 255}; // Black
@@ -358,6 +418,7 @@ void run_sdl_loop(struct game_state_t *game_state, struct sdl_context_t *sdl_con
               SDL_Delay(16); // Let audio play & system breathe
             }
 
+            active_players = active_players->next;
             continue;
           }
 
@@ -386,7 +447,9 @@ void run_sdl_loop(struct game_state_t *game_state, struct sdl_context_t *sdl_con
             SDL_RenderPresent(sdl_context->renderer);
             SDL_Delay(16);
           }
-        }
+
+          active_players = active_players->next;
+        } while (active_players != dealer);
       }
 
       if (game_state->turn_id == my_id) {
@@ -404,22 +467,24 @@ void run_sdl_loop(struct game_state_t *game_state, struct sdl_context_t *sdl_con
       render_text_centered(sdl_context->renderer, font->fonts[OTHER], buffer, black,
                            sdl_context->win_center);
 
-      for (int i = 0; i < MAX_PLAYERS; i++) {
-        if (game_state->player[i].id == -1)
-          continue;
-
-        draw_silver_coin(sdl_context->renderer, player_pos[i].x, player_pos[i].y - 50);
+      do {
+        int id = active_players->id;
+        draw_silver_coin(sdl_context->renderer, player_pos[id].x, player_pos[id].y - 50);
         char coins_text[24] = {0};
-        snprintf(coins_text, sizeof coins_text, " = %d", game_state->player[i].chips);
-        SDL_Rect dest = {player_pos[i].x + 30, player_pos[i].y - 50, 40, 20};
+        snprintf(coins_text, sizeof coins_text, " = %d", game_state->player[id].chips);
+        SDL_Rect dest = {player_pos[id].x + 30, player_pos[id].y - 50, 40, 20};
         render_text_plain(sdl_context->renderer, font->fonts[OTHER], coins_text,
                           get_color(COLOR_BLACK), &dest);
-      }
+
+        active_players = active_players->next;
+      } while (active_players != dealer);
     }
 
     SDL_RenderPresent(sdl_context->renderer);
     SDL_Delay(16);
   }
+  free_player_list(active_players);
+
   // Mix_FreeChunk(card_sound);
   // Mix_CloseAudio();
 }

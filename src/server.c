@@ -61,7 +61,7 @@ static void print_ipaddress(const IPaddress *ip) {
   printf("%s:%u\n", ipaddr, SDL_SwapBE16(ip->port));
 }
 
-static void init_game_state(struct game_state_t *game_state) {
+void init_game_state(struct game_state_t *game_state) {
   for (int i = 0; i < MAX_PLAYERS; i++) {
     game_state->player[i] = (struct player_t){.id = -1, .chips = 20000};
     snprintf(game_state->player[i].name, sizeof game_state->player[i].name, "Player %d", i);
