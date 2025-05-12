@@ -264,6 +264,32 @@ static void draw_silver_coin(SDL_Renderer *renderer, int centerX, int centerY) {
   draw_circle_outline(renderer, centerX, centerY, radius, outline);
 }
 
+static void render_card(struct game_state_t *game_state, SDL_Renderer *renderer, TTF_Font *font,
+                        const int card_n, const int id, const int card_x, const int card_y) {
+  SDL_Color textColor;
+  char text[8] = {0};
+  const char *face = get_card_face_str(game_state->player[id].hand.card[card_n].face_val);
+  const char *suit = get_card_unicode_suit(game_state->player[id].hand.card[card_n]);
+  snprintf(text, sizeof(text), "%s%s", face, suit);
+
+  if (game_state->player[id].hand.card[card_n].suit == HEARTS ||
+      game_state->player[id].hand.card[card_n].suit == DIAMONDS) {
+    textColor = (SDL_Color){255, 0, 0, 255}; // Red
+  } else {
+    textColor = (SDL_Color){0, 0, 0, 255}; // Black
+  }
+
+  SDL_Surface *textSurface = TTF_RenderUTF8_Blended(font, text, textColor);
+  SDL_Texture *textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
+
+  SDL_Rect textRect = {card_x + (80 - textSurface->w) / 2, card_y + (50 - textSurface->h) / 2,
+                       textSurface->w, textSurface->h};
+
+  SDL_RenderCopy(renderer, textTexture, NULL, &textRect);
+  SDL_FreeSurface(textSurface);
+  SDL_DestroyTexture(textTexture);
+}
+
 void run_sdl_loop(struct game_state_t *game_state, struct sdl_context_t *sdl_context,
                   struct font_t *font, TCPsocket client_socket, SDLNet_SocketSet socket_set,
                   const int8_t my_id) {
@@ -368,12 +394,12 @@ void run_sdl_loop(struct game_state_t *game_state, struct sdl_context_t *sdl_con
         fprintf(stderr, "active_player id: %d\n", active_players->id);
         fprintf(stderr, "active_player id: %d\n", active_players->next->id);
       }
-      for (int i = 0; i < HAND_SIZE; ++i) {
+      for (int card_n = 0; card_n < HAND_SIZE; ++card_n) {
         do {
           int id = active_players->id;
           // fprintf(stderr, "id: %d\n", id);
           // Show each card that has been dealt
-          int card_x = player_pos[id].x + i * (80 + 10);
+          int card_x = player_pos[id].x + card_n * (80 + 10);
           int card_y = player_pos[id].y;
 
           // Draw white card box
@@ -383,58 +409,12 @@ void run_sdl_loop(struct game_state_t *game_state, struct sdl_context_t *sdl_con
           SDL_SetRenderDrawColor(sdl_context->renderer, 0, 0, 0, 255);
           SDL_RenderDrawRect(sdl_context->renderer, &card_rect);
 
-          // Render face + suit
-          SDL_Color textColor;
-          char text[8] = {0};
-          if (is_dh_card_back(game_state->player[id].hand.card[i]) == false) {
-            const char *face =
-                get_card_face_str(game_state->player[id].hand.card[i].face_val);
-            const char *suit = get_card_unicode_suit(game_state->player[id].hand.card[i]);
-            snprintf(text, sizeof(text), "%s%s", face, suit);
-
-            if (game_state->player[id].hand.card[i].suit == HEARTS ||
-                game_state->player[id].hand.card[i].suit == DIAMONDS) {
-              textColor = (SDL_Color){255, 0, 0, 255}; // Red
-            } else {
-              textColor = (SDL_Color){0, 0, 0, 255}; // Black
-            }
-          } else {
+          if (is_dh_card_back(game_state->player[id].hand.card[card_n]) == false)
+            render_card(game_state, sdl_context->renderer, font->fonts[CARD], card_n, id, card_x,
+                        card_y);
+          else
             draw_card_back_pattern(sdl_context->renderer, &card_rect);
 
-            // SDL_RenderPresent(sdl_context->renderer); // Present *before* playing sound
-            // Mix_PlayChannel(-1, card_sound, 0);
-            if (!cards_dealt) {
-              Uint32 start = SDL_GetTicks();
-              while (SDL_GetTicks() - start < CARD_DEAL_DELAY) {
-                SDL_Event e;
-                while (SDL_PollEvent(&e)) {
-                  if (e.type == SDL_QUIT) {
-                    running = 0;
-                    break;
-                  }
-                }
-              }
-              SDL_RenderPresent(sdl_context->renderer);
-              SDL_Delay(16); // Let audio play & system breathe
-            }
-
-            active_players = active_players->next;
-            continue;
-          }
-
-          SDL_Surface *textSurface = TTF_RenderUTF8_Blended(font->fonts[CARD], text, textColor);
-          SDL_Texture *textTexture =
-              SDL_CreateTextureFromSurface(sdl_context->renderer, textSurface);
-
-          SDL_Rect textRect = {card_x + (80 - textSurface->w) / 2,
-                               card_y + (50 - textSurface->h) / 2, textSurface->w, textSurface->h};
-
-          SDL_RenderCopy(sdl_context->renderer, textTexture, NULL, &textRect);
-          SDL_FreeSurface(textSurface);
-          SDL_DestroyTexture(textTexture);
-
-          // Mix_PlayChannel(-1, card_sound, 0); // -1 = first available channel, 0 = play once
-          // SDL_Delay(500);
           if (!cards_dealt) {
             Uint32 start = SDL_GetTicks();
             while (SDL_GetTicks() - start < CARD_DEAL_DELAY) {
