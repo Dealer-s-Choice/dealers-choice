@@ -42,8 +42,9 @@ struct player_t {
   char name[256];
   uint8_t id;
   struct hand_t hand;
-  uint chips;
+  uint32_t chips;
   bool in; // Used for spectators or when someone has folded
+  uint32_t total_paid;
 };
 
 struct game_state_t {
@@ -53,6 +54,7 @@ struct game_state_t {
   uint32_t turn_id;
   bool at_menu;
   uint8_t player_count;
+  uint32_t total_bets_plus_raises;
   struct player_t player[MAX_PLAYERS];
 };
 

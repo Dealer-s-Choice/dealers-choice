@@ -28,11 +28,13 @@ void test_game_state(void) {
                                      .current_bet = 100,
                                      .turn_id = 3,
                                      .at_menu = true,
+                                     .total_bets_plus_raises = 623,
                                      .player[0] = {
                                          .name = "Foo",
                                          .id = 0,
                                          .chips = 20000,
                                          .in = true,
+                                         .total_paid = 50,
                                      }};
 
   size_t size = 0;
@@ -52,10 +54,12 @@ void test_game_state(void) {
   assert(game_state_receiver.at_menu == true);
   assert(strcmp(game_state_receiver.player[0].name, "Foo") == 0);
   assert(game_state_receiver.current_bet == 100);
-  assert(game_state_receiver.player[0].id == 0);
+  assert(game_state_receiver.total_bets_plus_raises == 623);
   assert(game_state_receiver.turn_id == 3);
+  assert(game_state_receiver.player[0].id == 0);
   assert(game_state_receiver.player[0].chips == 20000);
   assert(game_state_receiver.player[0].in);
+  assert(game_state_receiver.player[0].total_paid == 50);
 }
 
 _MAIN_HEAD_

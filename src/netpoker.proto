@@ -21,6 +21,7 @@ message Player {
   Hand hand = 4;
   uint32 chips = 5;
   bool in = 6;
+  uint32 total_paid = 7;
 }
 
 message GameState {
@@ -30,6 +31,6 @@ message GameState {
   uint32 turn_id = 4;
   bool at_menu = 5;
   uint32 player_count = 6;
-  repeated Player player = 7;
-
+  uint32 total_bets_plus_raises = 7;
+  repeated Player player = 8;
 }

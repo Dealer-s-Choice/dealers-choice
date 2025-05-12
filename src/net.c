@@ -43,6 +43,7 @@ static void fill_player_message(struct player_message_builder_t *builder,
   builder->msg.id = src->id;
   builder->msg.chips = src->chips;
   builder->msg.in = src->in;
+  builder->msg.total_paid = src->total_paid;
 
   // Hand
   for (int i = 0; i < HAND_SIZE; ++i) {
@@ -67,6 +68,7 @@ static void fill_player_from_message(struct player_t *dst, const Player *msg) {
   dst->id = msg->id;
   dst->chips = msg->chips;
   dst->in = msg->in;
+  dst->total_paid = msg->total_paid;
 
   if (msg->hand) {
     size_t n = msg->hand->n_card < HAND_SIZE ? msg->hand->n_card : HAND_SIZE;
@@ -86,6 +88,7 @@ uint8_t *serialize_game_state(const struct game_state_t *src, size_t *size_out) 
   msg.dealer_id = src->dealer_id;
   msg.turn_id = src->turn_id;
   msg.at_menu = src->at_menu;
+  msg.total_bets_plus_raises = src->total_bets_plus_raises;
   msg.player_count = src->player_count;
 
   // player
@@ -127,6 +130,7 @@ struct game_state_t deserialize_game_state(const uint8_t *data, size_t size) {
   result.turn_id = msg->turn_id;
   result.at_menu = msg->at_menu;
   result.player_count = msg->player_count;
+  result.total_bets_plus_raises = msg->total_bets_plus_raises;
 
   size_t n = msg->n_player < MAX_PLAYERS ? msg->n_player : MAX_PLAYERS;
   for (size_t i = 0; i < n; ++i) {
