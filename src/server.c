@@ -152,6 +152,39 @@ static int8_t recv_player_action(TCPsocket sock, struct player_action_msg_t *out
   return 0;
 }
 
+static void handle_round(SDLNet_SocketSet socket_set, TCPsocket *clients, const int client_count,
+                         struct game_state_t *game_state, struct player_list_t *active_players,
+                         struct fow_t *fow) {
+  struct player_list_t *starting_player = active_players;
+  do {
+    game_state->turn_id = active_players->id;
+    broadcast_game_state(clients, client_count, game_state, fow);
+
+    Uint32 wait_ms = 20000; // wait up to 20 seconds
+    Uint32 start = SDL_GetTicks();
+    while (SDL_GetTicks() - start < wait_ms) {
+      SDLNet_CheckSockets(socket_set, 100); // wait up to 100ms
+      if (SDLNet_SocketReady(clients[game_state->turn_id])) {
+        puts("socket ready");
+
+        struct player_action_msg_t action;
+        if (recv_player_action(clients[game_state->turn_id], &action) == 0) {
+          printf("Received action %u with amount %u\n", action.action, action.amount);
+          game_state->player[game_state->turn_id].chips -= action.amount;
+          game_state->pot += action.amount;
+          broadcast_game_state(clients, client_count, game_state, fow);
+        } else {
+          fprintf(stderr, "Failed to receive player action\n");
+        }
+
+        break;
+      }
+      SDL_Delay(50); // avoid busy-waiting
+    }
+    active_players = active_players->next;
+  } while (active_players != starting_player);
+}
+
 int run_server(void) {
   struct game_state_t game_state = {0};
   init_game_state(&game_state);
@@ -241,35 +274,8 @@ int run_server(void) {
         if (!active_players)
           exit(EXIT_FAILURE);
         fow = deal_cards_to_players(&game_state, &deck, active_players);
-
-        do {
-          game_state.turn_id =
-              game_state.dealer_id < MAX_PLAYERS - 1 ? game_state.dealer_id + 1 : 0;
-          printf("turn_id = %d\n", game_state.turn_id);
-        } while (game_state.player[game_state.turn_id].id == -1); // TODO: Fix condition!
-        broadcast_game_state(clients, client_count, &game_state, &fow);
-
-        Uint32 wait_ms = 20000; // wait up to 20 seconds
-        Uint32 start = SDL_GetTicks();
-        while (SDL_GetTicks() - start < wait_ms) {
-          SDLNet_CheckSockets(socket_set, 100); // wait up to 100ms
-          if (SDLNet_SocketReady(clients[game_state.turn_id])) {
-            puts("socket ready");
-
-            struct player_action_msg_t action;
-            if (recv_player_action(clients[game_state.turn_id], &action) == 0) {
-              printf("Received action %u with amount %u\n", action.action, action.amount);
-              game_state.player[game_state.turn_id].chips -= action.amount;
-              game_state.pot += action.amount;
-              broadcast_game_state(clients, client_count, &game_state, &fow);
-            } else {
-              fprintf(stderr, "Failed to receive player action\n");
-            }
-
-            break;
-          }
-          SDL_Delay(50); // avoid busy-waiting
-        }
+        handle_round(socket_set, clients, client_count, &game_state, active_players, &fow);
+        free_player_list(active_players);
       }
     }
 
