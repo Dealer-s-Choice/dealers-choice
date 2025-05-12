@@ -57,12 +57,12 @@ void free_player_list(struct player_list_t *head) {
   free(prev); // Free the last node (head if only one node)
 }
 
-struct player_list_t *create_player_list(const struct game_state_t *game_state) {
+struct player_list_t *create_player_list(struct game_state_t *game_state) {
   struct player_list_t *root = NULL;
   struct player_list_t *tail = NULL;
 
   for (int i = 0; i < MAX_PLAYERS; i++) {
-    if (game_state->player[i].id == -1)
+    if (game_state->player[i].in == false)
       continue;
 
     struct player_list_t *new_node = malloc(sizeof(*new_node));
@@ -74,6 +74,7 @@ struct player_list_t *create_player_list(const struct game_state_t *game_state) 
     }
 
     new_node->id = game_state->player[i].id;
+    game_state->player_count++;
     new_node->next = NULL;
 
     if (!root) {
@@ -156,7 +157,7 @@ static int menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet s
     render_button(&button_5_card_draw);
 
     for (int i = 0; i < MAX_PLAYERS; i++) {
-      if (game_state->player[i].id != -1) {
+      if (game_state->player[i].in) {
         SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
         SDL_Rect input_box = make_rect(100, 250 + (i * 40), 200, 40);
         SDL_RenderDrawRect(renderer, &input_box);
@@ -265,7 +266,7 @@ static void draw_silver_coin(SDL_Renderer *renderer, int centerX, int centerY) {
 }
 
 static void render_card(struct game_state_t *game_state, SDL_Renderer *renderer, TTF_Font *font,
-                        const int card_n, const int id, const int card_x, const int card_y) {
+                        const int card_n, const uint8_t id, const int card_x, const int card_y) {
   SDL_Color textColor;
   char text[8] = {0};
   const char *face = get_card_face_str(game_state->player[id].hand.card[card_n].face_val);
@@ -292,7 +293,7 @@ static void render_card(struct game_state_t *game_state, SDL_Renderer *renderer,
 
 void run_sdl_loop(struct game_state_t *game_state, struct sdl_context_t *sdl_context,
                   struct font_t *font, TCPsocket client_socket, SDLNet_SocketSet socket_set,
-                  const int8_t my_id) {
+                  const uint8_t my_id) {
 
   const struct pos_t player_pos[MAX_PLAYERS] = {
       // P0: bottom center

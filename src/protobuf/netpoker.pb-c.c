@@ -372,7 +372,7 @@ const ProtobufCMessageDescriptor pos__descriptor =
   (ProtobufCMessageInit) pos__init,
   NULL,NULL,NULL    /* reserved[123] */
 };
-static const ProtobufCFieldDescriptor player__field_descriptors[5] =
+static const ProtobufCFieldDescriptor player__field_descriptors[6] =
 {
   {
     "name",
@@ -390,7 +390,7 @@ static const ProtobufCFieldDescriptor player__field_descriptors[5] =
     "id",
     2,
     PROTOBUF_C_LABEL_NONE,
-    PROTOBUF_C_TYPE_INT32,
+    PROTOBUF_C_TYPE_UINT32,
     0,   /* quantifier_offset */
     offsetof(Player, id),
     NULL,
@@ -426,9 +426,21 @@ static const ProtobufCFieldDescriptor player__field_descriptors[5] =
     "chips",
     5,
     PROTOBUF_C_LABEL_NONE,
-    PROTOBUF_C_TYPE_INT32,
+    PROTOBUF_C_TYPE_UINT32,
     0,   /* quantifier_offset */
     offsetof(Player, chips),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "in",
+    6,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_BOOL,
+    0,   /* quantifier_offset */
+    offsetof(Player, in),
     NULL,
     NULL,
     0,             /* flags */
@@ -439,13 +451,14 @@ static const unsigned player__field_indices_by_name[] = {
   4,   /* field[4] = chips */
   3,   /* field[3] = hand */
   1,   /* field[1] = id */
+  5,   /* field[5] = in */
   0,   /* field[0] = name */
   2,   /* field[2] = pos */
 };
 static const ProtobufCIntRange player__number_ranges[1 + 1] =
 {
   { 1, 0 },
-  { 0, 5 }
+  { 0, 6 }
 };
 const ProtobufCMessageDescriptor player__descriptor =
 {
@@ -455,20 +468,20 @@ const ProtobufCMessageDescriptor player__descriptor =
   "Player",
   "",
   sizeof(Player),
-  5,
+  6,
   player__field_descriptors,
   player__field_indices_by_name,
   1,  player__number_ranges,
   (ProtobufCMessageInit) player__init,
   NULL,NULL,NULL    /* reserved[123] */
 };
-static const ProtobufCFieldDescriptor game_state__field_descriptors[6] =
+static const ProtobufCFieldDescriptor game_state__field_descriptors[7] =
 {
   {
     "pot",
     1,
     PROTOBUF_C_LABEL_NONE,
-    PROTOBUF_C_TYPE_INT32,
+    PROTOBUF_C_TYPE_UINT32,
     0,   /* quantifier_offset */
     offsetof(GameState, pot),
     NULL,
@@ -492,7 +505,7 @@ static const ProtobufCFieldDescriptor game_state__field_descriptors[6] =
     "dealer_id",
     3,
     PROTOBUF_C_LABEL_NONE,
-    PROTOBUF_C_TYPE_INT32,
+    PROTOBUF_C_TYPE_UINT32,
     0,   /* quantifier_offset */
     offsetof(GameState, dealer_id),
     NULL,
@@ -504,7 +517,7 @@ static const ProtobufCFieldDescriptor game_state__field_descriptors[6] =
     "turn_id",
     4,
     PROTOBUF_C_LABEL_NONE,
-    PROTOBUF_C_TYPE_INT32,
+    PROTOBUF_C_TYPE_UINT32,
     0,   /* quantifier_offset */
     offsetof(GameState, turn_id),
     NULL,
@@ -525,8 +538,20 @@ static const ProtobufCFieldDescriptor game_state__field_descriptors[6] =
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
   {
-    "player",
+    "player_count",
     6,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_UINT32,
+    0,   /* quantifier_offset */
+    offsetof(GameState, player_count),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "player",
+    7,
     PROTOBUF_C_LABEL_REPEATED,
     PROTOBUF_C_TYPE_MESSAGE,
     offsetof(GameState, n_player),
@@ -541,14 +566,15 @@ static const unsigned game_state__field_indices_by_name[] = {
   4,   /* field[4] = at_menu */
   1,   /* field[1] = current_bet */
   2,   /* field[2] = dealer_id */
-  5,   /* field[5] = player */
+  6,   /* field[6] = player */
+  5,   /* field[5] = player_count */
   0,   /* field[0] = pot */
   3,   /* field[3] = turn_id */
 };
 static const ProtobufCIntRange game_state__number_ranges[1 + 1] =
 {
   { 1, 0 },
-  { 0, 6 }
+  { 0, 7 }
 };
 const ProtobufCMessageDescriptor game_state__descriptor =
 {
@@ -558,7 +584,7 @@ const ProtobufCMessageDescriptor game_state__descriptor =
   "GameState",
   "",
   sizeof(GameState),
-  6,
+  7,
   game_state__field_descriptors,
   game_state__field_indices_by_name,
   1,  game_state__number_ranges,

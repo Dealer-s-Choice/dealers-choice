@@ -62,14 +62,19 @@ static void print_ipaddress(const IPaddress *ip) {
 }
 
 void init_game_state(struct game_state_t *game_state) {
-  for (int i = 0; i < MAX_PLAYERS; i++) {
-    game_state->player[i] = (struct player_t){.id = -1, .chips = 20000};
+  for (uint8_t i = 0; i < MAX_PLAYERS; i++) {
+    game_state->player[i] = (struct player_t){
+        .id = i,
+        .chips = 20000,
+        .in = false,
+    };
     snprintf(game_state->player[i].name, sizeof game_state->player[i].name, "Player %d", i);
   }
 
   game_state->dealer_id = 0;
   game_state->current_bet = 0;
   game_state->at_menu = true;
+  game_state->player_count = 0;
 }
 
 struct fow_t deal_cards_to_players(struct game_state_t *game_state, const struct dh_deck *deck,
@@ -248,7 +253,8 @@ int run_server(void) {
                (ipaddr >> 16) & 0xFF, (ipaddr >> 8) & 0xFF, ipaddr & 0xFF, port);
       }
 
-      game_state.player[client_count].id = client_count;
+      // TODO: [client_count] will get changed as new player connect and disconnect
+      game_state.player[client_count].in = true;
 
       int32_t net_player_id = htonl(client_count);
       send_all_tcp(new_client, &net_player_id, sizeof(int32_t));

@@ -2,11 +2,13 @@
 
 _MAIN_HEAD_
 
-struct game_state_t game_state = {0};
+struct game_state_t game_state;
 init_game_state(&game_state);
 
-for (int i = 0; i < 3; i++)
+for (uint8_t i = 0; i < 3; i++) {
   game_state.player[i].id = i;
+  game_state.player[i].in = true;
+}
 
 struct player_list_t *active_players = create_player_list(&game_state);
 assert(active_players);
@@ -21,9 +23,13 @@ do {
 } while (active_players != root);
 
 free_player_list(root);
+assert(game_state.player_count == 3);
+game_state.player_count = 0;
 
 game_state.player[4].id = 4;
-game_state.player[0].id = -1;
+game_state.player[4].in = 4;
+
+game_state.player[0].in = false;
 
 active_players = create_player_list(&game_state);
 assert(active_players);
@@ -38,5 +44,7 @@ for (i = 0; (size_t)i < sizeof res / sizeof res[0]; i++) {
 }
 
 free_player_list(root);
+
+assert(game_state.player_count == 3);
 
 _MAIN_TAIL_

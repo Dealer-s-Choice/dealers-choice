@@ -16,17 +16,20 @@ message Pos {
 
 message Player {
   string name = 1;
-  int32 id = 2;
+  uint32 id = 2;
   Pos pos = 3;
   Hand hand = 4;
-  int32 chips = 5;
+  uint32 chips = 5;
+  bool in = 6;
 }
 
 message GameState {
-  int32 pot = 1;
+  uint32 pot = 1;
   uint32 current_bet = 2;
-  int32 dealer_id = 3;
-  int32 turn_id = 4;
+  uint32 dealer_id = 3;
+  uint32 turn_id = 4;
   bool at_menu = 5;
-  repeated Player player = 6;
+  uint32 player_count = 6;
+  repeated Player player = 7;
+
 }

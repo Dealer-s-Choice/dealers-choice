@@ -40,17 +40,19 @@ struct pos_t {
 
 struct player_t {
   char name[256];
-  int8_t id;
+  uint8_t id;
   struct hand_t hand;
-  int chips;
+  uint chips;
+  bool in; // Used for spectators or when someone has folded
 };
 
 struct game_state_t {
-  int pot;
+  uint pot;
   uint32_t current_bet;
-  int8_t dealer_id;
-  int32_t turn_id;
+  uint8_t dealer_id;
+  uint32_t turn_id;
   bool at_menu;
+  uint8_t player_count;
   struct player_t player[MAX_PLAYERS];
 };
 
