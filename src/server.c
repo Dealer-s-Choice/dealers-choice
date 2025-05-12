@@ -72,17 +72,22 @@ void init_game_state(struct game_state_t *game_state) {
   game_state->at_menu = true;
 }
 
-static struct fow_t deal_cards_to_players(struct game_state_t *game_state,
-                                          const struct dh_deck *deck) {
+struct fow_t deal_cards_to_players(struct game_state_t *game_state, const struct dh_deck *deck,
+                                   struct player_list_t *active_players) {
   struct fow_t fow = {0};
-  for (int p = 0; p < MAX_PLAYERS; ++p) {
-    if (game_state->player[p].id != -1) {
-      for (int i = 0; i < HAND_SIZE; ++i) {
-        game_state->player[p].hand.card[i] = dh_card_back;
-        fow.hand[p].card[i] = deck->card[i + HAND_SIZE * p];
-      }
+  struct player_list_t *dealer = active_players;
+  int player_index = 0;
+
+  do {
+    int id = active_players->id;
+    for (int i = 0; i < HAND_SIZE; ++i) {
+      game_state->player[id].hand.card[i] = dh_card_back;
+      fow.hand[id].card[i] = deck->card[i + HAND_SIZE * player_index];
     }
-  }
+    active_players = active_players->next;
+    ++player_index;
+  } while (active_players != dealer);
+
   return fow;
 }
 
@@ -232,7 +237,10 @@ int run_server(void) {
         }
         printf("All %d players are ready. Starting game.\n", client_count);
         game_state.at_menu = false;
-        fow = deal_cards_to_players(&game_state, &deck);
+        struct player_list_t *active_players = create_player_list(&game_state);
+        if (!active_players)
+          exit(EXIT_FAILURE);
+        fow = deal_cards_to_players(&game_state, &deck, active_players);
 
         do {
           game_state.turn_id =
