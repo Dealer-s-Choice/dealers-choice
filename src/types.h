@@ -48,7 +48,7 @@ struct player_t {
 };
 
 struct game_state_t {
-  uint pot;
+  uint32_t pot;
   uint32_t current_bet;
   uint8_t dealer_id;
   uint32_t turn_id;

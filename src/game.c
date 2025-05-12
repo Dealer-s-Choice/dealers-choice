@@ -369,10 +369,18 @@ void run_sdl_loop(struct game_state_t *game_state, struct sdl_context_t *sdl_con
       if (event.type == SDL_QUIT) {
         running = 0;
       } else if (event.type == SDL_MOUSEBUTTONDOWN) {
-        if (point_in_rect(mx, my, &action_button[BET].rect)) {
-          puts("sending bet");
-          if (send_player_action(client_socket, ACTION_BET, 500) != 0) {
-            fprintf(stderr, "Failed to send bet\n");
+        if (game_state->turn_id == my_id) {
+          if (point_in_rect(mx, my, &action_button[BET].rect)) {
+            puts("sending bet");
+            if (send_player_action(client_socket, ACTION_BET, 500) != 0) {
+              fprintf(stderr, "Failed to send bet\n");
+            }
+          }
+          if (point_in_rect(mx, my, &action_button[FOLD].rect)) {
+            puts("folding");
+            if (send_player_action(client_socket, ACTION_FOLD, 0) != 0) {
+              fprintf(stderr, "Failed to send bet\n");
+            }
           }
         }
       }
@@ -434,11 +442,27 @@ void run_sdl_loop(struct game_state_t *game_state, struct sdl_context_t *sdl_con
       }
 
       if (game_state->turn_id == my_id) {
-        if (game_state->current_bet == 0) {
+        if (game_state->total_bets_plus_raises == 0) {
           render_button(&action_button[BET]);
           render_button(&action_button[PASS]);
           render_button(&action_button[FOLD]);
+        } else if (game_state->total_bets_plus_raises > 0) {
+          render_button(&action_button[CALL]);
+          render_button(&action_button[RAISE]);
+          render_button(&action_button[FOLD]);
         }
+      }
+
+      if (game_state->player_count == 1) {
+        int i;
+        for (i = 0; i < MAX_PLAYERS; i++)
+          if (game_state->player[i].in)
+            break;
+        char winner_text[512] = {0};
+        snprintf(winner_text, sizeof winner_text, "%s won!", game_state->player[i].name);
+        SDL_Rect dest = {sdl_context->win_center.x, sdl_context->win_center.y - 50, 80, 20};
+        render_text_plain(sdl_context->renderer, font->fonts[OTHER], winner_text,
+                          get_color(COLOR_BLACK), &dest);
       }
 
       cards_dealt = true;

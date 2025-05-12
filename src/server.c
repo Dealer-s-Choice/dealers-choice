@@ -67,6 +67,7 @@ void init_game_state(struct game_state_t *game_state) {
         .id = i,
         .chips = 20000,
         .in = false,
+        .total_paid = 0,
     };
     snprintf(game_state->player[i].name, sizeof game_state->player[i].name, "Player %d", i);
   }
@@ -75,6 +76,7 @@ void init_game_state(struct game_state_t *game_state) {
   game_state->current_bet = 0;
   game_state->at_menu = true;
   game_state->player_count = 0;
+  game_state->total_bets_plus_raises = 0;
 }
 
 struct fow_t deal_cards_to_players(struct game_state_t *game_state, const struct dh_deck *deck,
@@ -175,8 +177,17 @@ static void handle_round(SDLNet_SocketSet socket_set, TCPsocket *clients, const 
         struct player_action_msg_t action;
         if (recv_player_action(clients[game_state->turn_id], &action) == 0) {
           printf("Received action %u with amount %u\n", action.action, action.amount);
-          game_state->player[game_state->turn_id].chips -= action.amount;
-          game_state->pot += action.amount;
+          uint8_t turn_id = game_state->turn_id;
+          if (action.action == ACTION_BET) {
+            game_state->player[turn_id].chips -= action.amount;
+            game_state->player[turn_id].total_paid += action.amount;
+            game_state->total_bets_plus_raises += action.amount;
+            game_state->pot += action.amount;
+          } else if (action.action == ACTION_FOLD) {
+            game_state->player[turn_id].in = false;
+            game_state->player_count--;
+          }
+
           broadcast_game_state(clients, client_count, game_state, fow);
         } else {
           fprintf(stderr, "Failed to receive player action\n");
@@ -279,6 +290,7 @@ int run_server(void) {
         struct player_list_t *active_players = create_player_list(&game_state);
         if (!active_players)
           exit(EXIT_FAILURE);
+
         fow = deal_cards_to_players(&game_state, &deck, active_players);
         handle_round(socket_set, clients, client_count, &game_state, active_players, &fow);
         free_player_list(active_players);
