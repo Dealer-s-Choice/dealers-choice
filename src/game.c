@@ -333,7 +333,7 @@ void run_sdl_loop(struct game_state_t *game_state, struct sdl_context_t *sdl_con
   //}
   enum {
     BET,
-    PASS,
+    CHECK,
     FOLD,
     RAISE,
     CALL,
@@ -341,7 +341,7 @@ void run_sdl_loop(struct game_state_t *game_state, struct sdl_context_t *sdl_con
   };
 
   const char *action[] = {
-      [BET] = "Bet", [PASS] = "Pass", [FOLD] = "Fold", [RAISE] = "Raise", [CALL] = "Call",
+      [BET] = "Bet", [CHECK] = "Pass", [FOLD] = "Fold", [RAISE] = "Raise", [CALL] = "Call",
   };
 
   int x_offset = 100;
@@ -380,8 +380,8 @@ void run_sdl_loop(struct game_state_t *game_state, struct sdl_context_t *sdl_con
             puts("folding");
             if (send_player_action(client_socket, ACTION_FOLD, 0) != 0)
               fprintf(stderr, "Failed to fold\n");
-          } else if (point_in_rect(mx, my, &action_button[PASS].rect)) {
-            puts("passing");
+          } else if (point_in_rect(mx, my, &action_button[CHECK].rect)) {
+            puts("checking");
             has_checked = true;
             if (send_player_action(client_socket, ACTION_CHECK, 0) != 0)
               fprintf(stderr, "Failed to check\n");
@@ -468,7 +468,7 @@ void run_sdl_loop(struct game_state_t *game_state, struct sdl_context_t *sdl_con
         if (game_state->turn_id == my_id) {
           if (game_state->total_bets_plus_raises == 0 && !has_checked) {
             render_button(&action_button[BET]);
-            render_button(&action_button[PASS]);
+            render_button(&action_button[CHECK]);
             render_button(&action_button[FOLD]);
           } else {
             if (game_state->player[my_id].total_paid != game_state->total_bets_plus_raises) {
