@@ -358,6 +358,7 @@ void run_sdl_loop(struct game_state_t *game_state, struct sdl_context_t *sdl_con
   bool cards_dealt = false;
   while (running) {
     recv_game_state(client_socket, socket_set, game_state);
+    // fprintf(stderr, "turn_id: %d\n", game_state->turn_id);
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
       int mx = event.button.x;
@@ -372,15 +373,24 @@ void run_sdl_loop(struct game_state_t *game_state, struct sdl_context_t *sdl_con
         if (game_state->turn_id == my_id) {
           if (point_in_rect(mx, my, &action_button[BET].rect)) {
             puts("sending bet");
-            if (send_player_action(client_socket, ACTION_BET, 500) != 0) {
+            if (send_player_action(client_socket, ACTION_BET, 500) != 0)
               fprintf(stderr, "Failed to send bet\n");
-            }
-          }
-          if (point_in_rect(mx, my, &action_button[FOLD].rect)) {
+          } else if (point_in_rect(mx, my, &action_button[FOLD].rect)) {
             puts("folding");
-            if (send_player_action(client_socket, ACTION_FOLD, 0) != 0) {
-              fprintf(stderr, "Failed to send bet\n");
-            }
+            if (send_player_action(client_socket, ACTION_FOLD, 0) != 0)
+              fprintf(stderr, "Failed to fold\n");
+          } else if (point_in_rect(mx, my, &action_button[PASS].rect)) {
+            puts("passing");
+            if (send_player_action(client_socket, ACTION_CHECK, 0) != 0)
+              fprintf(stderr, "Failed to check\n");
+          } else if (point_in_rect(mx, my, &action_button[RAISE].rect)) {
+            puts("raising");
+            if (send_player_action(client_socket, ACTION_RAISE, 500) != 0)
+              fprintf(stderr, "Failed to raise\n");
+          } else if (point_in_rect(mx, my, &action_button[CALL].rect)) {
+            puts("calling");
+            if (send_player_action(client_socket, ACTION_CALL, 0) != 0)
+              fprintf(stderr, "Failed to call\n");
           }
         }
       }
@@ -440,16 +450,18 @@ void run_sdl_loop(struct game_state_t *game_state, struct sdl_context_t *sdl_con
           active_players = active_players->next;
         } while (active_players != dealer);
       }
-
+      // bool is_round_over = false;
       if (game_state->turn_id == my_id) {
         if (game_state->total_bets_plus_raises == 0) {
           render_button(&action_button[BET]);
           render_button(&action_button[PASS]);
           render_button(&action_button[FOLD]);
-        } else if (game_state->total_bets_plus_raises > 0) {
-          render_button(&action_button[CALL]);
-          render_button(&action_button[RAISE]);
-          render_button(&action_button[FOLD]);
+        } else {
+          if (game_state->player[my_id].total_paid != game_state->total_bets_plus_raises) {
+            render_button(&action_button[CALL]);
+            render_button(&action_button[RAISE]);
+            render_button(&action_button[FOLD]);
+          }
         }
       }
 

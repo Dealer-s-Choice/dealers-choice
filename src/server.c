@@ -159,12 +159,32 @@ static int8_t recv_player_action(TCPsocket sock, struct player_action_msg_t *out
   return 0;
 }
 
+static void call(struct game_state_t *game_state, const uint8_t turn_id) {
+  uint32_t owed = game_state->total_bets_plus_raises - game_state->player[turn_id].total_paid;
+  game_state->player[turn_id].chips -= owed;
+  game_state->player[turn_id].total_paid += owed;
+  game_state->pot += owed;
+}
+
+static void bet(struct game_state_t *game_state, const uint8_t turn_id, const uint32_t amount) {
+  game_state->player[turn_id].chips -= amount;
+  game_state->player[turn_id].total_paid += amount;
+  game_state->total_bets_plus_raises += amount;
+  game_state->pot += amount;
+}
+
+static void raise(struct game_state_t *game_state, const uint8_t turn_id, const uint32_t amount) {
+  call(game_state, turn_id);
+  bet(game_state, turn_id, amount);
+}
+
 static void handle_round(SDLNet_SocketSet socket_set, TCPsocket *clients, const int client_count,
                          struct game_state_t *game_state, struct player_list_t *active_players,
                          struct fow_t *fow) {
   struct player_list_t *starting_player = active_players;
   do {
     game_state->turn_id = active_players->id;
+    fprintf(stderr, "Waiting for action from %d\n", game_state->turn_id);
     broadcast_game_state(clients, client_count, game_state, fow);
 
     Uint32 wait_ms = 20000; // wait up to 20 seconds
@@ -178,16 +198,27 @@ static void handle_round(SDLNet_SocketSet socket_set, TCPsocket *clients, const 
         if (recv_player_action(clients[game_state->turn_id], &action) == 0) {
           printf("Received action %u with amount %u\n", action.action, action.amount);
           uint8_t turn_id = game_state->turn_id;
-          if (action.action == ACTION_BET) {
-            game_state->player[turn_id].chips -= action.amount;
-            game_state->player[turn_id].total_paid += action.amount;
-            game_state->total_bets_plus_raises += action.amount;
-            game_state->pot += action.amount;
-          } else if (action.action == ACTION_FOLD) {
+          switch (action.action) {
+          case ACTION_CHECK:
+            break;
+          case ACTION_BET:
+            bet(game_state, turn_id, action.amount);
+            break;
+          case ACTION_FOLD:
             game_state->player[turn_id].in = false;
             game_state->player_count--;
+            break;
+          case ACTION_CALL:
+            call(game_state, turn_id);
+            break;
+          case ACTION_RAISE:
+            raise(game_state, turn_id, action.amount);
+            break;
+          default:
+            fprintf(stderr, "Invalid Action received\n");
           }
 
+          // game_state->turn_id = active_players->next->id;
           broadcast_game_state(clients, client_count, game_state, fow);
         } else {
           fprintf(stderr, "Failed to receive player action\n");
@@ -198,7 +229,19 @@ static void handle_round(SDLNet_SocketSet socket_set, TCPsocket *clients, const 
       SDL_Delay(50); // avoid busy-waiting
     }
     active_players = active_players->next;
-  } while (active_players != starting_player);
+
+    fprintf(stderr, "player %d / total paid: %d\n", active_players->id,
+            game_state->player[active_players->id].total_paid);
+    fprintf(stderr, "total_bets_plus_raises: %d\n", game_state->total_bets_plus_raises);
+
+    if (active_players == starting_player && game_state->total_bets_plus_raises == 0)
+      break;
+
+    if (active_players == starting_player &&
+        (game_state->total_bets_plus_raises == game_state->player[active_players->id].total_paid))
+      break;
+
+  } while (true);
 }
 
 int run_server(void) {
