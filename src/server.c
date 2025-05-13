@@ -159,23 +159,27 @@ static int8_t recv_player_action(TCPsocket sock, struct player_action_msg_t *out
   return 0;
 }
 
-static void call(struct game_state_t *game_state, const uint8_t turn_id) {
+static void server_handle_call(struct game_state_t *game_state, const uint8_t turn_id) {
   uint32_t owed = game_state->total_bets_plus_raises - game_state->player[turn_id].total_paid;
   game_state->player[turn_id].chips -= owed;
   game_state->player[turn_id].total_paid += owed;
   game_state->pot += owed;
 }
 
-static void bet(struct game_state_t *game_state, const uint8_t turn_id, const uint32_t amount) {
+static void server_handle_bet(struct game_state_t *game_state, const uint8_t turn_id,
+                              const uint32_t amount) {
   game_state->player[turn_id].chips -= amount;
   game_state->player[turn_id].total_paid += amount;
   game_state->total_bets_plus_raises += amount;
   game_state->pot += amount;
 }
 
-static void raise(struct game_state_t *game_state, const uint8_t turn_id, const uint32_t amount) {
-  call(game_state, turn_id);
-  bet(game_state, turn_id, amount);
+// On Ubuntu 24.04 arm64: error: conflicting types for ‘raise’; so I've given
+// this a more unique name now
+static void server_handle_raise(struct game_state_t *game_state, const uint8_t turn_id,
+                                const uint32_t amount) {
+  server_handle_call(game_state, turn_id);
+  server_handle_bet(game_state, turn_id, amount);
 }
 
 static void handle_round(SDLNet_SocketSet socket_set, TCPsocket *clients, const int client_count,
@@ -202,17 +206,17 @@ static void handle_round(SDLNet_SocketSet socket_set, TCPsocket *clients, const 
           case ACTION_CHECK:
             break;
           case ACTION_BET:
-            bet(game_state, turn_id, action.amount);
+            server_handle_bet(game_state, turn_id, action.amount);
             break;
           case ACTION_FOLD:
             game_state->player[turn_id].in = false;
             game_state->player_count--;
             break;
           case ACTION_CALL:
-            call(game_state, turn_id);
+            server_handle_call(game_state, turn_id);
             break;
           case ACTION_RAISE:
-            raise(game_state, turn_id, action.amount);
+            server_handle_raise(game_state, turn_id, action.amount);
             break;
           default:
             fprintf(stderr, "Invalid Action received\n");
