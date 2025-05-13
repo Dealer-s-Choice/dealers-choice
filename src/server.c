@@ -221,9 +221,6 @@ static void handle_round(SDLNet_SocketSet socket_set, TCPsocket *clients, const 
           default:
             fprintf(stderr, "Invalid Action received\n");
           }
-
-          // game_state->turn_id = active_players->next->id;
-          broadcast_game_state(clients, client_count, game_state, fow);
         } else {
           fprintf(stderr, "Failed to receive player action\n");
         }
@@ -340,6 +337,7 @@ int run_server(void) {
 
         fow = deal_cards_to_players(&game_state, &deck, active_players);
         handle_round(socket_set, clients, client_count, &game_state, active_players, &fow);
+        broadcast_game_state(clients, client_count, &game_state, &fow);
         free_player_list(active_players);
       }
     }

@@ -356,6 +356,7 @@ void run_sdl_loop(struct game_state_t *game_state, struct sdl_context_t *sdl_con
   struct player_list_t *dealer = NULL;
   int running = 1;
   bool cards_dealt = false;
+  bool has_checked = false;
   while (running) {
     recv_game_state(client_socket, socket_set, game_state);
     // fprintf(stderr, "turn_id: %d\n", game_state->turn_id);
@@ -381,6 +382,7 @@ void run_sdl_loop(struct game_state_t *game_state, struct sdl_context_t *sdl_con
               fprintf(stderr, "Failed to fold\n");
           } else if (point_in_rect(mx, my, &action_button[PASS].rect)) {
             puts("passing");
+            has_checked = true;
             if (send_player_action(client_socket, ACTION_CHECK, 0) != 0)
               fprintf(stderr, "Failed to check\n");
           } else if (point_in_rect(mx, my, &action_button[RAISE].rect)) {
@@ -450,21 +452,8 @@ void run_sdl_loop(struct game_state_t *game_state, struct sdl_context_t *sdl_con
           active_players = active_players->next;
         } while (active_players != dealer);
       }
-      // bool is_round_over = false;
-      if (game_state->turn_id == my_id) {
-        if (game_state->total_bets_plus_raises == 0) {
-          render_button(&action_button[BET]);
-          render_button(&action_button[PASS]);
-          render_button(&action_button[FOLD]);
-        } else {
-          if (game_state->player[my_id].total_paid != game_state->total_bets_plus_raises) {
-            render_button(&action_button[CALL]);
-            render_button(&action_button[RAISE]);
-            render_button(&action_button[FOLD]);
-          }
-        }
-      }
 
+      // bool is_round_over = false;
       if (game_state->player_count == 1) {
         int i;
         for (i = 0; i < MAX_PLAYERS; i++)
@@ -475,6 +464,20 @@ void run_sdl_loop(struct game_state_t *game_state, struct sdl_context_t *sdl_con
         SDL_Rect dest = {sdl_context->win_center.x, sdl_context->win_center.y - 50, 80, 20};
         render_text_plain(sdl_context->renderer, font->fonts[OTHER], winner_text,
                           get_color(COLOR_BLACK), &dest);
+      } else {
+        if (game_state->turn_id == my_id) {
+          if (game_state->total_bets_plus_raises == 0 && !has_checked) {
+            render_button(&action_button[BET]);
+            render_button(&action_button[PASS]);
+            render_button(&action_button[FOLD]);
+          } else {
+            if (game_state->player[my_id].total_paid != game_state->total_bets_plus_raises) {
+              render_button(&action_button[CALL]);
+              render_button(&action_button[RAISE]);
+              render_button(&action_button[FOLD]);
+            }
+          }
+        }
       }
 
       cards_dealt = true;
