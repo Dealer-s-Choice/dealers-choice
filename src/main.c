@@ -122,8 +122,15 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 
+  SDL_Rect bounds;
+  if (SDL_GetDisplayBounds(0, &bounds) == 0) {
+    printf("Display 0 bounds: x=%d, y=%d, w=%d, h=%d\n", bounds.x, bounds.y, bounds.w, bounds.h);
+  } else {
+    puts(SDL_GetError());
+    exit(EXIT_FAILURE);
+  }
   struct sdl_context_t sdl_context;
-  init_sdl_window(&sdl_context, "Dealer's Choice", WINDOW_WIDTH, WINDOW_HEIGHT);
+  init_sdl_window(&sdl_context, "Dealer's Choice", bounds.w * 0.8, bounds.h * 0.8);
 
   struct font_t font;
   for (int i = 0; i < NUM_FONTS; ++i) {
@@ -142,6 +149,5 @@ int main(int argc, char *argv[]) {
     TTF_CloseFont(font.fonts[i]);
   TTF_Quit();
   do_sdl_cleanup(&sdl_context);
-  SDL_Quit();
   return 0;
 }

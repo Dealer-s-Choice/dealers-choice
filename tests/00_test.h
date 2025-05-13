@@ -3,7 +3,9 @@
 #endif
 #include <assert.h>
 
+#include "game.h"
 #include "net.h"
+#include "server.h"
 
 #define _MAIN_HEAD_                                                                                \
   int main(int argc, char *argv[]) {                                                               \

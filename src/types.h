@@ -33,30 +33,28 @@
 
 #define MAX_PLAYERS 5
 
-#define WINDOW_WIDTH 1024
-#define WINDOW_HEIGHT 480
-
 struct pos_t {
   int x;
   int y;
 };
 
-struct preset_player_pos_t {
-  struct pos_t pos[MAX_PLAYERS];
-};
-
 struct player_t {
   char name[256];
-  int8_t id;
-  struct pos_t pos;
+  uint8_t id;
   struct hand_t hand;
-  int chips;
+  uint32_t chips;
+  bool in; // Used for spectators or when someone has folded
+  uint32_t total_paid;
 };
 
 struct game_state_t {
-  int pot;
-  int8_t dealer_id;
+  uint32_t pot;
+  uint32_t current_bet;
+  uint8_t dealer_id;
+  uint32_t turn_id;
   bool at_menu;
+  uint8_t player_count;
+  uint32_t total_bets_plus_raises;
   struct player_t player[MAX_PLAYERS];
 };
 

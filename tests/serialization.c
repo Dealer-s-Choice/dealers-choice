@@ -24,8 +24,18 @@ void test_player(void) {
 
 void test_game_state(void) {
   struct game_state_t game_state = {0};
-  game_state = (struct game_state_t){
-      .pot = 500, .at_menu = true, .player[0] = {.name = "Foo", .id = 1, .chips = 20000}};
+  game_state = (struct game_state_t){.pot = 500,
+                                     .current_bet = 100,
+                                     .turn_id = 3,
+                                     .at_menu = true,
+                                     .total_bets_plus_raises = 623,
+                                     .player[0] = {
+                                         .name = "Foo",
+                                         .id = 0,
+                                         .chips = 20000,
+                                         .in = true,
+                                         .total_paid = 50,
+                                     }};
 
   size_t size = 0;
   uint8_t *data = serialize_game_state(&game_state, &size);
@@ -43,8 +53,13 @@ void test_game_state(void) {
   assert(game_state_receiver.pot == 500);
   assert(game_state_receiver.at_menu == true);
   assert(strcmp(game_state_receiver.player[0].name, "Foo") == 0);
-  assert(game_state_receiver.player[0].id == 1);
+  assert(game_state_receiver.current_bet == 100);
+  assert(game_state_receiver.total_bets_plus_raises == 623);
+  assert(game_state_receiver.turn_id == 3);
+  assert(game_state_receiver.player[0].id == 0);
   assert(game_state_receiver.player[0].chips == 20000);
+  assert(game_state_receiver.player[0].in);
+  assert(game_state_receiver.player[0].total_paid == 50);
 }
 
 _MAIN_HEAD_

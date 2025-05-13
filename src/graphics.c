@@ -77,15 +77,15 @@ void init_sdl_window(struct sdl_context_t *sdl_context, const char *title, int w
   sdl_context->renderer = SDL_CreateRenderer(sdl_context->window, -1, SDL_RENDERER_ACCELERATED);
   if (!sdl_context->renderer)
     puts(SDL_GetError());
-  return;
-}
 
-struct pos_t get_window_center_pos(SDL_Window *window) {
-  struct pos_t pos, w_center_pos;
-  SDL_GetWindowSize(window, &pos.x, &pos.y);
-  w_center_pos.x = pos.x / 2;
-  w_center_pos.y = pos.y / 2;
-  return w_center_pos;
+  int x, y;
+  SDL_GetWindowSize(sdl_context->window, &x, &y);
+  sdl_context->win_center.x = x / 2;
+  sdl_context->win_center.y = y / 2;
+  sdl_context->window_width = w;
+  sdl_context->window_height = h;
+
+  return;
 }
 
 TTF_Font *open_font(const struct font_args_t *args) {
@@ -169,6 +169,36 @@ void render_text(SDL_Renderer *renderer, TTF_Font *font, const char *text, SDL_C
   SDL_DestroyTexture(texture);
 }
 
+void render_text_plain(SDL_Renderer *renderer, TTF_Font *font, const char *text, SDL_Color color,
+                       SDL_Rect *dest) {
+  if (!text)
+    text = "";
+
+  SDL_Surface *surface = TTF_RenderUTF8_Blended(font, *text ? text : " ", color);
+  if (!surface) {
+    fprintf(stderr, "TTF_RenderUTF8_Blended error: %s\n", TTF_GetError());
+    return;
+  }
+
+  SDL_Texture *texture = SDL_CreateTextureFromSurface(renderer, surface);
+  if (!texture) {
+    fprintf(stderr, "SDL_CreateTextureFromSurface error: %s\n", SDL_GetError());
+    SDL_FreeSurface(surface);
+    return;
+  }
+
+  dest->w = surface->w;
+  dest->h = surface->h;
+
+  SDL_RenderCopy(renderer, texture, NULL, dest);
+
+  int text_width;
+  TTF_SizeUTF8(font, text, &text_width, NULL);
+
+  SDL_FreeSurface(surface);
+  SDL_DestroyTexture(texture);
+}
+
 struct button_t create_button(const char *text, SDL_Renderer *renderer, struct pos_t *pos,
                               TTF_Font *font) {
   struct button_t button = {
@@ -192,7 +222,7 @@ void render_button(struct button_t *button) {
 
   // Adjust intensity scale based on hover state
   float lighten_factor = (button->hovered && button->enabled) ? 0.5f : 0.3f;
-  float darken_factor = (button->hovered  && button->enabled) ? 0.5f : 0.7f;
+  float darken_factor = (button->hovered && button->enabled) ? 0.5f : 0.7f;
 
   // Compute lighter and darker shades of the background color
   Uint8 light_r = button->bg_color.r + (Uint8)((255 - button->bg_color.r) * lighten_factor);
@@ -249,4 +279,5 @@ void render_button(struct button_t *button) {
 void do_sdl_cleanup(struct sdl_context_t *sdl_context) {
   SDL_DestroyRenderer(sdl_context->renderer);
   SDL_DestroyWindow(sdl_context->window);
+  SDL_Quit();
 }
