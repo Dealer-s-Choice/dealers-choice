@@ -469,7 +469,9 @@ void run_sdl_loop(struct game_state_t *game_state, struct sdl_context_t *sdl_con
         } while (ptr != active_players);
 
         char winner_text[512] = {0};
-        snprintf(winner_text, sizeof winner_text, "%s won!", game_state->player[ptr->id].name);
+        snprintf(winner_text, sizeof winner_text, "%s wins with %s",
+                 game_state->player[ptr->id].name,
+                 pokeval_ranks[pokeval_evaluate_hand(game_state->player[ptr->id].hand)]);
         SDL_Rect dest = {sdl_context->win_center.x, sdl_context->win_center.y - 50, 80, 20};
         render_text_plain(sdl_context->renderer, font->fonts[OTHER], winner_text,
                           get_color(COLOR_BLACK), &dest);
