@@ -107,10 +107,9 @@ static void broadcast_game_state(TCPsocket *clients, int client_count,
     if (!clients[i])
       continue;
 
-    struct pokeval_hand_t hand_tmp;
+    struct pokeval_hand_t hand_tmp = {0};
     if (game_state->winner_declared && game_state->player_count != 1) {
       for (int z = 0; z < client_count; z++) {
-        memcpy(&hand_tmp, &game_state->player[z].hand, sizeof(struct pokeval_hand_t));
         memcpy(&game_state->player[z].hand, &fow->hand[z], sizeof(struct pokeval_hand_t));
       }
     } else {
@@ -123,7 +122,7 @@ static void broadcast_game_state(TCPsocket *clients, int client_count,
     if (!data)
       return;
 
-    if (game_state->player_count > 1)
+    if (!game_state->winner_declared || game_state->player_count == 1)
       memcpy(&game_state->player[i].hand, &hand_tmp, sizeof(struct pokeval_hand_t));
 
     uint32_t size_net = htonl(size);
