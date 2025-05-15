@@ -2,7 +2,7 @@
 
 void test_player(void) {
   struct player_t player = {0};
-  player = (struct player_t){.name = "Foo", .id = 1, .chips = 20000};
+  player = (struct player_t){.name = "Foo", .id = 1, .coins = 20000};
 
   size_t size = 0;
   uint8_t *data = serialize_player(&player, &size);
@@ -19,20 +19,19 @@ void test_player(void) {
 
   assert(strcmp(player_receiver.name, "Foo") == 0);
   assert(player_receiver.id == 1);
-  assert(player_receiver.chips == 20000);
+  assert(player_receiver.coins == 20000);
 }
 
 void test_game_state(void) {
   struct game_state_t game_state = {0};
   game_state = (struct game_state_t){.pot = 500,
-                                     .current_bet = 100,
                                      .turn_id = 3,
                                      .at_menu = true,
                                      .total_bets_plus_raises = 623,
                                      .player[0] = {
                                          .name = "Foo",
                                          .id = 0,
-                                         .chips = 20000,
+                                         .coins = 20000,
                                          .in = true,
                                          .total_paid = 50,
                                      }};
@@ -53,11 +52,10 @@ void test_game_state(void) {
   assert(game_state_receiver.pot == 500);
   assert(game_state_receiver.at_menu == true);
   assert(strcmp(game_state_receiver.player[0].name, "Foo") == 0);
-  assert(game_state_receiver.current_bet == 100);
   assert(game_state_receiver.total_bets_plus_raises == 623);
   assert(game_state_receiver.turn_id == 3);
   assert(game_state_receiver.player[0].id == 0);
-  assert(game_state_receiver.player[0].chips == 20000);
+  assert(game_state_receiver.player[0].coins == 20000);
   assert(game_state_receiver.player[0].in);
   assert(game_state_receiver.player[0].total_paid == 50);
 }

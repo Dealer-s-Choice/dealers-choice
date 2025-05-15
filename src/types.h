@@ -40,21 +40,24 @@ struct pos_t {
 
 struct player_t {
   char name[256];
-  uint8_t id;
-  struct hand_t hand;
-  uint32_t chips;
+  int8_t id;
+  struct pokeval_hand_t hand;
+  int32_t coins;
   bool in; // Used for spectators or when someone has folded
   uint32_t total_paid;
+  bool winner;
+  bool has_checked;
 };
 
 struct game_state_t {
   uint32_t pot;
-  uint32_t current_bet;
-  uint8_t dealer_id;
-  uint32_t turn_id;
+  int8_t dealer_id;
+  int32_t turn_id;
   bool at_menu;
   uint8_t player_count;
   uint32_t total_bets_plus_raises;
+  bool round_over;
+  bool winner_declared;
   struct player_t player[MAX_PLAYERS];
 };
 

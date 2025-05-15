@@ -5,7 +5,7 @@ _MAIN_HEAD_
 struct game_state_t game_state;
 init_game_state(&game_state);
 
-for (uint8_t i = 0; i < 3; i++) {
+for (int i = 0; i < 3; i++) {
   game_state.player[i].id = i;
   game_state.player[i].in = true;
 }

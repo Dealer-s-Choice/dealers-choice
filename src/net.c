@@ -41,9 +41,11 @@ static void fill_player_message(struct player_message_builder_t *builder,
 
   // ID and Chips
   builder->msg.id = src->id;
-  builder->msg.chips = src->chips;
+  builder->msg.coins = src->coins;
   builder->msg.in = src->in;
   builder->msg.total_paid = src->total_paid;
+  builder->msg.winner = src->winner;
+  builder->msg.has_checked = src->has_checked;
 
   // Hand
   for (int i = 0; i < HAND_SIZE; ++i) {
@@ -66,9 +68,11 @@ static void fill_player_from_message(struct player_t *dst, const Player *msg) {
     snprintf(dst->name, sizeof(dst->name), "%s", msg->name);
 
   dst->id = msg->id;
-  dst->chips = msg->chips;
+  dst->coins = msg->coins;
   dst->in = msg->in;
   dst->total_paid = msg->total_paid;
+  dst->winner = msg->winner;
+  dst->has_checked = msg->has_checked;
 
   if (msg->hand) {
     size_t n = msg->hand->n_card < HAND_SIZE ? msg->hand->n_card : HAND_SIZE;
@@ -84,12 +88,13 @@ uint8_t *serialize_game_state(const struct game_state_t *src, size_t *size_out) 
 
   // Pot
   msg.pot = src->pot;
-  msg.current_bet = src->current_bet;
   msg.dealer_id = src->dealer_id;
   msg.turn_id = src->turn_id;
   msg.at_menu = src->at_menu;
   msg.total_bets_plus_raises = src->total_bets_plus_raises;
   msg.player_count = src->player_count;
+  msg.round_over = src->round_over;
+  msg.winner_declared = src->winner_declared;
 
   // player
   Player *player_msgs[MAX_PLAYERS];
@@ -125,12 +130,13 @@ struct game_state_t deserialize_game_state(const uint8_t *data, size_t size) {
   }
 
   result.pot = msg->pot;
-  result.current_bet = msg->current_bet;
   result.dealer_id = msg->dealer_id;
   result.turn_id = msg->turn_id;
   result.at_menu = msg->at_menu;
-  result.player_count = msg->player_count;
   result.total_bets_plus_raises = msg->total_bets_plus_raises;
+  result.player_count = msg->player_count;
+  result.round_over = msg->round_over;
+  result.winner_declared = msg->winner_declared;
 
   size_t n = msg->n_player < MAX_PLAYERS ? msg->n_player : MAX_PLAYERS;
   for (size_t i = 0; i < n; ++i) {

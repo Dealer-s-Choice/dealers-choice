@@ -37,7 +37,7 @@
 #define MAX_CLIENTS 5
 
 struct fow_t {
-  struct hand_t hand[MAX_PLAYERS];
+  struct pokeval_hand_t hand[MAX_PLAYERS];
   bool face_down[HAND_SIZE];
 };
 
@@ -62,21 +62,24 @@ static void print_ipaddress(const IPaddress *ip) {
 }
 
 void init_game_state(struct game_state_t *game_state) {
-  for (uint8_t i = 0; i < MAX_PLAYERS; i++) {
+  for (int i = 0; i < MAX_PLAYERS; i++) {
     game_state->player[i] = (struct player_t){
-        .id = i,
-        .chips = 20000,
+        .id = -1,
+        .coins = 20000,
         .in = false,
         .total_paid = 0,
+        .winner = false,
+        .has_checked = false,
     };
     snprintf(game_state->player[i].name, sizeof game_state->player[i].name, "Player %d", i);
   }
 
   game_state->dealer_id = 0;
-  game_state->current_bet = 0;
   game_state->at_menu = true;
   game_state->player_count = 0;
   game_state->total_bets_plus_raises = 0;
+  game_state->winner_declared = false;
+  game_state->round_over = true;
 }
 
 struct fow_t deal_cards_to_players(struct game_state_t *game_state, const struct dh_deck *deck,
@@ -104,16 +107,24 @@ static void broadcast_game_state(TCPsocket *clients, int client_count,
     if (!clients[i])
       continue;
 
-    struct hand_t hand_tmp;
-    memcpy(&hand_tmp, &game_state->player[i].hand, sizeof(struct hand_t));
-    memcpy(&game_state->player[i].hand, &fow->hand[i], sizeof(struct hand_t));
+    struct pokeval_hand_t hand_tmp;
+    if (game_state->winner_declared && game_state->player_count != 1) {
+      for (int z = 0; z < client_count; z++) {
+        memcpy(&hand_tmp, &game_state->player[z].hand, sizeof(struct pokeval_hand_t));
+        memcpy(&game_state->player[z].hand, &fow->hand[z], sizeof(struct pokeval_hand_t));
+      }
+    } else {
+      memcpy(&hand_tmp, &game_state->player[i].hand, sizeof(struct pokeval_hand_t));
+      memcpy(&game_state->player[i].hand, &fow->hand[i], sizeof(struct pokeval_hand_t));
+    }
 
     size_t size = 0;
     uint8_t *data = serialize_game_state(game_state, &size);
     if (!data)
       return;
 
-    memcpy(&game_state->player[i].hand, &hand_tmp, sizeof(struct hand_t));
+    if (game_state->player_count > 1)
+      memcpy(&game_state->player[i].hand, &hand_tmp, sizeof(struct pokeval_hand_t));
 
     uint32_t size_net = htonl(size);
 
@@ -161,14 +172,14 @@ static int8_t recv_player_action(TCPsocket sock, struct player_action_msg_t *out
 
 static void server_handle_call(struct game_state_t *game_state, const uint8_t turn_id) {
   uint32_t owed = game_state->total_bets_plus_raises - game_state->player[turn_id].total_paid;
-  game_state->player[turn_id].chips -= owed;
+  game_state->player[turn_id].coins -= owed;
   game_state->player[turn_id].total_paid += owed;
   game_state->pot += owed;
 }
 
 static void server_handle_bet(struct game_state_t *game_state, const uint8_t turn_id,
                               const uint32_t amount) {
-  game_state->player[turn_id].chips -= amount;
+  game_state->player[turn_id].coins -= amount;
   game_state->player[turn_id].total_paid += amount;
   game_state->total_bets_plus_raises += amount;
   game_state->pot += amount;
@@ -183,11 +194,13 @@ static void server_handle_raise(struct game_state_t *game_state, const uint8_t t
 }
 
 static void handle_round(SDLNet_SocketSet socket_set, TCPsocket *clients, const int client_count,
-                         struct game_state_t *game_state, struct player_list_t *active_players,
+                         struct game_state_t *game_state, struct player_list_t *dealer,
                          struct fow_t *fow) {
-  struct player_list_t *starting_player = active_players;
+  struct player_list_t *starting_player = dealer->next;
+  struct player_list_t *turn = starting_player;
   do {
-    game_state->turn_id = active_players->id;
+    game_state->round_over = false;
+    game_state->turn_id = turn->id;
     fprintf(stderr, "Waiting for action from %d\n", game_state->turn_id);
     broadcast_game_state(clients, client_count, game_state, fow);
 
@@ -204,6 +217,7 @@ static void handle_round(SDLNet_SocketSet socket_set, TCPsocket *clients, const 
           uint8_t turn_id = game_state->turn_id;
           switch (action.action) {
           case ACTION_CHECK:
+            game_state->player[turn_id].has_checked = true;
             break;
           case ACTION_BET:
             server_handle_bet(game_state, turn_id, action.amount);
@@ -229,20 +243,65 @@ static void handle_round(SDLNet_SocketSet socket_set, TCPsocket *clients, const 
       }
       SDL_Delay(50); // avoid busy-waiting
     }
-    active_players = active_players->next;
+    turn = turn->next;
 
-    fprintf(stderr, "player %d / total paid: %d\n", active_players->id,
-            game_state->player[active_players->id].total_paid);
+    fprintf(stderr, "player %d / total paid: %d\n", turn->id,
+            game_state->player[turn->id].total_paid);
     fprintf(stderr, "total_bets_plus_raises: %d\n", game_state->total_bets_plus_raises);
 
-    if (active_players == starting_player && game_state->total_bets_plus_raises == 0)
-      break;
+    if (game_state->player_count == 1) {
+      struct player_list_t *ptr = turn;
+      if (game_state->player[ptr->id].in) {
+        game_state->player[ptr->id].winner = true;
+        game_state->player[ptr->id].coins += game_state->pot;
+        game_state->pot = 0;
+        break;
+      }
+      ptr = ptr->next;
+    }
 
-    if (active_players == starting_player &&
-        (game_state->total_bets_plus_raises == game_state->player[active_players->id].total_paid))
+    if (game_state->total_bets_plus_raises == 0) {
+      // Everyone checked
+      if (turn == starting_player)
+        break;
+    } else if (game_state->total_bets_plus_raises == game_state->player[turn->id].total_paid)
       break;
 
   } while (true);
+  if (game_state->player_count != 1) {
+    uint8_t pl_count = game_state->player_count;
+    struct pokeval_need_comparing_t need_comparing[pl_count];
+    struct player_list_t *ptr = starting_player;
+    for (int i = 0; i < pl_count; i++) {
+      need_comparing[i].won = false;
+      need_comparing[i].id = ptr->id;
+      need_comparing[i].hand = game_state->player[ptr->id].hand;
+      ptr = ptr->next;
+    }
+
+    uint8_t num_winners = pokeval_compare_hands(need_comparing, pl_count);
+    for (int i = 0; i < pl_count; i++) {
+      if (need_comparing[i].won == false)
+        continue;
+      game_state->player[need_comparing[i].id].winner = true;
+      fprintf(stderr, "winner id: %d\n", need_comparing[i].id);
+      game_state->player[need_comparing[i].id].coins += game_state->pot / num_winners;
+    }
+    game_state->pot = 0;
+  }
+  game_state->winner_declared = true;
+  game_state->round_over = true;
+}
+
+static void reset_players(struct game_state_t *game_state) {
+  for (int i = 0; i < MAX_PLAYERS; i++) {
+    if (game_state->player[i].id == -1)
+      continue;
+    game_state->player[i].in = true;
+    game_state->player[i].total_paid = 0;
+    game_state->player[i].winner = false;
+    game_state->player[i].has_checked = false;
+  }
 }
 
 int run_server(void) {
@@ -287,7 +346,6 @@ int run_server(void) {
   struct dh_deck deck;
   dh_init_deck(&deck);
   dh_pcg_srand_auto();
-  dh_shuffle_deck(&deck);
 
   int game_started = 0;
   int client_count = 0;
@@ -309,6 +367,7 @@ int run_server(void) {
       }
 
       // TODO: [client_count] will get changed as new player connect and disconnect
+      game_state.player[client_count].id = client_count;
       game_state.player[client_count].in = true;
 
       int32_t net_player_id = htonl(client_count);
@@ -319,7 +378,7 @@ int run_server(void) {
       client_count++;
     }
 
-    if (client_count >= 2) {
+    while (client_count >= 2) {
       SDLNet_CheckSockets(socket_set, 0);
       if (SDLNet_SocketReady(clients[game_state.dealer_id])) {
         uint8_t game_type;
@@ -335,10 +394,21 @@ int run_server(void) {
         if (!active_players)
           exit(EXIT_FAILURE);
 
+        dh_shuffle_deck(&deck);
+        struct player_list_t *dealer = active_players;
+
         fow = deal_cards_to_players(&game_state, &deck, active_players);
-        handle_round(socket_set, clients, client_count, &game_state, active_players, &fow);
+        game_state.winner_declared = false;
+        game_state.total_bets_plus_raises = 0;
+        handle_round(socket_set, clients, client_count, &game_state, dealer, &fow);
         broadcast_game_state(clients, client_count, &game_state, &fow);
         free_player_list(active_players);
+        Uint32 wait_ms = 10000; // wait up to 10 seconds before presenting the game menu
+        Uint32 start = SDL_GetTicks();
+        while (SDL_GetTicks() - start < wait_ms)
+          game_state.at_menu = true;
+        reset_players(&game_state);
+        broadcast_game_state(clients, client_count, &game_state, &fow);
       }
     }
 

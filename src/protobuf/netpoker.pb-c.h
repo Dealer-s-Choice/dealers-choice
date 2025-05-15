@@ -64,34 +64,37 @@ struct  Player
 {
   ProtobufCMessage base;
   char *name;
-  uint32_t id;
+  int32_t id;
   Pos *pos;
   Hand *hand;
-  uint32_t chips;
+  int32_t coins;
   protobuf_c_boolean in;
   uint32_t total_paid;
+  protobuf_c_boolean winner;
+  protobuf_c_boolean has_checked;
 };
 #define PLAYER__INIT \
  { PROTOBUF_C_MESSAGE_INIT (&player__descriptor) \
-, (char *)protobuf_c_empty_string, 0, NULL, NULL, 0, 0, 0 }
+, (char *)protobuf_c_empty_string, 0, NULL, NULL, 0, 0, 0, 0, 0 }
 
 
 struct  GameState
 {
   ProtobufCMessage base;
   uint32_t pot;
-  uint32_t current_bet;
-  uint32_t dealer_id;
-  uint32_t turn_id;
+  int32_t dealer_id;
+  int32_t turn_id;
   protobuf_c_boolean at_menu;
   uint32_t player_count;
   uint32_t total_bets_plus_raises;
+  protobuf_c_boolean round_over;
+  protobuf_c_boolean winner_declared;
   size_t n_player;
   Player **player;
 };
 #define GAME_STATE__INIT \
  { PROTOBUF_C_MESSAGE_INIT (&game_state__descriptor) \
-, 0, 0, 0, 0, 0, 0, 0, 0,NULL }
+, 0, 0, 0, 0, 0, 0, 0, 0, 0,NULL }
 
 
 /* Card methods */
