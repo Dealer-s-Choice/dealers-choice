@@ -491,9 +491,6 @@ void run_sdl_loop(struct game_state_t *game_state, struct sdl_context_t *sdl_con
         }
       }
 
-      // fprintf(stderr, "winner_id: %d\n", game_state->winner_id);
-      fprintf(stderr, "player_count: %d\n", game_state->player_count);
-
       cards_dealt = true;
       char buffer[128];
       snprintf(buffer, sizeof(buffer), "pot: %d", game_state->pot);

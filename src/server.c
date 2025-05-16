@@ -271,22 +271,23 @@ static void handle_round(SDLNet_SocketSet socket_set, TCPsocket *clients, const 
     uint8_t pl_count = game_state->player_count;
     struct pokeval_need_comparing_t need_comparing[pl_count];
     struct player_list_t *ptr = starting_player;
-    for (int i = 0; i < pl_count; i++) {
+    for (uint8_t i = 0; i < pl_count; i++) {
       need_comparing[i].won = false;
       need_comparing[i].id = ptr->id;
-      need_comparing[i].hand = game_state->player[ptr->id].hand;
+      memcpy(&need_comparing[i].hand, &fow->hand[ptr->id], sizeof (struct pokeval_hand_t));
       ptr = ptr->next;
     }
 
     uint8_t num_winners = pokeval_compare_hands(need_comparing, pl_count);
     for (int i = 0; i < pl_count; i++) {
-      if (need_comparing[i].won == false)
+      if (!need_comparing[i].won)
         continue;
       game_state->player[need_comparing[i].id].winner = true;
       fprintf(stderr, "winner id: %d\n", need_comparing[i].id);
-      game_state->player[need_comparing[i].id].coins += game_state->pot / num_winners;
+      uint32_t share = game_state->pot / num_winners;
+      game_state->pot = game_state->pot % num_winners;
+      game_state->player[need_comparing[i].id].coins += share;
     }
-    game_state->pot = 0;
   }
   game_state->winner_declared = true;
   game_state->round_over = true;
