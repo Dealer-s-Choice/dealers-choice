@@ -82,20 +82,18 @@ void init_game_state(struct game_state_t *game_state) {
   game_state->round_over = true;
 }
 
-struct fow_t deal_cards_to_players(struct game_state_t *game_state, const struct dh_deck *deck,
-                                   struct player_list_t *active_players) {
+static struct fow_t deal_cards_to_players(struct game_state_t *game_state, struct dh_deck *deck,
+                                          struct player_list_t *active_players) {
   struct fow_t fow = {0};
   struct player_list_t *dealer = active_players;
-  int player_index = 0;
 
   do {
     int id = active_players->id;
     for (int i = 0; i < HAND_SIZE; ++i) {
       game_state->player[id].hand.card[i] = dh_card_back;
-      fow.hand[id].card[i] = deck->card[i + HAND_SIZE * player_index];
+      fow.hand[id].card[i] = dh_deal_top_card(deck);
     }
     active_players = active_players->next;
-    ++player_index;
   } while (active_players != dealer);
 
   return fow;
@@ -274,7 +272,7 @@ static void handle_round(SDLNet_SocketSet socket_set, TCPsocket *clients, const 
     for (uint8_t i = 0; i < pl_count; i++) {
       need_comparing[i].won = false;
       need_comparing[i].id = ptr->id;
-      memcpy(&need_comparing[i].hand, &fow->hand[ptr->id], sizeof (struct pokeval_hand_t));
+      memcpy(&need_comparing[i].hand, &fow->hand[ptr->id], sizeof(struct pokeval_hand_t));
       ptr = ptr->next;
     }
 
@@ -343,8 +341,7 @@ int run_server(void) {
     return 1;
   }
 
-  struct dh_deck deck;
-  dh_init_deck(&deck);
+  struct dh_deck deck = dh_get_new_deck();
   dh_pcg_srand_auto();
 
   int game_started = 0;
