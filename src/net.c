@@ -28,7 +28,7 @@
 
 #include "net.h"
 
-const char *default_port = "61357";
+const uint16_t default_port = 22777;
 
 static void fill_player_message(struct player_message_builder_t *builder,
                                 const struct player_t *src) {

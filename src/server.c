@@ -313,7 +313,7 @@ int run_server(void) {
   }
 
   IPaddress ip;
-  if (SDLNet_ResolveHost(&ip, NULL, 61357) == -1) {
+  if (SDLNet_ResolveHost(&ip, NULL, default_port) == -1) {
     fprintf(stderr, "Failed to resolve host: %s\n", SDLNet_GetError());
     SDLNet_Quit();
     SDL_Quit();

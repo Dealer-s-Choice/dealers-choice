@@ -43,7 +43,7 @@
 
 #define BACKLOG 10
 
-extern const char *default_port;
+extern const uint16_t default_port;
 
 struct player_message_builder_t {
   // These types come from the generated protobuf header file
