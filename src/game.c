@@ -145,7 +145,9 @@ static int menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet s
         return 1;
       } else if (e.type == SDL_MOUSEBUTTONDOWN) {
         if (point_in_rect(mx, my, &button_5_card_draw.rect) && game_state->dealer_id == my_id) {
-          if (send_game_select(client_socket, GAME_5_CARD_DRAW) != 0)
+          if (send_game_select(client_socket, GAME_5_CARD_DRAW) == 0)
+            puts("Game type sent");
+          else
             return -1;
           running = false;
         }
