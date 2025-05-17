@@ -60,6 +60,7 @@ void free_player_list(struct player_list_t *head) {
 struct player_list_t *create_player_list(struct game_state_t *game_state) {
   struct player_list_t *root = NULL;
   struct player_list_t *tail = NULL;
+  game_state->player_count = 0;
 
   for (int i = 0; i < MAX_PLAYERS; i++) {
     if (game_state->player[i].in == false)
@@ -297,7 +298,7 @@ void run_sdl_loop(struct game_state_t *game_state, struct sdl_context_t *sdl_con
 
   const struct pos_t player_pos[MAX_PLAYERS] = {
       // P0: bottom center
-      {.x = sdl_context->window_width / 3, .y = sdl_context->window_height - 80},
+      {.x = sdl_context->window_width / 3, .y = sdl_context->window_height * 0.8},
 
       // P1: left, 1/3 down
       {.x = 20, .y = sdl_context->window_height / 3},
@@ -352,11 +353,12 @@ void run_sdl_loop(struct game_state_t *game_state, struct sdl_context_t *sdl_con
         create_button(action[i], sdl_context->renderer, &butt_pos, font->fonts[OTHER]);
   }
 
+  int card_width = 80, card_height = 50;
+
   struct player_list_t *active_players = NULL;
   struct player_list_t *dealer = NULL;
   int running = 1;
   bool cards_dealt = false;
-  bool has_checked = false;
   while (running) {
     recv_game_state(client_socket, socket_set, game_state);
     // fprintf(stderr, "turn_id: %d\n", game_state->turn_id);
@@ -382,7 +384,6 @@ void run_sdl_loop(struct game_state_t *game_state, struct sdl_context_t *sdl_con
               fprintf(stderr, "Failed to fold\n");
           } else if (point_in_rect(mx, my, &action_button[CHECK].rect)) {
             puts("checking");
-            has_checked = true;
             if (send_player_action(client_socket, ACTION_CHECK, 0) != 0)
               fprintf(stderr, "Failed to check\n");
           } else if (point_in_rect(mx, my, &action_button[RAISE].rect)) {
@@ -424,7 +425,7 @@ void run_sdl_loop(struct game_state_t *game_state, struct sdl_context_t *sdl_con
           int card_y = player_pos[id].y;
 
           // Draw white card box
-          SDL_Rect card_rect = {card_x, card_y, 80, 50};
+          SDL_Rect card_rect = {card_x, card_y, card_width, card_height};
           SDL_SetRenderDrawColor(sdl_context->renderer, 255, 255, 255, 255);
           SDL_RenderFillRect(sdl_context->renderer, &card_rect);
           SDL_SetRenderDrawColor(sdl_context->renderer, 0, 0, 0, 255);
@@ -454,19 +455,29 @@ void run_sdl_loop(struct game_state_t *game_state, struct sdl_context_t *sdl_con
       }
 
       // bool is_round_over = false;
-      if (game_state->player_count == 1) {
-        int i;
-        for (i = 0; i < MAX_PLAYERS; i++)
-          if (game_state->player[i].in)
+      if (game_state->round_over)
+        cards_dealt = false;
+
+      struct player_list_t *ptr = active_players;
+      if (game_state->winner_declared) {
+        do {
+          if (game_state->player[ptr->id].winner == true)
             break;
+
+          ptr = ptr->next;
+
+        } while (ptr != active_players);
+
         char winner_text[512] = {0};
-        snprintf(winner_text, sizeof winner_text, "%s won!", game_state->player[i].name);
+        snprintf(winner_text, sizeof winner_text, "%s wins with %s",
+                 game_state->player[ptr->id].name,
+                 pokeval_ranks[pokeval_evaluate_hand(game_state->player[ptr->id].hand)]);
         SDL_Rect dest = {sdl_context->win_center.x, sdl_context->win_center.y - 50, 80, 20};
         render_text_plain(sdl_context->renderer, font->fonts[OTHER], winner_text,
                           get_color(COLOR_BLACK), &dest);
       } else {
         if (game_state->turn_id == my_id) {
-          if (game_state->total_bets_plus_raises == 0 && !has_checked) {
+          if (game_state->total_bets_plus_raises == 0 && !game_state->player[my_id].has_checked) {
             render_button(&action_button[BET]);
             render_button(&action_button[CHECK]);
             render_button(&action_button[FOLD]);
@@ -489,12 +500,22 @@ void run_sdl_loop(struct game_state_t *game_state, struct sdl_context_t *sdl_con
 
       do {
         int id = active_players->id;
-        draw_silver_coin(sdl_context->renderer, player_pos[id].x, player_pos[id].y - 50);
+        struct pos_t coin_pos = {.x = player_pos[id].x + (card_width * 1.2),
+                                 .y = player_pos[id].y - (card_height * 0.9)};
+        draw_silver_coin(sdl_context->renderer, coin_pos.x, coin_pos.y);
         char coins_text[24] = {0};
-        snprintf(coins_text, sizeof coins_text, " = %d", game_state->player[id].chips);
-        SDL_Rect dest = {player_pos[id].x + 30, player_pos[id].y - 50, 40, 20};
+        snprintf(coins_text, sizeof coins_text, "= %d", game_state->player[id].coins);
+        SDL_Rect dest = {coin_pos.x + 30, coin_pos.y - 20, 40, 20};
         render_text_plain(sdl_context->renderer, font->fonts[OTHER], coins_text,
                           get_color(COLOR_BLACK), &dest);
+
+        // TODO: get the sizeof game_state_t [name]
+        char name_text[512] = {0};
+        snprintf(name_text, sizeof name_text, "%s", game_state->player[id].name);
+        SDL_Rect dest_name = {player_pos[id].x + 30, player_pos[id].y + (card_height * 1.2), 40,
+                              20};
+        render_text_plain(sdl_context->renderer, font->fonts[OTHER], name_text,
+                          get_color(COLOR_BLACK), &dest_name);
 
         active_players = active_players->next;
       } while (active_players != dealer);
