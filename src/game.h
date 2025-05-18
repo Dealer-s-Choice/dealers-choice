@@ -63,6 +63,7 @@ typedef enum {
 } game_type_t;
 
 #define MSG_PLAYER_ACTION 0x0002
+#define SIZE_MESSAGE_GAME_SELECT 3
 
 struct player_action_msg_t {
   uint8_t action;
