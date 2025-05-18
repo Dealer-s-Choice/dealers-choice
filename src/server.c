@@ -176,6 +176,12 @@ static void server_handle_call(struct game_state_t *game_state, const uint8_t tu
   game_state->pot += owed;
 }
 
+static void server_handle_ante(struct game_state_t *game_state, const int8_t id,
+                               const uint32_t amount) {
+  game_state->player[id].coins -= amount;
+  game_state->pot += amount;
+}
+
 static void server_handle_bet(struct game_state_t *game_state, const uint8_t turn_id,
                               const uint32_t amount) {
   game_state->player[turn_id].coins -= amount;
@@ -197,6 +203,10 @@ static void handle_round(SDLNet_SocketSet socket_set, TCPsocket *clients, const 
                          struct fow_t *fow) {
   struct player_list_t *starting_player = dealer->next;
   struct player_list_t *turn = starting_player;
+  do {
+    server_handle_ante(game_state, turn->id, 250);
+  } while ((turn = turn->next) != starting_player);
+
   do {
     game_state->round_over = false;
     game_state->turn_id = turn->id;
