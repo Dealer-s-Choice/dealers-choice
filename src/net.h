@@ -62,6 +62,9 @@ struct player_t deserialize_player(const uint8_t *data, size_t size);
 
 int send_all_tcp(TCPsocket sock, const void *data, size_t length);
 
-int recv_all_tcp(TCPsocket sock, void *data, size_t length);
+int recv_all_tcp(TCPsocket sock, void *data, int32_t length);
+
+int recv_game_state(TCPsocket client_socket, SDLNet_SocketSet socket_set,
+                    struct game_state_t *game_state);
 
 #endif

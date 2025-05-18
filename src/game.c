@@ -93,23 +93,6 @@ struct player_list_t *create_player_list(struct game_state_t *game_state) {
   return root;
 }
 
-static void recv_game_state(TCPsocket client_socket, SDLNet_SocketSet socket_set,
-                            struct game_state_t *game_state) {
-  if (SDLNet_CheckSockets(socket_set, 0) > 0 && SDLNet_SocketReady(client_socket)) {
-    uint32_t size_net = 0;
-    if (recv_all_tcp(client_socket, &size_net, sizeof(size_net)) == 0) {
-      uint32_t size = ntohl(size_net);
-      uint8_t *buffer = malloc(size);
-      if (buffer) {
-        if (recv_all_tcp(client_socket, buffer, size) == 0)
-          *game_state = deserialize_game_state(buffer, size);
-
-        free(buffer);
-      }
-    }
-  }
-}
-
 static int8_t send_game_select(TCPsocket sock, uint8_t game_type) {
   uint8_t buffer[3];
   buffer[0] = (MSG_GAME_SELECT >> 8) & 0xFF;
@@ -134,7 +117,9 @@ static int menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet s
 
   bool running = true;
   while (running && game_state->at_menu) {
-    recv_game_state(client_socket, socket_set, game_state);
+    if (recv_game_state(client_socket, socket_set, game_state) == -1)
+      return -1;
+
     SDL_Event e;
     while (SDL_PollEvent(&e)) {
       int mx = e.button.x;
@@ -362,7 +347,8 @@ void run_sdl_loop(struct game_state_t *game_state, struct sdl_context_t *sdl_con
   int running = 1;
   bool cards_dealt = false;
   while (running) {
-    recv_game_state(client_socket, socket_set, game_state);
+    if (recv_game_state(client_socket, socket_set, game_state) != 0)
+      running = false;
     // fprintf(stderr, "turn_id: %d\n", game_state->turn_id);
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
@@ -456,10 +442,8 @@ void run_sdl_loop(struct game_state_t *game_state, struct sdl_context_t *sdl_con
         } while (active_players != dealer);
       }
 
-      // bool is_round_over = false;
       if (game_state->round_over)
         cards_dealt = false;
-
       struct player_list_t *ptr = active_players;
       if (game_state->winner_declared) {
         do {

@@ -59,37 +59,17 @@ int run_client(const char *addr, struct sdl_context_t *sdl_context, struct font_
     fputs("Socket set full\n", stderr);
 
   int32_t net_player_id;
-  recv_all_tcp(client_socket, &net_player_id, sizeof(int32_t)); // Must match exactly
-  int8_t my_id = ntohl(net_player_id);
-  printf("Assigned id %d by server\n", my_id);
+  uint32_t my_id;
+  if (recv_all_tcp(client_socket, &net_player_id, sizeof(int32_t)) > 0) {
+    my_id = ntohl(net_player_id);
+    printf("Assigned id %d by server\n", my_id);
+  } else {
+    goto cleanup;
+  }
 
   struct game_state_t game_state = {0};
-  uint32_t size_net = 0;
-  if (SDLNet_TCP_Recv(client_socket, &size_net, sizeof(size_net)) != sizeof(size_net)) {
-    fprintf(stderr, "Failed to receive game state size\n");
+  if (recv_game_state(client_socket, socket_set, &game_state) != 0)
     goto cleanup;
-  }
-
-  uint32_t size = ntohl(size_net);
-  uint8_t *buffer = malloc(size);
-  if (!buffer) {
-    perror("malloc");
-    goto cleanup;
-  }
-
-  size_t received = 0;
-  while (received < size) {
-    int r = SDLNet_TCP_Recv(client_socket, buffer + received, size - received);
-    if (r <= 0) {
-      fprintf(stderr, "Connection lost while receiving\n");
-      free(buffer);
-      goto cleanup;
-    }
-    received += r;
-  }
-
-  game_state = deserialize_game_state(buffer, size);
-  free(buffer);
 
   run_sdl_loop(&game_state, sdl_context, font, client_socket, socket_set, my_id);
 

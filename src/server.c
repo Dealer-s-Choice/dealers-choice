@@ -139,22 +139,24 @@ static void broadcast_game_state(TCPsocket *clients, int active_clients,
 static int8_t recv_game_select(TCPsocket sock, uint8_t *out_game_type) {
   uint8_t buffer[3];
 
-  if (recv_all_tcp(sock, buffer, sizeof(buffer)) != 0)
-    return -1;
+  int bytes_n;
+  if ((bytes_n = recv_all_tcp(sock, buffer, sizeof(buffer))) <= 0)
+    return bytes_n;
 
   uint16_t opcode = (buffer[0] << 8) | buffer[1];
   if (opcode != MSG_GAME_SELECT)
     return -1;
 
   *out_game_type = buffer[2];
-  return 0;
+  return bytes_n;
 }
 
-static int8_t recv_player_action(TCPsocket sock, struct player_action_msg_t *out_action) {
+static int recv_player_action(TCPsocket sock, struct player_action_msg_t *out_action) {
   uint8_t buffer[7];
 
-  if (recv_all_tcp(sock, buffer, sizeof(buffer)) != 0)
-    return -1;
+  int n_bytes;
+  if ((n_bytes = recv_all_tcp(sock, buffer, sizeof(buffer))) <= 0)
+    return n_bytes;
 
   uint16_t opcode = (buffer[0] << 8) | buffer[1];
   if (opcode != MSG_PLAYER_ACTION)
@@ -164,7 +166,7 @@ static int8_t recv_player_action(TCPsocket sock, struct player_action_msg_t *out
   out_action->amount = ((uint32_t)buffer[3] << 24) | ((uint32_t)buffer[4] << 16) |
                        ((uint32_t)buffer[5] << 8) | ((uint32_t)buffer[6]);
 
-  return 0;
+  return n_bytes;
 }
 
 static void server_handle_call(struct game_state_t *game_state, const uint8_t turn_id) {
@@ -209,7 +211,7 @@ static void handle_round(SDLNet_SocketSet socket_set, TCPsocket *clients, const 
         puts("socket ready");
 
         struct player_action_msg_t action;
-        if (recv_player_action(clients[game_state->turn_id], &action) == 0) {
+        if (recv_player_action(clients[game_state->turn_id], &action) > 0) {
           printf("Received action %u with amount %u\n", action.action, action.amount);
           uint8_t turn_id = game_state->turn_id;
           switch (action.action) {
@@ -302,8 +304,29 @@ static void reset_players(struct game_state_t *game_state) {
   }
 }
 
-static void handle_disconnections(TCPsocket *clients, SDLNet_SocketSet socket_set, bool *slot_taken,
+static void remove_disconnected_player(TCPsocket *clients, SDLNet_SocketSet socket_set,
+                                       bool *slot_taken, struct game_state_t *game_state,
+                                       const int i) {
+  if (SDLNet_TCP_DelSocket(socket_set, clients[i]) == -1) {
+    puts(SDL_GetError());
+    return;
+  }
+
+  SDLNet_TCP_Close(clients[i]);
+  clients[i] = NULL;
+  slot_taken[i] = false;
+
+  // Reset player info
+  game_state->player[i].total_paid = 0;
+  game_state->player[i].winner = false;
+  game_state->player[i].has_checked = false;
+  game_state->player[i].in = false;
+  game_state->player[i].id = -1;
+}
+
+static bool handle_disconnections(TCPsocket *clients, SDLNet_SocketSet socket_set, bool *slot_taken,
                                   struct game_state_t *game_state) {
+  bool someone_disconnected = false;
   for (int i = 0; i < MAX_CLIENTS; i++) {
     if (!slot_taken[i])
       continue;
@@ -313,15 +336,8 @@ static void handle_disconnections(TCPsocket *clients, SDLNet_SocketSet socket_se
       int result = SDLNet_TCP_Recv(clients[i], &tmp, 1);
       if (result <= 0) {
         printf("Client %d disconnected\n", i);
-        SDLNet_TCP_DelSocket(socket_set, clients[i]);
-        SDLNet_TCP_Close(clients[i]);
-        clients[i] = NULL;
-        slot_taken[i] = false;
-
-        // Reset player info
-        reset_players(game_state);
-        game_state->player[i].in = false;
-        game_state->player[i].id = -1;
+        remove_disconnected_player(clients, socket_set, slot_taken, game_state, i);
+        someone_disconnected = true;
         // Clear more fields if your struct includes game progress, bet, etc.
       } else {
         // Optional: put `tmp` in a buffer if you want to process it later
@@ -329,6 +345,7 @@ static void handle_disconnections(TCPsocket *clients, SDLNet_SocketSet socket_se
       }
     }
   }
+  return someone_disconnected;
 }
 
 static int count_active_clients(const bool *slot_taken) {
@@ -414,7 +431,8 @@ int run_server(void) {
   while (!game_started) {
     int num_ready = SDLNet_CheckSockets(socket_set, 0);
     if (num_ready > 0)
-      handle_disconnections(clients, socket_set, slot_taken, &game_state);
+      if (handle_disconnections(clients, socket_set, slot_taken, &game_state) && active_clients > 0)
+        broadcast_game_state(clients, active_clients, &game_state, &fow);
 
     TCPsocket new_client = SDLNet_TCP_Accept(server);
     if (new_client) {
@@ -465,9 +483,17 @@ int run_server(void) {
       }
     }
 
-    while ((active_clients = count_active_clients(slot_taken)) >= 2) {
-      handle_disconnections(clients, socket_set, slot_taken, &game_state);
-      printf("Active clients: %d\n", active_clients);
+    while (true) {
+      int result = SDLNet_CheckSockets(socket_set, 50);
+      if (result == -1) {
+        fputs(SDLNet_GetError(), stderr);
+        break;
+      }
+
+      if ((active_clients = count_active_clients(slot_taken)) < 2)
+        break;
+
+      // printf("Active players >= 2\n");
 
       if (reassign_dealer_if_needed(&game_state, slot_taken))
         broadcast_game_state(clients, active_clients, &game_state, &fow);
@@ -475,16 +501,18 @@ int run_server(void) {
       if (game_state.dealer_id == -1)
         break; // No valid dealer
 
-      printf("Checking if dealer %d socket is ready...\n", game_state.dealer_id);
-
-      SDLNet_CheckSockets(socket_set, 0);
+      // printf("Checking if dealer %d socket is ready...\n", game_state.dealer_id);
       if (SDLNet_SocketReady(clients[game_state.dealer_id])) {
         uint8_t game_type;
-        if (recv_game_select(clients[game_state.dealer_id], &game_type) == 0) {
+        if (recv_game_select(clients[game_state.dealer_id], &game_type) ==
+            SIZE_MESSAGE_GAME_SELECT) {
           printf("Client chose game type: 0x%02x\n", game_type);
         } else {
           fprintf(stderr, "Dealer failed to send valid game type or disconnected.\n");
-          SDL_Delay(100);
+          remove_disconnected_player(clients, socket_set, slot_taken, &game_state,
+                                     game_state.dealer_id);
+          broadcast_game_state(clients, active_clients, &game_state, &fow);
+          SDL_Delay(10);
           continue;
         }
 
@@ -496,6 +524,10 @@ int run_server(void) {
 
         dh_shuffle_deck(&deck);
         struct player_list_t *dealer = active_players;
+        do {
+          if (dealer->id == game_state.dealer_id)
+            break;
+        } while ((dealer = dealer->next));
 
         fow = deal_cards_to_players(&game_state, &deck, active_players);
         game_state.winner_declared = false;
@@ -516,12 +548,15 @@ int run_server(void) {
         int next_dealer = get_next_dealer(game_state.dealer_id, slot_taken);
         if (next_dealer != -1) {
           game_state.dealer_id = next_dealer;
+          broadcast_game_state(clients, active_clients, &game_state, &fow);
           printf("Dealer rotated to player %d\n", next_dealer);
         } else {
           printf("No valid dealer found after rotation\n");
           game_state.dealer_id = -1;
         }
       }
+      if (handle_disconnections(clients, socket_set, slot_taken, &game_state))
+        broadcast_game_state(clients, active_clients, &game_state, &fow);
     }
     SDL_Delay(50);
   }
