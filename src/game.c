@@ -158,10 +158,12 @@ static int menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet s
     for (int i = 0; i < MAX_PLAYERS; i++) {
       if (game_state->player[i].in) {
         offset_y += 40;
-
+        char tmp[sizeof(game_state->player[i].name) + 20] = {0};
+        snprintf(tmp, sizeof tmp, "%s%s", game_state->player[i].name,
+                 game_state->dealer_id == i ? " (Dealer)" : "");
         SDL_Rect text_pos = {offset_x, offset_y, 0, 0};
-        render_text_plain(sdl_context->renderer, font->fonts[OTHER], game_state->player[i].name,
-                          get_color(COLOR_WHITE), &text_pos);
+        render_text_plain(sdl_context->renderer, font->fonts[OTHER], tmp, get_color(COLOR_WHITE),
+                          &text_pos);
       }
     }
 
