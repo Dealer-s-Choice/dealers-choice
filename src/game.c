@@ -104,10 +104,10 @@ static int8_t send_game_select(TCPsocket sock, uint8_t game_type) {
 
 static int menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet socket_set,
                                      const int8_t my_id, struct game_state_t *game_state,
-                                     SDL_Renderer *renderer, struct font_t *font) {
+                                     struct sdl_context_t *sdl_context, struct font_t *font) {
   struct button_t button_5_card_draw = {
       .text = "5-card draw",
-      .renderer = renderer,
+      .renderer = sdl_context->renderer,
       .bg_color = get_color(COLOR_BLACK),
       .fg_color = get_color(COLOR_YELLOW),
       .rect = {100, 160, 200, 40},
@@ -140,22 +140,32 @@ static int menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet s
     }
 
     // Clear screen
-    clear_screen(renderer);
+    clear_screen(sdl_context->renderer);
 
     render_button(&button_5_card_draw);
 
+    SDL_Point status_pos = {
+        sdl_context->window_width * .1,
+        sdl_context->window_height / 2,
+    };
+    int offset_x = status_pos.x, offset_y = status_pos.y;
+
+    SDL_Rect text_connected = {offset_x, offset_y, 0, 0};
+    render_text_plain(sdl_context->renderer, font->fonts[OTHER],
+                      "Connected players:", get_color(COLOR_BLACK), &text_connected);
+    offset_x += 10;
+
     for (int i = 0; i < MAX_PLAYERS; i++) {
       if (game_state->player[i].in) {
-        SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-        SDL_Rect input_box = make_rect(100, 250 + (i * 40), 200, 40);
-        SDL_RenderDrawRect(renderer, &input_box);
-        SDL_Rect input_text_pos = {input_box.x, input_box.y, 0, 0};
-        render_text(renderer, font->fonts[OTHER], game_state->player[i].name,
-                    get_color(COLOR_WHITE), &input_text_pos);
+        offset_y += 40;
+
+        SDL_Rect text_pos = {offset_x, offset_y, 0, 0};
+        render_text_plain(sdl_context->renderer, font->fonts[OTHER], game_state->player[i].name,
+                          get_color(COLOR_WHITE), &text_pos);
       }
     }
 
-    SDL_RenderPresent(renderer);
+    SDL_RenderPresent(sdl_context->renderer);
     SDL_Delay(16);
   }
 
@@ -388,8 +398,8 @@ void run_sdl_loop(struct game_state_t *game_state, struct sdl_context_t *sdl_con
     }
     clear_screen(sdl_context->renderer);
     if (game_state->at_menu) {
-      if (menu_display_game_choices(client_socket, socket_set, my_id, game_state,
-                                    sdl_context->renderer, font) != 0) {
+      if (menu_display_game_choices(client_socket, socket_set, my_id, game_state, sdl_context,
+                                    font) != 0) {
         running = false;
       } else {
         continue;
