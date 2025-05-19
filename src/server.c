@@ -191,9 +191,15 @@ static void server_handle_call(game_state_t *game_state, const uint8_t turn_id) 
   game_state->pot += owed;
 }
 
-static void server_handle_ante(game_state_t *game_state, const int8_t id, const uint32_t amount) {
-  game_state->player[id].coins -= amount;
-  game_state->pot += amount;
+static void server_handle_ante(game_state_t *game_state, struct player_list_t *head,
+                               const uint32_t amount) {
+  struct player_list_t *turn = head;
+  do {
+    if (game_state->player[turn->id].in) {
+      game_state->player[turn->id].coins -= amount;
+      game_state->pot += amount;
+    }
+  } while ((turn = turn->next) != head);
 }
 
 static void server_handle_bet(game_state_t *game_state, const uint8_t turn_id,
@@ -216,10 +222,6 @@ static void handle_round(SDLNet_SocketSet socket_set, args_broadcast_game_state_
                          struct player_list_t *dealer) {
   struct player_list_t *starting_player = dealer->next;
   struct player_list_t *turn = starting_player;
-
-  do {
-    server_handle_ante(args->game_state, turn->id, 250);
-  } while ((turn = turn->next) != starting_player);
 
   do {
     args->game_state->round_over = false;
@@ -405,6 +407,12 @@ static int get_next_dealer(int current, const bool *slot_taken) {
   return -1; // No valid dealer
 }
 
+static void game_five_card_draw(args_broadcast_game_state_t *args, SDLNet_SocketSet socket_set,
+                                struct player_list_t *dealer) {
+  server_handle_ante(args->game_state, dealer, 250);
+  handle_round(socket_set, args, dealer);
+}
+
 int run_server(void) {
   game_state_t game_state = {0};
   init_game_state(&game_state);
@@ -563,7 +571,15 @@ int run_server(void) {
         fow = deal_cards_to_players(&game_state, &deck, active_players);
         game_state.winner_declared = false;
         game_state.total_bets_plus_raises = 0;
-        handle_round(socket_set, &args_broadcast_game_state, dealer);
+
+        switch (game_type) {
+        case GAME_5_CARD_DRAW:
+          game_five_card_draw(&args_broadcast_game_state, socket_set, dealer);
+          break;
+        default:
+          break;
+        }
+
         broadcast_game_state(&args_broadcast_game_state);
         free_player_list(active_players);
 
