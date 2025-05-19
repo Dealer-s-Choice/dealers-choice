@@ -61,7 +61,7 @@ static void print_ipaddress(const IPaddress *ip) {
   printf("%s:%u\n", ipaddr, SDL_SwapBE16(ip->port));
 }
 
-void init_game_state(struct game_state_t *game_state) {
+void init_game_state(game_state_t *game_state) {
   for (int i = 0; i < MAX_PLAYERS; i++) {
     game_state->player[i] = (struct player_t){
         .id = -1,
@@ -82,7 +82,7 @@ void init_game_state(struct game_state_t *game_state) {
   game_state->round_over = true;
 }
 
-static struct fow_t deal_cards_to_players(struct game_state_t *game_state, struct dh_deck *deck,
+static struct fow_t deal_cards_to_players(game_state_t *game_state, struct dh_deck *deck,
                                           struct player_list_t *active_players) {
   struct fow_t fow = {0};
   struct player_list_t *dealer = active_players;
@@ -99,8 +99,8 @@ static struct fow_t deal_cards_to_players(struct game_state_t *game_state, struc
   return fow;
 }
 
-static void broadcast_game_state(TCPsocket *clients, int active_clients,
-                                 struct game_state_t *game_state, struct fow_t *fow) {
+static void broadcast_game_state(TCPsocket *clients, int active_clients, game_state_t *game_state,
+                                 struct fow_t *fow) {
   for (int i = 0; i < active_clients; ++i) {
     if (!clients[i])
       continue;
@@ -169,20 +169,19 @@ static int recv_player_action(TCPsocket sock, struct player_action_msg_t *out_ac
   return n_bytes;
 }
 
-static void server_handle_call(struct game_state_t *game_state, const uint8_t turn_id) {
+static void server_handle_call(game_state_t *game_state, const uint8_t turn_id) {
   uint32_t owed = game_state->total_bets_plus_raises - game_state->player[turn_id].total_paid;
   game_state->player[turn_id].coins -= owed;
   game_state->player[turn_id].total_paid += owed;
   game_state->pot += owed;
 }
 
-static void server_handle_ante(struct game_state_t *game_state, const int8_t id,
-                               const uint32_t amount) {
+static void server_handle_ante(game_state_t *game_state, const int8_t id, const uint32_t amount) {
   game_state->player[id].coins -= amount;
   game_state->pot += amount;
 }
 
-static void server_handle_bet(struct game_state_t *game_state, const uint8_t turn_id,
+static void server_handle_bet(game_state_t *game_state, const uint8_t turn_id,
                               const uint32_t amount) {
   game_state->player[turn_id].coins -= amount;
   game_state->player[turn_id].total_paid += amount;
@@ -192,14 +191,14 @@ static void server_handle_bet(struct game_state_t *game_state, const uint8_t tur
 
 // On Ubuntu 24.04 arm64: error: conflicting types for ‘raise’; so I've given
 // this a more unique name now
-static void server_handle_raise(struct game_state_t *game_state, const uint8_t turn_id,
+static void server_handle_raise(game_state_t *game_state, const uint8_t turn_id,
                                 const uint32_t amount) {
   server_handle_call(game_state, turn_id);
   server_handle_bet(game_state, turn_id, amount);
 }
 
 static void handle_round(SDLNet_SocketSet socket_set, TCPsocket *clients, const int active_clients,
-                         struct game_state_t *game_state, struct player_list_t *dealer,
+                         game_state_t *game_state, struct player_list_t *dealer,
                          struct fow_t *fow) {
   struct player_list_t *starting_player = dealer->next;
   struct player_list_t *turn = starting_player;
@@ -303,7 +302,7 @@ static void handle_round(SDLNet_SocketSet socket_set, TCPsocket *clients, const 
   game_state->round_over = true;
 }
 
-static void reset_players(struct game_state_t *game_state) {
+static void reset_players(game_state_t *game_state) {
   for (int i = 0; i < MAX_PLAYERS; i++) {
     if (game_state->player[i].id == -1)
       continue;
@@ -315,8 +314,7 @@ static void reset_players(struct game_state_t *game_state) {
 }
 
 static void remove_disconnected_player(TCPsocket *clients, SDLNet_SocketSet socket_set,
-                                       bool *slot_taken, struct game_state_t *game_state,
-                                       const int i) {
+                                       bool *slot_taken, game_state_t *game_state, const int i) {
   if (SDLNet_TCP_DelSocket(socket_set, clients[i]) == -1) {
     puts(SDL_GetError());
     return;
@@ -335,7 +333,7 @@ static void remove_disconnected_player(TCPsocket *clients, SDLNet_SocketSet sock
 }
 
 static bool handle_disconnections(TCPsocket *clients, SDLNet_SocketSet socket_set, bool *slot_taken,
-                                  struct game_state_t *game_state) {
+                                  game_state_t *game_state) {
   bool someone_disconnected = false;
   for (int i = 0; i < MAX_CLIENTS; i++) {
     if (!slot_taken[i])
@@ -366,7 +364,7 @@ static int count_active_clients(const bool *slot_taken) {
   return count;
 }
 
-static bool reassign_dealer_if_needed(struct game_state_t *game_state, bool *slot_taken) {
+static bool reassign_dealer_if_needed(game_state_t *game_state, bool *slot_taken) {
   if (!slot_taken[game_state->dealer_id]) {
     for (int i = 0; i < MAX_CLIENTS; i++) {
       if (slot_taken[i]) {
@@ -392,7 +390,7 @@ static int get_next_dealer(int current, const bool *slot_taken) {
 }
 
 int run_server(void) {
-  struct game_state_t game_state = {0};
+  game_state_t game_state = {0};
   init_game_state(&game_state);
   game_state.pot = 0;
 

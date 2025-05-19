@@ -23,18 +23,18 @@ void test_player(void) {
 }
 
 void test_game_state(void) {
-  struct game_state_t game_state = {0};
-  game_state = (struct game_state_t){.pot = 500,
-                                     .turn_id = 3,
-                                     .at_menu = true,
-                                     .total_bets_plus_raises = 623,
-                                     .player[0] = {
-                                         .name = "Foo",
-                                         .id = 0,
-                                         .coins = 20000,
-                                         .in = true,
-                                         .total_paid = 50,
-                                     }};
+  game_state_t game_state = {0};
+  game_state = (game_state_t){.pot = 500,
+                              .turn_id = 3,
+                              .at_menu = true,
+                              .total_bets_plus_raises = 623,
+                              .player[0] = {
+                                  .name = "Foo",
+                                  .id = 0,
+                                  .coins = 20000,
+                                  .in = true,
+                                  .total_paid = 50,
+                              }};
 
   size_t size = 0;
   uint8_t *data = serialize_game_state(&game_state, &size);
@@ -45,7 +45,7 @@ void test_game_state(void) {
   size = ntohl(size_net);
   fprintf(stderr, "after conversion: %zu\n", size);
 
-  struct game_state_t game_state_receiver = deserialize_game_state(data, size);
+  game_state_t game_state_receiver = deserialize_game_state(data, size);
 
   free(data);
 

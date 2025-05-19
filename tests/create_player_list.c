@@ -2,7 +2,7 @@
 
 _MAIN_HEAD_
 
-struct game_state_t game_state;
+game_state_t game_state;
 init_game_state(&game_state);
 
 for (int i = 0; i < 3; i++) {

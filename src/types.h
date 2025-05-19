@@ -49,7 +49,7 @@ struct player_t {
   bool has_checked;
 };
 
-struct game_state_t {
+typedef struct {
   uint32_t pot;
   int8_t dealer_id;
   int32_t turn_id;
@@ -59,6 +59,6 @@ struct game_state_t {
   bool round_over;
   bool winner_declared;
   struct player_t player[MAX_PLAYERS];
-};
+} game_state_t;
 
 #endif
