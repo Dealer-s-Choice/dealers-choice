@@ -105,12 +105,28 @@ static int8_t send_game_select(TCPsocket sock, uint8_t game_type) {
 static int menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet socket_set,
                                      const int8_t my_id, game_state_t *game_state,
                                      struct sdl_context_t *sdl_context, struct font_t *font) {
+
+// TODO: Now that we're adding more buttons, this will get refactored to prevent
+// duplication (and gobs and gobs of code).
+  int y_offset = 160;
+  int button_height = 40;
   struct button_t button_5_card_draw = {
       .text = "5-card draw",
       .renderer = sdl_context->renderer,
       .bg_color = get_color(COLOR_BLACK),
       .fg_color = get_color(COLOR_YELLOW),
-      .rect = {100, 160, 200, 40},
+      .rect = {100, y_offset, 200, button_height},
+      .font = font->fonts[OTHER],
+      .enabled = true,
+  };
+
+  y_offset += button_height * 1.1;
+  struct button_t button_5_card_stud = {
+      .text = "5-card stud",
+      .renderer = sdl_context->renderer,
+      .bg_color = get_color(COLOR_BLACK),
+      .fg_color = get_color(COLOR_YELLOW),
+      .rect = {100, y_offset, 200, button_height},
       .font = font->fonts[OTHER],
       .enabled = true,
   };
@@ -125,7 +141,9 @@ static int menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet s
       int mx = e.button.x;
       int my = e.button.y;
       button_5_card_draw.enabled = (game_state->dealer_id == my_id);
+      button_5_card_stud.enabled = (game_state->dealer_id == my_id);
       button_5_card_draw.hovered = SDL_PointInRect(&(SDL_Point){mx, my}, &button_5_card_draw.rect);
+      button_5_card_stud.hovered = SDL_PointInRect(&(SDL_Point){mx, my}, &button_5_card_stud.rect);
       if (e.type == SDL_QUIT) {
         return 1;
       } else if (e.type == SDL_MOUSEBUTTONDOWN) {
@@ -135,6 +153,14 @@ static int menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet s
           else
             return -1;
           running = false;
+        } else {
+          if (point_in_rect(mx, my, &button_5_card_stud.rect) && game_state->dealer_id == my_id) {
+            if (send_game_select(client_socket, GAME_5_CARD_STUD) == 0)
+              puts("Game type sent");
+            else
+              return -1;
+            running = false;
+          }
         }
       }
     }
@@ -143,6 +169,7 @@ static int menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet s
     clear_screen(sdl_context->renderer);
 
     render_button(&button_5_card_draw);
+    render_button(&button_5_card_stud);
 
     SDL_Point status_pos = {
         sdl_context->window_width * .1,
@@ -218,6 +245,10 @@ static int8_t send_player_action(TCPsocket sock, uint8_t action, uint32_t amount
 
 static bool is_dh_card_back(struct dh_card a) {
   return a.face_val == dh_card_back.face_val && a.suit == dh_card_back.suit;
+}
+
+static bool is_dh_card_null(struct dh_card a) {
+  return a.face_val == dh_card_null.face_val && a.suit == dh_card_null.suit;
 }
 
 static void draw_filled_circle(SDL_Renderer *renderer, int cx, int cy, int radius,
@@ -430,11 +461,11 @@ void run_sdl_loop(game_state_t *game_state, struct sdl_context_t *sdl_context, s
           SDL_SetRenderDrawColor(sdl_context->renderer, 0, 0, 0, 255);
           SDL_RenderDrawRect(sdl_context->renderer, &card_rect);
 
-          if (is_dh_card_back(game_state->player[id].hand.card[card_n]) == false)
+          if (is_dh_card_back(game_state->player[id].hand.card[card_n]))
+            draw_card_back_pattern(sdl_context->renderer, &card_rect);
+          else if (is_dh_card_null(game_state->player[id].hand.card[card_n]) == false)
             render_card(game_state, sdl_context->renderer, font->fonts[CARD], card_n, id, card_x,
                         card_y);
-          else
-            draw_card_back_pattern(sdl_context->renderer, &card_rect);
 
           if (!cards_dealt) {
             Uint32 start = SDL_GetTicks();

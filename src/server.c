@@ -45,7 +45,7 @@ typedef struct {
   SDLNet_SocketSet *socket_set;
   int *active_clients;
   game_state_t *game_state;
-  RealHand *real_hand;
+  const RealHand *real_hand;
   bool (*slot_taken)[MAX_CLIENTS];
 } args_broadcast_game_state_t;
 
@@ -66,6 +66,7 @@ static void remove_disconnected_player(TCPsocket *clients, SDLNet_SocketSet sock
 
 static bool handle_disconnections(TCPsocket *clients, SDLNet_SocketSet socket_set, bool *slot_taken,
                                   game_state_t *game_state);
+
 static void print_ipaddress(const IPaddress *ip) {
   char ipaddr[INET6_ADDRSTRLEN];
   Uint32 host = SDL_SwapBE32(ip->host);
@@ -419,6 +420,35 @@ static void game_five_card_draw(args_broadcast_game_state_t *args, SDLNet_Socket
   handle_round(socket_set, args, dealer);
 }
 
+static void game_five_card_stud(args_broadcast_game_state_t *args, SDLNet_SocketSet socket_set,
+                                struct player_list_t *head) {
+  struct player_list_t *turn = head;
+  do {
+    int id = turn->id;
+    struct pokeval_hand_t *hand = &args->game_state->player[id].hand;
+    hand->card[0] = dh_card_back;
+    hand->card[1] = args->real_hand->player[id].card[1];
+    for (int i = 2; i < HAND_SIZE; i++)
+      hand->card[i] = dh_card_null;
+    } while ((turn = turn->next) != head);
+
+  handle_round(socket_set, args, head);
+}
+
+static void play_game(const char game_type, args_broadcast_game_state_t *args,
+                      SDLNet_SocketSet socket_set, struct player_list_t *dealer) {
+  switch (game_type) {
+  case GAME_5_CARD_DRAW:
+    game_five_card_draw(args, socket_set, dealer);
+    break;
+  case GAME_5_CARD_STUD:
+    game_five_card_stud(args, socket_set, dealer);
+    break;
+  default:
+    break;
+  }
+}
+
 int run_server(void) {
   game_state_t game_state = {0};
   init_game_state(&game_state);
@@ -579,14 +609,7 @@ int run_server(void) {
         real_hand = deal_cards_to_players(&game_state, &deck, active_players);
         game_state.winner_declared = false;
         game_state.total_bets_plus_raises = 0;
-
-        switch (game_type) {
-        case GAME_5_CARD_DRAW:
-          game_five_card_draw(&args_broadcast_game_state, socket_set, dealer);
-          break;
-        default:
-          break;
-        }
+        play_game(game_type, &args_broadcast_game_state, socket_set, dealer);
 
         broadcast_game_state(&args_broadcast_game_state);
         free_player_list(active_players);
