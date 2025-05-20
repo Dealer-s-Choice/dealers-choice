@@ -106,8 +106,8 @@ static int menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet s
                                      const int8_t my_id, game_state_t *game_state,
                                      struct sdl_context_t *sdl_context, struct font_t *font) {
 
-// TODO: Now that we're adding more buttons, this will get refactored to prevent
-// duplication (and gobs and gobs of code).
+  // TODO: Now that we're adding more buttons, this will get refactored to prevent
+  // duplication (and gobs and gobs of code).
   int y_offset = 160;
   int button_height = 40;
   struct button_t button_5_card_draw = {
@@ -456,10 +456,12 @@ void run_sdl_loop(game_state_t *game_state, struct sdl_context_t *sdl_context, s
 
           // Draw white card box
           SDL_Rect card_rect = {card_x, card_y, card_width, card_height};
-          SDL_SetRenderDrawColor(sdl_context->renderer, 255, 255, 255, 255);
-          SDL_RenderFillRect(sdl_context->renderer, &card_rect);
-          SDL_SetRenderDrawColor(sdl_context->renderer, 0, 0, 0, 255);
-          SDL_RenderDrawRect(sdl_context->renderer, &card_rect);
+          if (is_dh_card_null(game_state->player[id].hand.card[card_n]) == false) {
+            SDL_SetRenderDrawColor(sdl_context->renderer, 255, 255, 255, 255);
+            SDL_RenderFillRect(sdl_context->renderer, &card_rect);
+            SDL_SetRenderDrawColor(sdl_context->renderer, 0, 0, 0, 255);
+            SDL_RenderDrawRect(sdl_context->renderer, &card_rect);
+          }
 
           if (is_dh_card_back(game_state->player[id].hand.card[card_n]))
             draw_card_back_pattern(sdl_context->renderer, &card_rect);
