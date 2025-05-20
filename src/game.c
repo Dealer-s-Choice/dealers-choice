@@ -499,10 +499,14 @@ void run_sdl_loop(game_state_t *game_state, struct sdl_context_t *sdl_context, s
 
         } while (ptr != active_players);
 
-        char winner_text[512] = {0};
-        snprintf(winner_text, sizeof winner_text, "%s wins with %s",
-                 game_state->player[ptr->id].name,
-                 pokeval_ranks[pokeval_evaluate_hand(game_state->player[ptr->id].hand)]);
+        char winner_text[sizeof(game_state->player[ptr->id].name) + 64] = {0};
+        if (game_state->player_count > 1)
+          snprintf(winner_text, sizeof winner_text, "%s wins with %s",
+                   game_state->player[ptr->id].name,
+                   pokeval_ranks[pokeval_evaluate_hand(game_state->player[ptr->id].hand)]);
+        else
+          snprintf(winner_text, sizeof winner_text, "%s wins", game_state->player[ptr->id].name);
+
         SDL_Rect dest = {sdl_context->win_center.x, sdl_context->win_center.y - 50, 80, 20};
         render_text_plain(sdl_context->renderer, font->fonts[OTHER], winner_text,
                           get_color(COLOR_BLACK), &dest);
@@ -540,8 +544,7 @@ void run_sdl_loop(game_state_t *game_state, struct sdl_context_t *sdl_context, s
         render_text_plain(sdl_context->renderer, font->fonts[OTHER], coins_text,
                           get_color(COLOR_BLACK), &dest);
 
-        // TODO: get the sizeof game_state_t [name]
-        char name_text[512] = {0};
+        char name_text[sizeof(game_state->player[id].name)] = {0};
         snprintf(name_text, sizeof name_text, "%s", game_state->player[id].name);
         SDL_Rect dest_name = {player_pos[id].x + 30, player_pos[id].y + (card_height * 1.2), 40,
                               20};
