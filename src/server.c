@@ -675,7 +675,8 @@ int run_server(void) {
         Uint32 wait_ms = 10000; // wait up to 10 seconds before presenting the game menu
         Uint32 start = SDL_GetTicks();
         while (SDL_GetTicks() - start < wait_ms)
-          game_state.at_menu = true;
+          ;
+        game_state.at_menu = true;
 
         reset_players(&game_state);
         broadcast_game_state(&args_broadcast_game_state);
