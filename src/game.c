@@ -434,6 +434,7 @@ void run_sdl_loop(game_state_t *game_state, struct sdl_context_t *sdl_context, s
                                     font) != 0) {
         running = false;
       } else {
+        cards_dealt = false;
         continue;
       }
     } else {
