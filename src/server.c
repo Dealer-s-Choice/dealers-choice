@@ -36,19 +36,16 @@
 
 #define MAX_CLIENTS 5
 
-struct fow_t {
-  struct pokeval_hand_t hand[MAX_PLAYERS];
-  bool face_down[HAND_SIZE];
-};
-
-typedef void (*count_active_clients_p)(const bool *slot_taken);
+typedef struct {
+  struct pokeval_hand_t player[MAX_PLAYERS];
+} RealHand;
 
 typedef struct {
   TCPsocket (*clients)[MAX_CLIENTS];
   SDLNet_SocketSet *socket_set;
   int *active_clients;
   game_state_t *game_state;
-  struct fow_t *fow;
+  RealHand *real_hand;
   bool (*slot_taken)[MAX_CLIENTS];
 } args_broadcast_game_state_t;
 
@@ -104,21 +101,21 @@ void init_game_state(game_state_t *game_state) {
   game_state->round_over = true;
 }
 
-static struct fow_t deal_cards_to_players(game_state_t *game_state, struct dh_deck *deck,
+static RealHand deal_cards_to_players(game_state_t *game_state, struct dh_deck *deck,
                                           struct player_list_t *active_players) {
-  struct fow_t fow = {0};
+  RealHand real_hand = {0};
   struct player_list_t *dealer = active_players;
 
   do {
     int id = active_players->id;
     for (int i = 0; i < HAND_SIZE; ++i) {
       game_state->player[id].hand.card[i] = dh_card_back;
-      fow.hand[id].card[i] = dh_deal_top_card(deck);
+      real_hand.player[id].card[i] = dh_deal_top_card(deck);
     }
     active_players = active_players->next;
   } while (active_players != dealer);
 
-  return fow;
+  return real_hand;
 }
 
 static void broadcast_game_state(args_broadcast_game_state_t *args) {
@@ -129,12 +126,12 @@ static void broadcast_game_state(args_broadcast_game_state_t *args) {
     struct pokeval_hand_t hand_tmp = {0};
     if (args->game_state->winner_declared && args->game_state->player_count != 1) {
       for (int z = 0; z < *args->active_clients; z++) {
-        memcpy(&args->game_state->player[z].hand, &args->fow->hand[z],
+        memcpy(&args->game_state->player[z].hand, &args->real_hand->player[z],
                sizeof(struct pokeval_hand_t));
       }
     } else {
       memcpy(&hand_tmp, &args->game_state->player[i].hand, sizeof(struct pokeval_hand_t));
-      memcpy(&args->game_state->player[i].hand, &args->fow->hand[i], sizeof(struct pokeval_hand_t));
+      memcpy(&args->game_state->player[i].hand, &args->real_hand->player[i], sizeof(struct pokeval_hand_t));
     }
 
     size_t size = 0;
@@ -310,7 +307,7 @@ static void handle_round(SDLNet_SocketSet socket_set, args_broadcast_game_state_
     for (uint8_t i = 0; i < pl_count; i++) {
       need_comparing[i].won = false;
       need_comparing[i].id = ptr->id;
-      memcpy(&need_comparing[i].hand, &args->fow->hand[ptr->id], sizeof(struct pokeval_hand_t));
+      memcpy(&need_comparing[i].hand, &args->real_hand->player[ptr->id], sizeof(struct pokeval_hand_t));
       ptr = ptr->next;
     }
 
@@ -465,7 +462,7 @@ int run_server(void) {
   dh_pcg_srand_auto();
 
   int game_started = 0;
-  struct fow_t fow = {0};
+  RealHand real_hand = {0};
 
   int active_clients = 0;
   bool slot_taken[MAX_CLIENTS] = {false};
@@ -475,7 +472,7 @@ int run_server(void) {
         .socket_set = &socket_set,
         .active_clients = &active_clients,
         .game_state = &game_state,
-        .fow = &fow,
+        .real_hand = &real_hand,
         .slot_taken = &slot_taken,
     };
 
@@ -579,7 +576,7 @@ int run_server(void) {
             break;
         } while ((dealer = dealer->next));
 
-        fow = deal_cards_to_players(&game_state, &deck, active_players);
+        real_hand = deal_cards_to_players(&game_state, &deck, active_players);
         game_state.winner_declared = false;
         game_state.total_bets_plus_raises = 0;
 
