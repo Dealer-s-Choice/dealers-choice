@@ -45,9 +45,11 @@ typedef void (*count_active_clients_p)(const bool *slot_taken);
 
 typedef struct {
   TCPsocket (*clients)[MAX_CLIENTS];
+  SDLNet_SocketSet *socket_set;
   int *active_clients;
   game_state_t *game_state;
   struct fow_t *fow;
+  bool (*slot_taken)[MAX_CLIENTS];
 } args_broadcast_game_state_t;
 
 // typedef struct {
@@ -62,6 +64,11 @@ typedef struct {
 #define INET6_ADDRSTRLEN 46
 #endif
 
+static void remove_disconnected_player(TCPsocket *clients, SDLNet_SocketSet socket_set,
+                                       bool *slot_taken, game_state_t *game_state, const int i);
+
+static bool handle_disconnections(TCPsocket *clients, SDLNet_SocketSet socket_set, bool *slot_taken,
+                                  game_state_t *game_state);
 static void print_ipaddress(const IPaddress *ip) {
   char ipaddr[INET6_ADDRSTRLEN];
   Uint32 host = SDL_SwapBE32(ip->host);
@@ -143,8 +150,10 @@ static void broadcast_game_state(args_broadcast_game_state_t *args) {
     if (send_all_tcp((*args->clients)[i], &size_net, sizeof(size_net)) == -1 ||
         send_all_tcp((*args->clients)[i], data, size) == -1) {
       fprintf(stderr, "Failed to send game state to client %d\n", i);
-      SDLNet_TCP_Close((*args->clients)[i]);
-      (*args->clients)[i] = NULL;
+      // TODO: Implement retries
+      if (handle_disconnections(*args->clients, *args->socket_set, *args->slot_taken,
+                                args->game_state))
+        broadcast_game_state(args);
     }
     free(data);
   }
@@ -338,6 +347,7 @@ static void remove_disconnected_player(TCPsocket *clients, SDLNet_SocketSet sock
     return;
   }
 
+  printf("Client %d disconnected\n", i);
   SDLNet_TCP_Close(clients[i]);
   clients[i] = NULL;
   slot_taken[i] = false;
@@ -361,7 +371,6 @@ static bool handle_disconnections(TCPsocket *clients, SDLNet_SocketSet socket_se
       char tmp;
       int result = SDLNet_TCP_Recv(clients[i], &tmp, 1);
       if (result <= 0) {
-        printf("Client %d disconnected\n", i);
         remove_disconnected_player(clients, socket_set, slot_taken, game_state, i);
         someone_disconnected = true;
         // Clear more fields if your struct includes game progress, bet, etc.
@@ -463,9 +472,11 @@ int run_server(void) {
   while (!game_started) {
     args_broadcast_game_state_t args_broadcast_game_state = {
         .clients = &clients,
+        .socket_set = &socket_set,
         .active_clients = &active_clients,
         .game_state = &game_state,
         .fow = &fow,
+        .slot_taken = &slot_taken,
     };
 
     int num_ready = SDLNet_CheckSockets(socket_set, 0);
