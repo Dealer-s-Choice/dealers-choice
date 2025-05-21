@@ -87,8 +87,6 @@ void init_sdl_window(struct sdl_context_t *sdl_context, const char *title, int w
 
 SDL_Rect make_rect(int x, int y, int w, int h);
 
-bool point_in_rect(int x, int y, SDL_Rect *r);
-
 void render_text(SDL_Renderer *renderer, TTF_Font *font, const char *text, SDL_Color color,
                  SDL_Rect *dest);
 

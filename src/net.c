@@ -224,50 +224,50 @@ int recv_all_tcp(TCPsocket sock, void *data, int length) {
   return total_received;
 }
 
-int recv_game_state(TCPsocket client_socket, SDLNet_SocketSet socket_set,
+recv_status_t recv_game_state(TCPsocket client_socket, SDLNet_SocketSet socket_set,
                     game_state_t *game_state) {
   // printf("[recv_game_state] Waiting for game state...\n");
   int result = SDLNet_CheckSockets(socket_set, 100);
   if (result == -1) {
     fputs(SDLNet_GetError(), stderr);
-    return -1;
+    return RECV_ERROR;
   }
 
   if (result == 0) {
-    return 0;
+    return RECV_NOTHING;
   }
 
   if (!SDLNet_SocketReady(client_socket)) {
     printf("[recv_game_state] client_socket not ready\n");
-    return -1;
+    return RECV_ERROR;
   }
 
   uint32_t size_net = 0;
   if (recv_all_tcp(client_socket, &size_net, sizeof(size_net)) <= 0) {
     fprintf(stderr, "[recv_game_state] Disconnected while reading game state size\n");
-    return -1;
+    return RECV_ERROR;
   }
 
   uint32_t size = ntohl(size_net);
   if (size == 0 || size > 65536) {
     fprintf(stderr, "[recv_game_state] Invalid game state size: %u\n", size);
-    return -1;
+    return RECV_ERROR;
   }
 
   uint8_t *buffer = malloc(size);
   if (!buffer) {
     fprintf(stderr, "[recv_game_state] Memory allocation failed\n");
-    return -1;
+    return RECV_ERROR;
   }
 
   if (recv_all_tcp(client_socket, buffer, size) <= 0) {
     fprintf(stderr, "[recv_game_state] Disconnected while reading game state payload\n");
     free(buffer);
-    return -1;
+    return RECV_ERROR;
   }
 
   printf("[recv_game_state] Received %u bytes, deserializing...\n", size);
   *game_state = deserialize_game_state(buffer, size);
   free(buffer);
-  return 0;
+  return RECV_SUCCESS;
 }

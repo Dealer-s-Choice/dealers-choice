@@ -126,10 +126,6 @@ SDL_Rect make_rect(int x, int y, int w, int h) {
   return r;
 }
 
-bool point_in_rect(int x, int y, SDL_Rect *r) {
-  return x >= r->x && x <= (r->x + r->w) && y >= r->y && y <= (r->y + r->h);
-}
-
 void render_text(SDL_Renderer *renderer, TTF_Font *font, const char *text, SDL_Color color,
                  SDL_Rect *dest) {
   if (!text)
