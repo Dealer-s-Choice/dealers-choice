@@ -102,8 +102,7 @@ struct button_t {
   bool hovered;
   bool enabled;
 };
-struct button_t create_button(const char *text, SDL_Renderer *renderer, struct pos_t *pos,
-                              TTF_Font *font);
+
 void render_button(struct button_t *button);
 
 void render_text_centered(SDL_Renderer *renderer, TTF_Font *font, const char *text, SDL_Color color,

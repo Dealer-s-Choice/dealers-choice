@@ -104,34 +104,69 @@ static int8_t send_game_select(TCPsocket sock, uint8_t game_type) {
   return send_all_tcp(sock, buffer, sizeof(buffer));
 }
 
+typedef enum {
+  FIVE_CARD_DRAW,
+  FIVE_CARD_STUD,
+  MAX_CHOICES,
+} menu_option_t;
+
+typedef struct {
+  const menu_option_t g;
+  const char *str;
+  const game_type_t game_type;
+} GameChoice;
+
+// These two buttons for creating the buttons are mostly identical. In the future,
+// they can be changed so there are some differences if desired. Otherwise,
+// they'll be merged, and some of the values, such as the colors, will be passed
+// as arguments.
+static struct button_t create_button(const char *text, SDL_Renderer *renderer, struct pos_t *pos,
+                              TTF_Font *font) {
+  struct button_t button = {
+      .text = text,
+      .renderer = renderer,
+      .bg_color = get_color(COLOR_BLACK),
+      .fg_color = get_color(COLOR_YELLOW),
+      .rect = {pos->x, pos->y, 120, 40},
+      .font = font,
+      .hovered = false,
+      .enabled = false,
+  };
+  return button;
+}
+
+static struct button_t create_game_choice_button(const char *text, SDL_Renderer *renderer, SDL_Rect rect,
+                              TTF_Font *font) {
+  struct button_t button = {
+      .text = text,
+      .renderer = renderer,
+      .bg_color = get_color(COLOR_BLACK),
+      .fg_color = get_color(COLOR_YELLOW),
+      .rect = rect,
+      .font = font,
+      .hovered = false,
+      .enabled = false,
+  };
+  return button;
+}
+
 static int menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet socket_set,
                                      const int8_t my_id, game_state_t *game_state,
                                      struct sdl_context_t *sdl_context, struct font_t *font) {
+  static const GameChoice game_choices[] = {
+    { FIVE_CARD_DRAW, "5-card draw", GAME_5_CARD_DRAW },
+    { FIVE_CARD_STUD, "5-card stud", GAME_5_CARD_STUD }
+  };
 
-  // TODO: Now that we're adding more buttons, this will get refactored to prevent
-  // duplication (and gobs and gobs of code).
-  int y_offset = 160;
   int button_height = 40;
-  struct button_t button_5_card_draw = {
-      .text = "5-card draw",
-      .renderer = sdl_context->renderer,
-      .bg_color = get_color(COLOR_BLACK),
-      .fg_color = get_color(COLOR_YELLOW),
-      .rect = {100, y_offset, 200, button_height},
-      .font = font->fonts[OTHER],
-      .enabled = true,
-  };
-
-  y_offset += button_height * 1.1;
-  struct button_t button_5_card_stud = {
-      .text = "5-card stud",
-      .renderer = sdl_context->renderer,
-      .bg_color = get_color(COLOR_BLACK),
-      .fg_color = get_color(COLOR_YELLOW),
-      .rect = {100, y_offset, 200, button_height},
-      .font = font->fonts[OTHER],
-      .enabled = true,
-  };
+  int y_offset = 160;
+  struct button_t game_choice_button[MAX_CHOICES];
+  for (int i = 0; i < MAX_CHOICES; i++) {
+    SDL_Rect rect = { 100, y_offset, 200, button_height};
+    game_choice_button[i] =
+        create_game_choice_button(game_choices[i].str, sdl_context->renderer, rect, font->fonts[OTHER]);
+    y_offset += button_height * 1.1;
+  }
 
   bool running = true;
   while (running && game_state->at_menu) {
@@ -142,26 +177,22 @@ static int menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet s
     while (SDL_PollEvent(&e)) {
       int mx = e.button.x;
       int my = e.button.y;
-      button_5_card_draw.enabled = (game_state->dealer_id == my_id);
-      button_5_card_stud.enabled = (game_state->dealer_id == my_id);
-      button_5_card_draw.hovered = SDL_PointInRect(&(SDL_Point){mx, my}, &button_5_card_draw.rect);
-      button_5_card_stud.hovered = SDL_PointInRect(&(SDL_Point){mx, my}, &button_5_card_stud.rect);
+      for (int i = 0; i < MAX_CHOICES; i++) {
+        game_choice_button[i].enabled = (game_state->dealer_id == my_id);
+        game_choice_button[i].hovered = SDL_PointInRect(&(SDL_Point){mx, my}, &game_choice_button[i].rect);
+      }
       if (e.type == SDL_QUIT) {
         return 1;
       } else if (e.type == SDL_MOUSEBUTTONDOWN) {
-        if (point_in_rect(mx, my, &button_5_card_draw.rect) && game_state->dealer_id == my_id) {
-          if (send_game_select(client_socket, GAME_5_CARD_DRAW) == 0)
-            puts("Game type sent");
-          else
-            return -1;
-          running = false;
-        } else {
-          if (point_in_rect(mx, my, &button_5_card_stud.rect) && game_state->dealer_id == my_id) {
-            if (send_game_select(client_socket, GAME_5_CARD_STUD) == 0)
-              puts("Game type sent");
-            else
+        for (int i = 0; i < MAX_CHOICES; i++) {
+          if (point_in_rect(mx, my, &game_choice_button[i].rect) && game_state->dealer_id == my_id) {
+            if (send_game_select(client_socket, game_choices[i].game_type) == 0) {
+              printf("Game type sent: %s", game_choices[i].str);
+              running = false;
+              break;
+            } else {
               return -1;
-            running = false;
+            }
           }
         }
       }
@@ -170,8 +201,8 @@ static int menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet s
     // Clear screen
     clear_screen(sdl_context->renderer);
 
-    render_button(&button_5_card_draw);
-    render_button(&button_5_card_stud);
+    for (int i = 0; i < MAX_CHOICES; i++)
+      render_button(&game_choice_button[i]);
 
     SDL_Point status_pos = {
         sdl_context->window_width * .1,
@@ -381,7 +412,7 @@ void run_sdl_loop(game_state_t *game_state, struct sdl_context_t *sdl_context, s
     FOLD,
     RAISE,
     CALL,
-    ACTIONS_NUM,
+    MAX_ACTIONS,
   };
 
   const char *action[] = {
@@ -389,8 +420,8 @@ void run_sdl_loop(game_state_t *game_state, struct sdl_context_t *sdl_context, s
   };
 
   int x_offset = 100;
-  struct button_t action_button[ACTIONS_NUM];
-  for (int i = 0; i < ACTIONS_NUM; i++) {
+  struct button_t action_button[MAX_ACTIONS];
+  for (int i = 0; i < MAX_ACTIONS; i++) {
     struct pos_t butt_pos = {x_offset += 130, sdl_context->win_center.y + 20};
     action_button[i] =
         create_button(action[i], sdl_context->renderer, &butt_pos, font->fonts[OTHER]);
@@ -421,7 +452,7 @@ void run_sdl_loop(game_state_t *game_state, struct sdl_context_t *sdl_context, s
           hovered_card = card_n;
         }
       }
-      for (int i = 0; i < ACTIONS_NUM; i++) {
+      for (int i = 0; i < MAX_ACTIONS; i++) {
         action_button[i].enabled = true;
         action_button[i].hovered = SDL_PointInRect(&(SDL_Point){mx, my}, &action_button[i].rect);
       }

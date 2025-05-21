@@ -199,21 +199,6 @@ void render_text_plain(SDL_Renderer *renderer, TTF_Font *font, const char *text,
   SDL_DestroyTexture(texture);
 }
 
-struct button_t create_button(const char *text, SDL_Renderer *renderer, struct pos_t *pos,
-                              TTF_Font *font) {
-  struct button_t button = {
-      .text = text,
-      .renderer = renderer,
-      .bg_color = get_color(COLOR_BLACK),
-      .fg_color = get_color(COLOR_YELLOW),
-      .rect = {pos->x, pos->y, 120, 40},
-      .font = font,
-      .hovered = false,
-      .enabled = false,
-  };
-  return button;
-}
-
 void render_button(struct button_t *button) {
   // Draw the filled background
   SDL_SetRenderDrawColor(button->renderer, button->bg_color.r, button->bg_color.g,
