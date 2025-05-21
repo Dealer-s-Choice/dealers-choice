@@ -39,6 +39,10 @@
 #endif
 
 #define CARD_DEAL_DELAY 50
+#define HAND_SIZE 5
+#define MAX_PLAYERS 5
+
+bool card_selected[MAX_PLAYERS][HAND_SIZE] = {0};
 
 void free_player_list(struct player_list_t *head) {
   if (!head)
@@ -320,6 +324,18 @@ static void render_card(game_state_t *game_state, SDL_Renderer *renderer, TTF_Fo
   SDL_RenderCopy(renderer, textTexture, NULL, &textRect);
   SDL_FreeSurface(textSurface);
   SDL_DestroyTexture(textTexture);
+
+  SDL_Rect card_rect = {card_x, card_y, 80, 50}; // Use your actual card size
+
+  // Draw thick lightgrey border if selected
+  if (card_selected[id][card_n]) {
+    SDL_SetRenderDrawColor(renderer, 200, 200, 200, 255); // light grey
+    int thickness = 4;
+    for (int i = 0; i < thickness; ++i) {
+        SDL_Rect border = {card_rect.x - i, card_rect.y - i, card_rect.w + 2*i, card_rect.h + 2*i};
+        SDL_RenderDrawRect(renderer, &border);
+    }
+}
 }
 
 void run_sdl_loop(game_state_t *game_state, struct sdl_context_t *sdl_context, struct font_t *font,
@@ -388,6 +404,7 @@ void run_sdl_loop(game_state_t *game_state, struct sdl_context_t *sdl_context, s
   struct player_list_t *dealer = NULL;
   int running = 1;
   bool cards_dealt = false;
+  int hovered_card = -1;
   while (running) {
     if (recv_game_state(client_socket, socket_set, game_state) != 0)
       running = false;
@@ -396,6 +413,16 @@ void run_sdl_loop(game_state_t *game_state, struct sdl_context_t *sdl_context, s
     while (SDL_PollEvent(&event)) {
       int mx = event.button.x;
       int my = event.button.y;
+      hovered_card = -1; // Reset each frame
+
+      for (int card_n = 0; card_n < HAND_SIZE; ++card_n) {
+        int card_x = player_pos[my_id].x + card_n * (80 + 10);
+        int card_y = player_pos[my_id].y;
+        SDL_Rect card_rect = {card_x, card_y, 80, 50};
+        if (SDL_PointInRect(&(SDL_Point){mx, my}, &card_rect)) {
+          hovered_card = card_n;
+        }
+      }
       for (int i = 0; i < ACTIONS_NUM; i++) {
         action_button[i].enabled = true;
         action_button[i].hovered = SDL_PointInRect(&(SDL_Point){mx, my}, &action_button[i].rect);
@@ -426,6 +453,20 @@ void run_sdl_loop(game_state_t *game_state, struct sdl_context_t *sdl_context, s
               fprintf(stderr, "Failed to call\n");
           }
         }
+
+        for (int card_n = 0; card_n < HAND_SIZE; ++card_n) {
+            int card_x = player_pos[my_id].x + card_n * (80 + 10);
+            int card_y = player_pos[my_id].y;
+            SDL_Rect card_rect = {card_x, card_y, 80, 50};
+            if (SDL_PointInRect(&(SDL_Point){mx, my}, &card_rect)) {
+                // Only allow selection if the card is face up and not null
+                printf("card_n: %d\n", card_n);
+                if (!is_dh_card_back(game_state->player[my_id].hand.card[card_n]) &&
+                    !is_dh_card_null(game_state->player[my_id].hand.card[card_n])) {
+                    card_selected[my_id][card_n] = !card_selected[my_id][card_n];
+                }
+            }
+        }
       }
     }
     clear_screen(sdl_context->renderer);
@@ -454,15 +495,31 @@ void run_sdl_loop(game_state_t *game_state, struct sdl_context_t *sdl_context, s
           // Show each card that has been dealt
           int card_x = player_pos[id].x + card_n * (80 + 10);
           int card_y = player_pos[id].y;
+          SDL_Rect card_rect = {card_x, card_y, card_width, card_height};
+
+          // Highlight hovered card for the local player
+          if (id == my_id && card_n == hovered_card) {
+            SDL_SetRenderDrawBlendMode(sdl_context->renderer, SDL_BLENDMODE_BLEND);
+            SDL_SetRenderDrawColor(sdl_context->renderer, 255, 255, 128, 96); // translucent yellow
+            SDL_RenderFillRect(sdl_context->renderer, &card_rect);
+            SDL_SetRenderDrawBlendMode(sdl_context->renderer, SDL_BLENDMODE_NONE);
+          }
 
           // Draw white card box
-          SDL_Rect card_rect = {card_x, card_y, card_width, card_height};
-          if (is_dh_card_null(game_state->player[id].hand.card[card_n]) == false) {
-            SDL_SetRenderDrawColor(sdl_context->renderer, 255, 255, 255, 255);
+          SDL_SetRenderDrawColor(sdl_context->renderer, 255, 255, 255, 255);
+          SDL_RenderFillRect(sdl_context->renderer, &card_rect);
+
+          // Highlight hovered card for the local player (draw after card background)
+          if (id == my_id && card_n == hovered_card) {
+            SDL_SetRenderDrawBlendMode(sdl_context->renderer, SDL_BLENDMODE_BLEND);
+            SDL_SetRenderDrawColor(sdl_context->renderer, 255, 255, 128, 96); // translucent yellow
             SDL_RenderFillRect(sdl_context->renderer, &card_rect);
-            SDL_SetRenderDrawColor(sdl_context->renderer, 0, 0, 0, 255);
-            SDL_RenderDrawRect(sdl_context->renderer, &card_rect);
+            SDL_SetRenderDrawBlendMode(sdl_context->renderer, SDL_BLENDMODE_NONE);
           }
+
+          // Draw card border
+          SDL_SetRenderDrawColor(sdl_context->renderer, 0, 0, 0, 255);
+          SDL_RenderDrawRect(sdl_context->renderer, &card_rect);
 
           if (is_dh_card_back(game_state->player[id].hand.card[card_n]))
             draw_card_back_pattern(sdl_context->renderer, &card_rect);
