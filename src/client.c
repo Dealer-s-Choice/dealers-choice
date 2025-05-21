@@ -68,7 +68,7 @@ int run_client(const char *addr, struct sdl_context_t *sdl_context, struct font_
   }
 
   game_state_t game_state = {0};
-  if (recv_game_state(client_socket, socket_set, &game_state) != 0)
+  if (recv_game_state(client_socket, socket_set, &game_state) != RECV_SUCCESS)
     goto cleanup;
 
   run_sdl_loop(&game_state, sdl_context, font, client_socket, socket_set, my_id);

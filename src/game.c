@@ -38,6 +38,9 @@
 #define M_PI 3.14159265358979323846
 #endif
 
+// What's the max this needs to be to support the unicode suit symbol?
+#define SIZEOF_CARD_TEXT 20
+
 #define CARD_DEAL_DELAY 50
 
 void free_player_list(struct player_list_t *head) {
@@ -102,39 +105,95 @@ static int8_t send_game_select(TCPsocket sock, uint8_t game_type) {
   return send_all_tcp(sock, buffer, sizeof(buffer));
 }
 
+typedef enum {
+  FIVE_CARD_DRAW,
+  FIVE_CARD_STUD,
+  MAX_CHOICES,
+} menu_option_t;
+
+typedef struct {
+  const menu_option_t g;
+  const char *str;
+  const game_type_t game_type;
+} GameChoice;
+
+// These two buttons for creating the buttons are mostly identical. In the future,
+// they can be changed so there are some differences if desired. Otherwise,
+// they'll be merged, and some of the values, such as the colors, will be passed
+// as arguments.
+static struct button_t create_button(const char *text, SDL_Renderer *renderer, struct pos_t *pos,
+                              TTF_Font *font) {
+  struct button_t button = {
+      .text = text,
+      .renderer = renderer,
+      .bg_color = get_color(COLOR_BLACK),
+      .fg_color = get_color(COLOR_YELLOW),
+      .rect = {pos->x, pos->y, 120, 40},
+      .font = font,
+      .hovered = false,
+      .enabled = false,
+  };
+  return button;
+}
+
+static struct button_t create_game_choice_button(const char *text, SDL_Renderer *renderer, SDL_Rect rect,
+                              TTF_Font *font) {
+  struct button_t button = {
+      .text = text,
+      .renderer = renderer,
+      .bg_color = get_color(COLOR_BLACK),
+      .fg_color = get_color(COLOR_YELLOW),
+      .rect = rect,
+      .font = font,
+      .hovered = false,
+      .enabled = false,
+  };
+  return button;
+}
+
 static int menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet socket_set,
                                      const int8_t my_id, game_state_t *game_state,
                                      struct sdl_context_t *sdl_context, struct font_t *font) {
-  struct button_t button_5_card_draw = {
-      .text = "5-card draw",
-      .renderer = sdl_context->renderer,
-      .bg_color = get_color(COLOR_BLACK),
-      .fg_color = get_color(COLOR_YELLOW),
-      .rect = {100, 160, 200, 40},
-      .font = font->fonts[OTHER],
-      .enabled = true,
+  static const GameChoice game_choices[] = {
+    { FIVE_CARD_DRAW, "5-card draw", GAME_5_CARD_DRAW },
+    { FIVE_CARD_STUD, "5-card stud", GAME_5_CARD_STUD }
   };
+
+  int button_height = 40;
+  int y_offset = 160;
+  struct button_t game_choice_button[MAX_CHOICES];
+  for (int i = 0; i < MAX_CHOICES; i++) {
+    SDL_Rect rect = { 100, y_offset, 200, button_height};
+    game_choice_button[i] =
+        create_game_choice_button(game_choices[i].str, sdl_context->renderer, rect, font->fonts[OTHER]);
+    y_offset += button_height * 1.1;
+  }
 
   bool running = true;
   while (running && game_state->at_menu) {
-    if (recv_game_state(client_socket, socket_set, game_state) == -1)
-      return -1;
+    if (recv_game_state(client_socket, socket_set, game_state) == RECV_ERROR)
+      return RECV_ERROR;
 
     SDL_Event e;
     while (SDL_PollEvent(&e)) {
-      int mx = e.button.x;
-      int my = e.button.y;
-      button_5_card_draw.enabled = (game_state->dealer_id == my_id);
-      button_5_card_draw.hovered = SDL_PointInRect(&(SDL_Point){mx, my}, &button_5_card_draw.rect);
+      SDL_Point mouse_pos = { e.button.x, e.button.y };
+      for (int i = 0; i < MAX_CHOICES; i++) {
+        game_choice_button[i].enabled = (game_state->dealer_id == my_id);
+        game_choice_button[i].hovered = SDL_PointInRect(&mouse_pos, &game_choice_button[i].rect);
+      }
       if (e.type == SDL_QUIT) {
         return 1;
       } else if (e.type == SDL_MOUSEBUTTONDOWN) {
-        if (point_in_rect(mx, my, &button_5_card_draw.rect) && game_state->dealer_id == my_id) {
-          if (send_game_select(client_socket, GAME_5_CARD_DRAW) == 0)
-            puts("Game type sent");
-          else
-            return -1;
-          running = false;
+        for (int i = 0; i < MAX_CHOICES; i++) {
+          if (SDL_PointInRect(&mouse_pos, &game_choice_button[i].rect) && game_state->dealer_id == my_id) {
+            if (send_game_select(client_socket, game_choices[i].game_type) == 0) {
+              printf("Game type sent: %s", game_choices[i].str);
+              running = false;
+              break;
+            } else {
+              return -1;
+            }
+          }
         }
       }
     }
@@ -142,7 +201,8 @@ static int menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet s
     // Clear screen
     clear_screen(sdl_context->renderer);
 
-    render_button(&button_5_card_draw);
+    for (int i = 0; i < MAX_CHOICES; i++)
+      render_button(&game_choice_button[i]);
 
     SDL_Point status_pos = {
         sdl_context->window_width * .1,
@@ -171,7 +231,7 @@ static int menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet s
     SDL_Delay(16);
   }
 
-  return 0;
+  return RECV_SUCCESS;
 }
 
 static void draw_card_back_pattern(SDL_Renderer *renderer, SDL_Rect *card_rect) {
@@ -220,6 +280,10 @@ static bool is_dh_card_back(struct dh_card a) {
   return a.face_val == dh_card_back.face_val && a.suit == dh_card_back.suit;
 }
 
+static bool is_dh_card_null(struct dh_card a) {
+  return a.face_val == dh_card_null.face_val && a.suit == dh_card_null.suit;
+}
+
 static void draw_filled_circle(SDL_Renderer *renderer, int cx, int cy, int radius,
                                SDL_Color color) {
   SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
@@ -265,30 +329,74 @@ static void draw_silver_coin(SDL_Renderer *renderer, int centerX, int centerY) {
   draw_circle_outline(renderer, centerX, centerY, radius, outline);
 }
 
-static void render_card(game_state_t *game_state, SDL_Renderer *renderer, TTF_Font *font,
-                        const int card_n, const uint8_t id, const int card_x, const int card_y) {
+typedef struct {
+  char text[SIZEOF_CARD_TEXT];
   SDL_Color textColor;
-  char text[8] = {0};
-  const char *face = get_card_face_str(game_state->player[id].hand.card[card_n].face_val);
-  const char *suit = get_card_unicode_suit(game_state->player[id].hand.card[card_n]);
-  snprintf(text, sizeof(text), "%s%s", face, suit);
+  SDL_Renderer *renderer;
+  //SDL_Color bg_color;
+  //SDL_Color fg_color;
+  SDL_Rect rect;
+  TTF_Font *font;
+  bool hovered, selected, is_back, is_null;
+} CardContext;
 
-  if (game_state->player[id].hand.card[card_n].suit == HEARTS ||
-      game_state->player[id].hand.card[card_n].suit == DIAMONDS) {
-    textColor = (SDL_Color){255, 0, 0, 255}; // Red
-  } else {
-    textColor = (SDL_Color){0, 0, 0, 255}; // Black
+static CardContext create_card_context(const char *text, TTF_Font *font, const SDL_Color textColor, SDL_Renderer *renderer, SDL_Rect rect, const bool is_back, const bool is_null) {
+  CardContext context = {
+    .font = font,
+    .textColor = textColor,
+    .renderer = renderer,
+    .rect = rect,
+    .hovered = false,
+    .selected = false,
+    .is_back = is_back,
+    .is_null = is_null,
+  };
+  snprintf(context.text, SIZEOF_CARD_TEXT, "%s", text);
+  return context;
+}
+
+static void render_card(CardContext *context) {
+  if (context->is_back) {
+    draw_card_back_pattern(context->renderer, &context->rect);
+    return;
+  } else if (context->is_null)
+    return;
+
+  // Draw white card box
+  SDL_SetRenderDrawColor(context->renderer, 255, 255, 255, 255);
+  SDL_RenderFillRect(context->renderer, &context->rect);
+
+  // Highlight hovered card for the local player (draw after card background)
+  if (context->hovered) {
+    SDL_SetRenderDrawBlendMode(context->renderer, SDL_BLENDMODE_BLEND);
+    SDL_SetRenderDrawColor(context->renderer, 255, 255, 128, 96); // translucent yellow
+    SDL_RenderFillRect(context->renderer, &context->rect);
+    SDL_SetRenderDrawBlendMode(context->renderer, SDL_BLENDMODE_NONE);
   }
 
-  SDL_Surface *textSurface = TTF_RenderUTF8_Blended(font, text, textColor);
-  SDL_Texture *textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
+  // Draw card border
+  SDL_SetRenderDrawColor(context->renderer, 0, 0, 0, 255);
+  SDL_RenderDrawRect(context->renderer, &context->rect);
 
-  SDL_Rect textRect = {card_x + (80 - textSurface->w) / 2, card_y + (50 - textSurface->h) / 2,
+  SDL_Surface *textSurface = TTF_RenderUTF8_Blended(context->font, context->text, context->textColor);
+  SDL_Texture *textTexture = SDL_CreateTextureFromSurface(context->renderer, textSurface);
+
+  SDL_Rect textRect = {context->rect.x + (80 - textSurface->w) / 2, context->rect.y + (50 - textSurface->h) / 2,
                        textSurface->w, textSurface->h};
 
-  SDL_RenderCopy(renderer, textTexture, NULL, &textRect);
+  SDL_RenderCopy(context->renderer, textTexture, NULL, &textRect);
   SDL_FreeSurface(textSurface);
   SDL_DestroyTexture(textTexture);
+
+  // Draw thick lightgrey border if selected
+  if (context->selected) {
+    SDL_SetRenderDrawColor(context->renderer, 200, 200, 200, 255); // light grey
+    int thickness = 4;
+    for (int i = 0; i < thickness; ++i) {
+        SDL_Rect border = {context->rect.x - i, context->rect.y - i, context->rect.w + 2*i, context->rect.h + 2*i};
+        SDL_RenderDrawRect(context->renderer, &border);
+    }
+  }
 }
 
 void run_sdl_loop(game_state_t *game_state, struct sdl_context_t *sdl_context, struct font_t *font,
@@ -336,7 +444,7 @@ void run_sdl_loop(game_state_t *game_state, struct sdl_context_t *sdl_context, s
     FOLD,
     RAISE,
     CALL,
-    ACTIONS_NUM,
+    MAX_ACTIONS,
   };
 
   const char *action[] = {
@@ -344,8 +452,8 @@ void run_sdl_loop(game_state_t *game_state, struct sdl_context_t *sdl_context, s
   };
 
   int x_offset = 100;
-  struct button_t action_button[ACTIONS_NUM];
-  for (int i = 0; i < ACTIONS_NUM; i++) {
+  struct button_t action_button[MAX_ACTIONS];
+  for (int i = 0; i < MAX_ACTIONS; i++) {
     struct pos_t butt_pos = {x_offset += 130, sdl_context->win_center.y + 20};
     action_button[i] =
         create_button(action[i], sdl_context->renderer, &butt_pos, font->fonts[OTHER]);
@@ -353,56 +461,26 @@ void run_sdl_loop(game_state_t *game_state, struct sdl_context_t *sdl_context, s
 
   int card_width = 80, card_height = 50;
 
+  CardContext card_context[MAX_PLAYERS][HAND_SIZE];
+
   struct player_list_t *active_players = NULL;
   struct player_list_t *dealer = NULL;
   int running = 1;
   bool cards_dealt = false;
+  bool cards_created = false;
+
   while (running) {
-    if (recv_game_state(client_socket, socket_set, game_state) != 0)
+    recv_status_t recv_status = recv_game_state(client_socket, socket_set, game_state);
+    if (recv_status == RECV_ERROR)
       running = false;
-    // fprintf(stderr, "turn_id: %d\n", game_state->turn_id);
-    SDL_Event event;
-    while (SDL_PollEvent(&event)) {
-      int mx = event.button.x;
-      int my = event.button.y;
-      for (int i = 0; i < ACTIONS_NUM; i++) {
-        action_button[i].enabled = true;
-        action_button[i].hovered = SDL_PointInRect(&(SDL_Point){mx, my}, &action_button[i].rect);
-      }
-      if (event.type == SDL_QUIT) {
-        running = 0;
-      } else if (event.type == SDL_MOUSEBUTTONDOWN) {
-        if (game_state->turn_id == my_id) {
-          if (point_in_rect(mx, my, &action_button[BET].rect)) {
-            puts("sending bet");
-            if (send_player_action(client_socket, ACTION_BET, 500) != 0)
-              fprintf(stderr, "Failed to send bet\n");
-          } else if (point_in_rect(mx, my, &action_button[FOLD].rect)) {
-            puts("folding");
-            if (send_player_action(client_socket, ACTION_FOLD, 0) != 0)
-              fprintf(stderr, "Failed to fold\n");
-          } else if (point_in_rect(mx, my, &action_button[CHECK].rect)) {
-            puts("checking");
-            if (send_player_action(client_socket, ACTION_CHECK, 0) != 0)
-              fprintf(stderr, "Failed to check\n");
-          } else if (point_in_rect(mx, my, &action_button[RAISE].rect)) {
-            puts("raising");
-            if (send_player_action(client_socket, ACTION_RAISE, 500) != 0)
-              fprintf(stderr, "Failed to raise\n");
-          } else if (point_in_rect(mx, my, &action_button[CALL].rect)) {
-            puts("calling");
-            if (send_player_action(client_socket, ACTION_CALL, 0) != 0)
-              fprintf(stderr, "Failed to call\n");
-          }
-        }
-      }
-    }
-    clear_screen(sdl_context->renderer);
+    else if (recv_status == RECV_SUCCESS)
+      cards_created = false;
+
     if (game_state->at_menu) {
-      if (menu_display_game_choices(client_socket, socket_set, my_id, game_state, sdl_context,
-                                    font) != 0) {
+      if (menu_display_game_choices(client_socket, socket_set, my_id, game_state, sdl_context, font) != RECV_SUCCESS) {
         running = false;
       } else {
+        cards_dealt = false;
         continue;
       }
     } else {
@@ -415,26 +493,95 @@ void run_sdl_loop(game_state_t *game_state, struct sdl_context_t *sdl_context, s
         fprintf(stderr, "active_player id: %d\n", active_players->id);
         fprintf(stderr, "active_player id: %d\n", active_players->next->id);
       }
+
+      // Only create the cards but doesn't render them yet.
+      if (!cards_created) {
+        printf("creating card context\n");
+        memset(card_context, 0, sizeof card_context);
+        for (int card_n = 0; card_n < HAND_SIZE; ++card_n) {
+          do {
+            int id = active_players->id;
+            struct dh_card *card = &game_state->player[id].hand.card[card_n];
+            int card_x = player_pos[id].x + card_n * (80 + 10);
+            int card_y = player_pos[id].y;
+            SDL_Rect rect = {card_x, card_y, 80, 50};
+            char text[SIZEOF_CARD_TEXT] = {0};
+            SDL_Color textColor = {0, 0, 0, 0};
+            if (!is_dh_card_back(*card) && !is_dh_card_null(*card)) {
+              const char *face = get_card_face_str(card->face_val);
+              const char *suit = get_card_unicode_suit(*card);
+              snprintf(text, sizeof(text), "%s%s", face, suit);
+              if (card->suit == HEARTS || card->suit == DIAMONDS) {
+                textColor = get_color(COLOR_RED);
+              } else {
+                textColor = get_color(COLOR_BLACK);
+              }
+            }
+            card_context[id][card_n] = create_card_context(text, font->fonts[CARD], textColor, sdl_context->renderer, rect, is_dh_card_back(*card), is_dh_card_null(*card));
+          } while ((active_players = active_players->next) != dealer);
+        }
+        cards_created = true;
+      }
+
+      SDL_Event event;
+      while (SDL_PollEvent(&event)) {
+        SDL_Point mouse_pos = { event.button.x, event.button.y };
+        for (int card_n = 0; card_n < HAND_SIZE; card_n++) {
+          do {
+            int id = active_players->id;
+            struct dh_card *card = &game_state->player[id].hand.card[card_n];
+            if (id == my_id && (!is_dh_card_null(*card) || !is_dh_card_null(*card))) {
+              card_context[my_id][card_n].hovered = SDL_PointInRect(&mouse_pos, &card_context[my_id][card_n].rect);
+              if (card_context[my_id][card_n].hovered && event.type == SDL_MOUSEBUTTONDOWN)
+                // select or deselect when clicked
+                card_context[my_id][card_n].selected = !card_context[my_id][card_n].selected;
+              // If the mouse is at the location, there's no need to iterate through the rest
+              // of the cards.
+              if (card_context[my_id][card_n].hovered)
+                break;
+            }
+          } while ((active_players = active_players->next) != dealer);
+        }
+        for (int i = 0; i < MAX_ACTIONS; i++) {
+          // TODO: 'enabled' could probably be removed from the struct. The actions
+          // only display to the player who's turn it is.
+          action_button[i].enabled = true;
+          action_button[i].hovered = SDL_PointInRect(&mouse_pos, &action_button[i].rect);
+        }
+        if (event.type == SDL_QUIT) {
+          running = 0;
+        } else if (event.type == SDL_MOUSEBUTTONDOWN) {
+          if (game_state->turn_id == my_id) {
+            if (SDL_PointInRect(&mouse_pos, &action_button[BET].rect)) {
+              puts("sending bet");
+              if (send_player_action(client_socket, ACTION_BET, 500) != 0)
+                fprintf(stderr, "Failed to send bet\n");
+            } else if (SDL_PointInRect(&mouse_pos, &action_button[FOLD].rect)) {
+              puts("folding");
+              if (send_player_action(client_socket, ACTION_FOLD, 0) != 0)
+                fprintf(stderr, "Failed to fold\n");
+            } else if (SDL_PointInRect(&mouse_pos, &action_button[CHECK].rect)) {
+              puts("checking");
+              if (send_player_action(client_socket, ACTION_CHECK, 0) != 0)
+                fprintf(stderr, "Failed to check\n");
+            } else if (SDL_PointInRect(&mouse_pos, &action_button[RAISE].rect)) {
+              puts("raising");
+              if (send_player_action(client_socket, ACTION_RAISE, 500) != 0)
+                fprintf(stderr, "Failed to raise\n");
+            } else if (SDL_PointInRect(&mouse_pos, &action_button[CALL].rect)) {
+              puts("calling");
+              if (send_player_action(client_socket, ACTION_CALL, 0) != 0)
+                fprintf(stderr, "Failed to call\n");
+            }
+          }
+        }
+      }
+      clear_screen(sdl_context->renderer);
+
+      dealer = active_players;
       for (int card_n = 0; card_n < HAND_SIZE; ++card_n) {
         do {
-          int id = active_players->id;
-          // fprintf(stderr, "id: %d\n", id);
-          // Show each card that has been dealt
-          int card_x = player_pos[id].x + card_n * (80 + 10);
-          int card_y = player_pos[id].y;
-
-          // Draw white card box
-          SDL_Rect card_rect = {card_x, card_y, card_width, card_height};
-          SDL_SetRenderDrawColor(sdl_context->renderer, 255, 255, 255, 255);
-          SDL_RenderFillRect(sdl_context->renderer, &card_rect);
-          SDL_SetRenderDrawColor(sdl_context->renderer, 0, 0, 0, 255);
-          SDL_RenderDrawRect(sdl_context->renderer, &card_rect);
-
-          if (is_dh_card_back(game_state->player[id].hand.card[card_n]) == false)
-            render_card(game_state, sdl_context->renderer, font->fonts[CARD], card_n, id, card_x,
-                        card_y);
-          else
-            draw_card_back_pattern(sdl_context->renderer, &card_rect);
+          render_card(&card_context[active_players->id][card_n]);
 
           if (!cards_dealt) {
             Uint32 start = SDL_GetTicks();
@@ -448,9 +595,7 @@ void run_sdl_loop(game_state_t *game_state, struct sdl_context_t *sdl_context, s
             SDL_RenderPresent(sdl_context->renderer);
             SDL_Delay(16);
           }
-
-          active_players = active_players->next;
-        } while (active_players != dealer);
+        } while ((active_players = active_players->next) != dealer);
       }
 
       if (game_state->round_over)
@@ -465,10 +610,14 @@ void run_sdl_loop(game_state_t *game_state, struct sdl_context_t *sdl_context, s
 
         } while (ptr != active_players);
 
-        char winner_text[512] = {0};
-        snprintf(winner_text, sizeof winner_text, "%s wins with %s",
-                 game_state->player[ptr->id].name,
-                 pokeval_ranks[pokeval_evaluate_hand(game_state->player[ptr->id].hand)]);
+        char winner_text[sizeof(game_state->player[ptr->id].name) + 64] = {0};
+        if (game_state->player_count > 1)
+          snprintf(winner_text, sizeof winner_text, "%s wins with %s",
+                   game_state->player[ptr->id].name,
+                   pokeval_ranks[pokeval_evaluate_hand(game_state->player[ptr->id].hand)]);
+        else
+          snprintf(winner_text, sizeof winner_text, "%s wins", game_state->player[ptr->id].name);
+
         SDL_Rect dest = {sdl_context->win_center.x, sdl_context->win_center.y - 50, 80, 20};
         render_text_plain(sdl_context->renderer, font->fonts[OTHER], winner_text,
                           get_color(COLOR_BLACK), &dest);
@@ -506,8 +655,7 @@ void run_sdl_loop(game_state_t *game_state, struct sdl_context_t *sdl_context, s
         render_text_plain(sdl_context->renderer, font->fonts[OTHER], coins_text,
                           get_color(COLOR_BLACK), &dest);
 
-        // TODO: get the sizeof game_state_t [name]
-        char name_text[512] = {0};
+        char name_text[sizeof(game_state->player[id].name)] = {0};
         snprintf(name_text, sizeof name_text, "%s", game_state->player[id].name);
         SDL_Rect dest_name = {player_pos[id].x + 30, player_pos[id].y + (card_height * 1.2), 40,
                               20};

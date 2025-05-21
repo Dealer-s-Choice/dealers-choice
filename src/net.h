@@ -45,6 +45,12 @@
 
 extern const uint16_t default_port;
 
+typedef enum {
+  RECV_ERROR,
+  RECV_SUCCESS,
+  RECV_NOTHING,
+} recv_status_t;
+
 struct player_message_builder_t {
   // These types come from the generated protobuf header file
   Player msg;
@@ -64,6 +70,7 @@ int send_all_tcp(TCPsocket sock, const void *data, size_t length);
 
 int recv_all_tcp(TCPsocket sock, void *data, int32_t length);
 
-int recv_game_state(TCPsocket client_socket, SDLNet_SocketSet socket_set, game_state_t *game_state);
+recv_status_t recv_game_state(TCPsocket client_socket, SDLNet_SocketSet socket_set,
+                    game_state_t *game_state);
 
 #endif

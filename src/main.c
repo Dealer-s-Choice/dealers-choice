@@ -57,13 +57,12 @@ static int menu_display_connect(char *input_text, SDL_Renderer *renderer, struct
   while (running) {
     SDL_Event e;
     while (SDL_PollEvent(&e)) {
-      int mx = e.button.x;
-      int my = e.button.y;
-      button_connect.hovered = SDL_PointInRect(&(SDL_Point){mx, my}, &button_connect.rect);
+      SDL_Point mouse_pos = { e.button.x, e.button.y };
+      button_connect.hovered = SDL_PointInRect(&mouse_pos, &button_connect.rect);
       if (e.type == SDL_QUIT) {
         running = false;
       } else if (e.type == SDL_MOUSEBUTTONDOWN) {
-        if (point_in_rect(mx, my, &button_connect.rect)) {
+        if (SDL_PointInRect(&mouse_pos, &button_connect.rect)) {
           run_client = true;
           running = false;
         }
