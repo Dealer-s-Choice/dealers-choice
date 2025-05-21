@@ -506,7 +506,7 @@ void run_sdl_loop(game_state_t *game_state, struct sdl_context_t *sdl_context, s
             int card_y = player_pos[id].y;
             SDL_Rect rect = {card_x, card_y, 80, 50};
             char text[SIZEOF_CARD_TEXT] = {0};
-            SDL_Color textColor;
+            SDL_Color textColor = {0, 0, 0, 0};
             if (!is_dh_card_back(*card) && !is_dh_card_null(*card)) {
               const char *face = get_card_face_str(card->face_val);
               const char *suit = get_card_unicode_suit(*card);
