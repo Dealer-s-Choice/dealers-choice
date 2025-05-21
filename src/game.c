@@ -39,8 +39,6 @@
 #endif
 
 #define CARD_DEAL_DELAY 50
-#define HAND_SIZE 5
-#define MAX_PLAYERS 5
 
 bool card_selected[MAX_PLAYERS][HAND_SIZE] = {0};
 
