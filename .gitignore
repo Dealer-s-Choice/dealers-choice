@@ -1,2 +1,10 @@
+# Ignore everything in subprojects
 subprojects/**
+
+# Allow traversal into packagefiles
+!subprojects/packagefiles/
+!subprojects/packagefiles/**
+
+# Allow .wrap files
 !subprojects/**/*.wrap
+
