@@ -336,13 +336,11 @@ typedef struct {
   //SDL_Color bg_color;
   //SDL_Color fg_color;
   SDL_Rect rect;
-  TTF_Font *font;
   bool hovered, selected, is_back, is_null;
 } CardContext;
 
-static CardContext create_card_context(const char *text, TTF_Font *font, const SDL_Color textColor, SDL_Renderer *renderer, SDL_Rect rect, const bool is_back, const bool is_null) {
+static CardContext create_card_context(const char *text, const SDL_Color textColor, SDL_Renderer *renderer, SDL_Rect rect, const bool is_back, const bool is_null) {
   CardContext context = {
-    .font = font,
     .textColor = textColor,
     .renderer = renderer,
     .rect = rect,
@@ -355,7 +353,7 @@ static CardContext create_card_context(const char *text, TTF_Font *font, const S
   return context;
 }
 
-static void render_card(CardContext *context) {
+static void render_card(CardContext *context, TTF_Font *font) {
   if (context->is_back) {
     draw_card_back_pattern(context->renderer, &context->rect);
     return;
@@ -378,7 +376,7 @@ static void render_card(CardContext *context) {
   SDL_SetRenderDrawColor(context->renderer, 0, 0, 0, 255);
   SDL_RenderDrawRect(context->renderer, &context->rect);
 
-  SDL_Surface *textSurface = TTF_RenderUTF8_Blended(context->font, context->text, context->textColor);
+  SDL_Surface *textSurface = TTF_RenderUTF8_Blended(font, context->text, context->textColor);
   SDL_Texture *textTexture = SDL_CreateTextureFromSurface(context->renderer, textSurface);
 
   SDL_Rect textRect = {context->rect.x + (80 - textSurface->w) / 2, context->rect.y + (50 - textSurface->h) / 2,
@@ -396,6 +394,33 @@ static void render_card(CardContext *context) {
         SDL_Rect border = {context->rect.x - i, context->rect.y - i, context->rect.w + 2*i, context->rect.h + 2*i};
         SDL_RenderDrawRect(context->renderer, &border);
     }
+  }
+}
+
+static void do_create_card_context(CardContext card_context[MAX_PLAYERS][HAND_SIZE], struct player_list_t *active_players, game_state_t *game_state, const struct pos_t *player_pos, SDL_Renderer *renderer) {
+  struct player_list_t *head = active_players;
+  memset(card_context, 0, sizeof(CardContext) * MAX_PLAYERS * HAND_SIZE);
+  for (int card_n = 0; card_n < HAND_SIZE; ++card_n) {
+    do {
+      int id = active_players->id;
+      struct dh_card *card = &game_state->player[id].hand.card[card_n];
+      int card_x = player_pos[id].x + card_n * (80 + 10);
+      int card_y = player_pos[id].y;
+      SDL_Rect rect = {card_x, card_y, 80, 50};
+      char text[SIZEOF_CARD_TEXT] = {0};
+      SDL_Color textColor = {0, 0, 0, 0};
+      if (!is_dh_card_back(*card) && !is_dh_card_null(*card)) {
+        const char *face = get_card_face_str(card->face_val);
+        const char *suit = get_card_unicode_suit(*card);
+        snprintf(text, sizeof(text), "%s%s", face, suit);
+        if (card->suit == HEARTS || card->suit == DIAMONDS) {
+          textColor = get_color(COLOR_RED);
+        } else {
+          textColor = get_color(COLOR_BLACK);
+        }
+      }
+      card_context[id][card_n] = create_card_context(text, textColor, renderer, rect, is_dh_card_back(*card), is_dh_card_null(*card));
+    } while ((active_players = active_players->next) != head);
   }
 }
 
@@ -495,31 +520,11 @@ void run_sdl_loop(game_state_t *game_state, struct sdl_context_t *sdl_context, s
       }
 
       // Only create the cards but doesn't render them yet.
+      // This is done when the client receives new data, not every iteration
+      // of the loop. The flag gets set above. TODO: It should only happen if
+      // the server sends new information about cards.
       if (!cards_created) {
-        printf("creating card context\n");
-        memset(card_context, 0, sizeof card_context);
-        for (int card_n = 0; card_n < HAND_SIZE; ++card_n) {
-          do {
-            int id = active_players->id;
-            struct dh_card *card = &game_state->player[id].hand.card[card_n];
-            int card_x = player_pos[id].x + card_n * (80 + 10);
-            int card_y = player_pos[id].y;
-            SDL_Rect rect = {card_x, card_y, 80, 50};
-            char text[SIZEOF_CARD_TEXT] = {0};
-            SDL_Color textColor = {0, 0, 0, 0};
-            if (!is_dh_card_back(*card) && !is_dh_card_null(*card)) {
-              const char *face = get_card_face_str(card->face_val);
-              const char *suit = get_card_unicode_suit(*card);
-              snprintf(text, sizeof(text), "%s%s", face, suit);
-              if (card->suit == HEARTS || card->suit == DIAMONDS) {
-                textColor = get_color(COLOR_RED);
-              } else {
-                textColor = get_color(COLOR_BLACK);
-              }
-            }
-            card_context[id][card_n] = create_card_context(text, font->fonts[CARD], textColor, sdl_context->renderer, rect, is_dh_card_back(*card), is_dh_card_null(*card));
-          } while ((active_players = active_players->next) != dealer);
-        }
+        do_create_card_context(card_context, active_players, game_state, player_pos, sdl_context->renderer);
         cards_created = true;
       }
 
@@ -527,20 +532,18 @@ void run_sdl_loop(game_state_t *game_state, struct sdl_context_t *sdl_context, s
       while (SDL_PollEvent(&event)) {
         SDL_Point mouse_pos = { event.button.x, event.button.y };
         for (int card_n = 0; card_n < HAND_SIZE; card_n++) {
-          do {
-            int id = active_players->id;
-            struct dh_card *card = &game_state->player[id].hand.card[card_n];
-            if (id == my_id && (!is_dh_card_null(*card) || !is_dh_card_null(*card))) {
-              card_context[my_id][card_n].hovered = SDL_PointInRect(&mouse_pos, &card_context[my_id][card_n].rect);
-              if (card_context[my_id][card_n].hovered && event.type == SDL_MOUSEBUTTONDOWN)
-                // select or deselect when clicked
-                card_context[my_id][card_n].selected = !card_context[my_id][card_n].selected;
-              // If the mouse is at the location, there's no need to iterate through the rest
-              // of the cards.
-              if (card_context[my_id][card_n].hovered)
-                break;
+          struct dh_card *card = &game_state->player[my_id].hand.card[card_n];
+          if (!is_dh_card_null(*card) || !is_dh_card_null(*card)) {
+            card_context[my_id][card_n].hovered = SDL_PointInRect(&mouse_pos, &card_context[my_id][card_n].rect);
+            if (card_context[my_id][card_n].hovered && event.type == SDL_MOUSEBUTTONDOWN) {
+              // select or deselect when clicked
+              card_context[my_id][card_n].selected = !card_context[my_id][card_n].selected;
             }
-          } while ((active_players = active_players->next) != dealer);
+            // If the mouse is at the location, there's no need to iterate through the rest
+            // of the cards.
+            if (card_context[my_id][card_n].hovered)
+              break;
+          }
         }
         for (int i = 0; i < MAX_ACTIONS; i++) {
           // TODO: 'enabled' could probably be removed from the struct. The actions
@@ -581,7 +584,7 @@ void run_sdl_loop(game_state_t *game_state, struct sdl_context_t *sdl_context, s
       dealer = active_players;
       for (int card_n = 0; card_n < HAND_SIZE; ++card_n) {
         do {
-          render_card(&card_context[active_players->id][card_n]);
+          render_card(&card_context[active_players->id][card_n], font->fonts[CARD]);
 
           if (!cards_dealt) {
             Uint32 start = SDL_GetTicks();

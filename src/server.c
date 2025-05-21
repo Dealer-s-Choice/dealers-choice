@@ -468,7 +468,6 @@ static int get_next_dealer(int current, const bool *slot_taken) {
 static void game_five_card_draw(args_broadcast_game_state_t *args, struct player_list_t *dealer) {
   server_handle_ante(args->game_state, dealer, 250);
   handle_round(args, dealer);
-  handle_round(args, dealer);
 }
 
 static void game_five_card_stud(args_broadcast_game_state_t *args, struct player_list_t *head,
@@ -498,7 +497,7 @@ static void play_game(const char game_type, args_broadcast_game_state_t *args, s
 
   switch (game_type) {
   case GAME_5_CARD_DRAW:
-    args->game_state->n_rounds = 2;
+    args->game_state->n_rounds = 1;
     game_five_card_draw(args, dealer);
     break;
   case GAME_5_CARD_STUD:
