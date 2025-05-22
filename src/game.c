@@ -366,16 +366,18 @@ static void do_create_card_context(CardContext card_context[MAX_PLAYERS][HAND_SI
                                    struct player_t *turn,
                                    struct player_t (*players_array)[MAX_PLAYERS],
                                    const struct pos_t *player_pos, SDL_Renderer *renderer) {
-  struct player_t *start = turn;
+  struct player_t *starting_turn = turn;
   memset(card_context, 0, sizeof(CardContext) * MAX_PLAYERS * HAND_SIZE);
   for (int card_n = 0; card_n < HAND_SIZE; ++card_n) {
     do {
       printf("%d\n", __LINE__);
-      int id = turn->id;
+      const int id = turn->id;
       struct dh_card *card = &turn->hand.card[card_n];
-      int card_x = player_pos[id].x + card_n * (80 + 10);
-      int card_y = player_pos[id].y;
-      SDL_Rect rect = {card_x, card_y, 80, 50};
+      const SDL_Point card_pos = {
+          player_pos[id].x + card_n * (80 + 10),
+          player_pos[id].y,
+      };
+      const SDL_Rect rect = {card_pos.x, card_pos.y, 80, 50};
       char text[SIZEOF_CARD_TEXT] = {0};
       SDL_Color textColor = {0, 0, 0, 0};
       if (!is_dh_card_back(*card) && !is_dh_card_null(*card)) {
@@ -390,7 +392,7 @@ static void do_create_card_context(CardContext card_context[MAX_PLAYERS][HAND_SI
       }
       card_context[id][card_n] = create_card_context(
           text, textColor, renderer, rect, is_dh_card_back(*card), is_dh_card_null(*card));
-    } while ((turn = &(*players_array)[get_next_player(players_array, turn->id)]) != start);
+    } while ((turn = &(*players_array)[get_next_player(players_array, turn->id)]) != starting_turn);
   }
 }
 
@@ -489,8 +491,8 @@ void run_sdl_loop(Game_State *game_state, struct sdl_context_t *sdl_context, str
       // of the loop. The flag gets set above. TODO: It should only happen if
       // the server sends new information about cards.
       if (!cards_created) {
-        printf("%d\n", __LINE__);
-        do_create_card_context(card_context, turn, players_array, player_pos,
+        // printf("%d\n", __LINE__);
+        do_create_card_context(card_context, starting_turn, players_array, player_pos,
                                sdl_context->renderer);
         cards_created = true;
       }
@@ -551,7 +553,7 @@ void run_sdl_loop(Game_State *game_state, struct sdl_context_t *sdl_context, str
 
       for (int card_n = 0; card_n < HAND_SIZE; ++card_n) {
         do {
-          printf("%d\n", __LINE__);
+          // printf("%d\n", __LINE__);
           render_card(&card_context[turn->id][card_n], font->fonts[CARD]);
 
           if (!cards_dealt) {
@@ -572,7 +574,7 @@ void run_sdl_loop(Game_State *game_state, struct sdl_context_t *sdl_context, str
       // if (recv_game_state(client_socket, socket_set, game_state) == RECV_ERROR)
       // running = false;
 
-      printf("%d\n", __LINE__);
+      // printf("%d\n", __LINE__);
       // This isn't used yet; it might be removed
       if (game_state->round_over)
         cards_dealt = false;
@@ -580,8 +582,8 @@ void run_sdl_loop(Game_State *game_state, struct sdl_context_t *sdl_context, str
       if (game_state->winner_declared) {
         puts("Winner declared");
         do {
-          printf("%d\n", __LINE__);
-          if (game_state->player[turn->id].winner == true) {
+          // printf("%d\n", __LINE__);
+          if (turn->winner == true) {
             puts("Winner declared");
             break;
           }

@@ -115,34 +115,31 @@ void init_game_state(Game_State *game_state) {
 static RealHand deal_cards_to_players(Game_State *game_state, struct player_t *dealer,
                                       struct dh_deck *deck, const char game_type) {
   RealHand real_hand = {0};
-  struct player_t *turn = dealer;
+  struct player_t(*players_array)[MAX_PLAYERS] = &game_state->player;
+  struct player_t *turn = &(*players_array)[get_next_player(players_array, dealer->id)];
+  struct player_t *starting_turn = turn;
   do {
-    int id = turn->id;
-    if (id == -1) {
-      turn++;
-      continue;
-    }
     if (game_type != GAME_5_CARD_STUD) {
       for (int i = 0; i < HAND_SIZE; ++i) {
-        game_state->player[id].hand.card[i] = dh_card_back;
-        real_hand.player[id].card[i] = dh_deal_top_card(deck);
+        turn->hand.card[i] = dh_card_back;
+        real_hand.player[turn->id].card[i] = dh_deal_top_card(deck);
       }
     } else {
-      struct pokeval_hand_t *hand = &game_state->player[id].hand;
+      struct pokeval_hand_t *hand = &turn->hand;
       // First card face down
       hand->card[0] = dh_card_back;
-      real_hand.player[id].card[0] = dh_deal_top_card(deck);
+      real_hand.player[turn->id].card[0] = dh_deal_top_card(deck);
 
       // Second card face up
       hand->card[1] = dh_deal_top_card(deck);
-      real_hand.player[id].card[1] = hand->card[1];
+      real_hand.player[turn->id].card[1] = hand->card[1];
 
       for (int i = 2; i < HAND_SIZE; i++) {
         hand->card[i] = dh_card_null;
-        real_hand.player[id].card[i] = hand->card[i];
+        real_hand.player[turn->id].card[i] = hand->card[i];
       }
     }
-  } while (turn++ != dealer);
+  } while ((turn = &(*players_array)[get_next_player(players_array, turn->id)]) != starting_turn);
 
   return real_hand;
 }
