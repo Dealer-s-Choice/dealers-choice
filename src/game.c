@@ -82,7 +82,7 @@ typedef struct {
 // they'll be merged, and some of the values, such as the colors, will be passed
 // as arguments.
 static struct button_t create_button(const char *text, SDL_Renderer *renderer, struct pos_t *pos,
-                              TTF_Font *font) {
+                                     TTF_Font *font) {
   struct button_t button = {
       .text = text,
       .renderer = renderer,
@@ -96,8 +96,8 @@ static struct button_t create_button(const char *text, SDL_Renderer *renderer, s
   return button;
 }
 
-static struct button_t create_game_choice_button(const char *text, SDL_Renderer *renderer, SDL_Rect rect,
-                              TTF_Font *font) {
+static struct button_t create_game_choice_button(const char *text, SDL_Renderer *renderer,
+                                                 SDL_Rect rect, TTF_Font *font) {
   struct button_t button = {
       .text = text,
       .renderer = renderer,
@@ -114,18 +114,16 @@ static struct button_t create_game_choice_button(const char *text, SDL_Renderer 
 static int menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet socket_set,
                                      const int8_t my_id, Game_State *game_state,
                                      struct sdl_context_t *sdl_context, struct font_t *font) {
-  static const GameChoice game_choices[] = {
-    { FIVE_CARD_DRAW, "5-card draw", GAME_5_CARD_DRAW },
-    { FIVE_CARD_STUD, "5-card stud", GAME_5_CARD_STUD }
-  };
+  static const GameChoice game_choices[] = {{FIVE_CARD_DRAW, "5-card draw", GAME_5_CARD_DRAW},
+                                            {FIVE_CARD_STUD, "5-card stud", GAME_5_CARD_STUD}};
 
   int button_height = 40;
   int y_offset = 160;
   struct button_t game_choice_button[MAX_CHOICES];
   for (int i = 0; i < MAX_CHOICES; i++) {
-    SDL_Rect rect = { 100, y_offset, 200, button_height};
-    game_choice_button[i] =
-        create_game_choice_button(game_choices[i].str, sdl_context->renderer, rect, font->fonts[OTHER]);
+    SDL_Rect rect = {100, y_offset, 200, button_height};
+    game_choice_button[i] = create_game_choice_button(game_choices[i].str, sdl_context->renderer,
+                                                      rect, font->fonts[OTHER]);
     y_offset += button_height * 1.1;
   }
 
@@ -139,7 +137,7 @@ static int menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet s
 
     SDL_Event e;
     while (SDL_PollEvent(&e)) {
-      SDL_Point mouse_pos = { e.button.x, e.button.y };
+      SDL_Point mouse_pos = {e.button.x, e.button.y};
       for (int i = 0; i < MAX_CHOICES; i++) {
         game_choice_button[i].enabled = (game_state->dealer_id == my_id);
         game_choice_button[i].hovered = SDL_PointInRect(&mouse_pos, &game_choice_button[i].rect);
@@ -148,7 +146,8 @@ static int menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet s
         return 1;
       } else if (e.type == SDL_MOUSEBUTTONDOWN) {
         for (int i = 0; i < MAX_CHOICES; i++) {
-          if (SDL_PointInRect(&mouse_pos, &game_choice_button[i].rect) && game_state->dealer_id == my_id) {
+          if (SDL_PointInRect(&mouse_pos, &game_choice_button[i].rect) &&
+              game_state->dealer_id == my_id) {
             if (send_game_select(client_socket, game_choices[i].game_type) == 0) {
               printf("Game type sent: %s", game_choices[i].str);
               running = false;
@@ -296,21 +295,23 @@ typedef struct {
   char text[SIZEOF_CARD_TEXT];
   SDL_Color textColor;
   SDL_Renderer *renderer;
-  //SDL_Color bg_color;
-  //SDL_Color fg_color;
+  // SDL_Color bg_color;
+  // SDL_Color fg_color;
   SDL_Rect rect;
   bool hovered, selected, is_back, is_null;
 } CardContext;
 
-static CardContext create_card_context(const char *text, const SDL_Color textColor, SDL_Renderer *renderer, SDL_Rect rect, const bool is_back, const bool is_null) {
+static CardContext create_card_context(const char *text, const SDL_Color textColor,
+                                       SDL_Renderer *renderer, SDL_Rect rect, const bool is_back,
+                                       const bool is_null) {
   CardContext context = {
-    .textColor = textColor,
-    .renderer = renderer,
-    .rect = rect,
-    .hovered = false,
-    .selected = false,
-    .is_back = is_back,
-    .is_null = is_null,
+      .textColor = textColor,
+      .renderer = renderer,
+      .rect = rect,
+      .hovered = false,
+      .selected = false,
+      .is_back = is_back,
+      .is_null = is_null,
   };
   snprintf(context.text, SIZEOF_CARD_TEXT, "%s", text);
   return context;
@@ -342,8 +343,8 @@ static void render_card(CardContext *context, TTF_Font *font) {
   SDL_Surface *textSurface = TTF_RenderUTF8_Blended(font, context->text, context->textColor);
   SDL_Texture *textTexture = SDL_CreateTextureFromSurface(context->renderer, textSurface);
 
-  SDL_Rect textRect = {context->rect.x + (80 - textSurface->w) / 2, context->rect.y + (50 - textSurface->h) / 2,
-                       textSurface->w, textSurface->h};
+  SDL_Rect textRect = {context->rect.x + (80 - textSurface->w) / 2,
+                       context->rect.y + (50 - textSurface->h) / 2, textSurface->w, textSurface->h};
 
   SDL_RenderCopy(context->renderer, textTexture, NULL, &textRect);
   SDL_FreeSurface(textSurface);
@@ -354,13 +355,17 @@ static void render_card(CardContext *context, TTF_Font *font) {
     SDL_SetRenderDrawColor(context->renderer, 200, 200, 200, 255); // light grey
     int thickness = 4;
     for (int i = 0; i < thickness; ++i) {
-        SDL_Rect border = {context->rect.x - i, context->rect.y - i, context->rect.w + 2*i, context->rect.h + 2*i};
-        SDL_RenderDrawRect(context->renderer, &border);
+      SDL_Rect border = {context->rect.x - i, context->rect.y - i, context->rect.w + 2 * i,
+                         context->rect.h + 2 * i};
+      SDL_RenderDrawRect(context->renderer, &border);
     }
   }
 }
 
-static void do_create_card_context(CardContext card_context[MAX_PLAYERS][HAND_SIZE], struct player_t *turn, struct player_t (*players_array)[MAX_PLAYERS], const struct pos_t *player_pos, SDL_Renderer *renderer) {
+static void do_create_card_context(CardContext card_context[MAX_PLAYERS][HAND_SIZE],
+                                   struct player_t *turn,
+                                   struct player_t (*players_array)[MAX_PLAYERS],
+                                   const struct pos_t *player_pos, SDL_Renderer *renderer) {
   struct player_t *start = turn;
   memset(card_context, 0, sizeof(CardContext) * MAX_PLAYERS * HAND_SIZE);
   for (int card_n = 0; card_n < HAND_SIZE; ++card_n) {
@@ -383,7 +388,8 @@ static void do_create_card_context(CardContext card_context[MAX_PLAYERS][HAND_SI
           textColor = get_color(COLOR_BLACK);
         }
       }
-      card_context[id][card_n] = create_card_context(text, textColor, renderer, rect, is_dh_card_back(*card), is_dh_card_null(*card));
+      card_context[id][card_n] = create_card_context(
+          text, textColor, renderer, rect, is_dh_card_back(*card), is_dh_card_null(*card));
     } while ((turn = &(*players_array)[get_next_player(players_array, turn->id)]) != start);
   }
 }
@@ -455,7 +461,7 @@ void run_sdl_loop(Game_State *game_state, struct sdl_context_t *sdl_context, str
   int running = 1;
   bool cards_dealt = false;
   bool cards_created = false;
-  struct player_t (*players_array)[MAX_PLAYERS] = &game_state->player;
+  struct player_t(*players_array)[MAX_PLAYERS] = &game_state->player;
   struct player_t *turn = NULL;
   struct player_t *starting_turn = NULL;
   while (running) {
@@ -467,7 +473,8 @@ void run_sdl_loop(Game_State *game_state, struct sdl_context_t *sdl_context, str
       cards_created = false;
 
     if (game_state->at_menu) {
-      if (menu_display_game_choices(client_socket, socket_set, my_id, game_state, sdl_context, font) != RECV_SUCCESS) {
+      if (menu_display_game_choices(client_socket, socket_set, my_id, game_state, sdl_context,
+                                    font) != RECV_SUCCESS) {
         running = false;
       } else {
         cards_dealt = false;
@@ -483,17 +490,19 @@ void run_sdl_loop(Game_State *game_state, struct sdl_context_t *sdl_context, str
       // the server sends new information about cards.
       if (!cards_created) {
         printf("%d\n", __LINE__);
-        do_create_card_context(card_context, turn, players_array, player_pos, sdl_context->renderer);
+        do_create_card_context(card_context, turn, players_array, player_pos,
+                               sdl_context->renderer);
         cards_created = true;
       }
 
       SDL_Event event;
       while (SDL_PollEvent(&event)) {
-        SDL_Point mouse_pos = { event.button.x, event.button.y };
+        SDL_Point mouse_pos = {event.button.x, event.button.y};
         for (int card_n = 0; card_n < HAND_SIZE; card_n++) {
           struct dh_card *card = &game_state->player[my_id].hand.card[card_n];
           if (!is_dh_card_null(*card) || !is_dh_card_null(*card)) {
-            card_context[my_id][card_n].hovered = SDL_PointInRect(&mouse_pos, &card_context[my_id][card_n].rect);
+            card_context[my_id][card_n].hovered =
+                SDL_PointInRect(&mouse_pos, &card_context[my_id][card_n].rect);
             if (card_context[my_id][card_n].hovered && event.type == SDL_MOUSEBUTTONDOWN) {
               // select or deselect when clicked
               card_context[my_id][card_n].selected = !card_context[my_id][card_n].selected;
@@ -557,10 +566,11 @@ void run_sdl_loop(Game_State *game_state, struct sdl_context_t *sdl_context, str
             SDL_RenderPresent(sdl_context->renderer);
             SDL_Delay(16);
           }
-        } while ((turn = &(*players_array)[get_next_player(players_array, turn->id)]) != starting_turn);
+        } while ((turn = &(*players_array)[get_next_player(players_array, turn->id)]) !=
+                 starting_turn);
       }
       // if (recv_game_state(client_socket, socket_set, game_state) == RECV_ERROR)
-        // running = false;
+      // running = false;
 
       printf("%d\n", __LINE__);
       // This isn't used yet; it might be removed
@@ -575,12 +585,12 @@ void run_sdl_loop(Game_State *game_state, struct sdl_context_t *sdl_context, str
             puts("Winner declared");
             break;
           }
-        } while ((turn = &(*players_array)[get_next_player(players_array, turn->id)]) != starting_turn);
+        } while ((turn = &(*players_array)[get_next_player(players_array, turn->id)]) !=
+                 starting_turn);
 
         char winner_text[sizeof(turn->name) + 64] = {0};
         if (game_state->player_count > 1)
-          snprintf(winner_text, sizeof winner_text, "%s wins with %s",
-                   turn->name,
+          snprintf(winner_text, sizeof winner_text, "%s wins with %s", turn->name,
                    pokeval_ranks[pokeval_evaluate_hand(turn->hand)]);
         else
           snprintf(winner_text, sizeof winner_text, "%s wins", turn->name);
@@ -630,7 +640,8 @@ void run_sdl_loop(Game_State *game_state, struct sdl_context_t *sdl_context, str
         render_text_plain(sdl_context->renderer, font->fonts[OTHER], name_text,
                           get_color(COLOR_BLACK), &dest_name);
 
-      } while ((turn = &(*players_array)[get_next_player(players_array, turn->id)]) != starting_turn);
+      } while ((turn = &(*players_array)[get_next_player(players_array, turn->id)]) !=
+               starting_turn);
     }
 
     SDL_RenderPresent(sdl_context->renderer);

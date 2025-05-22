@@ -57,7 +57,7 @@ static int menu_display_connect(char *input_text, SDL_Renderer *renderer, struct
   while (running) {
     SDL_Event e;
     while (SDL_PollEvent(&e)) {
-      SDL_Point mouse_pos = { e.button.x, e.button.y };
+      SDL_Point mouse_pos = {e.button.x, e.button.y};
       button_connect.hovered = SDL_PointInRect(&mouse_pos, &button_connect.rect);
       if (e.type == SDL_QUIT) {
         running = false;

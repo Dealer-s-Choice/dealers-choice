@@ -112,7 +112,8 @@ void init_game_state(Game_State *game_state) {
   game_state->n_rounds = 0;
 }
 
-static RealHand deal_cards_to_players(Game_State *game_state, struct player_t *dealer, struct dh_deck *deck, const char game_type) {
+static RealHand deal_cards_to_players(Game_State *game_state, struct player_t *dealer,
+                                      struct dh_deck *deck, const char game_type) {
   RealHand real_hand = {0};
   struct player_t *turn = dealer;
   do {
@@ -258,7 +259,7 @@ static void server_handle_raise(Game_State *game_state, const uint8_t turn_id,
 
 static RoundResults handle_round(args_broadcast_game_state_t *args, struct player_t *dealer) {
   // Points to the address of the array of all the players
-  struct player_t (*players_array)[MAX_PLAYERS] = &args->game_state->player;
+  struct player_t(*players_array)[MAX_PLAYERS] = &args->game_state->player;
 
   // Points to the address of array of player structures in game state
   struct player_t *starting_player = &(*players_array)[get_next_player(players_array, dealer->id)];
@@ -335,8 +336,10 @@ static RoundResults handle_round(args_broadcast_game_state_t *args, struct playe
         break;
       }
 
-    } else if ((args->game_state->total_bets_plus_raises == 0 && turn == starting_player) || (args->game_state->total_bets_plus_raises && args->game_state->player[turn->id].total_paid))
-      break;       // Everyone either checked or paid all bets and raises
+    } else if ((args->game_state->total_bets_plus_raises == 0 && turn == starting_player) ||
+               (args->game_state->total_bets_plus_raises &&
+                args->game_state->player[turn->id].total_paid))
+      break; // Everyone either checked or paid all bets and raises
 
   } while (true);
 
@@ -478,7 +481,9 @@ static void game_five_card_draw(args_broadcast_game_state_t *args, struct player
   handle_round(args, dealer);
 }
 
-static void game_five_card_stud(args_broadcast_game_state_t *args, struct player_t (*players_array)[MAX_PLAYERS], struct player_t *dealer, struct dh_deck *deck) {
+static void game_five_card_stud(args_broadcast_game_state_t *args,
+                                struct player_t (*players_array)[MAX_PLAYERS],
+                                struct player_t *dealer, struct dh_deck *deck) {
   for (int i = 0; i < args->game_state->n_rounds; i++) {
     RoundResults results = handle_round(args, dealer);
 
@@ -498,7 +503,9 @@ static void game_five_card_stud(args_broadcast_game_state_t *args, struct player
   }
 }
 
-static void play_game(const char game_type, args_broadcast_game_state_t *args, struct player_t (*players_array)[MAX_PLAYERS], struct player_t *dealer, struct dh_deck *deck) {
+static void play_game(const char game_type, args_broadcast_game_state_t *args,
+                      struct player_t (*players_array)[MAX_PLAYERS], struct player_t *dealer,
+                      struct dh_deck *deck) {
   *args->real_hand = deal_cards_to_players(args->game_state, dealer, deck, game_type);
   args->game_state->winner_declared = false;
 
@@ -654,7 +661,8 @@ int run_server(void) {
           printf("Client chose game type: 0x%02x\n", game_type);
         } else {
           fprintf(stderr, "Dealer failed to send valid game type or disconnected.\n");
-          remove_disconnected_player(clients, socket_set, slot_taken, &game_state.player[game_state.dealer_id]);
+          remove_disconnected_player(clients, socket_set, slot_taken,
+                                     &game_state.player[game_state.dealer_id]);
           active_clients--;
           broadcast_game_state(&args_broadcast_game_state);
           SDL_Delay(10);
@@ -665,7 +673,7 @@ int run_server(void) {
         game_state.at_menu = false;
 
         // struct player_t (*players)[MAX_PLAYERS] = &game_state.player;
-        //struct player_t *dealer = &(*players[game_state.dealer_id]);
+        // struct player_t *dealer = &(*players[game_state.dealer_id]);
 
         dh_shuffle_deck(&deck);
 
@@ -676,12 +684,11 @@ int run_server(void) {
         // or
         //  struct player_t *p = &(*players_array)[i];
 
-        struct player_t (*players_array)[MAX_PLAYERS] = &game_state.player;
+        struct player_t(*players_array)[MAX_PLAYERS] = &game_state.player;
 
         play_game(game_type, &args_broadcast_game_state, players_array, dealer, &deck);
 
         broadcast_game_state(&args_broadcast_game_state);
-
 
         Uint32 wait_ms = 10000; // wait up to 10 seconds before presenting the game menu
         Uint32 start = SDL_GetTicks();

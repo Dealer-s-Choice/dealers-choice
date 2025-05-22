@@ -71,6 +71,6 @@ int send_all_tcp(TCPsocket sock, const void *data, size_t length);
 int recv_all_tcp(TCPsocket sock, void *data, int32_t length);
 
 recv_status_t recv_game_state(TCPsocket client_socket, SDLNet_SocketSet socket_set,
-                    Game_State *game_state);
+                              Game_State *game_state);
 
 #endif

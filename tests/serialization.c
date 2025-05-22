@@ -25,16 +25,16 @@ void test_player(void) {
 void test_game_state(void) {
   Game_State game_state = {0};
   game_state = (Game_State){.pot = 500,
-                              .turn_id = 3,
-                              .at_menu = true,
-                              .total_bets_plus_raises = 623,
-                              .player[0] = {
-                                  .name = "Foo",
-                                  .id = 0,
-                                  .coins = 20000,
-                                  .in = true,
-                                  .total_paid = 50,
-                              }};
+                            .turn_id = 3,
+                            .at_menu = true,
+                            .total_bets_plus_raises = 623,
+                            .player[0] = {
+                                .name = "Foo",
+                                .id = 0,
+                                .coins = 20000,
+                                .in = true,
+                                .total_paid = 50,
+                            }};
 
   size_t size = 0;
   uint8_t *data = serialize_game_state(&game_state, &size);

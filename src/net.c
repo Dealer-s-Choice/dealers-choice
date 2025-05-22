@@ -225,7 +225,7 @@ int recv_all_tcp(TCPsocket sock, void *data, int length) {
 }
 
 recv_status_t recv_game_state(TCPsocket client_socket, SDLNet_SocketSet socket_set,
-                    Game_State *game_state) {
+                              Game_State *game_state) {
   // printf("[recv_game_state] Waiting for game state...\n");
   int result = SDLNet_CheckSockets(socket_set, 100);
   if (result == -1) {
