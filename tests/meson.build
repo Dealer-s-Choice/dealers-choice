@@ -1,6 +1,6 @@
 cases = [
   'serialization',
-  'create_player_list',
+  'get_next_player',
 ]
 
 foreach test : cases
@@ -8,7 +8,6 @@ foreach test : cases
   exe = executable(
     'test_' + test,
     test + '.c',
-    c_args: ['-DTEST_LIB'],
     dependencies: game_dep,
     override_options: ['b_lto=false'],
   )

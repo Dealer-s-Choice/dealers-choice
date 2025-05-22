@@ -83,7 +83,7 @@ static void fill_player_from_message(struct player_t *dst, const Player *msg) {
   }
 }
 
-uint8_t *serialize_game_state(const game_state_t *src, size_t *size_out) {
+uint8_t *serialize_game_state(const Game_State *src, size_t *size_out) {
   GameState msg = GAME_STATE__INIT;
 
   // Pot
@@ -121,8 +121,8 @@ uint8_t *serialize_game_state(const game_state_t *src, size_t *size_out) {
   return buffer;
 }
 
-game_state_t deserialize_game_state(const uint8_t *data, size_t size) {
-  game_state_t result = {0};
+Game_State deserialize_game_state(const uint8_t *data, size_t size) {
+  Game_State result = {0};
 
   GameState *msg = game_state__unpack(NULL, size, data);
   if (!msg) {
@@ -225,7 +225,7 @@ int recv_all_tcp(TCPsocket sock, void *data, int length) {
 }
 
 recv_status_t recv_game_state(TCPsocket client_socket, SDLNet_SocketSet socket_set,
-                    game_state_t *game_state) {
+                    Game_State *game_state) {
   // printf("[recv_game_state] Waiting for game state...\n");
   int result = SDLNet_CheckSockets(socket_set, 100);
   if (result == -1) {

@@ -23,8 +23,8 @@ void test_player(void) {
 }
 
 void test_game_state(void) {
-  game_state_t game_state = {0};
-  game_state = (game_state_t){.pot = 500,
+  Game_State game_state = {0};
+  game_state = (Game_State){.pot = 500,
                               .turn_id = 3,
                               .at_menu = true,
                               .total_bets_plus_raises = 623,
@@ -45,7 +45,7 @@ void test_game_state(void) {
   size = ntohl(size_net);
   fprintf(stderr, "after conversion: %zu\n", size);
 
-  game_state_t game_state_receiver = deserialize_game_state(data, size);
+  Game_State game_state_receiver = deserialize_game_state(data, size);
 
   free(data);
 

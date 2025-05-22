@@ -43,57 +43,17 @@
 
 #define CARD_DEAL_DELAY 50
 
-void free_player_list(struct player_list_t *head) {
-  if (!head)
-    return;
+int get_next_player(struct player_t (*players_array)[MAX_PLAYERS], const int cur) {
+  int i = cur;
+  while (1) {
+    i = (i + 1) % MAX_PLAYERS;
+    if (i == cur)
+      break;
 
-  struct player_list_t *current = head->next;
-  struct player_list_t *prev = head;
-
-  while (current && current != head) {
-    struct player_list_t *next = current->next;
-    free(prev);
-    prev = current;
-    current = next;
+    if ((*players_array)[i].id != -1)
+      return i;
   }
-
-  free(prev); // Free the last node (head if only one node)
-}
-
-struct player_list_t *create_player_list(game_state_t *game_state) {
-  struct player_list_t *root = NULL;
-  struct player_list_t *tail = NULL;
-  game_state->player_count = 0;
-
-  for (int i = 0; i < MAX_PLAYERS; i++) {
-    if (game_state->player[i].in == false)
-      continue;
-
-    struct player_list_t *new_node = malloc(sizeof(*new_node));
-    if (!new_node) {
-      perror("malloc");
-      fputs("Could not create player list\n", stderr);
-      free_player_list(root);
-      return NULL;
-    }
-
-    new_node->id = game_state->player[i].id;
-    game_state->player_count++;
-    new_node->next = NULL;
-
-    if (!root) {
-      root = new_node;
-    } else {
-      tail->next = new_node;
-    }
-
-    tail = new_node;
-  }
-
-  if (tail)
-    tail->next = root; // Close the circle
-
-  return root;
+  return -1;
 }
 
 static int8_t send_game_select(TCPsocket sock, uint8_t game_type) {
@@ -152,7 +112,7 @@ static struct button_t create_game_choice_button(const char *text, SDL_Renderer 
 }
 
 static int menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet socket_set,
-                                     const int8_t my_id, game_state_t *game_state,
+                                     const int8_t my_id, Game_State *game_state,
                                      struct sdl_context_t *sdl_context, struct font_t *font) {
   static const GameChoice game_choices[] = {
     { FIVE_CARD_DRAW, "5-card draw", GAME_5_CARD_DRAW },
@@ -170,6 +130,9 @@ static int menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet s
   }
 
   bool running = true;
+  // FIXME: There doesn't need to be a while loop here, this function already runs in a while
+  // loop. But the variables above need to be only declared once. Right now if
+  // this loop is removed, the buttons don't behave as intended.
   while (running && game_state->at_menu) {
     if (recv_game_state(client_socket, socket_set, game_state) == RECV_ERROR)
       return RECV_ERROR;
@@ -397,13 +360,14 @@ static void render_card(CardContext *context, TTF_Font *font) {
   }
 }
 
-static void do_create_card_context(CardContext card_context[MAX_PLAYERS][HAND_SIZE], struct player_list_t *active_players, game_state_t *game_state, const struct pos_t *player_pos, SDL_Renderer *renderer) {
-  struct player_list_t *head = active_players;
+static void do_create_card_context(CardContext card_context[MAX_PLAYERS][HAND_SIZE], struct player_t *turn, struct player_t (*players_array)[MAX_PLAYERS], const struct pos_t *player_pos, SDL_Renderer *renderer) {
+  struct player_t *start = turn;
   memset(card_context, 0, sizeof(CardContext) * MAX_PLAYERS * HAND_SIZE);
   for (int card_n = 0; card_n < HAND_SIZE; ++card_n) {
     do {
-      int id = active_players->id;
-      struct dh_card *card = &game_state->player[id].hand.card[card_n];
+      printf("%d\n", __LINE__);
+      int id = turn->id;
+      struct dh_card *card = &turn->hand.card[card_n];
       int card_x = player_pos[id].x + card_n * (80 + 10);
       int card_y = player_pos[id].y;
       SDL_Rect rect = {card_x, card_y, 80, 50};
@@ -420,11 +384,11 @@ static void do_create_card_context(CardContext card_context[MAX_PLAYERS][HAND_SI
         }
       }
       card_context[id][card_n] = create_card_context(text, textColor, renderer, rect, is_dh_card_back(*card), is_dh_card_null(*card));
-    } while ((active_players = active_players->next) != head);
+    } while ((turn = &(*players_array)[get_next_player(players_array, turn->id)]) != start);
   }
 }
 
-void run_sdl_loop(game_state_t *game_state, struct sdl_context_t *sdl_context, struct font_t *font,
+void run_sdl_loop(Game_State *game_state, struct sdl_context_t *sdl_context, struct font_t *font,
                   TCPsocket client_socket, SDLNet_SocketSet socket_set, const uint8_t my_id) {
 
   const struct pos_t player_pos[MAX_PLAYERS] = {
@@ -488,14 +452,15 @@ void run_sdl_loop(game_state_t *game_state, struct sdl_context_t *sdl_context, s
 
   CardContext card_context[MAX_PLAYERS][HAND_SIZE];
 
-  struct player_list_t *active_players = NULL;
-  struct player_list_t *dealer = NULL;
   int running = 1;
   bool cards_dealt = false;
   bool cards_created = false;
-
+  struct player_t (*players_array)[MAX_PLAYERS] = &game_state->player;
+  struct player_t *turn = NULL;
+  struct player_t *starting_turn = NULL;
   while (running) {
     recv_status_t recv_status = recv_game_state(client_socket, socket_set, game_state);
+    // printf("%d\n", __LINE__);
     if (recv_status == RECV_ERROR)
       running = false;
     else if (recv_status == RECV_SUCCESS)
@@ -506,25 +471,19 @@ void run_sdl_loop(game_state_t *game_state, struct sdl_context_t *sdl_context, s
         running = false;
       } else {
         cards_dealt = false;
+        int turn_id = game_state->turn_id;
+        turn = (&game_state->player)[turn_id];
+        starting_turn = turn;
         continue;
       }
     } else {
-      if (!active_players) {
-        active_players = create_player_list(game_state);
-        if (!active_players)
-          exit(EXIT_FAILURE);
-        dealer = active_players;
-
-        fprintf(stderr, "active_player id: %d\n", active_players->id);
-        fprintf(stderr, "active_player id: %d\n", active_players->next->id);
-      }
-
       // Only create the cards but doesn't render them yet.
       // This is done when the client receives new data, not every iteration
       // of the loop. The flag gets set above. TODO: It should only happen if
       // the server sends new information about cards.
       if (!cards_created) {
-        do_create_card_context(card_context, active_players, game_state, player_pos, sdl_context->renderer);
+        printf("%d\n", __LINE__);
+        do_create_card_context(card_context, turn, players_array, player_pos, sdl_context->renderer);
         cards_created = true;
       }
 
@@ -552,7 +511,7 @@ void run_sdl_loop(game_state_t *game_state, struct sdl_context_t *sdl_context, s
           action_button[i].hovered = SDL_PointInRect(&mouse_pos, &action_button[i].rect);
         }
         if (event.type == SDL_QUIT) {
-          running = 0;
+          running = false;
         } else if (event.type == SDL_MOUSEBUTTONDOWN) {
           if (game_state->turn_id == my_id) {
             if (SDL_PointInRect(&mouse_pos, &action_button[BET].rect)) {
@@ -581,10 +540,10 @@ void run_sdl_loop(game_state_t *game_state, struct sdl_context_t *sdl_context, s
       }
       clear_screen(sdl_context->renderer);
 
-      dealer = active_players;
       for (int card_n = 0; card_n < HAND_SIZE; ++card_n) {
         do {
-          render_card(&card_context[active_players->id][card_n], font->fonts[CARD]);
+          printf("%d\n", __LINE__);
+          render_card(&card_context[turn->id][card_n], font->fonts[CARD]);
 
           if (!cards_dealt) {
             Uint32 start = SDL_GetTicks();
@@ -598,28 +557,33 @@ void run_sdl_loop(game_state_t *game_state, struct sdl_context_t *sdl_context, s
             SDL_RenderPresent(sdl_context->renderer);
             SDL_Delay(16);
           }
-        } while ((active_players = active_players->next) != dealer);
+        } while ((turn = &(*players_array)[get_next_player(players_array, turn->id)]) != starting_turn);
       }
+      // if (recv_game_state(client_socket, socket_set, game_state) == RECV_ERROR)
+        // running = false;
 
+      printf("%d\n", __LINE__);
+      // This isn't used yet; it might be removed
       if (game_state->round_over)
         cards_dealt = false;
-      struct player_list_t *ptr = active_players;
+
       if (game_state->winner_declared) {
+        puts("Winner declared");
         do {
-          if (game_state->player[ptr->id].winner == true)
+          printf("%d\n", __LINE__);
+          if (game_state->player[turn->id].winner == true) {
+            puts("Winner declared");
             break;
+          }
+        } while ((turn = &(*players_array)[get_next_player(players_array, turn->id)]) != starting_turn);
 
-          ptr = ptr->next;
-
-        } while (ptr != active_players);
-
-        char winner_text[sizeof(game_state->player[ptr->id].name) + 64] = {0};
+        char winner_text[sizeof(turn->name) + 64] = {0};
         if (game_state->player_count > 1)
           snprintf(winner_text, sizeof winner_text, "%s wins with %s",
-                   game_state->player[ptr->id].name,
-                   pokeval_ranks[pokeval_evaluate_hand(game_state->player[ptr->id].hand)]);
+                   turn->name,
+                   pokeval_ranks[pokeval_evaluate_hand(turn->hand)]);
         else
-          snprintf(winner_text, sizeof winner_text, "%s wins", game_state->player[ptr->id].name);
+          snprintf(winner_text, sizeof winner_text, "%s wins", turn->name);
 
         SDL_Rect dest = {sdl_context->win_center.x, sdl_context->win_center.y - 50, 80, 20};
         render_text_plain(sdl_context->renderer, font->fonts[OTHER], winner_text,
@@ -648,32 +612,30 @@ void run_sdl_loop(game_state_t *game_state, struct sdl_context_t *sdl_context, s
                            sdl_context->win_center);
 
       do {
-        int id = active_players->id;
+        // printf("%d\n", __LINE__);
+        int id = turn->id;
         struct pos_t coin_pos = {.x = player_pos[id].x + (card_width * 1.2),
                                  .y = player_pos[id].y - (card_height * 0.9)};
         draw_silver_coin(sdl_context->renderer, coin_pos.x, coin_pos.y);
         char coins_text[24] = {0};
-        snprintf(coins_text, sizeof coins_text, "= %d", game_state->player[id].coins);
+        snprintf(coins_text, sizeof coins_text, "= %d", turn->coins);
         SDL_Rect dest = {coin_pos.x + 30, coin_pos.y - 20, 40, 20};
         render_text_plain(sdl_context->renderer, font->fonts[OTHER], coins_text,
                           get_color(COLOR_BLACK), &dest);
 
-        char name_text[sizeof(game_state->player[id].name)] = {0};
-        snprintf(name_text, sizeof name_text, "%s", game_state->player[id].name);
+        char name_text[sizeof(turn->name)] = {0};
+        snprintf(name_text, sizeof name_text, "%s", turn->name);
         SDL_Rect dest_name = {player_pos[id].x + 30, player_pos[id].y + (card_height * 1.2), 40,
                               20};
         render_text_plain(sdl_context->renderer, font->fonts[OTHER], name_text,
                           get_color(COLOR_BLACK), &dest_name);
 
-        active_players = active_players->next;
-      } while (active_players != dealer);
+      } while ((turn = &(*players_array)[get_next_player(players_array, turn->id)]) != starting_turn);
     }
 
     SDL_RenderPresent(sdl_context->renderer);
     SDL_Delay(16);
   }
-  free_player_list(active_players);
-
   // Mix_FreeChunk(card_sound);
   // Mix_CloseAudio();
 }

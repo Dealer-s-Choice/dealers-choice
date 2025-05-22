@@ -60,6 +60,6 @@ typedef struct {
   bool winner_declared;
   uint8_t n_rounds;
   struct player_t player[MAX_PLAYERS];
-} game_state_t;
+} Game_State;
 
 #endif

@@ -38,11 +38,11 @@
 #include "graphics.h"
 #include "net.h"
 
-#define MSG_GAME_SELECT 0x0001       // Player chooses a game variant
-#define MSG_PLAYER_ACTION 0x0002     // Player bets, folds, etc.
+#define MSG_GAME_SELECT 0x0001       // struct player_t chooses a game variant
+#define MSG_PLAYER_ACTION 0x0002     // struct player_t bets, folds, etc.
 #define MSG_GAME_START 0x0004        // Game begins
 #define MSG_DEAL_CARDS 0x0005        // Cards sent to player
-#define MSG_DRAW_REQUEST 0x0006      // Player discards cards for draw
+#define MSG_DRAW_REQUEST 0x0006      // struct player_t discards cards for draw
 #define MSG_GAME_STATE_UPDATE 0x0007 // Server sends state update
 
 typedef enum {
@@ -75,11 +75,9 @@ struct player_list_t {
   struct player_list_t *next;
 };
 
-void free_player_list(struct player_list_t *head);
+int get_next_player(struct player_t (*players_array)[MAX_PLAYERS], const int cur);
 
-struct player_list_t *create_player_list(game_state_t *game_state);
-
-void run_sdl_loop(game_state_t *game_state, struct sdl_context_t *sdl_context, struct font_t *font,
+void run_sdl_loop(Game_State *game_state, struct sdl_context_t *sdl_context, struct font_t *font,
                   TCPsocket client_socket, SDLNet_SocketSet socket_set, const uint8_t my_id);
 
 #endif
