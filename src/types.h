@@ -62,4 +62,8 @@ typedef struct {
   struct player_t player[MAX_PLAYERS];
 } Game_State;
 
+typedef struct {
+  struct pokeval_hand_t player[MAX_PLAYERS];
+} RealHand;
+
 #endif

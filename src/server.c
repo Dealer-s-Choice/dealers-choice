@@ -26,7 +26,6 @@
 
 */
 
-#include <deckhandler.h>
 #include <pokeval.h>
 #include <stdio.h>
 #include <string.h>
@@ -35,10 +34,6 @@
 #include "server.h"
 
 #define MAX_CLIENTS 5
-
-typedef struct {
-  struct pokeval_hand_t player[MAX_PLAYERS];
-} RealHand;
 
 typedef struct {
   TCPsocket (*clients)[MAX_CLIENTS];
@@ -112,8 +107,8 @@ void init_game_state(Game_State *game_state) {
   game_state->n_rounds = 0;
 }
 
-static RealHand deal_cards_to_players(Game_State *game_state, struct player_t *dealer,
-                                      struct dh_deck *deck, const char game_type) {
+RealHand deal_cards_to_players(Game_State *game_state, struct player_t *dealer,
+                               struct dh_deck *deck, const char game_type) {
   RealHand real_hand = {0};
   struct player_t(*players_array)[MAX_PLAYERS] = &game_state->player;
   struct player_t *turn = get_next_player(players_array, dealer->id);
@@ -261,7 +256,10 @@ static RoundResults handle_round(args_broadcast_game_state_t *args, struct playe
   // Points to the address of array of player structures in game state
   struct player_t *starting_player = get_next_player(players_array, dealer->id);
 
+  // turn = &game_state->player[turn_id];
+
   struct player_t *turn = starting_player;
+  printf("%s:turn->id: %d\n", __func__, turn->id);
 
   RoundResults results = {0};
   static uint8_t n_round = 0;

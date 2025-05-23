@@ -75,4 +75,10 @@ struct player_t *get_next_player(struct player_t (*players_array)[MAX_PLAYERS], 
 void run_sdl_loop(Game_State *game_state, struct sdl_context_t *sdl_context, struct font_t *font,
                   TCPsocket client_socket, SDLNet_SocketSet socket_set, const uint8_t my_id);
 
+typedef struct {
+  char str[200];
+} DebugPrintCards_t;
+
+DebugPrintCards_t debug_print_cards(struct pokeval_hand_t *hand);
+
 #endif

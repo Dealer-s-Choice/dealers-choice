@@ -31,4 +31,7 @@
 
 void init_game_state(Game_State *game_state);
 
+RealHand deal_cards_to_players(Game_State *game_state, struct player_t *dealer,
+                               struct dh_deck *deck, const char game_type);
+
 int run_server(void);
