@@ -70,12 +70,7 @@ struct player_action_msg_t {
   uint32_t amount; // only used for bet/raise
 };
 
-struct player_list_t {
-  int id;
-  struct player_list_t *next;
-};
-
-int get_next_player(struct player_t (*players_array)[MAX_PLAYERS], const int cur);
+struct player_t *get_next_player(struct player_t (*players_array)[MAX_PLAYERS], const int cur);
 
 void run_sdl_loop(Game_State *game_state, struct sdl_context_t *sdl_context, struct font_t *font,
                   TCPsocket client_socket, SDLNet_SocketSet socket_set, const uint8_t my_id);

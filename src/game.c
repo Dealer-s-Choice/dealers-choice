@@ -43,7 +43,7 @@
 
 #define CARD_DEAL_DELAY 50
 
-int get_next_player(struct player_t (*players_array)[MAX_PLAYERS], const int cur) {
+struct player_t *get_next_player(struct player_t (*players_array)[MAX_PLAYERS], const int cur) {
   int i = cur;
   while (1) {
     i = (i + 1) % MAX_PLAYERS;
@@ -51,9 +51,9 @@ int get_next_player(struct player_t (*players_array)[MAX_PLAYERS], const int cur
       break;
 
     if ((*players_array)[i].id != -1)
-      return i;
+      return &(*players_array)[i];
   }
-  return -1;
+  return NULL;
 }
 
 static int8_t send_game_select(TCPsocket sock, uint8_t game_type) {
@@ -392,7 +392,7 @@ static void do_create_card_context(CardContext card_context[MAX_PLAYERS][HAND_SI
       }
       card_context[id][card_n] = create_card_context(
           text, textColor, renderer, rect, is_dh_card_back(*card), is_dh_card_null(*card));
-    } while ((turn = &(*players_array)[get_next_player(players_array, turn->id)]) != starting_turn);
+    } while ((turn = get_next_player(players_array, turn->id)) != starting_turn);
   }
 }
 
@@ -568,7 +568,7 @@ void run_sdl_loop(Game_State *game_state, struct sdl_context_t *sdl_context, str
             SDL_RenderPresent(sdl_context->renderer);
             SDL_Delay(16);
           }
-        } while ((turn = &(*players_array)[get_next_player(players_array, turn->id)]) !=
+        } while ((turn = get_next_player(players_array, turn->id)) !=
                  starting_turn);
       }
       // if (recv_game_state(client_socket, socket_set, game_state) == RECV_ERROR)
@@ -587,7 +587,7 @@ void run_sdl_loop(Game_State *game_state, struct sdl_context_t *sdl_context, str
             puts("Winner declared");
             break;
           }
-        } while ((turn = &(*players_array)[get_next_player(players_array, turn->id)]) !=
+        } while ((turn = get_next_player(players_array, turn->id)) !=
                  starting_turn);
 
         char winner_text[sizeof(turn->name) + 64] = {0};
@@ -642,7 +642,7 @@ void run_sdl_loop(Game_State *game_state, struct sdl_context_t *sdl_context, str
         render_text_plain(sdl_context->renderer, font->fonts[OTHER], name_text,
                           get_color(COLOR_BLACK), &dest_name);
 
-      } while ((turn = &(*players_array)[get_next_player(players_array, turn->id)]) !=
+      } while ((turn = get_next_player(players_array, turn->id)) !=
                starting_turn);
     }
 

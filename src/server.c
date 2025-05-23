@@ -116,7 +116,7 @@ static RealHand deal_cards_to_players(Game_State *game_state, struct player_t *d
                                       struct dh_deck *deck, const char game_type) {
   RealHand real_hand = {0};
   struct player_t(*players_array)[MAX_PLAYERS] = &game_state->player;
-  struct player_t *turn = &(*players_array)[get_next_player(players_array, dealer->id)];
+  struct player_t *turn = get_next_player(players_array, dealer->id);
   struct player_t *starting_turn = turn;
   do {
     if (game_type != GAME_5_CARD_STUD) {
@@ -139,7 +139,7 @@ static RealHand deal_cards_to_players(Game_State *game_state, struct player_t *d
         real_hand.player[turn->id].card[i] = hand->card[i];
       }
     }
-  } while ((turn = &(*players_array)[get_next_player(players_array, turn->id)]) != starting_turn);
+  } while ((turn = get_next_player(players_array, turn->id)) != starting_turn);
 
   return real_hand;
 }
@@ -259,7 +259,7 @@ static RoundResults handle_round(args_broadcast_game_state_t *args, struct playe
   struct player_t(*players_array)[MAX_PLAYERS] = &args->game_state->player;
 
   // Points to the address of array of player structures in game state
-  struct player_t *starting_player = &(*players_array)[get_next_player(players_array, dealer->id)];
+  struct player_t *starting_player = get_next_player(players_array, dealer->id);
 
   struct player_t *turn = starting_player;
 
@@ -315,7 +315,7 @@ static RoundResults handle_round(args_broadcast_game_state_t *args, struct playe
       }
       SDL_Delay(50); // avoid busy-waiting
     }
-    turn = &(*players_array)[get_next_player(players_array, turn->id)];
+    turn = get_next_player(players_array, turn->id);
 
     fprintf(stderr, "player %d / total paid: %d\n", turn->id,
             args->game_state->player[turn->id].total_paid);
@@ -350,7 +350,7 @@ static RoundResults handle_round(args_broadcast_game_state_t *args, struct playe
         need_comparing[i].id = ptr->id;
         memcpy(&need_comparing[i].hand, &args->real_hand->player[ptr->id],
                sizeof(struct pokeval_hand_t));
-        ptr = &(*players_array)[get_next_player(players_array, ptr->id)];
+        ptr = get_next_player(players_array, ptr->id);
       }
 
       results.n_winners = pokeval_compare_hands(need_comparing, pl_count);
@@ -487,7 +487,7 @@ static void game_five_card_stud(args_broadcast_game_state_t *args,
     if (results.n_winners >= 1)
       break;
     if (i != args->game_state->n_rounds - 1) {
-      struct player_t *turn = &(*players_array)[get_next_player(players_array, dealer->id)];
+      struct player_t *turn = get_next_player(players_array, dealer->id);
       struct player_t *start = turn;
       do {
         int id = turn->id;
@@ -495,7 +495,7 @@ static void game_five_card_stud(args_broadcast_game_state_t *args,
         uint8_t n = i + 2;
         hand->card[n] = dh_deal_top_card(deck);
         args->real_hand->player[id].card[n] = hand->card[n];
-      } while ((turn = &(*players_array)[get_next_player(players_array, turn->id)]) != start);
+      } while ((turn = get_next_player(players_array, turn->id)) != start);
     }
   }
 }
