@@ -110,7 +110,7 @@ void init_game_state(Game_State *game_state) {
 RealHand deal_cards_to_players(Game_State *game_state, struct player_t *dealer,
                                struct dh_deck *deck, const char game_type) {
   RealHand real_hand = {0};
-  struct player_t(*players_array)[MAX_PLAYERS] = &game_state->player;
+  struct player_t *players_array = game_state->player;
   struct player_t *turn = get_next_player(players_array, dealer->id);
   struct player_t *starting_turn = turn;
   do {
@@ -251,10 +251,13 @@ static void server_handle_raise(Game_State *game_state, const uint8_t turn_id,
 
 static RoundResults handle_round(args_broadcast_game_state_t *args, struct player_t *dealer) {
   // Points to the address of the array of all the players
-  struct player_t(*players_array)[MAX_PLAYERS] = &args->game_state->player;
+  struct player_t *players_array = args->game_state->player;
+
+  struct player_t *players_array2 = args->game_state->player;
 
   // Points to the address of array of player structures in game state
-  struct player_t *starting_player = get_next_player(players_array, dealer->id);
+  // struct player_t *starting_player = get_next_player(players_array, dealer->id);
+  struct player_t *starting_player = get_next_player(players_array2, dealer->id);
 
   // turn = &game_state->player[turn_id];
 
@@ -477,7 +480,7 @@ static void game_five_card_draw(args_broadcast_game_state_t *args, struct player
 }
 
 static void game_five_card_stud(args_broadcast_game_state_t *args,
-                                struct player_t (*players_array)[MAX_PLAYERS],
+                                struct player_t *players_array,
                                 struct player_t *dealer, struct dh_deck *deck) {
   for (int i = 0; i < args->game_state->n_rounds; i++) {
     RoundResults results = handle_round(args, dealer);
@@ -499,7 +502,7 @@ static void game_five_card_stud(args_broadcast_game_state_t *args,
 }
 
 static void play_game(const char game_type, args_broadcast_game_state_t *args,
-                      struct player_t (*players_array)[MAX_PLAYERS], struct player_t *dealer,
+                      struct player_t *players_array, struct player_t *dealer,
                       struct dh_deck *deck) {
   *args->real_hand = deal_cards_to_players(args->game_state, dealer, deck, game_type);
   args->game_state->winner_declared = false;
@@ -674,12 +677,7 @@ int run_server(void) {
 
         struct player_t *dealer = &game_state.player[game_state.dealer_id];
 
-        // To get a pointer to a player:
-        //  struct player_t *p = (*players_array) + i;
-        // or
-        //  struct player_t *p = &(*players_array)[i];
-
-        struct player_t(*players_array)[MAX_PLAYERS] = &game_state.player;
+        struct player_t *players_array = game_state.player;
 
         play_game(game_type, &args_broadcast_game_state, players_array, dealer, &deck);
 

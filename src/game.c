@@ -43,12 +43,12 @@
 
 #define CARD_DEAL_DELAY 50
 
-struct player_t *get_next_player(struct player_t (*players_array)[MAX_PLAYERS], int cur) {
+struct player_t *get_next_player(struct player_t *players_array, int cur) {
   int start = cur;
   do {
     cur = (cur + 1) % MAX_PLAYERS;
-    if ((*players_array)[cur].id != -1)
-      return &(*players_array)[cur];
+  if (players_array[cur].id != -1)
+    return &players_array[cur];
   } while (cur != start);
 
   return NULL; // No other active player found
@@ -360,10 +360,10 @@ static void render_card(CardContext *context, TTF_Font *font) {
 }
 
 static void do_create_card_context(CardContext card_context[MAX_PLAYERS][HAND_SIZE],
-                                   const int start_i, struct player_t (*players_array)[MAX_PLAYERS],
+                                   const int start_i, struct player_t *players_array,
                                    const struct pos_t *player_pos, SDL_Renderer *renderer) {
   memset(card_context, 0, sizeof(CardContext) * MAX_PLAYERS * HAND_SIZE);
-  struct player_t *turn = &(*players_array)[start_i];
+  struct player_t *turn = &players_array[start_i];
   struct player_t *starting_turn = turn;
   do {
     for (int card_n = 0; card_n < HAND_SIZE; card_n++) {
@@ -462,7 +462,7 @@ void run_sdl_loop(Game_State *game_state, struct sdl_context_t *sdl_context, str
   int running = 1;
   bool cards_dealt = false;
   bool cards_created = false;
-  struct player_t(*players_array)[MAX_PLAYERS] = &game_state->player;
+  struct player_t *players_array = game_state->player;
   struct player_t *turn = NULL;
   struct player_t *starting_turn = NULL;
   while (running) {

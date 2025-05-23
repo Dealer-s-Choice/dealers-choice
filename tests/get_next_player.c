@@ -14,8 +14,8 @@ game_state.player[4].id = 4;
 
 assert(game_state.player[1].id == 1);
 
-struct player_t (*players_array)[MAX_PLAYERS] = &game_state.player;
-struct player_t *turn = players_array[0];
+struct player_t *players_array = game_state.player;
+struct player_t *turn = players_array;
 
 assert(turn->id == 0);
 

@@ -49,6 +49,7 @@ static int menu_display_connect(char *input_text, SDL_Renderer *renderer, struct
       .enabled = true,
   };
 
+  // SDL_RenderSetLogicalSize(renderer, 800, 600);
   SDL_Rect input_box = make_rect(100, 220, 200, 40);
   SDL_StartTextInput();
 
