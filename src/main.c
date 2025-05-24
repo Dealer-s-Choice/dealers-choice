@@ -49,7 +49,6 @@ static int menu_display_connect(char *input_text, SDL_Renderer *renderer, struct
       .enabled = true,
   };
 
-  // SDL_RenderSetLogicalSize(renderer, 800, 600);
   SDL_Rect input_box = make_rect(100, 220, 200, 40);
   SDL_StartTextInput();
 
@@ -122,15 +121,8 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 
-  SDL_Rect bounds;
-  if (SDL_GetDisplayBounds(0, &bounds) == 0) {
-    printf("Display 0 bounds: x=%d, y=%d, w=%d, h=%d\n", bounds.x, bounds.y, bounds.w, bounds.h);
-  } else {
-    puts(SDL_GetError());
-    exit(EXIT_FAILURE);
-  }
   struct sdl_context_t sdl_context;
-  init_sdl_window(&sdl_context, "Dealer's Choice", bounds.w * 0.8, bounds.h * 0.8);
+  init_sdl_window(&sdl_context, "Dealer's Choice");
 
   struct font_t font;
   for (int i = 0; i < NUM_FONTS; ++i) {

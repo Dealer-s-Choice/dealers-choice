@@ -83,7 +83,7 @@ TTF_Font *open_font(const struct font_args_t *args);
 
 void clear_screen(SDL_Renderer *renderer);
 
-void init_sdl_window(struct sdl_context_t *sdl_context, const char *title, int w, int h);
+void init_sdl_window(struct sdl_context_t *sdl_context, const char *title);
 
 SDL_Rect make_rect(int x, int y, int w, int h);
 

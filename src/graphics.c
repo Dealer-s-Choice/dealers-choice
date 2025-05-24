@@ -68,8 +68,19 @@ void clear_screen(SDL_Renderer *renderer) {
   SDL_RenderClear(renderer);
 }
 
-void init_sdl_window(struct sdl_context_t *sdl_context, const char *title, int w, int h) {
-  SDL_Init(SDL_INIT_VIDEO);
+void init_sdl_window(struct sdl_context_t *sdl_context, const char *title) {
+  SDL_Rect bounds;
+  if (SDL_GetDisplayBounds(0, &bounds) == 0) {
+    printf("Display 0 bounds: x=%d, y=%d, w=%d, h=%d\n", bounds.x, bounds.y, bounds.w, bounds.h);
+  } else {
+    puts(SDL_GetError());
+    exit(EXIT_FAILURE);
+  }
+
+  float factor = 0.8;
+  float w = bounds.w * factor;
+  float h = bounds.h * factor;
+
   sdl_context->window = SDL_CreateWindow(title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, w,
                                          h, SDL_WINDOW_SHOWN);
   if (!sdl_context->window)
@@ -82,8 +93,11 @@ void init_sdl_window(struct sdl_context_t *sdl_context, const char *title, int w
   SDL_GetWindowSize(sdl_context->window, &x, &y);
   sdl_context->win_center.x = x / 2;
   sdl_context->win_center.y = y / 2;
+
   sdl_context->window_width = w;
   sdl_context->window_height = h;
+
+  // SDL_RenderSetLogicalSize(sdl_context->renderer, 1920 * factor, 1080 * factor);
 
   return;
 }
