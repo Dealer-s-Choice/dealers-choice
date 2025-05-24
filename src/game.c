@@ -299,22 +299,6 @@ typedef struct {
   bool hovered, selected, is_back, is_null;
 } CardContext;
 
-static CardContext create_card_context(const char *text, const SDL_Color textColor,
-                                       SDL_Renderer *renderer, SDL_Rect rect, const bool is_back,
-                                       const bool is_null) {
-  CardContext context = {
-      .textColor = textColor,
-      .renderer = renderer,
-      .rect = rect,
-      .hovered = false,
-      .selected = false,
-      .is_back = is_back,
-      .is_null = is_null,
-  };
-  snprintf(context.text, SIZEOF_CARD_TEXT, "%s", text);
-  return context;
-}
-
 static void render_card(CardContext *context, TTF_Font *font) {
   // printf("%d\n", __LINE__);
   if (context->is_back) {
@@ -359,13 +343,18 @@ static void render_card(CardContext *context, TTF_Font *font) {
   SDL_DestroyTexture(textTexture);
 }
 
-static void do_create_card_context(CardContext card_context[MAX_PLAYERS][HAND_SIZE],
+static void create_card_context(CardContext card_context[MAX_PLAYERS][HAND_SIZE],
                                    const int start_i, struct player_t *players_array,
                                    const struct pos_t *player_pos, SDL_Renderer *renderer) {
   memset(card_context, 0, sizeof(CardContext) * MAX_PLAYERS * HAND_SIZE);
   struct player_t *turn = &players_array[start_i];
   struct player_t *starting_turn = turn;
   do {
+    CardContext context = {
+        .renderer = renderer,
+        .hovered = false,
+        .selected = false,
+    };
     for (int card_n = 0; card_n < HAND_SIZE; card_n++) {
       // printf("%d\n", __LINE__);
       const int id = turn->id;
@@ -374,23 +363,25 @@ static void do_create_card_context(CardContext card_context[MAX_PLAYERS][HAND_SI
           player_pos[id].x + card_n * (80 + 10),
           player_pos[id].y,
       };
-      const SDL_Rect rect = {card_pos.x, card_pos.y, 80, 50};
-      char text[SIZEOF_CARD_TEXT] = {0};
+      SDL_Rect rect = {card_pos.x, card_pos.y, 80, 50};
+      context.rect = rect;
+
       SDL_Color textColor = {0, 0, 0, 0};
-      if (!is_dh_card_back(*card) && !is_dh_card_null(*card)) {
+      context.textColor = textColor;
+
+      context.is_back = is_dh_card_back(*card);
+      context.is_null = is_dh_card_null(*card);
+      if (!context.is_back && !context.is_null) {
         const char *face = get_card_face_str(card->face_val);
         const char *suit = get_card_unicode_suit(*card);
-        snprintf(text, sizeof(text), "%s%s", face, suit);
-        if (strlen(text) == 0)
+        context.textColor = (card->suit == HEARTS || card->suit == DIAMONDS) ? get_color(COLOR_RED) : get_color(COLOR_BLACK);
+        snprintf(context.text, sizeof(context.text), "%s%s", face, suit);
+        if (strlen(context.text) == 0) {
+          fprintf(stderr, "%s:String length 0\n", __func__);
           exit(EXIT_FAILURE);
-        if (card->suit == HEARTS || card->suit == DIAMONDS) {
-          textColor = get_color(COLOR_RED);
-        } else {
-          textColor = get_color(COLOR_BLACK);
         }
       }
-      card_context[id][card_n] = create_card_context(
-          text, textColor, renderer, rect, is_dh_card_back(*card), is_dh_card_null(*card));
+      card_context[id][card_n] = context;
     }
   } while ((turn = get_next_player(players_array, turn->id)) != starting_turn);
 }
@@ -497,7 +488,7 @@ void run_sdl_loop(Game_State *game_state, struct sdl_context_t *sdl_context, str
 
       if (!cards_created) {
         // printf("%d\n", __LINE__);
-        do_create_card_context(card_context, starting_turn->id, players_array, player_pos,
+        create_card_context(card_context, starting_turn->id, players_array, player_pos,
                                sdl_context->renderer);
         cards_created = true;
       }
