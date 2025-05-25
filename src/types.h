@@ -59,7 +59,7 @@ typedef struct {
   bool round_over;
   bool winner_declared;
   uint8_t n_rounds;
-  char status_str[256];
+  char status_str[512];
   struct player_t player[MAX_PLAYERS];
 } Game_State;
 
