@@ -367,12 +367,17 @@ static RoundResults handle_round_real(args_broadcast_game_state_t *args, struct 
         }
       } while ((turn = get_next_player(players_array, turn->id)) != starting_player);
 
-    } else if ((args->game_state->total_bets_plus_raises == 0 && turn == starting_player) ||
-               (args->game_state->total_bets_plus_raises ==
-                args->game_state->player[turn->id].total_paid))
+    } else if (args->game_state->total_bets_plus_raises == 0) {
+      if (turn == starting_player)
+        break;
+    } else if (args->game_state->total_bets_plus_raises ==
+               args->game_state->player[turn->id].total_paid) {
       break; // Everyone either checked or paid all bets and raises
-  if (results.n_winners > 0)
-    break;
+    }
+
+    if (results.n_winners > 0) {
+      break;
+    }
   } while (true);
 
   args->game_state->round_over = true;
