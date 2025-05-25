@@ -37,6 +37,8 @@
 
 #include "graphics.h"
 #include "net.h"
+#include "server.h"
+#include "types.h"
 
 #define MSG_GAME_SELECT 0x0001       // struct player_t chooses a game variant
 #define MSG_PLAYER_ACTION 0x0002     // struct player_t bets, folds, etc.
@@ -54,14 +56,6 @@ typedef enum {
   ACTION_FOLD = 0x05
 } player_action_t;
 
-typedef enum {
-  GAME_INVALID = 0x00,
-  GAME_5_CARD_DRAW = 0x01,
-  GAME_5_CARD_DOUBLE = 0x02,
-  GAME_5_CARD_STUD = 0x03,
-  GAME_7_CARD_STUD = 0x04
-} game_type_t;
-
 #define MSG_PLAYER_ACTION 0x0002
 #define SIZE_MESSAGE_GAME_SELECT 3
 
@@ -69,6 +63,8 @@ struct player_action_msg_t {
   uint8_t action;
   uint32_t amount; // only used for bet/raise
 };
+
+const GameChoice *find_game_choice_by_type(game_type_t type);
 
 struct player_t *get_next_player(struct player_t *players_array, int cur);
 

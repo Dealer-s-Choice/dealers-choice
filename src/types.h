@@ -32,6 +32,21 @@
 #include <pokeval.h>
 
 #define MAX_PLAYERS 5
+#define MAX_CLIENTS 5
+
+typedef enum {
+  GAME_INVALID = 0x00,
+  GAME_5_CARD_DRAW = 0x01,
+  GAME_5_CARD_DOUBLE = 0x02,
+  GAME_5_CARD_STUD = 0x03,
+  GAME_7_CARD_STUD = 0x04
+} game_type_t;
+
+typedef enum {
+  FIVE_CARD_DRAW,
+  FIVE_CARD_STUD,
+  MAX_CHOICES,
+} menu_option_t;
 
 struct pos_t {
   int x;
@@ -66,5 +81,25 @@ typedef struct {
 typedef struct {
   struct pokeval_hand_t player[MAX_PLAYERS];
 } RealHand;
+
+typedef struct {
+  TCPsocket (*clients)[MAX_CLIENTS];
+  SDLNet_SocketSet *socket_set;
+  int *active_clients;
+  Game_State *game_state;
+  RealHand *real_hand;
+  bool (*slot_taken)[MAX_CLIENTS];
+} args_broadcast_game_state_t;
+
+typedef void (*game_func_t)(args_broadcast_game_state_t *, struct player_t *, struct player_t *, struct dh_deck *);
+
+typedef struct {
+  const menu_option_t g;
+  const char *str;
+  const game_type_t game_type;
+  game_func_t func;
+} GameChoice;
+
+extern const GameChoice game_choices[];
 
 #endif

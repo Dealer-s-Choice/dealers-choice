@@ -33,18 +33,7 @@
 #include "game.h"
 #include "server.h"
 
-#define MAX_CLIENTS 5
-
 #define handle_round() handle_round_real(args, dealer)
-
-typedef struct {
-  TCPsocket (*clients)[MAX_CLIENTS];
-  SDLNet_SocketSet *socket_set;
-  int *active_clients;
-  Game_State *game_state;
-  RealHand *real_hand;
-  bool (*slot_taken)[MAX_CLIENTS];
-} args_broadcast_game_state_t;
 
 typedef struct {
   uint8_t n_winners;
@@ -489,12 +478,16 @@ static int get_next_dealer(int current, const bool *slot_taken) {
   return -1; // No valid dealer
 }
 
-static void game_five_card_draw(args_broadcast_game_state_t *args, struct player_t *dealer) {
+void game_five_card_draw(args_broadcast_game_state_t *args,
+                                struct player_t *players_array,
+                                struct player_t *dealer, struct dh_deck *deck) {
+  (void)players_array;
+  (void)deck;
   server_handle_ante(args->game_state, dealer, 250);
   handle_round();
 }
 
-static void game_five_card_stud(args_broadcast_game_state_t *args,
+void game_five_card_stud(args_broadcast_game_state_t *args,
                                 struct player_t *players_array,
                                 struct player_t *dealer, struct dh_deck *deck) {
   int8_t rounds = 4;
@@ -529,15 +522,10 @@ static void play_game(const char game_type, args_broadcast_game_state_t *args,
 
   args->game_state->player_count = count_active_clients(*args->slot_taken);
 
-  switch (game_type) {
-  case GAME_5_CARD_DRAW:
-    game_five_card_draw(args, dealer);
-    break;
-  case GAME_5_CARD_STUD:
-    game_five_card_stud(args, players_array, dealer, deck);
-    break;
-  default:
-    break;
+  // Using function pointers...
+  const GameChoice *choice = find_game_choice_by_type(game_type);
+  if (choice && choice->func) {
+      choice->func(args, players_array, dealer, deck);
   }
 }
 

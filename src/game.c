@@ -63,18 +63,6 @@ static int8_t send_game_select(TCPsocket sock, uint8_t game_type) {
   return send_all_tcp(sock, buffer, sizeof(buffer));
 }
 
-typedef enum {
-  FIVE_CARD_DRAW,
-  FIVE_CARD_STUD,
-  MAX_CHOICES,
-} menu_option_t;
-
-typedef struct {
-  const menu_option_t g;
-  const char *str;
-  const game_type_t game_type;
-} GameChoice;
-
 // These two buttons for creating the buttons are mostly identical. In the future,
 // they can be changed so there are some differences if desired. Otherwise,
 // they'll be merged, and some of the values, such as the colors, will be passed
@@ -109,12 +97,21 @@ static struct button_t create_game_choice_button(const char *text, SDL_Renderer 
   return button;
 }
 
+const GameChoice game_choices[] = {{FIVE_CARD_DRAW, "5-card draw", GAME_5_CARD_DRAW, game_five_card_draw},
+                                            {FIVE_CARD_STUD, "5-card stud", GAME_5_CARD_STUD, game_five_card_stud}};
+
+const GameChoice *find_game_choice_by_type(game_type_t type) {
+  for (size_t i = 0; i < sizeof(game_choices) / sizeof(game_choices[0]); ++i) {
+    if (game_choices[i].game_type == type) {
+        return &game_choices[i];
+    }
+  }
+  return NULL; // Not found
+}
+
 static int menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet socket_set,
                                      const int8_t my_id, Game_State *game_state,
                                      struct sdl_context_t *sdl_context, struct font_t *font) {
-  static const GameChoice game_choices[] = {{FIVE_CARD_DRAW, "5-card draw", GAME_5_CARD_DRAW},
-                                            {FIVE_CARD_STUD, "5-card stud", GAME_5_CARD_STUD}};
-
   int button_height = 40;
   int y_offset = 160;
   struct button_t game_choice_button[MAX_CHOICES];
