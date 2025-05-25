@@ -425,6 +425,9 @@ void run_sdl_loop(Game_State *game_state, struct sdl_context_t *sdl_context, str
   // if (Mix_Paused(-1)) {
   // Mix_Resume(-1);
   //}
+
+  char status_msg[16][sizeof game_state->status_str];
+
   enum {
     BET,
     CHECK,
@@ -471,21 +474,30 @@ void run_sdl_loop(Game_State *game_state, struct sdl_context_t *sdl_context, str
       } else {
         cards_dealt = false;
         starting_turn = NULL;
+        memset(status_msg, 0, sizeof status_msg);
         continue;
       }
     } else {
-      // Only create the cards but doesn't render them yet.
-      // This is done when the client receives new data, not every iteration
-      // of the loop. The flag gets set above. TODO: It should only happen if
-      // the server sends new information about cards.
       int turn_id = game_state->turn_id;
       turn = &game_state->player[turn_id];
       if (!starting_turn)
         starting_turn = turn;
 
+      if (strcmp(game_state->status_str, status_msg[0]) != 0) {
+          // Shift old messages down by one slot (from [0]..[14] → [1]..[15])
+          memmove(&status_msg[1], &status_msg[0], (sizeof status_msg[0]) * (16 - 1));
+
+          // Copy new message to the front
+          snprintf(status_msg[0], sizeof status_msg[0], "%s", game_state->status_str);
+      }
+
       // debug_print_cards(&game_state->player[0].hand);
       // debug_print_cards(&game_state->player[1].hand);
 
+      // Only create the cards but doesn't render them yet.
+      // This is done when the client receives new data, not every iteration
+      // of the loop. The flag gets set above. TODO: It should only happen if
+      // the server sends new information about cards.
       if (!cards_created) {
         // printf("%d\n", __LINE__);
         create_card_context(card_context, starting_turn->id, players_array, player_pos,
@@ -546,6 +558,16 @@ void run_sdl_loop(Game_State *game_state, struct sdl_context_t *sdl_context, str
         }
       }
       clear_screen(sdl_context->renderer);
+
+      // for (size_t i = 0; i < sizeof(status_msg) / sizeof(status_msg[0][0]); i++) {
+      for (size_t i = 0; i < 16; i++) {
+        char tmp[sizeof(status_msg[0]) + 100];
+        snprintf(tmp, sizeof tmp, "%s", status_msg[i]);
+        SDL_Rect text_pos = {sdl_context->win_center.x + 50, 60 * i + 5, 0, 0};
+        render_text_plain(sdl_context->renderer, font->fonts[OTHER], tmp, get_color(COLOR_BLACK),
+                          &text_pos);
+          // printf("status_msg[%zd]: %s\n", i, status_msg[i]);
+      }
 
       for (int card_n = 0; card_n < HAND_SIZE; ++card_n) {
         turn = starting_turn;

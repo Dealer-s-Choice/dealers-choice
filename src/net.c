@@ -96,6 +96,7 @@ uint8_t *serialize_game_state(const Game_State *src, size_t *size_out) {
   msg.round_over = src->round_over;
   msg.winner_declared = src->winner_declared;
   msg.n_rounds = src->n_rounds;
+  msg.status_str = (char *)src->status_str;
 
   // player
   Player *player_msgs[MAX_PLAYERS];
@@ -139,6 +140,9 @@ Game_State deserialize_game_state(const uint8_t *data, size_t size) {
   result.round_over = msg->round_over;
   result.winner_declared = msg->winner_declared;
   result.n_rounds = msg->n_rounds;
+
+  if (msg->status_str)
+    snprintf(result.status_str, sizeof(result.status_str), "%s", msg->status_str);
 
   size_t n = msg->n_player < MAX_PLAYERS ? msg->n_player : MAX_PLAYERS;
   for (size_t i = 0; i < n; ++i) {

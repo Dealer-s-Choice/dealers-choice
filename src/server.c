@@ -105,6 +105,7 @@ void init_game_state(Game_State *game_state) {
   game_state->winner_declared = false;
   game_state->round_over = true;
   game_state->n_rounds = 0;
+  *game_state->status_str = '\0';
 }
 
 RealHand deal_cards_to_players(Game_State *game_state, struct player_t *dealer,
@@ -283,8 +284,10 @@ static RoundResults handle_round(args_broadcast_game_state_t *args, struct playe
         puts("socket ready");
 
         struct player_action_msg_t action;
+        // char tmp[sizeof args->game_state->status_str];
         if (recv_player_action((*args->clients)[args->game_state->turn_id], &action) > 0) {
           printf("Received action %u with amount %u\n", action.action, action.amount);
+          snprintf(args->game_state->status_str, sizeof(args->game_state->status_str), "Received action from %s: %u with amount %u\n", turn->name, action.action, action.amount);
           switch (action.action) {
           case ACTION_CHECK:
             turn->has_checked = true;
@@ -344,6 +347,11 @@ static RoundResults handle_round(args_broadcast_game_state_t *args, struct playe
   if (n_round == args->game_state->n_rounds && results.n_winners == 0) {
     if (args->game_state->player_count != 1) {
       uint8_t pl_count = args->game_state->player_count;
+
+// I've seen this twice now during testing. Maybe happens during a tie.
+//
+// ../src/server.c:350:39: runtime error: variable length array bound evaluates to non-positive value 0
+// ../subprojects/pokeval/pokeval.c:298:11: runtime error: variable length array bound evaluates to non-positive value 0
       struct pokeval_need_comparing_t need_comparing[pl_count];
       struct player_t *ptr = starting_player;
       for (uint8_t i = 0; i < pl_count; i++) {
@@ -682,6 +690,7 @@ int run_server(void) {
         play_game(game_type, &args_broadcast_game_state, players_array, dealer, &deck);
 
         broadcast_game_state(&args_broadcast_game_state);
+        *game_state.status_str = '\0';
 
         Uint32 wait_ms = 10000; // wait up to 10 seconds before presenting the game menu
         Uint32 start = SDL_GetTicks();
