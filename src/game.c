@@ -141,7 +141,7 @@ static int menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet s
         game_choice_button[i].hovered = SDL_PointInRect(&mouse_pos, &game_choice_button[i].rect);
       }
       if (e.type == SDL_QUIT) {
-        return 1;
+        return -1;
       } else if (e.type == SDL_MOUSEBUTTONDOWN) {
         for (int i = 0; i < MAX_CHOICES; i++) {
           if (SDL_PointInRect(&mouse_pos, &game_choice_button[i].rect) &&
