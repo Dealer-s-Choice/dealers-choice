@@ -484,7 +484,8 @@ void game_five_card_draw(args_broadcast_game_state_t *args,
   (void)players_array;
   (void)deck;
   server_handle_ante(args->game_state, dealer, 250);
-  handle_round();
+  RoundResults results = handle_round();
+  determine_winner(args, &results);
 }
 
 void game_five_card_stud(args_broadcast_game_state_t *args,
