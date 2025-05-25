@@ -250,6 +250,45 @@ static void server_handle_raise(Game_State *game_state, const uint8_t turn_id,
   server_handle_bet(game_state, turn_id, amount);
 }
 
+static void determine_winner(args_broadcast_game_state_t * args, RoundResults *results) {
+  if (results->n_winners > 0)
+    return;
+  // broadcast_game_state(args);
+  struct player_t *players_array = args->game_state->player;
+  struct player_t *starting_player = players_array;
+  uint8_t pl_count = args->game_state->player_count;
+
+// I've seen this twice now during testing. Maybe happens during a tie.
+//
+// ../src/server.c:350:39: runtime error: variable length array bound evaluates to non-positive value 0
+// ../subprojects/pokeval/pokeval.c:298:11: runtime error: variable length array bound evaluates to non-positive value 0
+  struct pokeval_need_comparing_t need_comparing[pl_count];
+  struct player_t *ptr = starting_player;
+  for (uint8_t i = 0; i < pl_count; i++) {
+    need_comparing[i].won = false;
+    need_comparing[i].id = ptr->id;
+    memcpy(&need_comparing[i].hand, &args->real_hand->player[ptr->id],
+           sizeof(struct pokeval_hand_t));
+    ptr = get_next_player(players_array, ptr->id);
+  }
+
+  results->n_winners = pokeval_compare_hands(need_comparing, pl_count);
+  uint8_t winners = 0;
+  for (int i = 0; i < pl_count; i++) {
+    if (!need_comparing[i].won)
+      continue;
+    results->id[winners++] = need_comparing[i].id;
+    struct player_t *winner = &args->game_state->player[need_comparing[i].id];
+    winner->winner = true;
+    fprintf(stderr, "winner id: %d\n", need_comparing[i].id);
+    snprintf(args->game_state->status_str, sizeof(args->game_state->status_str), "%s wins with %s\n", winner->name, pokeval_ranks[pokeval_evaluate_hand(winner->hand)]);
+    uint32_t share = args->game_state->pot / results->n_winners;
+    args->game_state->pot = args->game_state->pot % results->n_winners;
+    winner->coins += share;
+  }
+  args->game_state->winner_declared = true;
+}
+
 static RoundResults handle_round(args_broadcast_game_state_t *args, struct player_t *dealer) {
   // Points to the address of the array of all the players
   struct player_t *players_array = args->game_state->player;
@@ -259,7 +298,6 @@ static RoundResults handle_round(args_broadcast_game_state_t *args, struct playe
   printf("%s:turn->id: %d\n", __func__, turn->id);
 
   RoundResults results = {0};
-  args->game_state->n_rounds--;
 
   do {
     args->game_state->round_over = false;
@@ -318,7 +356,7 @@ static RoundResults handle_round(args_broadcast_game_state_t *args, struct playe
     fprintf(stderr, "total_bets_plus_raises: %d\n", args->game_state->total_bets_plus_raises);
 
     if (args->game_state->player_count == 1) { // All other players folded
-      broadcast_game_state(args);
+      // broadcast_game_state(args);
       starting_player = turn;
       do {
         if (turn->in) {
@@ -328,6 +366,7 @@ static RoundResults handle_round(args_broadcast_game_state_t *args, struct playe
           else
             snprintf(args->game_state->status_str, sizeof(args->game_state->status_str), "%s wins with %s\n", turn->name, pokeval_ranks[pokeval_evaluate_hand(turn->hand)]);
 
+          args->game_state->winner_declared = true;
           results.n_winners = 1;
           fprintf(stderr, "winner id from fold: %d\n", turn->id);
           results.id[0] = turn->id;
@@ -338,49 +377,13 @@ static RoundResults handle_round(args_broadcast_game_state_t *args, struct playe
       } while ((turn = get_next_player(players_array, turn->id)) != starting_player);
 
     } else if ((args->game_state->total_bets_plus_raises == 0 && turn == starting_player) ||
-               (args->game_state->total_bets_plus_raises &&
+               (args->game_state->total_bets_plus_raises ==
                 args->game_state->player[turn->id].total_paid))
       break; // Everyone either checked or paid all bets and raises
   if (results.n_winners > 0)
     break;
   } while (true);
 
-  if (args->game_state->n_rounds == 0 && results.n_winners == 0) {
-    broadcast_game_state(args);
-    uint8_t pl_count = args->game_state->player_count;
-
-// I've seen this twice now during testing. Maybe happens during a tie.
-//
-// ../src/server.c:350:39: runtime error: variable length array bound evaluates to non-positive value 0
-// ../subprojects/pokeval/pokeval.c:298:11: runtime error: variable length array bound evaluates to non-positive value 0
-    struct pokeval_need_comparing_t need_comparing[pl_count];
-    struct player_t *ptr = starting_player;
-    for (uint8_t i = 0; i < pl_count; i++) {
-      need_comparing[i].won = false;
-      need_comparing[i].id = ptr->id;
-      memcpy(&need_comparing[i].hand, &args->real_hand->player[ptr->id],
-             sizeof(struct pokeval_hand_t));
-      ptr = get_next_player(players_array, ptr->id);
-    }
-
-    results.n_winners = pokeval_compare_hands(need_comparing, pl_count);
-    uint8_t winners = 0;
-    for (int i = 0; i < pl_count; i++) {
-      if (!need_comparing[i].won)
-        continue;
-      results.id[winners++] = need_comparing[i].id;
-      args->game_state->player[need_comparing[i].id].winner = true;
-      fprintf(stderr, "winner id: %d\n", need_comparing[i].id);
-      snprintf(args->game_state->status_str, sizeof(args->game_state->status_str), "%s wins with %s\n", args->game_state->player[need_comparing[i].id].name, pokeval_ranks[pokeval_evaluate_hand(turn->hand)]);
-      uint32_t share = args->game_state->pot / results.n_winners;
-      args->game_state->pot = args->game_state->pot % results.n_winners;
-      args->game_state->player[need_comparing[i].id].coins += share;
-    }
-
-  } else if (results.n_winners > 0) {
-    args->game_state->winner_declared = true;
-    printf("%d\n", __LINE__);
-  }
   args->game_state->round_over = true;
   init_new_round(args->game_state);
   return results;
@@ -492,12 +495,16 @@ static void game_five_card_draw(args_broadcast_game_state_t *args, struct player
 static void game_five_card_stud(args_broadcast_game_state_t *args,
                                 struct player_t *players_array,
                                 struct player_t *dealer, struct dh_deck *deck) {
-  int8_t rounds = args->game_state->n_rounds;
-  int i = rounds;
-  for (; i <= rounds; i++) {
-    RoundResults results = handle_round(args, dealer);
+  int8_t rounds = 4;
+  RoundResults results;
+  for (int i = 0; i < rounds; i++) {
+    results = handle_round(args, dealer);
+
+    if (results.n_winners > 0)
+      break;
 
     if (i < rounds) {
+      printf("round: %d\n", i);
       struct player_t *turn = get_next_player(players_array, dealer->id);
       struct player_t *start = turn;
       do {
@@ -508,9 +515,8 @@ static void game_five_card_stud(args_broadcast_game_state_t *args,
         args->real_hand->player[id].card[n] = hand->card[n];
       } while ((turn = get_next_player(players_array, turn->id)) != start);
     }
-    if (results.n_winners > 0)
-      break;
   }
+  determine_winner(args, &results);
 }
 
 static void play_game(const char game_type, args_broadcast_game_state_t *args,
@@ -523,11 +529,9 @@ static void play_game(const char game_type, args_broadcast_game_state_t *args,
 
   switch (game_type) {
   case GAME_5_CARD_DRAW:
-    args->game_state->n_rounds = 1;
     game_five_card_draw(args, dealer);
     break;
   case GAME_5_CARD_STUD:
-    args->game_state->n_rounds = 4;
     game_five_card_stud(args, players_array, dealer, deck);
     break;
   default:
