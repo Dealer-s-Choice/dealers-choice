@@ -91,7 +91,8 @@ typedef struct {
   bool (*slot_taken)[MAX_CLIENTS];
 } args_broadcast_game_state_t;
 
-typedef void (*game_func_t)(args_broadcast_game_state_t *, struct player_t *, struct player_t *, struct dh_deck *);
+typedef void (*game_func_t)(args_broadcast_game_state_t *, struct player_t *, struct player_t *,
+                            struct dh_deck *);
 
 typedef struct {
   const menu_option_t g;
