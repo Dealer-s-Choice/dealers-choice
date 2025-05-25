@@ -478,17 +478,16 @@ void run_sdl_loop(Game_State *game_state, struct sdl_context_t *sdl_context, str
         continue;
       }
     } else {
-      int turn_id = game_state->turn_id;
-      turn = &game_state->player[turn_id];
+      turn = &game_state->player[game_state->turn_id];
       if (!starting_turn)
         starting_turn = turn;
 
-      if (strcmp(game_state->status_str, status_msg[0]) != 0) {
-          // Shift old messages down by one slot (from [0]..[14] → [1]..[15])
-          memmove(&status_msg[1], &status_msg[0], (sizeof status_msg[0]) * (16 - 1));
+      if (strcmp(game_state->status_str, status_msg[15]) != 0) {
+          // Shift messages up by one slot: [1]..[15] → [0]..[14]
+          memmove(&status_msg[0], &status_msg[1], sizeof(status_msg[0]) * (16 - 1));
 
-          // Copy new message to the front
-          snprintf(status_msg[0], sizeof status_msg[0], "%s", game_state->status_str);
+          // Copy new message to the bottom
+          snprintf(status_msg[15], sizeof(game_state->status_str), "%s", game_state->status_str);
       }
 
       // debug_print_cards(&game_state->player[0].hand);
@@ -560,10 +559,10 @@ void run_sdl_loop(Game_State *game_state, struct sdl_context_t *sdl_context, str
       clear_screen(sdl_context->renderer);
 
       // for (size_t i = 0; i < sizeof(status_msg) / sizeof(status_msg[0][0]); i++) {
-      for (size_t i = 0; i < 16; i++) {
+      for (int i = 0; i < 16; i++) {
         char tmp[sizeof(status_msg[0]) + 100];
         snprintf(tmp, sizeof tmp, "%s", status_msg[i]);
-        SDL_Rect text_pos = {sdl_context->win_center.x + 50, 60 * i + 5, 0, 0};
+        SDL_Rect text_pos = {sdl_context->win_center.x + 50, 40 * i + 5, 0, 0};
         render_text_plain(sdl_context->renderer, font->fonts[OTHER], tmp, get_color(COLOR_BLACK),
                           &text_pos);
           // printf("status_msg[%zd]: %s\n", i, status_msg[i]);
@@ -609,16 +608,16 @@ void run_sdl_loop(Game_State *game_state, struct sdl_context_t *sdl_context, str
           }
         } while ((turn = get_next_player(players_array, turn->id)) != starting_turn);
 
-        char winner_text[sizeof(turn->name) + 64] = {0};
-        if (game_state->player_count > 1)
-          snprintf(winner_text, sizeof winner_text, "%s wins with %s", turn->name,
-                   pokeval_ranks[pokeval_evaluate_hand(turn->hand)]);
-        else
-          snprintf(winner_text, sizeof winner_text, "%s wins", turn->name);
+        //char winner_text[sizeof(turn->name) + 64] = {0};
+        //if (game_state->player_count > 1)
+          //snprintf(winner_text, sizeof winner_text, "%s wins with %s", turn->name,
+                   //pokeval_ranks[pokeval_evaluate_hand(turn->hand)]);
+        //else
+          //snprintf(winner_text, sizeof winner_text, "%s wins", turn->name);
 
-        SDL_Rect dest = {sdl_context->win_center.x, sdl_context->win_center.y - 50, 80, 20};
-        render_text_plain(sdl_context->renderer, font->fonts[OTHER], winner_text,
-                          get_color(COLOR_BLACK), &dest);
+        //SDL_Rect dest = {sdl_context->win_center.x, sdl_context->win_center.y - 50, 80, 20};
+        //render_text_plain(sdl_context->renderer, font->fonts[OTHER], winner_text,
+                          //get_color(COLOR_BLACK), &dest);
       } else {
         if (game_state->turn_id == my_id) {
           if (game_state->total_bets_plus_raises == 0 && !game_state->player[my_id].has_checked) {
