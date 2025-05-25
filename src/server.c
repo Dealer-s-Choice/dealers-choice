@@ -35,6 +35,8 @@
 
 #define MAX_CLIENTS 5
 
+#define handle_round() handle_round_real(args, dealer)
+
 typedef struct {
   TCPsocket (*clients)[MAX_CLIENTS];
   SDLNet_SocketSet *socket_set;
@@ -289,7 +291,7 @@ static void determine_winner(args_broadcast_game_state_t * args, RoundResults *r
   args->game_state->winner_declared = true;
 }
 
-static RoundResults handle_round(args_broadcast_game_state_t *args, struct player_t *dealer) {
+static RoundResults handle_round_real(args_broadcast_game_state_t *args, struct player_t *dealer) {
   // Points to the address of the array of all the players
   struct player_t *players_array = args->game_state->player;
   struct player_t *starting_player = get_next_player(players_array, dealer->id);
@@ -489,7 +491,7 @@ static int get_next_dealer(int current, const bool *slot_taken) {
 
 static void game_five_card_draw(args_broadcast_game_state_t *args, struct player_t *dealer) {
   server_handle_ante(args->game_state, dealer, 250);
-  handle_round(args, dealer);
+  handle_round();
 }
 
 static void game_five_card_stud(args_broadcast_game_state_t *args,
@@ -498,7 +500,7 @@ static void game_five_card_stud(args_broadcast_game_state_t *args,
   int8_t rounds = 4;
   RoundResults results;
   for (int i = 0; i < rounds; i++) {
-    results = handle_round(args, dealer);
+    results = handle_round();
 
     if (results.n_winners > 0)
       break;
