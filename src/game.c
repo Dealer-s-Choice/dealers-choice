@@ -316,6 +316,17 @@ static void render_card(CardContext *context, TTF_Font *font) {
     SDL_SetRenderDrawBlendMode(context->renderer, SDL_BLENDMODE_NONE);
   }
 
+  // Draw thick lightgrey border if selected
+  if (context->selected) {
+    SDL_SetRenderDrawColor(context->renderer, 200, 200, 200, 255); // light grey
+    int thickness = 4;
+    for (int i = 0; i < thickness; ++i) {
+      SDL_Rect border = {context->rect.x - i, context->rect.y - i, context->rect.w + 2 * i,
+                         context->rect.h + 2 * i};
+      SDL_RenderDrawRect(context->renderer, &border);
+    }
+  }
+
   // Draw card border
   SDL_SetRenderDrawColor(context->renderer, 0, 0, 0, 255);
   SDL_RenderDrawRect(context->renderer, &context->rect);
