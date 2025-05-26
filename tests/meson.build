@@ -1,8 +1,4 @@
-cases = [
-  'serialization',
-  'get_next_player',
-  'debug_print_cards',
-]
+cases = ['serialization', 'get_next_player', 'debug_print_cards']
 
 foreach test : cases
 
