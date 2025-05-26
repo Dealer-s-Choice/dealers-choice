@@ -32,16 +32,16 @@
 #include "net.h"
 #include "types.h"
 
-void init_game_state(Game_State *game_state);
+void init_game_state(GameState_t *game_state);
 
-RealHand deal_cards_to_players(Game_State *game_state, struct player_t *dealer,
-                               struct dh_deck *deck, const uint8_t game_type);
+RealHand_t deal_cards_to_players(GameState_t *game_state, Player_t *dealer, struct dh_deck *deck,
+                                 const uint8_t game_type);
 
-void game_five_card_draw(args_broadcast_game_state_t *args, struct player_t *players_array,
-                         struct player_t *dealer, struct dh_deck *deck);
+void game_five_card_draw(ArgsBroadcastGameState_t *args, Player_t *players_array, Player_t *dealer,
+                         struct dh_deck *deck);
 
-void game_five_card_stud(args_broadcast_game_state_t *args, struct player_t *players_array,
-                         struct player_t *dealer, struct dh_deck *deck);
+void game_five_card_stud(ArgsBroadcastGameState_t *args, Player_t *players_array, Player_t *dealer,
+                         struct dh_deck *deck);
 
 int run_server(void);
 

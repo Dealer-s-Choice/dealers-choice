@@ -45,21 +45,22 @@ static const char *color_names[COLOR_COUNT] = {
     "white",  "lightgray", "gray",    "darkgray", "black",  "red",   "green", "green_one", "blue",
     "yellow", "cyan",      "magenta", "orange",   "purple", "brown", "pink",  "teal"};
 
-SDL_Color get_color(ColorName name) {
+SDL_Color get_color(EColorName_t name) {
   if (name < 0 || name >= COLOR_COUNT)
     return (SDL_Color){0, 0, 0, 255}; // fallback
   return color_table[name];
 }
 
-const char *get_color_name(ColorName name) {
+const char *get_color_name(EColorName_t name) {
   if (name < 0 || name >= COLOR_COUNT)
     return "unknown";
   return color_names[name];
 }
 
-const struct font_args_t font_args[] = {
+const FontArgs_t font_args[] = {
     [CARD] = {.file = "../src/LiberationMono-Regular.ttf", .ptsize = 38},
     [OTHER] = {.file = "../src/LiberationSerif-Bold.ttf", .ptsize = 30},
+    [STATUS_MSG] = {.file = "../src/LiberationSerif-Bold.ttf", .ptsize = 24},
 };
 
 void clear_screen(SDL_Renderer *renderer) {
@@ -68,7 +69,7 @@ void clear_screen(SDL_Renderer *renderer) {
   SDL_RenderClear(renderer);
 }
 
-void init_sdl_window(struct sdl_context_t *sdl_context, const char *title) {
+void init_sdl_window(ESdlContext_t *sdl_context, const char *title) {
   SDL_Rect bounds;
   if (SDL_GetDisplayBounds(0, &bounds) == 0) {
     printf("Display 0 bounds: x=%d, y=%d, w=%d, h=%d\n", bounds.x, bounds.y, bounds.w, bounds.h);
@@ -102,7 +103,7 @@ void init_sdl_window(struct sdl_context_t *sdl_context, const char *title) {
   return;
 }
 
-TTF_Font *open_font(const struct font_args_t *args) {
+TTF_Font *open_font(const FontArgs_t *args) {
   TTF_Font *font = TTF_OpenFont(args->file, args->ptsize);
   if (!font)
     fprintf(stderr, "Failed to load font (%s): %s\n", args->file, TTF_GetError());
@@ -110,7 +111,7 @@ TTF_Font *open_font(const struct font_args_t *args) {
 }
 
 void render_text_centered(SDL_Renderer *renderer, TTF_Font *font, const char *text, SDL_Color color,
-                          struct pos_t center) {
+                          SDL_Point center) {
   SDL_Surface *surface = TTF_RenderUTF8_Blended(font, text, color);
   if (!surface) {
     fprintf(stderr, "TTF_RenderUTF8_Blended failed: %s\n", TTF_GetError());
@@ -209,7 +210,7 @@ void render_text_plain(SDL_Renderer *renderer, TTF_Font *font, const char *text,
   SDL_DestroyTexture(texture);
 }
 
-void render_button(struct button_t *button) {
+void render_button(Button_t *button) {
   // Draw the filled background
   SDL_SetRenderDrawColor(button->renderer, button->bg_color.r, button->bg_color.g,
                          button->bg_color.b, button->bg_color.a);
@@ -271,7 +272,7 @@ void render_button(struct button_t *button) {
   SDL_DestroyTexture(textTexture);
 }
 
-void do_sdl_cleanup(struct sdl_context_t *sdl_context) {
+void do_sdl_cleanup(ESdlContext_t *sdl_context) {
   SDL_DestroyRenderer(sdl_context->renderer);
   SDL_DestroyWindow(sdl_context->window);
   SDL_Quit();

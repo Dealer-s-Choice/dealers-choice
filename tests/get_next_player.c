@@ -2,7 +2,7 @@
 
 _MAIN_HEAD_
 
-Game_State game_state;
+GameState_t game_state;
 init_game_state(&game_state);
 
 for (int i = 0; i < 3; i++) {
@@ -14,8 +14,8 @@ game_state.player[4].id = 4;
 
 assert(game_state.player[1].id == 1);
 
-struct player_t *players_array = game_state.player;
-struct player_t *turn = players_array;
+Player_t *players_array = game_state.player;
+Player_t *turn = players_array;
 
 assert(turn->id == 0);
 

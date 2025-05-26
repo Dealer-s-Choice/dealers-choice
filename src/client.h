@@ -32,4 +32,4 @@
 #include "net.h"
 #include "types.h"
 
-int run_client(const char *addr, struct sdl_context_t *sdl_context, struct font_t *font);
+int run_client(const char *addr, ESdlContext_t *sdl_context, Font_t *font);

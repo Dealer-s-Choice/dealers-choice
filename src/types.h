@@ -38,14 +38,9 @@ typedef enum {
   FIVE_CARD_DRAW,
   FIVE_CARD_STUD,
   MAX_CHOICES,
-} menu_option_t;
+} EMenuOption_t;
 
-struct pos_t {
-  int x;
-  int y;
-};
-
-struct player_t {
+typedef struct {
   char name[256];
   int8_t id;
   struct pokeval_hand_t hand;
@@ -54,7 +49,7 @@ struct player_t {
   uint32_t total_paid;
   bool winner;
   bool has_checked;
-};
+} Player_t;
 
 typedef struct {
   uint32_t pot;
@@ -67,32 +62,31 @@ typedef struct {
   bool winner_declared;
   uint8_t n_rounds;
   char status_str[512];
-  struct player_t player[MAX_PLAYERS];
-} Game_State;
+  Player_t player[MAX_PLAYERS];
+} GameState_t;
 
 typedef struct {
   struct pokeval_hand_t player[MAX_PLAYERS];
-} RealHand;
+} RealHand_t;
 
 typedef struct {
   TCPsocket (*clients)[MAX_CLIENTS];
   SDLNet_SocketSet *socket_set;
   int *active_clients;
-  Game_State *game_state;
-  RealHand *real_hand;
+  GameState_t *game_state;
+  RealHand_t *real_hand;
   bool (*slot_taken)[MAX_CLIENTS];
-} args_broadcast_game_state_t;
+} ArgsBroadcastGameState_t;
 
-typedef void (*game_func_t)(args_broadcast_game_state_t *, struct player_t *, struct player_t *,
-                            struct dh_deck *);
+typedef void (*game_func_t)(ArgsBroadcastGameState_t *, Player_t *, Player_t *, struct dh_deck *);
 
 typedef struct {
-  const menu_option_t g;
+  const EMenuOption_t g;
   const char *str;
   const uint8_t game_type;
   game_func_t func;
-} GameChoice;
+} GameChoice_t;
 
-extern const GameChoice game_choices[];
+extern const GameChoice_t game_choices[];
 
 #endif

@@ -35,7 +35,7 @@
 #include "game.h"
 #include "graphics.h"
 
-int run_client(const char *addr, struct sdl_context_t *sdl_context, struct font_t *font) {
+int run_client(const char *addr, ESdlContext_t *sdl_context, Font_t *font) {
   IPaddress server_ip;
   if (SDLNet_ResolveHost(&server_ip, addr, default_port) == -1) {
     fprintf(stderr, "Failed to resolve server: %s\n", SDLNet_GetError());
@@ -67,7 +67,7 @@ int run_client(const char *addr, struct sdl_context_t *sdl_context, struct font_
     goto cleanup;
   }
 
-  Game_State game_state = {0};
+  GameState_t game_state = {0};
   if (recv_game_state(client_socket, socket_set, &game_state) != RECV_SUCCESS)
     goto cleanup;
 

@@ -40,11 +40,11 @@
 #include "server.h"
 #include "types.h"
 
-#define MSG_GAME_SELECT 0x0001       // struct player_t chooses a game variant
-#define MSG_PLAYER_ACTION 0x0002     // struct player_t bets, folds, etc.
+#define MSG_GAME_SELECT 0x0001       // Player_t chooses a game variant
+#define MSG_PLAYER_ACTION 0x0002     // Player_t bets, folds, etc.
 #define MSG_GAME_START 0x0004        // Game begins
 #define MSG_DEAL_CARDS 0x0005        // Cards sent to player
-#define MSG_DRAW_REQUEST 0x0006      // struct player_t discards cards for draw
+#define MSG_DRAW_REQUEST 0x0006      // Player_t discards cards for draw
 #define MSG_GAME_STATE_UPDATE 0x0007 // Server sends state update
 
 typedef enum {
@@ -64,17 +64,15 @@ struct player_action_msg_t {
   uint32_t amount; // only used for bet/raise
 };
 
-const GameChoice *find_game_choice_by_type(const uint8_t type);
+const GameChoice_t *find_game_choice_by_type(const uint8_t type);
 
-struct player_t *get_next_player(struct player_t *players_array, int cur);
+Player_t *get_next_player(Player_t *players_array, int cur);
 
-void run_sdl_loop(Game_State *game_state, struct sdl_context_t *sdl_context, struct font_t *font,
+bool is_dh_card_back(struct dh_card a);
+
+bool is_dh_card_null(struct dh_card a);
+
+void run_sdl_loop(GameState_t *game_state, ESdlContext_t *sdl_context, Font_t *font,
                   TCPsocket client_socket, SDLNet_SocketSet socket_set, const uint8_t my_id);
-
-typedef struct {
-  char str[200];
-} DebugPrintCards_t;
-
-DebugPrintCards_t debug_print_cards(struct pokeval_hand_t *hand);
 
 #endif
