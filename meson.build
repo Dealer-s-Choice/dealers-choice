@@ -1,7 +1,7 @@
 project(
-  'aapokerhands',
+  'Dealer\'s Choice',
   'c',
-  version: '0.1.1.555',
+  version: '0.0.1.555',
   meson_version: '>= 0.51.0',
   default_options: [
     'warning_level=3',
@@ -36,16 +36,14 @@ extra_flags = [
 ]
 
 add_project_arguments(cc.get_supported_arguments(extra_flags), language: 'c')
+binary_name = 'dealerschoice'
 
 deckhandler_dep = dependency(
   'deckhandler',
   default_options: 'default_library=static',
 )
 
-pokeval_dep = dependency(
-  'pokeval',
-  default_options: 'default_library=static',
-)
+pokeval_dep = dependency('pokeval', default_options: 'default_library=static')
 
 protobuf_dep = dependency('libprotobuf-c')
 
@@ -56,7 +54,7 @@ dep_names = [
   'SDL2_ttf',
   'SDL2_net',
   # 'SDL2_mixer',
-  ]
+]
 
 foreach dep : dep_names
   net_shared_dep += dependency(dep)
@@ -71,17 +69,17 @@ _lib = static_library(
   net_shared_src,
   dependencies: net_shared_dep,
   include_directories: net_shared_inc,
-  )
+)
 
 game_dep = declare_dependency(
   link_with: _lib,
   dependencies: net_shared_dep,
   include_directories: net_shared_inc,
-  )
+)
 
 executable(
-  'dealers_choice',
-  ['src/main.c',],
+  binary_name,
+  ['src/main.c'],
   dependencies: game_dep,
   install: false,
 )
