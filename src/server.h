@@ -32,6 +32,10 @@
 #include "net.h"
 #include "types.h"
 
+// These should be defined in a config file, which doesn't exist yet
+#define ACTION_TIMEOUT_MS 20000
+#define END_OF_ROUND_TIMEOUT_MS 15000
+
 void init_game_state(GameState_t *game_state);
 
 RealHand_t deal_cards_to_players(GameState_t *game_state, Player_t *dealer, struct dh_deck *deck,

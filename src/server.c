@@ -94,9 +94,9 @@ void init_game_state(GameState_t *game_state) {
   game_state->player_count = 0;
   game_state->total_bets_plus_raises = 0;
   game_state->winner_declared = false;
-  game_state->round_over = true;
-  game_state->n_rounds = 0;
   *game_state->status_str = '\0';
+  game_state->action_time_out_ms = ACTION_TIMEOUT_MS;
+  game_state->end_of_round_time_out_ms = ACTION_TIMEOUT_MS;
 }
 
 RealHand_t deal_cards_to_players(GameState_t *game_state, Player_t *dealer, struct dh_deck *deck,
@@ -304,7 +304,7 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args, Player_t *
     args->game_state->turn_id = turn->id;
     broadcast_game_state(args);
 
-    Uint32 wait_ms = 20000; // wait up to 20 seconds
+    Uint32 wait_ms = args->game_state->action_time_out_ms;
     Uint32 start = SDL_GetTicks();
 
     while (SDL_GetTicks() - start < wait_ms) {

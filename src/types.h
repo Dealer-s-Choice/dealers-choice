@@ -58,10 +58,10 @@ typedef struct {
   bool at_menu;
   uint8_t player_count;
   uint32_t total_bets_plus_raises;
-  bool round_over;
   bool winner_declared;
-  uint8_t n_rounds;
   char status_str[512];
+  uint16_t action_time_out_ms;
+  uint16_t end_of_round_time_out_ms;
   Player_t player[MAX_PLAYERS];
 } GameState_t;
 

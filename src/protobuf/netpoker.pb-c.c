@@ -589,20 +589,8 @@ static const ProtobufCFieldDescriptor game_state__field_descriptors[11] =
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
   {
-    "round_over",
-    7,
-    PROTOBUF_C_LABEL_NONE,
-    PROTOBUF_C_TYPE_BOOL,
-    0,   /* quantifier_offset */
-    offsetof(GameState, round_over),
-    NULL,
-    NULL,
-    0,             /* flags */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
-  {
     "winner_declared",
-    8,
+    7,
     PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_BOOL,
     0,   /* quantifier_offset */
@@ -613,26 +601,38 @@ static const ProtobufCFieldDescriptor game_state__field_descriptors[11] =
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
   {
-    "n_rounds",
-    9,
-    PROTOBUF_C_LABEL_NONE,
-    PROTOBUF_C_TYPE_UINT32,
-    0,   /* quantifier_offset */
-    offsetof(GameState, n_rounds),
-    NULL,
-    NULL,
-    0,             /* flags */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
-  {
     "status_str",
-    10,
+    8,
     PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_STRING,
     0,   /* quantifier_offset */
     offsetof(GameState, status_str),
     NULL,
     &protobuf_c_empty_string,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "action_time_out_ms",
+    9,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_UINT32,
+    0,   /* quantifier_offset */
+    offsetof(GameState, action_time_out_ms),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "end_of_round_time_out_ms",
+    10,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_UINT32,
+    0,   /* quantifier_offset */
+    offsetof(GameState, end_of_round_time_out_ms),
+    NULL,
+    NULL,
     0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
@@ -650,17 +650,17 @@ static const ProtobufCFieldDescriptor game_state__field_descriptors[11] =
   },
 };
 static const unsigned game_state__field_indices_by_name[] = {
+  8,   /* field[8] = action_time_out_ms */
   3,   /* field[3] = at_menu */
   1,   /* field[1] = dealer_id */
-  8,   /* field[8] = n_rounds */
+  9,   /* field[9] = end_of_round_time_out_ms */
   10,   /* field[10] = player */
   4,   /* field[4] = player_count */
   0,   /* field[0] = pot */
-  6,   /* field[6] = round_over */
-  9,   /* field[9] = status_str */
+  7,   /* field[7] = status_str */
   5,   /* field[5] = total_bets_plus_raises */
   2,   /* field[2] = turn_id */
-  7,   /* field[7] = winner_declared */
+  6,   /* field[6] = winner_declared */
 };
 static const ProtobufCIntRange game_state__number_ranges[1 + 1] =
 {
