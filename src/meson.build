@@ -5,6 +5,7 @@ endif
 
 net_shared_src = files(
   'client.c',
+  'debug.c',
   'game.c',
   'graphics.c',
   'net.c',

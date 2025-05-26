@@ -3,6 +3,7 @@
 #endif
 #include <assert.h>
 
+#include "debug.h"
 #include "game.h"
 #include "net.h"
 #include "server.h"

@@ -90,12 +90,13 @@ struct  GameState
   protobuf_c_boolean round_over;
   protobuf_c_boolean winner_declared;
   uint32_t n_rounds;
+  char *status_str;
   size_t n_player;
   Player **player;
 };
 #define GAME_STATE__INIT \
  { PROTOBUF_C_MESSAGE_INIT (&game_state__descriptor) \
-, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,NULL }
+, 0, 0, 0, 0, 0, 0, 0, 0, 0, (char *)protobuf_c_empty_string, 0,NULL }
 
 
 /* Card methods */

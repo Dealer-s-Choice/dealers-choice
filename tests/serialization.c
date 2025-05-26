@@ -1,8 +1,8 @@
 #include "00_test.h"
 
 void test_player(void) {
-  struct player_t player = {0};
-  player = (struct player_t){.name = "Foo", .id = 1, .coins = 20000};
+  Player_t player = {0};
+  player = (Player_t){.name = "Foo", .id = 1, .coins = 20000};
 
   size_t size = 0;
   uint8_t *data = serialize_player(&player, &size);
@@ -13,7 +13,7 @@ void test_player(void) {
   size = ntohl(size_net);
   fprintf(stderr, "after conversion: %zu\n", size);
 
-  struct player_t player_receiver = deserialize_player(data, size);
+  Player_t player_receiver = deserialize_player(data, size);
 
   free(data);
 
@@ -23,18 +23,18 @@ void test_player(void) {
 }
 
 void test_game_state(void) {
-  game_state_t game_state = {0};
-  game_state = (game_state_t){.pot = 500,
-                              .turn_id = 3,
-                              .at_menu = true,
-                              .total_bets_plus_raises = 623,
-                              .player[0] = {
-                                  .name = "Foo",
-                                  .id = 0,
-                                  .coins = 20000,
-                                  .in = true,
-                                  .total_paid = 50,
-                              }};
+  GameState_t game_state = {0};
+  game_state = (GameState_t){.pot = 500,
+                             .turn_id = 3,
+                             .at_menu = true,
+                             .total_bets_plus_raises = 623,
+                             .player[0] = {
+                                 .name = "Foo",
+                                 .id = 0,
+                                 .coins = 20000,
+                                 .in = true,
+                                 .total_paid = 50,
+                             }};
 
   size_t size = 0;
   uint8_t *data = serialize_game_state(&game_state, &size);
@@ -45,7 +45,7 @@ void test_game_state(void) {
   size = ntohl(size_net);
   fprintf(stderr, "after conversion: %zu\n", size);
 
-  game_state_t game_state_receiver = deserialize_game_state(data, size);
+  GameState_t game_state_receiver = deserialize_game_state(data, size);
 
   free(data);
 

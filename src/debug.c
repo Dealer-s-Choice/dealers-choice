@@ -1,5 +1,5 @@
 /*
- client.h
+ debug.c
  https://github.com/Dealer-s-Choice/dealers_choice
 
  MIT License
@@ -26,10 +26,31 @@
 
 */
 
-#include <deckhandler.h>
+#include <stdio.h>
+#include <string.h>
 
-#include "graphics.h"
-#include "net.h"
-#include "types.h"
+#include "debug.h"
+#include "game.h"
 
-int run_client(const char *addr, ESdlContext_t *sdl_context, Font_t *font);
+DebugPrintCards_t debug_print_cards(struct pokeval_hand_t *hand) {
+  DebugPrintCards_t str = {0};
+  char *ptr = str.str;
+  for (int i = 0; i < HAND_SIZE; i++) {
+    if (is_dh_card_back(hand->card[i])) {
+      fprintf(stderr, "-BACK-");
+      continue;
+    }
+    if (is_dh_card_null(hand->card[i])) {
+      fprintf(stderr, "-BACK-");
+      continue;
+    }
+    char result[20];
+    snprintf(result, sizeof result, "%s%s", get_card_face(hand->card[i]),
+             get_card_unicode_suit(hand->card[i]));
+    fprintf(stderr, "%s", result);
+    size_t len = strlen(str.str);
+    snprintf(ptr, sizeof str.str - len, "%s", result);
+    ptr += strlen(result);
+  }
+  return str;
+}

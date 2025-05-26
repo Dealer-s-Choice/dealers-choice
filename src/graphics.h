@@ -54,43 +54,43 @@ typedef enum {
   COLOR_PINK,
   COLOR_TEAL,
   COLOR_COUNT // keep this last
-} ColorName;
+} EColorName_t;
 
-SDL_Color get_color(ColorName name);
-const char *get_color_name(ColorName name);
+SDL_Color get_color(EColorName_t name);
+const char *get_color_name(EColorName_t name);
 
-struct sdl_context_t {
+typedef struct {
   SDL_Renderer *renderer;
   SDL_Window *window;
-  struct pos_t win_center;
+  SDL_Point win_center;
   int window_width, window_height;
-};
+} ESdlContext_t;
 
-struct font_args_t {
+typedef struct {
   const char *file;
   const int ptsize;
-};
+} FontArgs_t;
 
-enum { CARD, OTHER, NUM_FONTS };
+enum { CARD, OTHER, STATUS_MSG, NUM_FONTS };
 
-extern const struct font_args_t font_args[NUM_FONTS];
+extern const FontArgs_t font_args[NUM_FONTS];
 
-struct font_t {
+typedef struct {
   TTF_Font *fonts[NUM_FONTS];
-};
+} Font_t;
 
-TTF_Font *open_font(const struct font_args_t *args);
+TTF_Font *open_font(const FontArgs_t *args);
 
 void clear_screen(SDL_Renderer *renderer);
 
-void init_sdl_window(struct sdl_context_t *sdl_context, const char *title, int w, int h);
+void init_sdl_window(ESdlContext_t *sdl_context, const char *title);
 
 SDL_Rect make_rect(int x, int y, int w, int h);
 
 void render_text(SDL_Renderer *renderer, TTF_Font *font, const char *text, SDL_Color color,
                  SDL_Rect *dest);
 
-struct button_t {
+typedef struct {
   const char *text;
   SDL_Renderer *renderer;
   SDL_Color bg_color;
@@ -99,16 +99,16 @@ struct button_t {
   TTF_Font *font;
   bool hovered;
   bool enabled;
-};
+} Button_t;
 
-void render_button(struct button_t *button);
+void render_button(Button_t *button);
 
 void render_text_centered(SDL_Renderer *renderer, TTF_Font *font, const char *text, SDL_Color color,
-                          struct pos_t center);
+                          SDL_Point center);
 
 void render_text_plain(SDL_Renderer *renderer, TTF_Font *font, const char *text, SDL_Color color,
                        SDL_Rect *dest);
 
-void do_sdl_cleanup(struct sdl_context_t *sdl_context);
+void do_sdl_cleanup(ESdlContext_t *sdl_context);
 
 #endif

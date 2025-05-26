@@ -49,7 +49,7 @@ typedef enum {
   RECV_ERROR,
   RECV_SUCCESS,
   RECV_NOTHING,
-} recv_status_t;
+} ERecvStatus_t;
 
 struct player_message_builder_t {
   // These types come from the generated protobuf header file
@@ -60,17 +60,17 @@ struct player_message_builder_t {
   Card *card_ptrs[HAND_SIZE];
 };
 
-uint8_t *serialize_game_state(const game_state_t *src, size_t *size_out);
-game_state_t deserialize_game_state(const uint8_t *data, size_t size);
+uint8_t *serialize_game_state(const GameState_t *src, size_t *size_out);
+GameState_t deserialize_game_state(const uint8_t *data, size_t size);
 
-uint8_t *serialize_player(const struct player_t *src, size_t *size_out);
-struct player_t deserialize_player(const uint8_t *data, size_t size);
+uint8_t *serialize_player(const Player_t *src, size_t *size_out);
+Player_t deserialize_player(const uint8_t *data, size_t size);
 
 int send_all_tcp(TCPsocket sock, const void *data, size_t length);
 
 int recv_all_tcp(TCPsocket sock, void *data, int32_t length);
 
-recv_status_t recv_game_state(TCPsocket client_socket, SDLNet_SocketSet socket_set,
-                    game_state_t *game_state);
+ERecvStatus_t recv_game_state(TCPsocket client_socket, SDLNet_SocketSet socket_set,
+                              GameState_t *game_state);
 
 #endif

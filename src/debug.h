@@ -1,5 +1,5 @@
 /*
- client.h
+ debug.h
  https://github.com/Dealer-s-Choice/dealers_choice
 
  MIT License
@@ -26,10 +26,15 @@
 
 */
 
-#include <deckhandler.h>
+#ifndef __DEBUG_H
+#define __DEBUG_H
 
-#include "graphics.h"
-#include "net.h"
-#include "types.h"
+#include <pokeval.h>
 
-int run_client(const char *addr, ESdlContext_t *sdl_context, Font_t *font);
+typedef struct {
+  char str[200];
+} DebugPrintCards_t;
+
+DebugPrintCards_t debug_print_cards(struct pokeval_hand_t *hand);
+
+#endif

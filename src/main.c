@@ -38,8 +38,8 @@
 
 enum { RUN_CLIENT = 20 };
 
-static int menu_display_connect(char *input_text, SDL_Renderer *renderer, struct font_t *font) {
-  struct button_t button_connect = {
+static int menu_display_connect(char *input_text, SDL_Renderer *renderer, Font_t *font) {
+  Button_t button_connect = {
       .text = "Connect",
       .renderer = renderer,
       .bg_color = get_color(COLOR_BLACK),
@@ -57,7 +57,7 @@ static int menu_display_connect(char *input_text, SDL_Renderer *renderer, struct
   while (running) {
     SDL_Event e;
     while (SDL_PollEvent(&e)) {
-      SDL_Point mouse_pos = { e.button.x, e.button.y };
+      SDL_Point mouse_pos = {e.button.x, e.button.y};
       button_connect.hovered = SDL_PointInRect(&mouse_pos, &button_connect.rect);
       if (e.type == SDL_QUIT) {
         running = false;
@@ -121,17 +121,10 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 
-  SDL_Rect bounds;
-  if (SDL_GetDisplayBounds(0, &bounds) == 0) {
-    printf("Display 0 bounds: x=%d, y=%d, w=%d, h=%d\n", bounds.x, bounds.y, bounds.w, bounds.h);
-  } else {
-    puts(SDL_GetError());
-    exit(EXIT_FAILURE);
-  }
-  struct sdl_context_t sdl_context;
-  init_sdl_window(&sdl_context, "Dealer's Choice", bounds.w * 0.8, bounds.h * 0.8);
+  ESdlContext_t sdl_context;
+  init_sdl_window(&sdl_context, "Dealer's Choice");
 
-  struct font_t font;
+  Font_t font;
   for (int i = 0; i < NUM_FONTS; ++i) {
     font.fonts[i] = open_font(&font_args[i]);
     if (!font.fonts[i])

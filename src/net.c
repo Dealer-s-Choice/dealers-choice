@@ -30,8 +30,7 @@
 
 const uint16_t default_port = 22777;
 
-static void fill_player_message(struct player_message_builder_t *builder,
-                                const struct player_t *src) {
+static void fill_player_message(struct player_message_builder_t *builder, const Player_t *src) {
   player__init(&builder->msg);
   pos__init(&builder->pos);
   hand__init(&builder->hand);
@@ -60,7 +59,7 @@ static void fill_player_message(struct player_message_builder_t *builder,
   builder->msg.hand = &builder->hand;
 }
 
-static void fill_player_from_message(struct player_t *dst, const Player *msg) {
+static void fill_player_from_message(Player_t *dst, const Player *msg) {
   if (!msg)
     return;
 
@@ -83,7 +82,7 @@ static void fill_player_from_message(struct player_t *dst, const Player *msg) {
   }
 }
 
-uint8_t *serialize_game_state(const game_state_t *src, size_t *size_out) {
+uint8_t *serialize_game_state(const GameState_t *src, size_t *size_out) {
   GameState msg = GAME_STATE__INIT;
 
   // Pot
@@ -96,6 +95,7 @@ uint8_t *serialize_game_state(const game_state_t *src, size_t *size_out) {
   msg.round_over = src->round_over;
   msg.winner_declared = src->winner_declared;
   msg.n_rounds = src->n_rounds;
+  msg.status_str = (char *)src->status_str;
 
   // player
   Player *player_msgs[MAX_PLAYERS];
@@ -121,8 +121,8 @@ uint8_t *serialize_game_state(const game_state_t *src, size_t *size_out) {
   return buffer;
 }
 
-game_state_t deserialize_game_state(const uint8_t *data, size_t size) {
-  game_state_t result = {0};
+GameState_t deserialize_game_state(const uint8_t *data, size_t size) {
+  GameState_t result = {0};
 
   GameState *msg = game_state__unpack(NULL, size, data);
   if (!msg) {
@@ -140,6 +140,9 @@ game_state_t deserialize_game_state(const uint8_t *data, size_t size) {
   result.winner_declared = msg->winner_declared;
   result.n_rounds = msg->n_rounds;
 
+  if (msg->status_str)
+    snprintf(result.status_str, sizeof(result.status_str), "%s", msg->status_str);
+
   size_t n = msg->n_player < MAX_PLAYERS ? msg->n_player : MAX_PLAYERS;
   for (size_t i = 0; i < n; ++i) {
     Player *pmsg = msg->player[i];
@@ -153,7 +156,7 @@ game_state_t deserialize_game_state(const uint8_t *data, size_t size) {
   return result;
 }
 
-uint8_t *serialize_player(const struct player_t *src, size_t *size_out) {
+uint8_t *serialize_player(const Player_t *src, size_t *size_out) {
   struct player_message_builder_t builder;
   fill_player_message(&builder, src);
 
@@ -169,8 +172,8 @@ uint8_t *serialize_player(const struct player_t *src, size_t *size_out) {
   return buffer;
 }
 
-struct player_t deserialize_player(const uint8_t *data, size_t size) {
-  struct player_t result = {0};
+Player_t deserialize_player(const uint8_t *data, size_t size) {
+  Player_t result = {0};
 
   Player *msg = player__unpack(NULL, size, data);
   if (!msg) {
@@ -224,8 +227,8 @@ int recv_all_tcp(TCPsocket sock, void *data, int length) {
   return total_received;
 }
 
-recv_status_t recv_game_state(TCPsocket client_socket, SDLNet_SocketSet socket_set,
-                    game_state_t *game_state) {
+ERecvStatus_t recv_game_state(TCPsocket client_socket, SDLNet_SocketSet socket_set,
+                              GameState_t *game_state) {
   // printf("[recv_game_state] Waiting for game state...\n");
   int result = SDLNet_CheckSockets(socket_set, 100);
   if (result == -1) {

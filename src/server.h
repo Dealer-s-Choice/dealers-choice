@@ -26,9 +26,23 @@
 
 */
 
+#ifndef __SERVER_H
+#define __SERVER_H
+
 #include "net.h"
 #include "types.h"
 
-void init_game_state(game_state_t *game_state);
+void init_game_state(GameState_t *game_state);
+
+RealHand_t deal_cards_to_players(GameState_t *game_state, Player_t *dealer, struct dh_deck *deck,
+                                 const uint8_t game_type);
+
+void game_five_card_draw(ArgsBroadcastGameState_t *args, Player_t *players_array, Player_t *dealer,
+                         struct dh_deck *deck);
+
+void game_five_card_stud(ArgsBroadcastGameState_t *args, Player_t *players_array, Player_t *dealer,
+                         struct dh_deck *deck);
 
 int run_server(void);
+
+#endif

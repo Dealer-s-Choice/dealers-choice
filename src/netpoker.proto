@@ -36,5 +36,6 @@ message GameState {
   bool round_over = 7;
   bool winner_declared = 8;
   uint32 n_rounds = 9;
-  repeated Player player = 10;
+  string status_str = 10;
+  repeated Player player = 11;
 }
