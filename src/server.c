@@ -244,7 +244,11 @@ static void server_handle_raise(Game_State *game_state, const uint8_t turn_id,
 static void determine_winner(args_broadcast_game_state_t *args, RoundResults *results) {
   if (results->n_winners > 0)
     return;
-  // broadcast_game_state(args);
+
+  // When set to true, the opponents` cards will be revealed to all the players the next
+  // time broadcast_game_state is called
+  args->game_state->winner_declared = true;
+
   struct player_t *players_array = args->game_state->player;
   struct player_t *starting_player = players_array;
   uint8_t pl_count = args->game_state->player_count;
@@ -267,6 +271,10 @@ static void determine_winner(args_broadcast_game_state_t *args, RoundResults *re
 
   results->n_winners = pokeval_compare_hands(need_comparing, pl_count);
   uint8_t winners = 0;
+
+  // Ties are not fully implemented yet. pokeval_compare_hands() handles them, but
+  // the tests need to be reviewed and perhaps added to in the pokeval library. The code
+  // here to report ties and distribute the pot to tied players isn't complete.
   for (int i = 0; i < pl_count; i++) {
     if (!need_comparing[i].won)
       continue;
@@ -275,12 +283,14 @@ static void determine_winner(args_broadcast_game_state_t *args, RoundResults *re
     winner->winner = true;
     fprintf(stderr, "winner id: %d\n", need_comparing[i].id);
     snprintf(args->game_state->status_str, sizeof(args->game_state->status_str),
-             "%s wins with %s\n", winner->name, pokeval_ranks[pokeval_evaluate_hand(winner->hand)]);
+             // When broadcast is called, it will reveal the cards if winner has been declared. We
+             // don't need to call that yet, so using the values from "real_hand" for now
+             "%s wins with %s\n", winner->name,
+             pokeval_ranks[pokeval_evaluate_hand(args->real_hand->player[winner->id])]);
     uint32_t share = args->game_state->pot / results->n_winners;
     args->game_state->pot = args->game_state->pot % results->n_winners;
     winner->coins += share;
   }
-  args->game_state->winner_declared = true;
 }
 
 static RoundResults handle_round_real(args_broadcast_game_state_t *args, struct player_t *dealer) {
@@ -302,7 +312,7 @@ static RoundResults handle_round_real(args_broadcast_game_state_t *args, struct 
     Uint32 start = SDL_GetTicks();
 
     while (SDL_GetTicks() - start < wait_ms) {
-      fprintf(stderr, "Waiting for action from %d\n", args->game_state->turn_id);
+      // fprintf(stderr, "Waiting for action from %d\n", args->game_state->turn_id);
       SDLNet_CheckSockets(*args->socket_set, 100); // wait up to 100ms
       if (SDLNet_SocketReady((*args->clients)[turn->id])) {
         puts("socket ready");
@@ -347,7 +357,7 @@ static RoundResults handle_round_real(args_broadcast_game_state_t *args, struct 
       SDL_Delay(50); // avoid busy-waiting
     }
     turn = get_next_player(players_array, turn->id);
-    printf("turning... new turn->id: %d\n", turn->id);
+    // printf("turning... new turn->id: %d\n", turn->id);
 
     fprintf(stderr, "player %d / total paid: %d\n", turn->id,
             args->game_state->player[turn->id].total_paid);

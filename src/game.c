@@ -606,11 +606,9 @@ void run_sdl_loop(Game_State *game_state, struct sdl_context_t *sdl_context, str
 
       if (game_state->winner_declared) {
         turn = starting_turn;
-        puts("Winner declared");
         do {
           // printf("%d\n", __LINE__);
           if (turn->winner == true) {
-            puts("Winner declared");
             break;
           }
         } while ((turn = get_next_player(players_array, turn->id)) != starting_turn);
