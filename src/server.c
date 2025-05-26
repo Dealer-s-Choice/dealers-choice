@@ -215,15 +215,11 @@ static void server_handle_ante(Game_State *game_state, struct player_t *dealer,
                                const uint32_t amount) {
   struct player_t *turn = dealer;
   do {
-    if (turn->id == -1) {
-      turn++;
-      continue;
-    }
     if (game_state->player[turn->id].in) {
       game_state->player[turn->id].coins -= amount;
       game_state->pot += amount;
     }
-  } while (turn++ != dealer);
+  } while ((turn = get_next_player(game_state->player, turn->id)) != dealer);
 }
 
 static void server_handle_bet(Game_State *game_state, const uint8_t turn_id,
