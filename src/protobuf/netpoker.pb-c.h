@@ -87,16 +87,16 @@ struct  GameState
   protobuf_c_boolean at_menu;
   uint32_t player_count;
   uint32_t total_bets_plus_raises;
-  protobuf_c_boolean round_over;
   protobuf_c_boolean winner_declared;
-  uint32_t n_rounds;
   char *status_str;
+  uint32_t action_time_out_ms;
+  uint32_t end_of_round_time_out_ms;
   size_t n_player;
   Player **player;
 };
 #define GAME_STATE__INIT \
  { PROTOBUF_C_MESSAGE_INIT (&game_state__descriptor) \
-, 0, 0, 0, 0, 0, 0, 0, 0, 0, (char *)protobuf_c_empty_string, 0,NULL }
+, 0, 0, 0, 0, 0, 0, 0, (char *)protobuf_c_empty_string, 0, 0, 0,NULL }
 
 
 /* Card methods */

@@ -466,6 +466,8 @@ void run_sdl_loop(GameState_t *game_state, ESdlContext_t *sdl_context, Font_t *f
   int running = 1;
   bool cards_dealt = false;
   bool cards_created = false;
+  // Uint32 timer_start;
+
   Player_t *players_array = game_state->player;
   Player_t *turn = NULL;
   Player_t *starting_turn = NULL;
@@ -482,12 +484,16 @@ void run_sdl_loop(GameState_t *game_state, ESdlContext_t *sdl_context, Font_t *f
                                     font) != RECV_SUCCESS) {
         running = false;
       } else {
+        // timer_start = 0;
         cards_dealt = false;
         starting_turn = &game_state->player[game_state->turn_id];
         memset(status_msg, 0, sizeof status_msg);
         continue;
       }
     } else {
+      // if (timer_start == 0 && game_state->turn_id == my_id)
+      // SDL_GetTicks();
+
       turn = &game_state->player[game_state->turn_id];
       // printf("turn id: %d\n", game_state->turn_id);
 
@@ -636,6 +642,12 @@ void run_sdl_loop(GameState_t *game_state, ESdlContext_t *sdl_context, Font_t *f
               render_button(&action_button[FOLD]);
             }
           }
+          // Uint32 now = SDL_GetTicks();
+          // char elapsed[8] = {0};
+          // snprintf(elapsed, sizeof(elapsed), "%d", (timer_start + game_state->action_time_out_ms
+          // - now) / 1000); render_text_plain(sdl_context->renderer, font->fonts[OTHER], elapsed,
+          // get_color(COLOR_WHITE), &(SDL_Rect){sdl_context->window_width - 60,
+          // sdl_context->window_height - 60, 0, 0});
         }
       }
 

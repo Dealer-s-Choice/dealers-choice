@@ -92,9 +92,9 @@ uint8_t *serialize_game_state(const GameState_t *src, size_t *size_out) {
   msg.at_menu = src->at_menu;
   msg.total_bets_plus_raises = src->total_bets_plus_raises;
   msg.player_count = src->player_count;
-  msg.round_over = src->round_over;
   msg.winner_declared = src->winner_declared;
-  msg.n_rounds = src->n_rounds;
+  msg.end_of_round_time_out_ms = src->end_of_round_time_out_ms;
+
   msg.status_str = (char *)src->status_str;
 
   // player
@@ -136,9 +136,9 @@ GameState_t deserialize_game_state(const uint8_t *data, size_t size) {
   result.at_menu = msg->at_menu;
   result.total_bets_plus_raises = msg->total_bets_plus_raises;
   result.player_count = msg->player_count;
-  result.round_over = msg->round_over;
   result.winner_declared = msg->winner_declared;
-  result.n_rounds = msg->n_rounds;
+  result.action_time_out_ms = msg->action_time_out_ms;
+  result.end_of_round_time_out_ms = msg->end_of_round_time_out_ms;
 
   if (msg->status_str)
     snprintf(result.status_str, sizeof(result.status_str), "%s", msg->status_str);
