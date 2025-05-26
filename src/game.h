@@ -64,7 +64,7 @@ struct player_action_msg_t {
   uint32_t amount; // only used for bet/raise
 };
 
-const GameChoice *find_game_choice_by_type(game_type_t type);
+const GameChoice *find_game_choice_by_type(const uint8_t type);
 
 struct player_t *get_next_player(struct player_t *players_array, int cur);
 

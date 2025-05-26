@@ -35,7 +35,7 @@
 void init_game_state(Game_State *game_state);
 
 RealHand deal_cards_to_players(Game_State *game_state, struct player_t *dealer,
-                               struct dh_deck *deck, const char game_type);
+                               struct dh_deck *deck, const uint8_t game_type);
 
 void game_five_card_draw(args_broadcast_game_state_t *args, struct player_t *players_array,
                          struct player_t *dealer, struct dh_deck *deck);

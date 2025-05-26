@@ -14,7 +14,8 @@ dh_pcg_srand(1, 1);
 dh_shuffle_deck(&deck);
 
 struct player_t *dealer = &game_state.player[0];
-RealHand real_hand = deal_cards_to_players(&game_state, dealer, &deck, GAME_5_CARD_DRAW);
+RealHand real_hand =
+    deal_cards_to_players(&game_state, dealer, &deck, game_choices[FIVE_CARD_DRAW].game_type);
 DebugPrintCards_t cards_str = debug_print_cards(&real_hand.player[0]);
 
 fprintf(stderr, "--%s--", cards_str.str);

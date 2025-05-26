@@ -35,14 +35,6 @@
 #define MAX_CLIENTS 5
 
 typedef enum {
-  GAME_INVALID = 0x00,
-  GAME_5_CARD_DRAW = 0x01,
-  GAME_5_CARD_DOUBLE = 0x02,
-  GAME_5_CARD_STUD = 0x03,
-  GAME_7_CARD_STUD = 0x04
-} game_type_t;
-
-typedef enum {
   FIVE_CARD_DRAW,
   FIVE_CARD_STUD,
   MAX_CHOICES,
@@ -97,7 +89,7 @@ typedef void (*game_func_t)(args_broadcast_game_state_t *, struct player_t *, st
 typedef struct {
   const menu_option_t g;
   const char *str;
-  const game_type_t game_type;
+  const uint8_t game_type;
   game_func_t func;
 } GameChoice;
 

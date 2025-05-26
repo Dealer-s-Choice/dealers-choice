@@ -97,11 +97,10 @@ static struct button_t create_game_choice_button(const char *text, SDL_Renderer 
   return button;
 }
 
-const GameChoice game_choices[] = {
-    {FIVE_CARD_DRAW, "5-card draw", GAME_5_CARD_DRAW, game_five_card_draw},
-    {FIVE_CARD_STUD, "5-card stud", GAME_5_CARD_STUD, game_five_card_stud}};
+const GameChoice game_choices[] = {{FIVE_CARD_DRAW, "5-card draw", 0x01, game_five_card_draw},
+                                   {FIVE_CARD_STUD, "5-card stud", 0x03, game_five_card_stud}};
 
-const GameChoice *find_game_choice_by_type(game_type_t type) {
+const GameChoice *find_game_choice_by_type(const uint8_t type) {
   for (size_t i = 0; i < sizeof(game_choices) / sizeof(game_choices[0]); ++i) {
     if (game_choices[i].game_type == type) {
       return &game_choices[i];

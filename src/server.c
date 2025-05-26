@@ -100,13 +100,14 @@ void init_game_state(Game_State *game_state) {
 }
 
 RealHand deal_cards_to_players(Game_State *game_state, struct player_t *dealer,
-                               struct dh_deck *deck, const char game_type) {
+                               struct dh_deck *deck, const uint8_t game_type) {
   RealHand real_hand = {0};
   struct player_t *players_array = game_state->player;
   struct player_t *turn = get_next_player(players_array, dealer->id);
   struct player_t *starting_turn = turn;
+
   do {
-    if (game_type != GAME_5_CARD_STUD) {
+    if (game_type != game_choices[FIVE_CARD_STUD].game_type) {
       for (int i = 0; i < HAND_SIZE; ++i) {
         turn->hand.card[i] = dh_card_back;
         real_hand.player[turn->id].card[i] = dh_deal_top_card(deck);
