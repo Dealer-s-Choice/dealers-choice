@@ -47,7 +47,7 @@ pokeval_dep = dependency('pokeval', default_options: 'default_library=static')
 
 protobuf_dep = dependency('libprotobuf-c')
 
-net_shared_dep = [pokeval_dep, win_deps, cc.find_library('m')]
+shared_dep = [pokeval_dep, win_deps, cc.find_library('m')]
 dep_names = [
   'libprotobuf-c',
   'SDL2',
@@ -57,24 +57,24 @@ dep_names = [
 ]
 
 foreach dep : dep_names
-  net_shared_dep += dependency(dep)
+  shared_dep += dependency(dep)
 endforeach
 
-net_shared_inc = include_directories(['src', 'src/protobuf'])
+shared_inc = include_directories(['src', 'src/protobuf'])
 
 subdir('src')
 
 _lib = static_library(
   'game',
-  net_shared_src,
-  dependencies: net_shared_dep,
-  include_directories: net_shared_inc,
+  shared_src,
+  dependencies: shared_dep,
+  include_directories: shared_inc,
 )
 
 game_dep = declare_dependency(
   link_with: _lib,
-  dependencies: net_shared_dep,
-  include_directories: net_shared_inc,
+  dependencies: shared_dep,
+  include_directories: shared_inc,
 )
 
 executable(
