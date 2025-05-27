@@ -71,7 +71,7 @@ typedef struct {
   const int ptsize;
 } FontArgs_t;
 
-enum { CARD, OTHER, STATUS_MSG, NUM_FONTS };
+enum { CARD, OTHER, STATUS_MSG, LINK, NUM_FONTS };
 
 extern const FontArgs_t font_args[NUM_FONTS];
 

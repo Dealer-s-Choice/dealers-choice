@@ -73,6 +73,9 @@ bool is_dh_card_back(struct dh_card a);
 
 bool is_dh_card_null(struct dh_card a);
 
+void render_project_link(SDL_Renderer *renderer, TTF_Font *font, SDL_Rect *rect,
+                         const bool hovered);
+
 void run_sdl_loop(GameState_t *game_state, ESdlContext_t *sdl_context, Font_t *font,
                   TCPsocket client_socket, SDLNet_SocketSet socket_set, const uint8_t my_id);
 

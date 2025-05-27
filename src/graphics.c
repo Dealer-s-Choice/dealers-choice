@@ -61,6 +61,7 @@ const FontArgs_t font_args[] = {
     [CARD] = {.file = "../src/LiberationMono-Regular.ttf", .ptsize = 38},
     [OTHER] = {.file = "../src/LiberationSerif-Bold.ttf", .ptsize = 30},
     [STATUS_MSG] = {.file = "../src/LiberationSerif-Bold.ttf", .ptsize = 24},
+    [LINK] = {.file = "../src/LiberationSerif-Bold.ttf", .ptsize = 22},
 };
 
 void clear_screen(SDL_Renderer *renderer) {
