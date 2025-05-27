@@ -3,7 +3,7 @@ if get_option('gen_protobuf')
   run_command([protoc, '--c_out=./protobuf', 'netpoker.proto'], check: true)
 endif
 
-net_shared_src = files(
+shared_src = files(
   'client.c',
   'debug.c',
   'game.c',
