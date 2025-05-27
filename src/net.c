@@ -206,8 +206,10 @@ int send_all_tcp(TCPsocket sock, const void *data, size_t length) {
       return -1;
     }
     total_sent += sent;
+    // printf("Total sent: %zd\n", total_sent);
   }
 
+  // TODO: This should probably return total sent
   return 0;
 }
 
@@ -227,27 +229,32 @@ int recv_all_tcp(TCPsocket sock, void *data, int length) {
   return total_received;
 }
 
+// Eventually some, or most, of the data in the game state struct will be sent
+// via opcodes, like what's done for the discard/draw request
 ERecvStatus_t recv_game_state(TCPsocket client_socket, SDLNet_SocketSet socket_set,
-                              GameState_t *game_state) {
+                              GameState_t *game_state, ClientState_t *recv_args) {
   // printf("[recv_game_state] Waiting for game state...\n");
   int result = SDLNet_CheckSockets(socket_set, 100);
+  // printf("[recv_game_state] CheckSockets returned: %d\n", result);
   if (result == -1) {
     fputs(SDLNet_GetError(), stderr);
     return RECV_ERROR;
   }
 
   if (result == 0) {
+    // printf("[recv_game_state] No activity on socket\n");
     return RECV_NOTHING;
   }
 
   if (!SDLNet_SocketReady(client_socket)) {
-    printf("[recv_game_state] client_socket not ready\n");
+    // printf("[recv_game_state] client_socket not ready\n");
     return RECV_ERROR;
   }
 
   uint32_t size_net = 0;
-  if (recv_all_tcp(client_socket, &size_net, sizeof(size_net)) <= 0) {
-    fprintf(stderr, "[recv_game_state] Disconnected while reading game state size\n");
+  int r_size = recv_all_tcp(client_socket, &size_net, sizeof(size_net));
+  if (r_size <= 0) {
+    fprintf(stderr, "[recv_game_state] Disconnected while reading game state size %d\n", r_size);
     return RECV_ERROR;
   }
 
@@ -269,8 +276,20 @@ ERecvStatus_t recv_game_state(TCPsocket client_socket, SDLNet_SocketSet socket_s
     return RECV_ERROR;
   }
 
-  printf("[recv_game_state] Received %u bytes, deserializing...\n", size);
-  *game_state = deserialize_game_state(buffer, size);
+  fprintf(stderr, "[recv_game_state] size: %d\n", size);
+  if (size == 2) {
+    uint16_t opcode = (buffer[0] << 8) | buffer[1];
+    if (opcode != MSG_DRAW_PROMPT) {
+      puts("Not draw prompt");
+      free(buffer);
+      return RECV_ERROR;
+    }
+    recv_args->do_discard_draw = true;
+    printf("[recv_game_state] Received %u bytes, server wants discards...\n", size);
+  } else {
+    printf("[recv_game_state] Received %u bytes, deserializing...\n", size);
+    *game_state = deserialize_game_state(buffer, size);
+  }
   free(buffer);
   return RECV_SUCCESS;
 }

@@ -34,11 +34,17 @@
 #include "server.h"
 
 #define handle_round() handle_round_real(args, dealer)
+#define MAX_DISCARDS 4
 
 typedef struct {
   uint8_t n_winners;
   int id[MAX_PLAYERS];
 } RoundResults;
+
+typedef struct {
+  uint8_t discard_count;
+  uint8_t discard_indices[MAX_DISCARDS];
+} DrawRequestMsg_t;
 
 // typedef struct {
 // SDLNet_SocketSet *socket_set;
@@ -204,6 +210,50 @@ static int recv_player_action(TCPsocket sock, struct player_action_msg_t *out_ac
   return n_bytes;
 }
 
+int send_draw_prompt(TCPsocket sock) {
+  uint8_t buffer[6]; // 4 bytes size + 2 bytes opcode
+
+  uint32_t size = htonl(2); // payload is 2 bytes
+  memcpy(buffer, &size, 4);
+
+  buffer[4] = (MSG_DRAW_PROMPT >> 8) & 0xFF;
+  buffer[5] = MSG_DRAW_PROMPT & 0xFF;
+
+  int sent = send_all_tcp(sock, buffer, sizeof(buffer));
+  printf("Sent draw prompt: %d bytes\n", sent);
+  return sent;
+}
+
+static int recv_discards_send_new_cards(TCPsocket sock, DrawRequestMsg_t *out_req) {
+  uint8_t header[3];
+
+  // Read the opcode and discard_count first
+  int n_bytes = recv_all_tcp(sock, header, sizeof(header));
+  if (n_bytes <= 0)
+    return n_bytes;
+
+  uint16_t opcode = (header[0] << 8) | header[1];
+  if (opcode != MSG_DRAW_REQUEST)
+    return -1;
+
+  uint8_t count = header[2];
+  if (count > MAX_DISCARDS)
+    return -1;
+
+  // Read the discard indices (count bytes)
+  uint8_t indices[MAX_DISCARDS] = {0};
+  if (count > 0) {
+    n_bytes = recv_all_tcp(sock, indices, count);
+    if (n_bytes <= 0)
+      return n_bytes;
+  }
+
+  out_req->discard_count = count;
+  memcpy(out_req->discard_indices, indices, count);
+
+  return 3 + count; // total bytes received
+}
+
 static void server_handle_call(GameState_t *game_state, const uint8_t turn_id) {
   uint32_t owed = game_state->total_bets_plus_raises - game_state->player[turn_id].total_paid;
   game_state->player[turn_id].coins -= owed;
@@ -235,6 +285,15 @@ static void server_handle_raise(GameState_t *game_state, const uint8_t turn_id,
                                 const uint32_t amount) {
   server_handle_call(game_state, turn_id);
   server_handle_bet(game_state, turn_id, amount);
+}
+
+static void handle_draw(ArgsBroadcastGameState_t *args, TCPsocket sock) {
+  puts("sending draw prompt");
+  send_draw_prompt(sock);
+  // printf("bytes_sent: %d\n", bytes_sent);
+  // SDLNet_CheckSockets(*args->socket_set, 100); // wait up to 100ms
+  // if (SDLNet_SocketReady((*args->clients)[turn->id])) {
+  // puts("socket ready");
 }
 
 static void determine_winner(ArgsBroadcastGameState_t *args, RoundResults *results) {
@@ -311,8 +370,7 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args, Player_t *
       // fprintf(stderr, "Waiting for action from %d\n", args->game_state->turn_id);
       SDLNet_CheckSockets(*args->socket_set, 100); // wait up to 100ms
       if (SDLNet_SocketReady((*args->clients)[turn->id])) {
-        puts("socket ready");
-
+        // puts("socket ready");
         struct player_action_msg_t action;
         // char tmp[sizeof args->game_state->status_str];
         if (recv_player_action((*args->clients)[args->game_state->turn_id], &action) > 0) {
@@ -502,8 +560,14 @@ void game_five_card_draw(ArgsBroadcastGameState_t *args, Player_t *players_array
                          struct dh_deck *deck) {
   (void)players_array;
   (void)deck;
+
+  Player_t *starting_player = get_next_player(players_array, dealer->id);
   server_handle_ante(args->game_state, dealer, 250);
   RoundResults results = handle_round();
+
+  handle_draw(args, (*args->clients)[starting_player->id]);
+  sleep(30);
+
   determine_winner(args, &results);
 }
 

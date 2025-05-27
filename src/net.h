@@ -41,7 +41,13 @@
 #include "netpoker.pb-c.h"
 #include "types.h"
 
-#define BACKLOG 10
+#define MSG_GAME_SELECT 0x0001       // Player_t chooses a game variant
+#define MSG_PLAYER_ACTION 0x0002     // Player_t bets, folds, etc.
+#define MSG_GAME_START 0x0004        // Game begins
+#define MSG_DEAL_CARDS 0x0005        // Cards sent to player
+#define MSG_DRAW_REQUEST 0x0006      // Player_t discards cards for draw
+#define MSG_GAME_STATE_UPDATE 0x0007 // Server sends state update
+#define MSG_DRAW_PROMPT 0x0008
 
 extern const uint16_t default_port;
 
@@ -50,6 +56,10 @@ typedef enum {
   RECV_SUCCESS,
   RECV_NOTHING,
 } ERecvStatus_t;
+
+typedef struct {
+  bool do_discard_draw;
+} ClientState_t;
 
 struct player_message_builder_t {
   // These types come from the generated protobuf header file
@@ -71,6 +81,6 @@ int send_all_tcp(TCPsocket sock, const void *data, size_t length);
 int recv_all_tcp(TCPsocket sock, void *data, int32_t length);
 
 ERecvStatus_t recv_game_state(TCPsocket client_socket, SDLNet_SocketSet socket_set,
-                              GameState_t *game_state);
+                              GameState_t *game_state, ClientState_t *recv_args);
 
 #endif

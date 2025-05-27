@@ -68,10 +68,11 @@ int run_client(const char *addr, ESdlContext_t *sdl_context, Font_t *font) {
   }
 
   GameState_t game_state = {0};
-  if (recv_game_state(client_socket, socket_set, &game_state) != RECV_SUCCESS)
+  ClientState_t recv_args = {0};
+  if (recv_game_state(client_socket, socket_set, &game_state, &recv_args) != RECV_SUCCESS)
     goto cleanup;
 
-  run_sdl_loop(&game_state, sdl_context, font, client_socket, socket_set, my_id);
+  run_sdl_loop(&game_state, &recv_args, sdl_context, font, client_socket, socket_set, my_id);
 
 cleanup:
   SDLNet_TCP_DelSocket(socket_set, client_socket);

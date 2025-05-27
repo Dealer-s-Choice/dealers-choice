@@ -106,9 +106,12 @@ void init_sdl_window(ESdlContext_t *sdl_context, const char *title) {
 
 TTF_Font *open_font(const FontArgs_t *args) {
   TTF_Font *font = TTF_OpenFont(args->file, args->ptsize);
-  if (!font)
-    fprintf(stderr, "Failed to load font (%s): %s\n", args->file, TTF_GetError());
-  return font;
+  if (font)
+    return font;
+
+  // fprintf(stderr, "Failed to load font (%s): %s\n", args->file, TTF_GetError());
+  fprintf(stderr, "TTF_OpenFont: %s\n", SDL_GetError());
+  exit(EXIT_FAILURE);
 }
 
 void render_text_centered(SDL_Renderer *renderer, TTF_Font *font, const char *text, SDL_Color color,
