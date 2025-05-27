@@ -225,33 +225,24 @@ int send_draw_prompt(TCPsocket sock) {
 }
 
 static int recv_discards_send_new_cards(TCPsocket sock, DrawRequestMsg_t *out_req) {
-  uint8_t header[3];
+  uint8_t buffer[7];
 
-  // Read the opcode and discard_count first
-  int n_bytes = recv_all_tcp(sock, header, sizeof(header));
+  int n_bytes = recv_all_tcp(sock, buffer, sizeof(buffer));
   if (n_bytes <= 0)
     return n_bytes;
 
-  uint16_t opcode = (header[0] << 8) | header[1];
+  uint16_t opcode = (buffer[0] << 8) | buffer[1];
   if (opcode != MSG_DRAW_REQUEST)
     return -1;
 
-  uint8_t count = header[2];
+  uint8_t count = buffer[2];
   if (count > MAX_DISCARDS)
     return -1;
 
-  // Read the discard indices (count bytes)
-  uint8_t indices[MAX_DISCARDS] = {0};
-  if (count > 0) {
-    n_bytes = recv_all_tcp(sock, indices, count);
-    if (n_bytes <= 0)
-      return n_bytes;
-  }
-
   out_req->discard_count = count;
-  memcpy(out_req->discard_indices, indices, count);
+  memcpy(out_req->discard_indices, &buffer[3], MAX_DISCARDS); // copy all 4
 
-  return 3 + count; // total bytes received
+  return sizeof(buffer); // 7 bytes
 }
 
 static void server_handle_call(GameState_t *game_state, const uint8_t turn_id) {
@@ -287,13 +278,23 @@ static void server_handle_raise(GameState_t *game_state, const uint8_t turn_id,
   server_handle_bet(game_state, turn_id, amount);
 }
 
-static void handle_draw(ArgsBroadcastGameState_t *args, TCPsocket sock) {
+static void handle_draw(ArgsBroadcastGameState_t *args, TCPsocket sock, const int id,
+                        struct dh_deck *deck) {
   puts("sending draw prompt");
   send_draw_prompt(sock);
-  // printf("bytes_sent: %d\n", bytes_sent);
-  // SDLNet_CheckSockets(*args->socket_set, 100); // wait up to 100ms
-  // if (SDLNet_SocketReady((*args->clients)[turn->id])) {
-  // puts("socket ready");
+
+  DrawRequestMsg_t req;
+  if (recv_discards_send_new_cards(sock, &req) <= 0) {
+    fprintf(stderr, "Failed to receive draw request.\n");
+    // handle disconnect or protocol error
+  } else {
+    printf("Player wants to discard %u cards: ", req.discard_count);
+    for (int i = 0; i < req.discard_count; ++i) {
+      printf("%u ", req.discard_indices[i]);
+      args->real_hand->player[id].card[req.discard_indices[i]] = dh_deal_top_card(deck);
+    }
+    puts("");
+  }
 }
 
 static void determine_winner(ArgsBroadcastGameState_t *args, RoundResults *results) {
@@ -565,8 +566,9 @@ void game_five_card_draw(ArgsBroadcastGameState_t *args, Player_t *players_array
   server_handle_ante(args->game_state, dealer, 250);
   RoundResults results = handle_round();
 
-  handle_draw(args, (*args->clients)[starting_player->id]);
-  sleep(30);
+  handle_draw(args, (*args->clients)[starting_player->id], starting_player->id, deck);
+  broadcast_game_state(args);
+  sleep(10);
 
   determine_winner(args, &results);
 }

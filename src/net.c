@@ -247,7 +247,7 @@ ERecvStatus_t recv_game_state(TCPsocket client_socket, SDLNet_SocketSet socket_s
   }
 
   if (!SDLNet_SocketReady(client_socket)) {
-    // printf("[recv_game_state] client_socket not ready\n");
+    printf("[recv_game_state] client_socket not ready\n");
     return RECV_ERROR;
   }
 

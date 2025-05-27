@@ -59,6 +59,8 @@ typedef enum {
 
 typedef struct {
   bool do_discard_draw;
+  bool has_ace;
+  uint8_t n_cards_selected;
 } ClientState_t;
 
 struct player_message_builder_t {

@@ -589,9 +589,19 @@ void run_sdl_loop(GameState_t *game_state, ClientState_t *recv_args, ESdlContext
           if (!is_dh_card_null(*card) || !is_dh_card_null(*card)) {
             card_context[my_id][card_n].hovered =
                 SDL_PointInRect(&mouse_pos, &card_context[my_id][card_n].rect);
-            if (card_context[my_id][card_n].hovered && event.type == SDL_MOUSEBUTTONDOWN) {
+            if (card_context[my_id][card_n].hovered && event.type == SDL_MOUSEBUTTONDOWN &&
+                recv_args->do_discard_draw) {
               // select or deselect when clicked
-              card_context[my_id][card_n].selected = !card_context[my_id][card_n].selected;
+              bool *selected = &card_context[my_id][card_n].selected;
+              *selected = !(*selected);
+
+              // Update counter
+              if (*selected) {
+                recv_args->n_cards_selected++;
+              } else {
+                recv_args->n_cards_selected--;
+              }
+              // printf("n_selected: %d\n", recv_args->n_cards_selected);
             }
             // If the mouse is at the location, there's no need to iterate through the rest
             // of the cards.
@@ -630,6 +640,20 @@ void run_sdl_loop(GameState_t *game_state, ClientState_t *recv_args, ESdlContext
               if (send_player_action(client_socket, ACTION_CALL, 0) != 0)
                 fprintf(stderr, "Failed to call\n");
             }
+          } else if (SDL_PointInRect(&mouse_pos, &action_button[DISCARD].rect)) {
+            puts("discarding");
+            uint8_t discard_indices[4] = {0};
+            uint8_t discard_count = 0;
+            // Suppose the player chose to discard cards at indices 1 and 3:
+            for (int i = 0; i < HAND_SIZE; i++) {
+              if (!card_context[my_id][i].selected)
+                continue;
+              discard_indices[discard_count++] = i;
+            }
+            if (send_discards_request_new_cards(client_socket, discard_indices, discard_count) != 0)
+              fprintf(stderr, "Failed to send discards\n");
+            else
+              puts("Discards sent");
           }
         }
       }
