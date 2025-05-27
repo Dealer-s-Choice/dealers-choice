@@ -109,37 +109,39 @@ const GameChoice_t *find_game_choice_by_type(const uint8_t type) {
   return NULL; // Not found
 }
 
-void render_project_link(SDL_Renderer *renderer, TTF_Font *font, SDL_Rect *rect, const bool hovered) {
-    const char *url_text = DEALERSCHOICE_NAME;
+void render_project_link(SDL_Renderer *renderer, TTF_Font *font, SDL_Rect *rect,
+                         const bool hovered) {
+  SDL_Color text_color = (hovered) ? get_color(COLOR_YELLOW) : get_color(COLOR_BLACK);
+  TTF_SetFontStyle(font, TTF_STYLE_UNDERLINE);
 
-    SDL_Color text_color = (hovered) ? get_color(COLOR_YELLOW) : get_color(COLOR_BLACK);
-    SDL_Surface *surface = TTF_RenderText_Solid(font, url_text, text_color);
-    if (!surface) {
-        SDL_Log("Failed to render text surface: %s", TTF_GetError());
-        return;
-    }
+  const char *ptr = &DEALERSCHOICE_URL[sizeof("https://") - 1];
+  SDL_Surface *surface = TTF_RenderText_Solid(font, ptr, text_color);
+  if (!surface) {
+    SDL_Log("Failed to render text surface: %s", TTF_GetError());
+    return;
+  }
 
-    SDL_Texture *texture = SDL_CreateTextureFromSurface(renderer, surface);
-    if (!texture) {
-        SDL_Log("Failed to create texture from surface: %s", SDL_GetError());
-        SDL_FreeSurface(surface);
-        return;
-    }
-
-    rect->w = surface->w;
-    rect->h = surface->h;
-
+  SDL_Texture *texture = SDL_CreateTextureFromSurface(renderer, surface);
+  if (!texture) {
+    SDL_Log("Failed to create texture from surface: %s", SDL_GetError());
     SDL_FreeSurface(surface);
+    return;
+  }
 
-    if (!hovered)
-      SDL_SetRenderDrawColor(renderer, 255, 255, 0, 255);
-    else
-      SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+  rect->w = surface->w;
+  rect->h = surface->h;
 
-    SDL_RenderFillRect(renderer, rect);
+  SDL_FreeSurface(surface);
 
-    SDL_RenderCopy(renderer, texture, NULL, rect);
-    SDL_DestroyTexture(texture);
+  if (!hovered)
+    SDL_SetRenderDrawColor(renderer, 255, 255, 0, 255);
+  else
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+
+  SDL_RenderFillRect(renderer, rect);
+
+  SDL_RenderCopy(renderer, texture, NULL, rect);
+  SDL_DestroyTexture(texture);
 }
 
 static int menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet socket_set,
@@ -157,14 +159,13 @@ static int menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet s
 
   bool link_hovered;
   bool running = true;
-  // FIXME: There doesn't need to be a while loop here, this function already runs in a while
-  // loop. But the variables above need to be only declared once. Right now if
-  // this loop is removed, the buttons don't behave as intended.
+
   while (running && game_state->at_menu) {
     if (recv_game_state(client_socket, socket_set, game_state) == RECV_ERROR)
       return RECV_ERROR;
 
-    SDL_Rect link_rect = { sdl_context->win_center.x + 50, sdl_context->window_height - 40, 160, 50};
+    SDL_Rect link_rect = {sdl_context->win_center.x + 50, sdl_context->window_height - 40,
+                          sizeof(DEALERSCHOICE_URL) * 8, 30};
 
     SDL_Event e;
     while (SDL_PollEvent(&e)) {
@@ -173,6 +174,7 @@ static int menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet s
         game_choice_button[i].enabled = (game_state->dealer_id == my_id);
         game_choice_button[i].hovered = SDL_PointInRect(&mouse_pos, &game_choice_button[i].rect);
       }
+      link_hovered = SDL_PointInRect(&mouse_pos, &link_rect);
       if (e.type == SDL_QUIT) {
         return -1;
       } else if (e.type == SDL_MOUSEBUTTONDOWN) {
@@ -188,9 +190,9 @@ static int menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet s
             }
           }
         }
-        link_hovered = SDL_PointInRect(&mouse_pos, &link_rect);
         if (link_hovered && e.button.button == SDL_BUTTON_LEFT)
-          SDL_OpenURL(DEALERSCHOICE_URL);
+          if (SDL_OpenURL(DEALERSCHOICE_URL) == -1)
+            fputs(SDL_GetError(), stderr);
       }
     }
 
@@ -223,7 +225,7 @@ static int menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet s
       }
     }
 
-    render_project_link(sdl_context->renderer, font->fonts[OTHER], &link_rect, link_hovered);
+    render_project_link(sdl_context->renderer, font->fonts[LINK], &link_rect, link_hovered);
 
     SDL_RenderPresent(sdl_context->renderer);
     SDL_Delay(16);
