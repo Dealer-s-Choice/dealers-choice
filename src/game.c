@@ -146,7 +146,7 @@ void render_project_link(SDL_Renderer *renderer, TTF_Font *font, SDL_Rect *rect,
 
 static int menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet socket_set,
                                      const int8_t my_id, GameState_t *game_state,
-                                     ClientState_t *client_state, ESdlContext_t *sdl_context,
+                                     ClientState_t *client_state, SdlContext_t *sdl_context,
                                      Font_t *font) {
   int button_height = 40;
   int y_offset = 160;
@@ -354,9 +354,9 @@ typedef struct {
   // SDL_Color fg_color;
   SDL_Rect rect;
   bool hovered, selected, is_back, is_null;
-} CardContext;
+} CardContext_t;
 
-static void render_card(CardContext *context, TTF_Font *font) {
+static void render_card(CardContext_t *context, TTF_Font *font) {
   // printf("%d\n", __LINE__);
   if (context->is_back) {
     draw_card_back_pattern(context->renderer, &context->rect);
@@ -365,7 +365,9 @@ static void render_card(CardContext *context, TTF_Font *font) {
     return;
   // Draw white card box
   SDL_SetRenderDrawColor(context->renderer, 255, 255, 255, 255);
-  SDL_RenderFillRect(context->renderer, &context->rect);
+  SDL_Rect *rect = &context->rect;
+  SDL_Rect tmp = {rect->x, rect->y - 10, 80, 50};
+  SDL_RenderFillRect(context->renderer, &tmp);
 
   // Highlight hovered card for the local player (draw after card background)
   if (context->hovered) {
@@ -411,14 +413,14 @@ static void render_card(CardContext *context, TTF_Font *font) {
   SDL_DestroyTexture(textTexture);
 }
 
-static void create_card_context(CardContext card_context[MAX_PLAYERS][HAND_SIZE], const int start_i,
+static void create_card_context(CardContext_t card_context[MAX_PLAYERS][HAND_SIZE], const int start_i,
                                 Player_t *players_array, const SDL_Point *player_pos,
                                 SDL_Renderer *renderer) {
-  memset(card_context, 0, sizeof(CardContext) * MAX_PLAYERS * HAND_SIZE);
+  memset(card_context, 0, sizeof(CardContext_t) * MAX_PLAYERS * HAND_SIZE);
   Player_t *turn = &players_array[start_i];
   Player_t *starting_turn = turn;
   do {
-    CardContext context = {
+    CardContext_t context = {
         .renderer = renderer,
         .hovered = false,
         .selected = false,
@@ -456,7 +458,7 @@ static void create_card_context(CardContext card_context[MAX_PLAYERS][HAND_SIZE]
   } while ((turn = get_next_player(players_array, turn->id)) != starting_turn);
 }
 
-void run_sdl_loop(GameState_t *game_state, ClientState_t *client_state, ESdlContext_t *sdl_context,
+void run_sdl_loop(GameState_t *game_state, ClientState_t *client_state, SdlContext_t *sdl_context,
                   Font_t *font, TCPsocket client_socket, SDLNet_SocketSet socket_set,
                   const uint8_t my_id) {
 
@@ -522,7 +524,7 @@ void run_sdl_loop(GameState_t *game_state, ClientState_t *client_state, ESdlCont
 
   int card_width = 80, card_height = 50;
 
-  CardContext card_context[MAX_PLAYERS][HAND_SIZE];
+  CardContext_t card_context[MAX_PLAYERS][HAND_SIZE];
 
   int running = 1;
   bool cards_dealt = false;
