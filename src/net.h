@@ -48,6 +48,7 @@
 #define MSG_DRAW_REQUEST 0x0006      // Player_t discards cards for draw
 #define MSG_GAME_STATE_UPDATE 0x0007 // Server sends state update
 #define MSG_DRAW_PROMPT 0x0008
+#define MSG_STATUS_MESSAGE 0x0009
 
 extern const uint16_t default_port;
 
@@ -61,6 +62,7 @@ typedef struct {
   bool do_discard_draw;
   bool has_ace;
   uint8_t n_cards_selected;
+  char server_status_str[LEN_STATUS_STR];
 } ClientState_t;
 
 struct player_message_builder_t {
@@ -83,6 +85,6 @@ int send_all_tcp(TCPsocket sock, const void *data, size_t length);
 int recv_all_tcp(TCPsocket sock, void *data, int32_t length);
 
 ERecvStatus_t recv_game_state(TCPsocket client_socket, SDLNet_SocketSet socket_set,
-                              GameState_t *game_state, ClientState_t *recv_args);
+                              GameState_t *game_state, ClientState_t *client_state);
 
 #endif

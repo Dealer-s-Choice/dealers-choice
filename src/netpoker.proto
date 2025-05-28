@@ -34,8 +34,7 @@ message GameState {
   uint32 player_count = 5;
   uint32 total_bets_plus_raises = 6;
   bool winner_declared = 7;
-  string status_str = 8;
-  uint32 action_time_out_ms = 9;
-  uint32 end_of_round_time_out_ms = 10;
-  repeated Player player = 11;
+  uint32 action_time_out_ms = 8;
+  uint32 end_of_round_time_out_ms = 9;
+  repeated Player player = 10;
 }

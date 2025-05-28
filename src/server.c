@@ -100,7 +100,6 @@ void init_game_state(GameState_t *game_state) {
   game_state->player_count = 0;
   game_state->total_bets_plus_raises = 0;
   game_state->winner_declared = false;
-  *game_state->status_str = '\0';
   game_state->action_time_out_ms = ACTION_TIMEOUT_MS;
   game_state->end_of_round_time_out_ms = ACTION_TIMEOUT_MS;
 }
@@ -174,6 +173,38 @@ static void broadcast_game_state(ArgsBroadcastGameState_t *args) {
         broadcast_game_state(args);
     }
     free(data);
+  }
+}
+
+int send_status_message(TCPsocket sock, const char *msg) {
+  size_t msg_len = strlen(msg);
+  if (msg_len > 100)
+    msg_len = 100;
+
+  uint32_t size = htonl(2 + msg_len); // payload: 2-byte opcode + N-byte msg
+  uint8_t buffer[4 + 2 + 100];        // max: 4 bytes (size) + 2 (opcode) + 100 (msg)
+
+  memcpy(buffer, &size, 4);
+
+  buffer[4] = (MSG_STATUS_MESSAGE >> 8) & 0xFF;
+  buffer[5] = MSG_STATUS_MESSAGE & 0xFF;
+
+  memcpy(&buffer[6], msg, msg_len);
+
+  // Send total (size prefix + payload)
+  return send_all_tcp(sock, buffer, 6 + msg_len);
+}
+
+static void broadcast_status_message(const ArgsBroadcastGameState_t *args, const char *msg) {
+  for (int i = 0; i < *args->active_clients; ++i) {
+    puts(msg);
+    TCPsocket sock = (*args->clients)[i];
+    if (!sock)
+      continue;
+
+    if (send_status_message(sock, msg) <= 0) {
+      fprintf(stderr, "[broadcast_status_message] Failed to send to client %d\n", i);
+    }
   }
 }
 
@@ -295,6 +326,10 @@ static void handle_draw(ArgsBroadcastGameState_t *args, TCPsocket sock, const in
     }
     puts("");
   }
+  char status_str[LEN_STATUS_STR] = {0};
+  snprintf(status_str, sizeof status_str, "%s drew %d", args->game_state->player[id].name,
+           req.discard_count);
+  broadcast_status_message(args, status_str);
 }
 
 static void determine_winner(ArgsBroadcastGameState_t *args, RoundResults *results) {
@@ -338,11 +373,13 @@ static void determine_winner(ArgsBroadcastGameState_t *args, RoundResults *resul
     Player_t *winner = &args->game_state->player[need_comparing[i].id];
     winner->winner = true;
     fprintf(stderr, "winner id: %d\n", need_comparing[i].id);
-    snprintf(args->game_state->status_str, sizeof(args->game_state->status_str),
+    char status_str[LEN_STATUS_STR];
+    snprintf(status_str, sizeof(status_str),
              // When broadcast is called, it will reveal the cards if winner has been declared. We
              // don't need to call that yet, so using the values from "real_hand" for now
              "%s wins with %s\n", winner->name,
              pokeval_ranks[pokeval_evaluate_hand(args->real_hand->player[winner->id])]);
+    broadcast_status_message(args, status_str);
     uint32_t share = args->game_state->pot / results->n_winners;
     args->game_state->pot = args->game_state->pot % results->n_winners;
     winner->coins += share;
@@ -361,6 +398,7 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args, Player_t *
   RoundResults results = {0};
 
   do {
+    char status_str[LEN_STATUS_STR] = {0};
     args->game_state->turn_id = turn->id;
     broadcast_game_state(args);
 
@@ -376,9 +414,9 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args, Player_t *
         // char tmp[sizeof args->game_state->status_str];
         if (recv_player_action((*args->clients)[args->game_state->turn_id], &action) > 0) {
           printf("Received action %u with amount %u\n", action.action, action.amount);
-          snprintf(args->game_state->status_str, sizeof(args->game_state->status_str),
-                   "Received action from %s: %u with amount %u\n", turn->name, action.action,
-                   action.amount);
+          snprintf(status_str, sizeof(status_str), "Received action from %s: %u with amount %u\n",
+                   turn->name, action.action, action.amount);
+          broadcast_status_message(args, status_str);
           switch (action.action) {
           case ACTION_CHECK:
             turn->has_checked = true;
@@ -425,12 +463,11 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args, Player_t *
         if (turn->in) {
           turn->winner = true;
           if (args->game_state->player_count == 1)
-            snprintf(args->game_state->status_str, sizeof(args->game_state->status_str),
-                     "%s wins\n", turn->name);
+            snprintf(status_str, sizeof(status_str), "%s wins\n", turn->name);
           else
-            snprintf(args->game_state->status_str, sizeof(args->game_state->status_str),
-                     "%s wins with %s\n", turn->name,
+            snprintf(status_str, sizeof(status_str), "%s wins with %s\n", turn->name,
                      pokeval_ranks[pokeval_evaluate_hand(turn->hand)]);
+          broadcast_status_message(args, status_str);
 
           args->game_state->winner_declared = true;
           results.n_winners = 1;
@@ -774,7 +811,6 @@ int run_server(void) {
         play_game(game_type, &args_broadcast_game_state, players_array, dealer, &deck);
 
         broadcast_game_state(&args_broadcast_game_state);
-        *game_state.status_str = '\0';
 
         Uint32 wait_ms = 10000; // wait up to 10 seconds before presenting the game menu
         Uint32 start = SDL_GetTicks();

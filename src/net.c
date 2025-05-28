@@ -95,8 +95,6 @@ uint8_t *serialize_game_state(const GameState_t *src, size_t *size_out) {
   msg.winner_declared = src->winner_declared;
   msg.end_of_round_time_out_ms = src->end_of_round_time_out_ms;
 
-  msg.status_str = (char *)src->status_str;
-
   // player
   Player *player_msgs[MAX_PLAYERS];
   struct player_message_builder_t builders[MAX_PLAYERS];
@@ -139,9 +137,6 @@ GameState_t deserialize_game_state(const uint8_t *data, size_t size) {
   result.winner_declared = msg->winner_declared;
   result.action_time_out_ms = msg->action_time_out_ms;
   result.end_of_round_time_out_ms = msg->end_of_round_time_out_ms;
-
-  if (msg->status_str)
-    snprintf(result.status_str, sizeof(result.status_str), "%s", msg->status_str);
 
   size_t n = msg->n_player < MAX_PLAYERS ? msg->n_player : MAX_PLAYERS;
   for (size_t i = 0; i < n; ++i) {
@@ -206,7 +201,7 @@ int send_all_tcp(TCPsocket sock, const void *data, size_t length) {
       return -1;
     }
     total_sent += sent;
-    // printf("Total sent: %zd\n", total_sent);
+    printf("Total sent: %zd\n", total_sent);
   }
 
   // TODO: This should probably return total sent
@@ -232,7 +227,7 @@ int recv_all_tcp(TCPsocket sock, void *data, int length) {
 // Eventually some, or most, of the data in the game state struct will be sent
 // via opcodes, like what's done for the discard/draw request
 ERecvStatus_t recv_game_state(TCPsocket client_socket, SDLNet_SocketSet socket_set,
-                              GameState_t *game_state, ClientState_t *recv_args) {
+                              GameState_t *game_state, ClientState_t *client_state) {
   // printf("[recv_game_state] Waiting for game state...\n");
   int result = SDLNet_CheckSockets(socket_set, 100);
   // printf("[recv_game_state] CheckSockets returned: %d\n", result);
@@ -277,19 +272,32 @@ ERecvStatus_t recv_game_state(TCPsocket client_socket, SDLNet_SocketSet socket_s
   }
 
   fprintf(stderr, "[recv_game_state] size: %d\n", size);
-  if (size == 2) {
-    uint16_t opcode = (buffer[0] << 8) | buffer[1];
-    if (opcode != MSG_DRAW_PROMPT) {
-      puts("Not draw prompt");
-      free(buffer);
-      return RECV_ERROR;
+  uint16_t opcode = (buffer[0] << 8) | buffer[1];
+  switch (opcode) {
+  case MSG_DRAW_PROMPT:
+    if (size != 2) {
+      fprintf(stderr, "[recv_game_state] Invalid size for MSG_DRAW_PROMPT: %u\n", size);
+      break;
     }
-    recv_args->do_discard_draw = true;
+    client_state->do_discard_draw = true;
     printf("[recv_game_state] Received %u bytes, server wants discards...\n", size);
-  } else {
+    break;
+
+  case MSG_STATUS_MESSAGE: {
+    size_t msg_len = size - 2;
+    if (msg_len > 100)
+      msg_len = 100;
+    memcpy(client_state->server_status_str, &buffer[2], msg_len);
+    client_state->server_status_str[msg_len] = '\0';
+    printf("[Status Message] %s\n", client_state->server_status_str);
+  } break;
+
+  default:
     printf("[recv_game_state] Received %u bytes, deserializing...\n", size);
     *game_state = deserialize_game_state(buffer, size);
+    break;
   }
+
   free(buffer);
   return RECV_SUCCESS;
 }
