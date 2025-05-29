@@ -58,13 +58,13 @@ typedef struct {
 typedef struct {
   uint32_t pot;
   int8_t dealer_id;
-  int32_t turn_id;
+  int8_t turn_id;
   bool at_menu;
   uint8_t player_count;
   uint32_t total_bets_plus_raises;
   bool winner_declared;
-  uint16_t action_time_out_ms;
-  uint16_t end_of_round_time_out_ms;
+  uint32_t action_time_out_ms;
+  uint32_t end_of_round_time_out_ms;
   Player_t player[MAX_PLAYERS];
 } GameState_t;
 
@@ -89,7 +89,7 @@ typedef struct {
   const char *str;
   const uint8_t game_type;
   game_func_t func;
-  uint8_t rounds, draws;
+  uint8_t n_betting_rounds, draws;
 } GameChoice_t;
 
 extern const GameChoice_t game_choices[];

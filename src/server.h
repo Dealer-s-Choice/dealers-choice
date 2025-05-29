@@ -38,7 +38,7 @@
 
 #define GAME_ARGS                                                                                  \
   ArgsBroadcastGameState_t *args, Player_t *players_array, Player_t *dealer, DH_Deck *deck,        \
-      const uint8_t rounds, const uint8_t draws
+      const uint8_t n_betting_rounds, const uint8_t draws
 
 void init_game_state(GameState_t *game_state);
 
@@ -46,7 +46,7 @@ RealHand_t deal_cards_to_players(GameState_t *game_state, Player_t *dealer, DH_D
                                  const uint8_t game_type);
 
 void game_five_card_draw(ArgsBroadcastGameState_t *args, Player_t *players_array, Player_t *dealer,
-                         DH_Deck *deck, const uint8_t rounds, const uint8_t draws);
+                         DH_Deck *deck, const uint8_t n_betting_rounds, const uint8_t draws);
 
 void game_five_card_stud(GAME_ARGS);
 
