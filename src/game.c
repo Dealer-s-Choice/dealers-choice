@@ -100,7 +100,8 @@ static Button_t create_game_choice_button(const char *text, SDL_Renderer *render
 const GameChoice_t game_choices[] = {
     {FIVE_CARD_DRAW, "5-card draw", 0x01, game_five_card_draw, 2, 1},
     {FIVE_CARD_DOUBLE_DRAW, "5-card double draw", 0x02, game_five_card_draw, 3, 2},
-    {FIVE_CARD_STUD, "5-card stud", 0x03, game_five_card_stud, 4, 0}};
+    {FIVE_CARD_STUD, "5-card stud", 0x03, game_five_card_stud, 4, 0},
+    {FIVE_CARD_SHOWDOWN, "5-Card Showdown", 0x04, game_five_card_draw, 1, 0}};
 
 const GameChoice_t *find_game_choice_by_type(const uint8_t type) {
   for (size_t i = 0; i < sizeof(game_choices) / sizeof(game_choices[0]); ++i) {
@@ -157,7 +158,7 @@ static int menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet s
     // TODO: Center
     // Using the strlen will expand the background to accomodate the text string (foreground)
     // but the buttons are not centered
-    SDL_Rect rect = {100, y_offset, strlen(game_choices[i].str) * 16, button_height};
+    SDL_Rect rect = {100, y_offset, strlen(game_choices[i].str) * 18, button_height};
 
     game_choice_button[i] = create_game_choice_button(game_choices[i].str, sdl_context->renderer,
                                                       rect, font->fonts[OTHER]);
