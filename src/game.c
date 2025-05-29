@@ -670,8 +670,10 @@ void run_sdl_loop(GameState_t *game_state, ClientState_t *client_state, SdlConte
 
             if (send_discards_request_new_cards(client_socket, discard_indices, discard_count) != 0)
               fprintf(stderr, "Failed to send discards\n");
-            else
+            else {
               puts("Discards sent");
+              client_state->n_cards_selected = 0;
+            }
           }
         }
       }
