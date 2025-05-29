@@ -437,12 +437,12 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args, Player_t *
     Uint32 wait_ms = args->game_state->action_time_out_ms;
     Uint32 start = SDL_GetTicks();
 
+    struct player_action_msg_t action = {0};
     while (SDL_GetTicks() - start < wait_ms) {
       // fprintf(stderr, "Waiting for action from %d\n", args->game_state->turn_id);
       SDLNet_CheckSockets(*args->socket_set, 100); // wait up to 100ms
       if (SDLNet_SocketReady((*args->clients)[turn->id])) {
         // puts("socket ready");
-        struct player_action_msg_t action;
         // char tmp[sizeof args->game_state->status_str];
         if (recv_player_action((*args->clients)[args->game_state->turn_id], &action) > 0) {
           printf("Received action %u with amount %u\n", action.action, action.amount);
@@ -480,7 +480,16 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args, Player_t *
         break;
       }
       SDL_Delay(50); // avoid busy-waiting
-      puts("Action timeout waiting for player action");
+    }
+
+    if (action.action == 0) {
+      if (turn->total_paid != args->game_state->total_bets_plus_raises) {
+        turn->in = false;
+        args->game_state->player_count--;
+      } else if (args->game_state->total_bets_plus_raises == 0) {
+        turn->has_checked = true;
+        puts("player checks by default");
+      }
     }
     turn = get_next_player(players_array, turn->id);
     // printf("turning... new turn->id: %d\n", turn->id);
