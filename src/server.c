@@ -364,6 +364,22 @@ static void handle_draw(ArgsBroadcastGameState_t *args, TCPsocket sock, const in
   broadcast_status_message(args, status_str);
 }
 
+static player_action_t handle_check(Player_t *turn) {
+  turn->has_checked = true;
+  puts("player checks");
+  return ACTION_CHECK;
+}
+
+static player_action_t handle_fold(ArgsBroadcastGameState_t *args, Player_t *turn) {
+  turn->in = false;
+  args->game_state->player_count--;
+  return ACTION_FOLD;
+}
+
+static bool has_paid_all_bets(const GameState_t *game_state, const Player_t *player) {
+  return player->total_paid == game_state->total_bets_plus_raises;
+}
+
 static void determine_winner(ArgsBroadcastGameState_t *args, RoundResults *results) {
   if (results->n_winners > 0)
     return;
@@ -437,29 +453,25 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args, Player_t *
     Uint32 wait_ms = args->game_state->action_time_out_ms;
     Uint32 start = SDL_GetTicks();
 
+    struct player_action_msg_t action = {0};
     while (SDL_GetTicks() - start < wait_ms) {
       // fprintf(stderr, "Waiting for action from %d\n", args->game_state->turn_id);
       SDLNet_CheckSockets(*args->socket_set, 100); // wait up to 100ms
       if (SDLNet_SocketReady((*args->clients)[turn->id])) {
         // puts("socket ready");
-        struct player_action_msg_t action;
         // char tmp[sizeof args->game_state->status_str];
         if (recv_player_action((*args->clients)[args->game_state->turn_id], &action) > 0) {
           printf("Received action %u with amount %u\n", action.action, action.amount);
-          snprintf(status_str, sizeof(status_str), "Received action from %s: %u with amount %u\n",
-                   turn->name, action.action, action.amount);
-          broadcast_status_message(args, status_str);
+
           switch (action.action) {
           case ACTION_CHECK:
-            turn->has_checked = true;
-            puts("player checks");
+            handle_check(turn);
             break;
           case ACTION_BET:
             server_handle_bet(args->game_state, turn->id, action.amount);
             break;
           case ACTION_FOLD:
-            turn->in = false;
-            args->game_state->player_count--;
+            handle_fold(args, turn);
             break;
           case ACTION_CALL:
             server_handle_call(args->game_state, turn->id);
@@ -481,6 +493,19 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args, Player_t *
       }
       SDL_Delay(50); // avoid busy-waiting
     }
+
+    if (action.action == 0) {
+      if (!has_paid_all_bets(args->game_state, turn)) {
+        action.action = handle_fold(args, turn);
+      } else if (args->game_state->total_bets_plus_raises == 0) {
+        action.action = handle_check(turn);
+      }
+    }
+
+    snprintf(status_str, sizeof(status_str), "Received action from %s: %u with amount %u\n",
+             turn->name, action.action, action.amount);
+    broadcast_status_message(args, status_str);
+
     turn = get_next_player(players_array, turn->id);
     // printf("turning... new turn->id: %d\n", turn->id);
 
@@ -514,8 +539,7 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args, Player_t *
     } else if (args->game_state->total_bets_plus_raises == 0) {
       if (turn == starting_player)
         break;
-    } else if (args->game_state->total_bets_plus_raises ==
-               args->game_state->player[turn->id].total_paid) {
+    } else if (has_paid_all_bets(args->game_state, turn)) {
       break; // Everyone either checked or paid all bets and raises
     }
 
