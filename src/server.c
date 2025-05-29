@@ -364,14 +364,16 @@ static void handle_draw(ArgsBroadcastGameState_t *args, TCPsocket sock, const in
   broadcast_status_message(args, status_str);
 }
 
-static void handle_check(Player_t *turn) {
+static player_action_t handle_check(Player_t *turn) {
   turn->has_checked = true;
   puts("player checks");
+  return ACTION_CHECK;
 }
 
-static void handle_fold(ArgsBroadcastGameState_t *args, Player_t *turn) {
+static player_action_t handle_fold(ArgsBroadcastGameState_t *args, Player_t *turn) {
   turn->in = false;
   args->game_state->player_count--;
+  return ACTION_FOLD;
 }
 
 static bool has_paid_all_bets(const GameState_t *game_state, const Player_t *player) {
@@ -460,9 +462,7 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args, Player_t *
         // char tmp[sizeof args->game_state->status_str];
         if (recv_player_action((*args->clients)[args->game_state->turn_id], &action) > 0) {
           printf("Received action %u with amount %u\n", action.action, action.amount);
-          snprintf(status_str, sizeof(status_str), "Received action from %s: %u with amount %u\n",
-                   turn->name, action.action, action.amount);
-          broadcast_status_message(args, status_str);
+
           switch (action.action) {
           case ACTION_CHECK:
             handle_check(turn);
@@ -496,11 +496,16 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args, Player_t *
 
     if (action.action == 0) {
       if (!has_paid_all_bets(args->game_state, turn)) {
-        handle_fold(args, turn);
+        action.action = handle_fold(args, turn);
       } else if (args->game_state->total_bets_plus_raises == 0) {
-        handle_check(turn);
+        action.action = handle_check(turn);
       }
     }
+
+    snprintf(status_str, sizeof(status_str), "Received action from %s: %u with amount %u\n",
+             turn->name, action.action, action.amount);
+    broadcast_status_message(args, status_str);
+
     turn = get_next_player(players_array, turn->id);
     // printf("turning... new turn->id: %d\n", turn->id);
 
