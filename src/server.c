@@ -643,7 +643,14 @@ void game_five_card_draw(GAME_ARGS) {
     turn = starting_player;
     do {
       args->game_state->turn_id = turn->id;
+
+      // The player's new cards are sent to them in handle_draw(), but
+      // the clients use game_state.turn_id to decide which buttons to display.
+      // It would be better if that behavior were changed so that broadcasting the
+      // entire game state wasn't required here (the only info that needs updating
+      // at this point is turn_id).
       broadcast_game_state(args);
+
       handle_draw(args, (*args->clients)[turn->id], turn->id, deck);
     } while ((turn = get_next_player(players_array, turn->id)) != starting_player);
     broadcast_game_state(args);
