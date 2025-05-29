@@ -37,7 +37,7 @@
 #define END_OF_ROUND_TIMEOUT_MS 15000
 
 #define GAME_ARGS                                                                                  \
-  ArgsBroadcastGameState_t *args, Player_t *players_array, Player_t *dealer, DH_Deck *deck, \
+  ArgsBroadcastGameState_t *args, Player_t *players_array, Player_t *dealer, DH_Deck *deck,        \
       const uint8_t rounds, const uint8_t draws
 
 void init_game_state(GameState_t *game_state);
