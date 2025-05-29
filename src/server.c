@@ -364,6 +364,20 @@ static void handle_draw(ArgsBroadcastGameState_t *args, TCPsocket sock, const in
   broadcast_status_message(args, status_str);
 }
 
+static void handle_check(Player_t *turn) {
+  turn->has_checked = true;
+  puts("player checks");
+}
+
+static void handle_fold(ArgsBroadcastGameState_t *args, Player_t *turn) {
+  turn->in = false;
+  args->game_state->player_count--;
+}
+
+static bool has_paid_all_bets(const GameState_t *game_state, const Player_t *player) {
+  return player->total_paid == game_state->total_bets_plus_raises;
+}
+
 static void determine_winner(ArgsBroadcastGameState_t *args, RoundResults *results) {
   if (results->n_winners > 0)
     return;
@@ -451,15 +465,13 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args, Player_t *
           broadcast_status_message(args, status_str);
           switch (action.action) {
           case ACTION_CHECK:
-            turn->has_checked = true;
-            puts("player checks");
+            handle_check(turn);
             break;
           case ACTION_BET:
             server_handle_bet(args->game_state, turn->id, action.amount);
             break;
           case ACTION_FOLD:
-            turn->in = false;
-            args->game_state->player_count--;
+            handle_fold(args, turn);
             break;
           case ACTION_CALL:
             server_handle_call(args->game_state, turn->id);
@@ -483,12 +495,10 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args, Player_t *
     }
 
     if (action.action == 0) {
-      if (turn->total_paid != args->game_state->total_bets_plus_raises) {
-        turn->in = false;
-        args->game_state->player_count--;
+      if (!has_paid_all_bets(args->game_state, turn)) {
+        handle_fold(args, turn);
       } else if (args->game_state->total_bets_plus_raises == 0) {
-        turn->has_checked = true;
-        puts("player checks by default");
+        handle_check(turn);
       }
     }
     turn = get_next_player(players_array, turn->id);
@@ -524,8 +534,7 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args, Player_t *
     } else if (args->game_state->total_bets_plus_raises == 0) {
       if (turn == starting_player)
         break;
-    } else if (args->game_state->total_bets_plus_raises ==
-               args->game_state->player[turn->id].total_paid) {
+    } else if (has_paid_all_bets(args->game_state, turn)) {
       break; // Everyone either checked or paid all bets and raises
     }
 
