@@ -227,7 +227,8 @@ int recv_all_tcp(TCPsocket sock, void *data, int length) {
 // Eventually some, or most, of the data in the game state struct will be sent
 // via opcodes, like what's done for the discard/draw request
 ERecvStatus_t recv_game_state(TCPsocket client_socket, SDLNet_SocketSet socket_set,
-                              GameState_t *game_state, ClientState_t *client_state) {
+                              GameState_t *game_state, ClientState_t *client_state,
+                              const int8_t id) {
   // printf("[recv_game_state] Waiting for game state...\n");
   int result = SDLNet_CheckSockets(socket_set, 100);
   // printf("[recv_game_state] CheckSockets returned: %d\n", result);
@@ -291,7 +292,29 @@ ERecvStatus_t recv_game_state(TCPsocket client_socket, SDLNet_SocketSet socket_s
     client_state->server_status_str[msg_len] = '\0';
     printf("[Status Message] %s\n", client_state->server_status_str);
   } break;
+  case MSG_NEW_HAND: {
+    if (size < 3) {
+      fputs("Invalid MSG_NEW_HAND payload (too short)\n", stderr);
+      break;
+    }
 
+    uint8_t hand_size = buffer[2];
+    if (hand_size == 0 || hand_size > HAND_SIZE || size != 3 + hand_size * 8) {
+      fprintf(stderr, "Invalid hand size or message length: %u\n", hand_size);
+      break;
+    }
+
+    for (uint8_t i = 0; i < hand_size; ++i) {
+      uint32_t fv, s;
+      memcpy(&fv, &buffer[3 + i * 8], 4);
+      memcpy(&s, &buffer[3 + i * 8 + 4], 4);
+      game_state->player[id].hand.card[i].face_val = ntohl(fv);
+      game_state->player[id].hand.card[i].suit = ntohl(s);
+    }
+
+    printf("[recv_game_state] Received new hand with %u cards\n", hand_size);
+    break;
+  } break;
   default:
     printf("[recv_game_state] Received %u bytes, deserializing...\n", size);
     *game_state = deserialize_game_state(buffer, size);

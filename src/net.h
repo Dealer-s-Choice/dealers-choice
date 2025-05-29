@@ -49,6 +49,7 @@
 #define MSG_GAME_STATE_UPDATE 0x0007 // Server sends state update
 #define MSG_DRAW_PROMPT 0x0008
 #define MSG_STATUS_MESSAGE 0x0009
+#define MSG_NEW_HAND 0x0010
 
 extern const uint16_t default_port;
 
@@ -85,6 +86,7 @@ int send_all_tcp(TCPsocket sock, const void *data, size_t length);
 int recv_all_tcp(TCPsocket sock, void *data, int32_t length);
 
 ERecvStatus_t recv_game_state(TCPsocket client_socket, SDLNet_SocketSet socket_set,
-                              GameState_t *game_state, ClientState_t *client_state);
+                              GameState_t *game_state, ClientState_t *client_state,
+                              const int8_t id);
 
 #endif

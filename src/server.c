@@ -104,6 +104,36 @@ void init_game_state(GameState_t *game_state) {
   game_state->end_of_round_time_out_ms = ACTION_TIMEOUT_MS;
 }
 
+// In the future, hands will be sent using functions like this, rather than how it's
+// presently done in broadcast_game_state()
+static int send_new_hand(TCPsocket sock, const struct pokeval_hand_t *hand, uint8_t hand_size) {
+  if (hand_size == 0 || hand_size > HAND_SIZE)
+    return -1;
+
+// TODO: Can this be simplified via protobuf-c (already being used to serialize game_state)?
+
+  const size_t card_bytes = hand_size * 8;        // each card is 8 bytes: 2 × 4-byte ints
+  const size_t payload_size = 2 + 1 + card_bytes; // opcode + hand_size + cards
+  const uint32_t total_size = htonl(payload_size);
+
+  uint8_t buffer[4 + payload_size];
+  memcpy(buffer, &total_size, 4); // size prefix
+
+  buffer[4] = (MSG_NEW_HAND >> 8) & 0xFF;
+  buffer[5] = MSG_NEW_HAND & 0xFF;
+  buffer[6] = hand_size;
+
+  // Serialize each card (face_val and suit as 4-byte integers)
+  for (uint8_t i = 0; i < hand_size; ++i) {
+    uint32_t fv = htonl(hand->card[i].face_val);
+    uint32_t s = htonl(hand->card[i].suit);
+    memcpy(&buffer[7 + i * 8], &fv, 4);
+    memcpy(&buffer[7 + i * 8 + 4], &s, 4);
+  }
+
+  return send_all_tcp(sock, buffer, 4 + payload_size);
+}
+
 RealHand_t deal_cards_to_players(GameState_t *game_state, Player_t *dealer, struct dh_deck *deck,
                                  const uint8_t game_type) {
   RealHand_t real_hand = {0};
@@ -329,6 +359,7 @@ static void handle_draw(ArgsBroadcastGameState_t *args, TCPsocket sock, const in
   char status_str[LEN_STATUS_STR] = {0};
   snprintf(status_str, sizeof status_str, "%s drew %d", args->game_state->player[id].name,
            req.discard_count);
+  send_new_hand(sock, &args->real_hand->player[id], HAND_SIZE);
   broadcast_status_message(args, status_str);
 }
 
@@ -604,7 +635,7 @@ void game_five_card_draw(ArgsBroadcastGameState_t *args, Player_t *players_array
   RoundResults results = handle_round();
 
   handle_draw(args, (*args->clients)[starting_player->id], starting_player->id, deck);
-  broadcast_game_state(args);
+  // broadcast_game_state(args);
   sleep(10);
 
   determine_winner(args, &results);

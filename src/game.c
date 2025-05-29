@@ -162,7 +162,7 @@ static int menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet s
   bool running = true;
 
   while (running && game_state->at_menu) {
-    if (recv_game_state(client_socket, socket_set, game_state, client_state) == RECV_ERROR)
+    if (recv_game_state(client_socket, socket_set, game_state, client_state, my_id) == RECV_ERROR)
       return RECV_ERROR;
 
     SDL_Rect link_rect = {sdl_context->win_center.x + 50, sdl_context->window_height - 40,
@@ -365,9 +365,7 @@ static void render_card(CardContext_t *context, TTF_Font *font) {
     return;
   // Draw white card box
   SDL_SetRenderDrawColor(context->renderer, 255, 255, 255, 255);
-  SDL_Rect *rect = &context->rect;
-  SDL_Rect tmp = {rect->x, rect->y - 10, 80, 50};
-  SDL_RenderFillRect(context->renderer, &tmp);
+  SDL_RenderFillRect(context->renderer, &context->rect);
 
   // Highlight hovered card for the local player (draw after card background)
   if (context->hovered) {
@@ -413,9 +411,9 @@ static void render_card(CardContext_t *context, TTF_Font *font) {
   SDL_DestroyTexture(textTexture);
 }
 
-static void create_card_context(CardContext_t card_context[MAX_PLAYERS][HAND_SIZE], const int start_i,
-                                Player_t *players_array, const SDL_Point *player_pos,
-                                SDL_Renderer *renderer) {
+static void create_card_context(CardContext_t card_context[MAX_PLAYERS][HAND_SIZE],
+                                const int start_i, Player_t *players_array,
+                                const SDL_Point *player_pos, SDL_Renderer *renderer) {
   memset(card_context, 0, sizeof(CardContext_t) * MAX_PLAYERS * HAND_SIZE);
   Player_t *turn = &players_array[start_i];
   Player_t *starting_turn = turn;
@@ -536,7 +534,7 @@ void run_sdl_loop(GameState_t *game_state, ClientState_t *client_state, SdlConte
   Player_t *starting_turn = NULL;
   while (running) {
     ERecvStatus_t recv_status =
-        recv_game_state(client_socket, socket_set, game_state, client_state);
+        recv_game_state(client_socket, socket_set, game_state, client_state, my_id);
     // printf("%d\n", __LINE__);
     if (recv_status == RECV_ERROR)
       running = false;
@@ -659,7 +657,7 @@ void run_sdl_loop(GameState_t *game_state, ClientState_t *client_state, SdlConte
             client_state->do_discard_draw = false;
 
             // The server normally sets this, and the client receives it, during game broadcast
-            // game_state->turn_id = -1;
+            game_state->turn_id = -1;
 
             if (send_discards_request_new_cards(client_socket, discard_indices, discard_count) != 0)
               fprintf(stderr, "Failed to send discards\n");
