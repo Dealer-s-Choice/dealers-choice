@@ -38,6 +38,7 @@
 
 typedef enum {
   FIVE_CARD_DRAW,
+  FIVE_CARD_DOUBLE_DRAW,
   FIVE_CARD_STUD,
   MAX_CHOICES,
 } EMenuOption_t;
