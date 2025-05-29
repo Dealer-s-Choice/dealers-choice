@@ -9,9 +9,9 @@ for (int i = 0; i < 3; i++) {
   game_state.player[i].id = i;
 }
 
-struct dh_deck deck = dh_get_new_deck();
-dh_pcg_srand(1, 1);
-dh_shuffle_deck(&deck);
+DH_Deck deck = DH_get_new_deck();
+DH_pcg_srand(1, 1);
+DH_shuffle_deck(&deck);
 
 Player_t *dealer = &game_state.player[0];
 RealHand_t real_hand =

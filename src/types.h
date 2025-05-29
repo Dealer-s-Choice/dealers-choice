@@ -79,7 +79,7 @@ typedef struct {
   bool (*slot_taken)[MAX_CLIENTS];
 } ArgsBroadcastGameState_t;
 
-typedef void (*game_func_t)(ArgsBroadcastGameState_t *, Player_t *, Player_t *, struct dh_deck *,
+typedef void (*game_func_t)(ArgsBroadcastGameState_t *, Player_t *, Player_t *, DH_Deck *,
                             uint8_t, uint8_t);
 
 typedef struct {

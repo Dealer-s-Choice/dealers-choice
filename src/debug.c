@@ -45,8 +45,8 @@ DebugPrintCards_t debug_print_cards(struct pokeval_hand_t *hand) {
       continue;
     }
     char result[20];
-    snprintf(result, sizeof result, "%s%s", get_card_face(hand->card[i]),
-             get_card_unicode_suit(hand->card[i]));
+    snprintf(result, sizeof result, "%s%s", DH_get_card_face(hand->card[i]),
+             DH_get_card_unicode_suit(hand->card[i]));
     fprintf(stderr, "%s", result);
     size_t len = strlen(str.str);
     snprintf(ptr, sizeof str.str - len, "%s", result);

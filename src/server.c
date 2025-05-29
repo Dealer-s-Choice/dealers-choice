@@ -135,7 +135,7 @@ static int send_new_hand(TCPsocket sock, const struct pokeval_hand_t *hand, uint
   return send_all_tcp(sock, buffer, 4 + payload_size);
 }
 
-RealHand_t deal_cards_to_players(GameState_t *game_state, Player_t *dealer, struct dh_deck *deck,
+RealHand_t deal_cards_to_players(GameState_t *game_state, Player_t *dealer, DH_Deck *deck,
                                  const uint8_t game_type) {
   RealHand_t real_hand = {0};
   Player_t *players_array = game_state->player;
@@ -145,21 +145,21 @@ RealHand_t deal_cards_to_players(GameState_t *game_state, Player_t *dealer, stru
   do {
     if (game_type != game_choices[FIVE_CARD_STUD].game_type) {
       for (int i = 0; i < HAND_SIZE; ++i) {
-        turn->hand.card[i] = dh_card_back;
-        real_hand.player[turn->id].card[i] = dh_deal_top_card(deck);
+        turn->hand.card[i] = DH_card_back;
+        real_hand.player[turn->id].card[i] = DH_deal_top_card(deck);
       }
     } else {
       struct pokeval_hand_t *hand = &turn->hand;
       // First card face down
-      hand->card[0] = dh_card_back;
-      real_hand.player[turn->id].card[0] = dh_deal_top_card(deck);
+      hand->card[0] = DH_card_back;
+      real_hand.player[turn->id].card[0] = DH_deal_top_card(deck);
 
       // Second card face up
-      hand->card[1] = dh_deal_top_card(deck);
+      hand->card[1] = DH_deal_top_card(deck);
       real_hand.player[turn->id].card[1] = hand->card[1];
 
       for (int i = 2; i < HAND_SIZE; i++) {
-        hand->card[i] = dh_card_null;
+        hand->card[i] = DH_card_null;
         real_hand.player[turn->id].card[i] = hand->card[i];
       }
     }
@@ -341,7 +341,7 @@ static void server_handle_raise(GameState_t *game_state, const uint8_t turn_id,
 }
 
 static void handle_draw(ArgsBroadcastGameState_t *args, TCPsocket sock, const int id,
-                        struct dh_deck *deck) {
+                        DH_Deck *deck) {
   puts("sending draw prompt");
   send_draw_prompt(sock);
 
@@ -353,7 +353,7 @@ static void handle_draw(ArgsBroadcastGameState_t *args, TCPsocket sock, const in
     printf("Player wants to discard %u cards: ", req.discard_count);
     for (int i = 0; i < req.discard_count; ++i) {
       printf("%u ", req.discard_indices[i]);
-      args->real_hand->player[id].card[req.discard_indices[i]] = dh_deal_top_card(deck);
+      args->real_hand->player[id].card[req.discard_indices[i]] = DH_deal_top_card(deck);
     }
     puts("");
   }
@@ -677,7 +677,7 @@ void game_five_card_stud(GAME_ARGS) {
         int id = turn->id;
         struct pokeval_hand_t *hand = &args->game_state->player[id].hand;
         uint8_t n = i + 2;
-        hand->card[n] = dh_deal_top_card(deck);
+        hand->card[n] = DH_deal_top_card(deck);
         args->real_hand->player[id].card[n] = hand->card[n];
       } while ((turn = get_next_player(players_array, turn->id)) != start);
     }
@@ -686,7 +686,7 @@ void game_five_card_stud(GAME_ARGS) {
 }
 
 static void play_game(const char game_type, ArgsBroadcastGameState_t *args, Player_t *players_array,
-                      Player_t *dealer, struct dh_deck *deck) {
+                      Player_t *dealer, DH_Deck *deck) {
   *args->real_hand = deal_cards_to_players(args->game_state, dealer, deck, game_type);
   args->game_state->winner_declared = false;
 
@@ -738,8 +738,8 @@ int run_server(void) {
     return 1;
   }
 
-  struct dh_deck deck = dh_get_new_deck();
-  dh_pcg_srand_auto();
+  DH_Deck deck = DH_get_new_deck();
+  DH_pcg_srand_auto();
 
   int game_started = 0;
   RealHand_t real_hand = {0};
@@ -851,7 +851,7 @@ int run_server(void) {
         // Player_t (*players)[MAX_PLAYERS] = &game_state.player;
         // Player_t *dealer = &(*players[game_state.dealer_id]);
 
-        dh_shuffle_deck(&deck);
+        DH_shuffle_deck(&deck);
 
         Player_t *dealer = &game_state.player[game_state.dealer_id];
 

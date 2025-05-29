@@ -294,12 +294,12 @@ static int8_t send_discards_request_new_cards(TCPsocket sock, const uint8_t *dis
   return send_all_tcp(sock, buffer, sizeof(buffer));
 }
 
-bool is_dh_card_back(struct dh_card a) {
-  return a.face_val == dh_card_back.face_val && a.suit == dh_card_back.suit;
+bool is_dh_card_back(DH_Card a) {
+  return a.face_val == DH_card_back.face_val && a.suit == DH_card_back.suit;
 }
 
-bool is_dh_card_null(struct dh_card a) {
-  return a.face_val == dh_card_null.face_val && a.suit == dh_card_null.suit;
+bool is_dh_card_null(DH_Card a) {
+  return a.face_val == DH_card_null.face_val && a.suit == DH_card_null.suit;
 }
 
 static void draw_filled_circle(SDL_Renderer *renderer, int cx, int cy, int radius,
@@ -427,7 +427,7 @@ static void create_card_context(CardContext_t card_context[MAX_PLAYERS][HAND_SIZ
     for (int card_n = 0; card_n < HAND_SIZE; card_n++) {
       // printf("%d\n", __LINE__);
       const int id = turn->id;
-      struct dh_card *card = &(turn->hand.card)[card_n];
+      DH_Card *card = &(turn->hand.card)[card_n];
       const SDL_Point card_pos = {
           player_pos[id].x + card_n * (80 + 10),
           player_pos[id].y,
@@ -441,9 +441,9 @@ static void create_card_context(CardContext_t card_context[MAX_PLAYERS][HAND_SIZ
       context.is_back = is_dh_card_back(*card);
       context.is_null = is_dh_card_null(*card);
       if (!context.is_back && !context.is_null) {
-        const char *face = get_card_face_str(card->face_val);
-        const char *suit = get_card_unicode_suit(*card);
-        context.textColor = (card->suit == HEARTS || card->suit == DIAMONDS)
+        const char *face = DH_get_card_face_str(card->face_val);
+        const char *suit = DH_get_card_unicode_suit(*card);
+        context.textColor = (card->suit == DH_SUIT_HEARTS || card->suit == DH_SUIT_DIAMONDS)
                                 ? get_color(COLOR_RED)
                                 : get_color(COLOR_BLACK);
         snprintf(context.text, sizeof(context.text), "%s%s", face, suit);
@@ -588,7 +588,7 @@ void run_sdl_loop(GameState_t *game_state, ClientState_t *client_state, SdlConte
       while (SDL_PollEvent(&event)) {
         SDL_Point mouse_pos = {event.button.x, event.button.y};
         for (int card_n = 0; card_n < HAND_SIZE; card_n++) {
-          struct dh_card *card = &game_state->player[my_id].hand.card[card_n];
+          DH_Card *card = &game_state->player[my_id].hand.card[card_n];
           if (!is_dh_card_null(*card) || !is_dh_card_null(*card)) {
             card_context[my_id][card_n].hovered =
                 SDL_PointInRect(&mouse_pos, &card_context[my_id][card_n].rect);
@@ -731,7 +731,7 @@ void run_sdl_loop(GameState_t *game_state, ClientState_t *client_state, SdlConte
       } else {
         if (client_state->do_discard_draw) {
           for (int i = 0; i < HAND_SIZE; i++)
-            if (turn->hand.card[i].face_val == ACE) {
+            if (turn->hand.card[i].face_val == DH_CARD_ACE) {
               client_state->has_ace = true;
               break;
             }

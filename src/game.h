@@ -62,9 +62,9 @@ const GameChoice_t *find_game_choice_by_type(const uint8_t type);
 
 Player_t *get_next_player(Player_t *players_array, int cur);
 
-bool is_dh_card_back(struct dh_card a);
+bool is_dh_card_back(DH_Card a);
 
-bool is_dh_card_null(struct dh_card a);
+bool is_dh_card_null(DH_Card a);
 
 void render_project_link(SDL_Renderer *renderer, TTF_Font *font, SDL_Rect *rect,
                          const bool hovered);
