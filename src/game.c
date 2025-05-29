@@ -99,6 +99,7 @@ static Button_t create_game_choice_button(const char *text, SDL_Renderer *render
 
 const GameChoice_t game_choices[] = {
     {FIVE_CARD_DRAW, "5-card draw", 0x01, game_five_card_draw, 2, 1},
+    {FIVE_CARD_DOUBLE_DRAW, "5-card double draw", 0x02, game_five_card_draw, 3, 2},
     {FIVE_CARD_STUD, "5-card stud", 0x03, game_five_card_stud, 4, 0}};
 
 const GameChoice_t *find_game_choice_by_type(const uint8_t type) {
@@ -153,7 +154,11 @@ static int menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet s
   int y_offset = 160;
   Button_t game_choice_button[MAX_CHOICES];
   for (int i = 0; i < MAX_CHOICES; i++) {
-    SDL_Rect rect = {100, y_offset, 200, button_height};
+    // TODO: Center
+    // Using the strlen will expand the background to accomodate the text string (foreground)
+    // but the buttons are not centered
+    SDL_Rect rect = {100, y_offset, strlen(game_choices[i].str) * 16, button_height};
+
     game_choice_button[i] = create_game_choice_button(game_choices[i].str, sdl_context->renderer,
                                                       rect, font->fonts[OTHER]);
     y_offset += button_height * 1.1;
@@ -665,8 +670,10 @@ void run_sdl_loop(GameState_t *game_state, ClientState_t *client_state, SdlConte
 
             if (send_discards_request_new_cards(client_socket, discard_indices, discard_count) != 0)
               fprintf(stderr, "Failed to send discards\n");
-            else
+            else {
               puts("Discards sent");
+              client_state->n_cards_selected = 0;
+            }
           }
         }
       }
