@@ -480,6 +480,7 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args, Player_t *
         break;
       }
       SDL_Delay(50); // avoid busy-waiting
+      puts("Action timeout waiting for player action");
     }
     turn = get_next_player(players_array, turn->id);
     // printf("turning... new turn->id: %d\n", turn->id);
