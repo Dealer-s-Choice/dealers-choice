@@ -299,7 +299,8 @@ ERecvStatus_t recv_game_state(TCPsocket client_socket, SDLNet_SocketSet socket_s
     }
 
     uint8_t hand_size = buffer[2];
-    if (hand_size == 0 || hand_size > HAND_SIZE || size != 3 + hand_size * 8) {
+    uint8_t expected_size = 3 + hand_size * 8;
+    if (hand_size == 0 || hand_size > HAND_SIZE || size != expected_size) {
       fprintf(stderr, "Invalid hand size or message length: %u\n", hand_size);
       break;
     }

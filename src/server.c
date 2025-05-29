@@ -34,6 +34,7 @@
 #include "server.h"
 
 #define handle_round() handle_round_real(args, dealer)
+
 #define MAX_DISCARDS 4
 
 typedef struct {
@@ -110,7 +111,7 @@ static int send_new_hand(TCPsocket sock, const struct pokeval_hand_t *hand, uint
   if (hand_size == 0 || hand_size > HAND_SIZE)
     return -1;
 
-// TODO: Can this be simplified via protobuf-c (already being used to serialize game_state)?
+  // TODO: Can this be simplified via protobuf-c (already being used to serialize game_state)?
 
   const size_t card_bytes = hand_size * 8;        // each card is 8 bytes: 2 × 4-byte ints
   const size_t payload_size = 2 + 1 + card_bytes; // opcode + hand_size + cards
@@ -625,25 +626,35 @@ static int get_next_dealer(int current, const bool *slot_taken) {
   return -1; // No valid dealer
 }
 
-void game_five_card_draw(ArgsBroadcastGameState_t *args, Player_t *players_array, Player_t *dealer,
-                         struct dh_deck *deck) {
+void game_five_card_draw(GAME_ARGS) {
   (void)players_array;
   (void)deck;
 
   Player_t *starting_player = get_next_player(players_array, dealer->id);
   server_handle_ante(args->game_state, dealer, 250);
-  RoundResults results = handle_round();
 
-  handle_draw(args, (*args->clients)[starting_player->id], starting_player->id, deck);
-  // broadcast_game_state(args);
-  sleep(10);
+  Player_t *turn = starting_player;
+  RoundResults results;
+  for (int i = 0; i < rounds; i++) {
+    results = handle_round();
+    if (results.n_winners > 0 || i == draws)
+      break;
+
+    turn = starting_player;
+    do {
+      args->game_state->turn_id = turn->id;
+      broadcast_game_state(args);
+      handle_draw(args, (*args->clients)[turn->id], turn->id, deck);
+    } while ((turn = get_next_player(players_array, turn->id)) != starting_player);
+    broadcast_game_state(args);
+  }
 
   determine_winner(args, &results);
 }
 
-void game_five_card_stud(ArgsBroadcastGameState_t *args, Player_t *players_array, Player_t *dealer,
-                         struct dh_deck *deck) {
-  int8_t rounds = 4;
+void game_five_card_stud(GAME_ARGS) {
+
+  (void)draws;
   RoundResults results;
   for (int i = 0; i < rounds; i++) {
     results = handle_round();
@@ -677,7 +688,7 @@ static void play_game(const char game_type, ArgsBroadcastGameState_t *args, Play
   // Using function pointers...
   const GameChoice_t *choice = find_game_choice_by_type(game_type);
   if (choice && choice->func) {
-    choice->func(args, players_array, dealer, deck);
+    choice->func(args, players_array, dealer, deck, choice->rounds, choice->draws);
   }
 }
 

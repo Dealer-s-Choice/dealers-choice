@@ -97,8 +97,9 @@ static Button_t create_game_choice_button(const char *text, SDL_Renderer *render
   return button;
 }
 
-const GameChoice_t game_choices[] = {{FIVE_CARD_DRAW, "5-card draw", 0x01, game_five_card_draw},
-                                     {FIVE_CARD_STUD, "5-card stud", 0x03, game_five_card_stud}};
+const GameChoice_t game_choices[] = {
+    {FIVE_CARD_DRAW, "5-card draw", 0x01, game_five_card_draw, 2, 1},
+    {FIVE_CARD_STUD, "5-card stud", 0x03, game_five_card_stud, 4, 0}};
 
 const GameChoice_t *find_game_choice_by_type(const uint8_t type) {
   for (size_t i = 0; i < sizeof(game_choices) / sizeof(game_choices[0]); ++i) {
@@ -620,7 +621,7 @@ void run_sdl_loop(GameState_t *game_state, ClientState_t *client_state, SdlConte
         if (event.type == SDL_QUIT) {
           running = false;
         } else if (event.type == SDL_MOUSEBUTTONDOWN) {
-          if (game_state->turn_id == my_id) {
+          if (game_state->turn_id == my_id && !client_state->do_discard_draw) {
             // TODO: use existing array (or modify it) to loop through each action
             if (SDL_PointInRect(&mouse_pos, &action_button[BET].rect)) {
               puts("sending bet");
@@ -643,7 +644,8 @@ void run_sdl_loop(GameState_t *game_state, ClientState_t *client_state, SdlConte
               if (send_player_action(client_socket, ACTION_CALL, 0) != 0)
                 fprintf(stderr, "Failed to call\n");
             }
-          } else if (SDL_PointInRect(&mouse_pos, &action_button[DISCARD].rect)) {
+          } else if (client_state->do_discard_draw &&
+                     SDL_PointInRect(&mouse_pos, &action_button[DISCARD].rect)) {
             puts("discarding");
             uint8_t discard_indices[4] = {0};
             uint8_t discard_count = 0;
@@ -657,7 +659,7 @@ void run_sdl_loop(GameState_t *game_state, ClientState_t *client_state, SdlConte
             client_state->do_discard_draw = false;
 
             // The server normally sets this, and the client receives it, during game broadcast
-            game_state->turn_id = -1;
+            // game_state->turn_id = -1;
 
             if (send_discards_request_new_cards(client_socket, discard_indices, discard_count) != 0)
               fprintf(stderr, "Failed to send discards\n");

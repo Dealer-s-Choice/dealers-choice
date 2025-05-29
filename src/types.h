@@ -79,13 +79,15 @@ typedef struct {
   bool (*slot_taken)[MAX_CLIENTS];
 } ArgsBroadcastGameState_t;
 
-typedef void (*game_func_t)(ArgsBroadcastGameState_t *, Player_t *, Player_t *, struct dh_deck *);
+typedef void (*game_func_t)(ArgsBroadcastGameState_t *, Player_t *, Player_t *, struct dh_deck *,
+                            uint8_t, uint8_t);
 
 typedef struct {
   const EMenuOption_t g;
   const char *str;
   const uint8_t game_type;
   game_func_t func;
+  uint8_t rounds, draws;
 } GameChoice_t;
 
 extern const GameChoice_t game_choices[];
