@@ -41,13 +41,6 @@
 #include "server.h"
 #include "types.h"
 
-#define MSG_GAME_SELECT 0x0001       // Player_t chooses a game variant
-#define MSG_PLAYER_ACTION 0x0002     // Player_t bets, folds, etc.
-#define MSG_GAME_START 0x0004        // Game begins
-#define MSG_DEAL_CARDS 0x0005        // Cards sent to player
-#define MSG_DRAW_REQUEST 0x0006      // Player_t discards cards for draw
-#define MSG_GAME_STATE_UPDATE 0x0007 // Server sends state update
-
 typedef enum {
   ACTION_INVALID = 0x00,
   ACTION_CHECK = 0x01,
@@ -76,7 +69,8 @@ bool is_dh_card_null(struct dh_card a);
 void render_project_link(SDL_Renderer *renderer, TTF_Font *font, SDL_Rect *rect,
                          const bool hovered);
 
-void run_sdl_loop(GameState_t *game_state, ESdlContext_t *sdl_context, Font_t *font,
-                  TCPsocket client_socket, SDLNet_SocketSet socket_set, const uint8_t my_id);
+void run_sdl_loop(GameState_t *game_state, ClientState_t *client_state, SdlContext_t *sdl_context,
+                  Font_t *font, TCPsocket client_socket, SDLNet_SocketSet socket_set,
+                  const uint8_t my_id);
 
 #endif

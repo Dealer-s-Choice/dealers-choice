@@ -95,8 +95,6 @@ uint8_t *serialize_game_state(const GameState_t *src, size_t *size_out) {
   msg.winner_declared = src->winner_declared;
   msg.end_of_round_time_out_ms = src->end_of_round_time_out_ms;
 
-  msg.status_str = (char *)src->status_str;
-
   // player
   Player *player_msgs[MAX_PLAYERS];
   struct player_message_builder_t builders[MAX_PLAYERS];
@@ -139,9 +137,6 @@ GameState_t deserialize_game_state(const uint8_t *data, size_t size) {
   result.winner_declared = msg->winner_declared;
   result.action_time_out_ms = msg->action_time_out_ms;
   result.end_of_round_time_out_ms = msg->end_of_round_time_out_ms;
-
-  if (msg->status_str)
-    snprintf(result.status_str, sizeof(result.status_str), "%s", msg->status_str);
 
   size_t n = msg->n_player < MAX_PLAYERS ? msg->n_player : MAX_PLAYERS;
   for (size_t i = 0; i < n; ++i) {
@@ -206,8 +201,10 @@ int send_all_tcp(TCPsocket sock, const void *data, size_t length) {
       return -1;
     }
     total_sent += sent;
+    printf("Total sent: %zd\n", total_sent);
   }
 
+  // TODO: This should probably return total sent
   return 0;
 }
 
@@ -227,16 +224,21 @@ int recv_all_tcp(TCPsocket sock, void *data, int length) {
   return total_received;
 }
 
+// Eventually some, or most, of the data in the game state struct will be sent
+// via opcodes, like what's done for the discard/draw request
 ERecvStatus_t recv_game_state(TCPsocket client_socket, SDLNet_SocketSet socket_set,
-                              GameState_t *game_state) {
+                              GameState_t *game_state, ClientState_t *client_state,
+                              const int8_t id) {
   // printf("[recv_game_state] Waiting for game state...\n");
   int result = SDLNet_CheckSockets(socket_set, 100);
+  // printf("[recv_game_state] CheckSockets returned: %d\n", result);
   if (result == -1) {
     fputs(SDLNet_GetError(), stderr);
     return RECV_ERROR;
   }
 
   if (result == 0) {
+    // printf("[recv_game_state] No activity on socket\n");
     return RECV_NOTHING;
   }
 
@@ -246,8 +248,9 @@ ERecvStatus_t recv_game_state(TCPsocket client_socket, SDLNet_SocketSet socket_s
   }
 
   uint32_t size_net = 0;
-  if (recv_all_tcp(client_socket, &size_net, sizeof(size_net)) <= 0) {
-    fprintf(stderr, "[recv_game_state] Disconnected while reading game state size\n");
+  int r_size = recv_all_tcp(client_socket, &size_net, sizeof(size_net));
+  if (r_size <= 0) {
+    fprintf(stderr, "[recv_game_state] Disconnected while reading game state size %d\n", r_size);
     return RECV_ERROR;
   }
 
@@ -269,8 +272,56 @@ ERecvStatus_t recv_game_state(TCPsocket client_socket, SDLNet_SocketSet socket_s
     return RECV_ERROR;
   }
 
-  printf("[recv_game_state] Received %u bytes, deserializing...\n", size);
-  *game_state = deserialize_game_state(buffer, size);
+  fprintf(stderr, "[recv_game_state] size: %d\n", size);
+  uint16_t opcode = (buffer[0] << 8) | buffer[1];
+  switch (opcode) {
+  case MSG_DRAW_PROMPT:
+    if (size != 2) {
+      fprintf(stderr, "[recv_game_state] Invalid size for MSG_DRAW_PROMPT: %u\n", size);
+      break;
+    }
+    client_state->do_discard_draw = true;
+    printf("[recv_game_state] Received %u bytes, server wants discards...\n", size);
+    break;
+
+  case MSG_STATUS_MESSAGE: {
+    size_t msg_len = size - 2;
+    if (msg_len > 100)
+      msg_len = 100;
+    memcpy(client_state->server_status_str, &buffer[2], msg_len);
+    client_state->server_status_str[msg_len] = '\0';
+    printf("[Status Message] %s\n", client_state->server_status_str);
+  } break;
+  case MSG_NEW_HAND: {
+    if (size < 3) {
+      fputs("Invalid MSG_NEW_HAND payload (too short)\n", stderr);
+      break;
+    }
+
+    uint8_t hand_size = buffer[2];
+    uint8_t expected_size = 3 + hand_size * 8;
+    if (hand_size == 0 || hand_size > HAND_SIZE || size != expected_size) {
+      fprintf(stderr, "Invalid hand size or message length: %u\n", hand_size);
+      break;
+    }
+
+    for (uint8_t i = 0; i < hand_size; ++i) {
+      uint32_t fv, s;
+      memcpy(&fv, &buffer[3 + i * 8], 4);
+      memcpy(&s, &buffer[3 + i * 8 + 4], 4);
+      game_state->player[id].hand.card[i].face_val = ntohl(fv);
+      game_state->player[id].hand.card[i].suit = ntohl(s);
+    }
+
+    printf("[recv_game_state] Received new hand with %u cards\n", hand_size);
+    break;
+  } break;
+  default:
+    printf("[recv_game_state] Received %u bytes, deserializing...\n", size);
+    *game_state = deserialize_game_state(buffer, size);
+    break;
+  }
+
   free(buffer);
   return RECV_SUCCESS;
 }

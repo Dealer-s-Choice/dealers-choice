@@ -35,10 +35,17 @@
 
 #define handle_round() handle_round_real(args, dealer)
 
+#define MAX_DISCARDS 4
+
 typedef struct {
   uint8_t n_winners;
   int id[MAX_PLAYERS];
 } RoundResults;
+
+typedef struct {
+  uint8_t discard_count;
+  uint8_t discard_indices[MAX_DISCARDS];
+} DrawRequestMsg_t;
 
 // typedef struct {
 // SDLNet_SocketSet *socket_set;
@@ -94,9 +101,38 @@ void init_game_state(GameState_t *game_state) {
   game_state->player_count = 0;
   game_state->total_bets_plus_raises = 0;
   game_state->winner_declared = false;
-  *game_state->status_str = '\0';
   game_state->action_time_out_ms = ACTION_TIMEOUT_MS;
   game_state->end_of_round_time_out_ms = ACTION_TIMEOUT_MS;
+}
+
+// In the future, hands will be sent using functions like this, rather than how it's
+// presently done in broadcast_game_state()
+static int send_new_hand(TCPsocket sock, const struct pokeval_hand_t *hand, uint8_t hand_size) {
+  if (hand_size == 0 || hand_size > HAND_SIZE)
+    return -1;
+
+  // TODO: Can this be simplified via protobuf-c (already being used to serialize game_state)?
+
+  const size_t card_bytes = hand_size * 8;        // each card is 8 bytes: 2 × 4-byte ints
+  const size_t payload_size = 2 + 1 + card_bytes; // opcode + hand_size + cards
+  const uint32_t total_size = htonl(payload_size);
+
+  uint8_t buffer[4 + payload_size];
+  memcpy(buffer, &total_size, 4); // size prefix
+
+  buffer[4] = (MSG_NEW_HAND >> 8) & 0xFF;
+  buffer[5] = MSG_NEW_HAND & 0xFF;
+  buffer[6] = hand_size;
+
+  // Serialize each card (face_val and suit as 4-byte integers)
+  for (uint8_t i = 0; i < hand_size; ++i) {
+    uint32_t fv = htonl(hand->card[i].face_val);
+    uint32_t s = htonl(hand->card[i].suit);
+    memcpy(&buffer[7 + i * 8], &fv, 4);
+    memcpy(&buffer[7 + i * 8 + 4], &s, 4);
+  }
+
+  return send_all_tcp(sock, buffer, 4 + payload_size);
 }
 
 RealHand_t deal_cards_to_players(GameState_t *game_state, Player_t *dealer, struct dh_deck *deck,
@@ -171,6 +207,38 @@ static void broadcast_game_state(ArgsBroadcastGameState_t *args) {
   }
 }
 
+int send_status_message(TCPsocket sock, const char *msg) {
+  size_t msg_len = strlen(msg);
+  if (msg_len > 100)
+    msg_len = 100;
+
+  uint32_t size = htonl(2 + msg_len); // payload: 2-byte opcode + N-byte msg
+  uint8_t buffer[4 + 2 + 100];        // max: 4 bytes (size) + 2 (opcode) + 100 (msg)
+
+  memcpy(buffer, &size, 4);
+
+  buffer[4] = (MSG_STATUS_MESSAGE >> 8) & 0xFF;
+  buffer[5] = MSG_STATUS_MESSAGE & 0xFF;
+
+  memcpy(&buffer[6], msg, msg_len);
+
+  // Send total (size prefix + payload)
+  return send_all_tcp(sock, buffer, 6 + msg_len);
+}
+
+static void broadcast_status_message(const ArgsBroadcastGameState_t *args, const char *msg) {
+  for (int i = 0; i < *args->active_clients; ++i) {
+    puts(msg);
+    TCPsocket sock = (*args->clients)[i];
+    if (!sock)
+      continue;
+
+    if (send_status_message(sock, msg) <= 0) {
+      fprintf(stderr, "[broadcast_status_message] Failed to send to client %d\n", i);
+    }
+  }
+}
+
 static int8_t recv_game_select(TCPsocket sock, uint8_t *out_game_type) {
   uint8_t buffer[3];
 
@@ -204,6 +272,41 @@ static int recv_player_action(TCPsocket sock, struct player_action_msg_t *out_ac
   return n_bytes;
 }
 
+int send_draw_prompt(TCPsocket sock) {
+  uint8_t buffer[6]; // 4 bytes size + 2 bytes opcode
+
+  uint32_t size = htonl(2); // payload is 2 bytes
+  memcpy(buffer, &size, 4);
+
+  buffer[4] = (MSG_DRAW_PROMPT >> 8) & 0xFF;
+  buffer[5] = MSG_DRAW_PROMPT & 0xFF;
+
+  int sent = send_all_tcp(sock, buffer, sizeof(buffer));
+  printf("Sent draw prompt: %d bytes\n", sent);
+  return sent;
+}
+
+static int recv_discards_send_new_cards(TCPsocket sock, DrawRequestMsg_t *out_req) {
+  uint8_t buffer[7];
+
+  int n_bytes = recv_all_tcp(sock, buffer, sizeof(buffer));
+  if (n_bytes <= 0)
+    return n_bytes;
+
+  uint16_t opcode = (buffer[0] << 8) | buffer[1];
+  if (opcode != MSG_DRAW_REQUEST)
+    return -1;
+
+  uint8_t count = buffer[2];
+  if (count > MAX_DISCARDS)
+    return -1;
+
+  out_req->discard_count = count;
+  memcpy(out_req->discard_indices, &buffer[3], MAX_DISCARDS); // copy all 4
+
+  return sizeof(buffer); // 7 bytes
+}
+
 static void server_handle_call(GameState_t *game_state, const uint8_t turn_id) {
   uint32_t owed = game_state->total_bets_plus_raises - game_state->player[turn_id].total_paid;
   game_state->player[turn_id].coins -= owed;
@@ -235,6 +338,30 @@ static void server_handle_raise(GameState_t *game_state, const uint8_t turn_id,
                                 const uint32_t amount) {
   server_handle_call(game_state, turn_id);
   server_handle_bet(game_state, turn_id, amount);
+}
+
+static void handle_draw(ArgsBroadcastGameState_t *args, TCPsocket sock, const int id,
+                        struct dh_deck *deck) {
+  puts("sending draw prompt");
+  send_draw_prompt(sock);
+
+  DrawRequestMsg_t req;
+  if (recv_discards_send_new_cards(sock, &req) <= 0) {
+    fprintf(stderr, "Failed to receive draw request.\n");
+    // handle disconnect or protocol error
+  } else {
+    printf("Player wants to discard %u cards: ", req.discard_count);
+    for (int i = 0; i < req.discard_count; ++i) {
+      printf("%u ", req.discard_indices[i]);
+      args->real_hand->player[id].card[req.discard_indices[i]] = dh_deal_top_card(deck);
+    }
+    puts("");
+  }
+  char status_str[LEN_STATUS_STR] = {0};
+  snprintf(status_str, sizeof status_str, "%s drew %d", args->game_state->player[id].name,
+           req.discard_count);
+  send_new_hand(sock, &args->real_hand->player[id], HAND_SIZE);
+  broadcast_status_message(args, status_str);
 }
 
 static void determine_winner(ArgsBroadcastGameState_t *args, RoundResults *results) {
@@ -278,11 +405,13 @@ static void determine_winner(ArgsBroadcastGameState_t *args, RoundResults *resul
     Player_t *winner = &args->game_state->player[need_comparing[i].id];
     winner->winner = true;
     fprintf(stderr, "winner id: %d\n", need_comparing[i].id);
-    snprintf(args->game_state->status_str, sizeof(args->game_state->status_str),
+    char status_str[LEN_STATUS_STR];
+    snprintf(status_str, sizeof(status_str),
              // When broadcast is called, it will reveal the cards if winner has been declared. We
              // don't need to call that yet, so using the values from "real_hand" for now
              "%s wins with %s\n", winner->name,
              pokeval_ranks[pokeval_evaluate_hand(args->real_hand->player[winner->id])]);
+    broadcast_status_message(args, status_str);
     uint32_t share = args->game_state->pot / results->n_winners;
     args->game_state->pot = args->game_state->pot % results->n_winners;
     winner->coins += share;
@@ -301,6 +430,7 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args, Player_t *
   RoundResults results = {0};
 
   do {
+    char status_str[LEN_STATUS_STR] = {0};
     args->game_state->turn_id = turn->id;
     broadcast_game_state(args);
 
@@ -311,15 +441,14 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args, Player_t *
       // fprintf(stderr, "Waiting for action from %d\n", args->game_state->turn_id);
       SDLNet_CheckSockets(*args->socket_set, 100); // wait up to 100ms
       if (SDLNet_SocketReady((*args->clients)[turn->id])) {
-        puts("socket ready");
-
+        // puts("socket ready");
         struct player_action_msg_t action;
         // char tmp[sizeof args->game_state->status_str];
         if (recv_player_action((*args->clients)[args->game_state->turn_id], &action) > 0) {
           printf("Received action %u with amount %u\n", action.action, action.amount);
-          snprintf(args->game_state->status_str, sizeof(args->game_state->status_str),
-                   "Received action from %s: %u with amount %u\n", turn->name, action.action,
-                   action.amount);
+          snprintf(status_str, sizeof(status_str), "Received action from %s: %u with amount %u\n",
+                   turn->name, action.action, action.amount);
+          broadcast_status_message(args, status_str);
           switch (action.action) {
           case ACTION_CHECK:
             turn->has_checked = true;
@@ -366,12 +495,11 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args, Player_t *
         if (turn->in) {
           turn->winner = true;
           if (args->game_state->player_count == 1)
-            snprintf(args->game_state->status_str, sizeof(args->game_state->status_str),
-                     "%s wins\n", turn->name);
+            snprintf(status_str, sizeof(status_str), "%s wins\n", turn->name);
           else
-            snprintf(args->game_state->status_str, sizeof(args->game_state->status_str),
-                     "%s wins with %s\n", turn->name,
+            snprintf(status_str, sizeof(status_str), "%s wins with %s\n", turn->name,
                      pokeval_ranks[pokeval_evaluate_hand(turn->hand)]);
+          broadcast_status_message(args, status_str);
 
           args->game_state->winner_declared = true;
           results.n_winners = 1;
@@ -498,18 +626,42 @@ static int get_next_dealer(int current, const bool *slot_taken) {
   return -1; // No valid dealer
 }
 
-void game_five_card_draw(ArgsBroadcastGameState_t *args, Player_t *players_array, Player_t *dealer,
-                         struct dh_deck *deck) {
+void game_five_card_draw(GAME_ARGS) {
   (void)players_array;
   (void)deck;
+
+  Player_t *starting_player = get_next_player(players_array, dealer->id);
   server_handle_ante(args->game_state, dealer, 250);
-  RoundResults results = handle_round();
+
+  Player_t *turn = starting_player;
+  RoundResults results;
+  for (int i = 0; i < rounds; i++) {
+    results = handle_round();
+    if (results.n_winners > 0 || i == draws)
+      break;
+
+    turn = starting_player;
+    do {
+      args->game_state->turn_id = turn->id;
+
+      // The player's new cards are sent to them in handle_draw(), but
+      // the clients use game_state.turn_id to decide which buttons to display.
+      // It would be better if that behavior were changed so that broadcasting the
+      // entire game state wasn't required here (the only info that needs updating
+      // at this point is turn_id).
+      broadcast_game_state(args);
+
+      handle_draw(args, (*args->clients)[turn->id], turn->id, deck);
+    } while ((turn = get_next_player(players_array, turn->id)) != starting_player);
+    broadcast_game_state(args);
+  }
+
   determine_winner(args, &results);
 }
 
-void game_five_card_stud(ArgsBroadcastGameState_t *args, Player_t *players_array, Player_t *dealer,
-                         struct dh_deck *deck) {
-  int8_t rounds = 4;
+void game_five_card_stud(GAME_ARGS) {
+
+  (void)draws;
   RoundResults results;
   for (int i = 0; i < rounds; i++) {
     results = handle_round();
@@ -543,7 +695,7 @@ static void play_game(const char game_type, ArgsBroadcastGameState_t *args, Play
   // Using function pointers...
   const GameChoice_t *choice = find_game_choice_by_type(game_type);
   if (choice && choice->func) {
-    choice->func(args, players_array, dealer, deck);
+    choice->func(args, players_array, dealer, deck, choice->rounds, choice->draws);
   }
 }
 
@@ -708,7 +860,6 @@ int run_server(void) {
         play_game(game_type, &args_broadcast_game_state, players_array, dealer, &deck);
 
         broadcast_game_state(&args_broadcast_game_state);
-        *game_state.status_str = '\0';
 
         Uint32 wait_ms = 10000; // wait up to 10 seconds before presenting the game menu
         Uint32 start = SDL_GetTicks();

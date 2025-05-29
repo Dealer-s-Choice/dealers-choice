@@ -36,16 +36,19 @@
 #define ACTION_TIMEOUT_MS 20000
 #define END_OF_ROUND_TIMEOUT_MS 15000
 
+#define GAME_ARGS                                                                                  \
+  ArgsBroadcastGameState_t *args, Player_t *players_array, Player_t *dealer, struct dh_deck *deck, \
+      const uint8_t rounds, const uint8_t draws
+
 void init_game_state(GameState_t *game_state);
 
 RealHand_t deal_cards_to_players(GameState_t *game_state, Player_t *dealer, struct dh_deck *deck,
                                  const uint8_t game_type);
 
 void game_five_card_draw(ArgsBroadcastGameState_t *args, Player_t *players_array, Player_t *dealer,
-                         struct dh_deck *deck);
+                         struct dh_deck *deck, const uint8_t rounds, const uint8_t draws);
 
-void game_five_card_stud(ArgsBroadcastGameState_t *args, Player_t *players_array, Player_t *dealer,
-                         struct dh_deck *deck);
+void game_five_card_stud(GAME_ARGS);
 
 int run_server(void);
 

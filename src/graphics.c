@@ -70,7 +70,7 @@ void clear_screen(SDL_Renderer *renderer) {
   SDL_RenderClear(renderer);
 }
 
-void init_sdl_window(ESdlContext_t *sdl_context, const char *title) {
+void init_sdl_window(SdlContext_t *sdl_context, const char *title) {
   SDL_Rect bounds;
   if (SDL_GetDisplayBounds(0, &bounds) == 0) {
     printf("Display 0 bounds: x=%d, y=%d, w=%d, h=%d\n", bounds.x, bounds.y, bounds.w, bounds.h);
@@ -106,9 +106,12 @@ void init_sdl_window(ESdlContext_t *sdl_context, const char *title) {
 
 TTF_Font *open_font(const FontArgs_t *args) {
   TTF_Font *font = TTF_OpenFont(args->file, args->ptsize);
-  if (!font)
-    fprintf(stderr, "Failed to load font (%s): %s\n", args->file, TTF_GetError());
-  return font;
+  if (font)
+    return font;
+
+  // fprintf(stderr, "Failed to load font (%s): %s\n", args->file, TTF_GetError());
+  fprintf(stderr, "TTF_OpenFont: %s\n", SDL_GetError());
+  exit(EXIT_FAILURE);
 }
 
 void render_text_centered(SDL_Renderer *renderer, TTF_Font *font, const char *text, SDL_Color color,
@@ -273,7 +276,7 @@ void render_button(Button_t *button) {
   SDL_DestroyTexture(textTexture);
 }
 
-void do_sdl_cleanup(ESdlContext_t *sdl_context) {
+void do_sdl_cleanup(SdlContext_t *sdl_context) {
   SDL_DestroyRenderer(sdl_context->renderer);
   SDL_DestroyWindow(sdl_context->window);
   SDL_Quit();

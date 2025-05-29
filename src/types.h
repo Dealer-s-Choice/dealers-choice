@@ -34,6 +34,8 @@
 #define MAX_PLAYERS 5
 #define MAX_CLIENTS 5
 
+#define LEN_STATUS_STR 100
+
 typedef enum {
   FIVE_CARD_DRAW,
   FIVE_CARD_STUD,
@@ -41,7 +43,7 @@ typedef enum {
 } EMenuOption_t;
 
 typedef struct {
-  char name[256];
+  char name[12];
   int8_t id;
   struct pokeval_hand_t hand;
   int32_t coins;
@@ -59,7 +61,6 @@ typedef struct {
   uint8_t player_count;
   uint32_t total_bets_plus_raises;
   bool winner_declared;
-  char status_str[512];
   uint16_t action_time_out_ms;
   uint16_t end_of_round_time_out_ms;
   Player_t player[MAX_PLAYERS];
@@ -78,13 +79,15 @@ typedef struct {
   bool (*slot_taken)[MAX_CLIENTS];
 } ArgsBroadcastGameState_t;
 
-typedef void (*game_func_t)(ArgsBroadcastGameState_t *, Player_t *, Player_t *, struct dh_deck *);
+typedef void (*game_func_t)(ArgsBroadcastGameState_t *, Player_t *, Player_t *, struct dh_deck *,
+                            uint8_t, uint8_t);
 
 typedef struct {
   const EMenuOption_t g;
   const char *str;
   const uint8_t game_type;
   game_func_t func;
+  uint8_t rounds, draws;
 } GameChoice_t;
 
 extern const GameChoice_t game_choices[];

@@ -121,7 +121,7 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 
-  ESdlContext_t sdl_context;
+  SdlContext_t sdl_context;
   init_sdl_window(&sdl_context, "Dealer's Choice");
 
   Font_t font;

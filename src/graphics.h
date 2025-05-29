@@ -64,7 +64,7 @@ typedef struct {
   SDL_Window *window;
   SDL_Point win_center;
   int window_width, window_height;
-} ESdlContext_t;
+} SdlContext_t;
 
 typedef struct {
   const char *file;
@@ -83,7 +83,7 @@ TTF_Font *open_font(const FontArgs_t *args);
 
 void clear_screen(SDL_Renderer *renderer);
 
-void init_sdl_window(ESdlContext_t *sdl_context, const char *title);
+void init_sdl_window(SdlContext_t *sdl_context, const char *title);
 
 SDL_Rect make_rect(int x, int y, int w, int h);
 
@@ -109,6 +109,6 @@ void render_text_centered(SDL_Renderer *renderer, TTF_Font *font, const char *te
 void render_text_plain(SDL_Renderer *renderer, TTF_Font *font, const char *text, SDL_Color color,
                        SDL_Rect *dest);
 
-void do_sdl_cleanup(ESdlContext_t *sdl_context);
+void do_sdl_cleanup(SdlContext_t *sdl_context);
 
 #endif
