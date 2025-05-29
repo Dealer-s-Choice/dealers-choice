@@ -77,7 +77,7 @@ static Button_t create_button(const char *text, SDL_Renderer *renderer, SDL_Poin
       .rect = {pos->x, pos->y, 120, 40},
       .font = font,
       .hovered = false,
-      .enabled = false,
+      .enabled = true,
   };
   return button;
 }
@@ -613,9 +613,6 @@ void run_sdl_loop(GameState_t *game_state, ClientState_t *client_state, SdlConte
           }
         }
         for (int i = 0; i < MAX_ACTIONS; i++) {
-          // TODO: 'enabled' could probably be removed from the struct. The actions
-          // only display to the player who's turn it is.
-          action_button[i].enabled = true;
           action_button[i].hovered = SDL_PointInRect(&mouse_pos, &action_button[i].rect);
         }
         if (event.type == SDL_QUIT) {
@@ -644,10 +641,14 @@ void run_sdl_loop(GameState_t *game_state, ClientState_t *client_state, SdlConte
               if (send_player_action(client_socket, ACTION_CALL, 0) != 0)
                 fprintf(stderr, "Failed to call\n");
             }
-          } else if (client_state->do_discard_draw &&
+          } else if (action_button[DISCARD].enabled &&
                      SDL_PointInRect(&mouse_pos, &action_button[DISCARD].rect)) {
             puts("discarding");
-            uint8_t discard_indices[4] = {0};
+            // Although the maximum allowed discards for 5 card draw can never
+            // exceed 4, we need an array size of HAND_SIZE in case they select
+            // all 5. However, the player will be required to have < HAND_SIZE selected
+            // to actually perform the discard.
+            uint8_t discard_indices[HAND_SIZE] = {0};
             uint8_t discard_count = 0;
 
             for (int i = 0; i < HAND_SIZE; i++) {
@@ -655,6 +656,7 @@ void run_sdl_loop(GameState_t *game_state, ClientState_t *client_state, SdlConte
                 continue;
               discard_indices[discard_count++] = i;
             }
+
             // Reset the flag that's used to indicate to the client it's their turn to draw
             client_state->do_discard_draw = false;
 
@@ -728,7 +730,20 @@ void run_sdl_loop(GameState_t *game_state, ClientState_t *client_state, SdlConte
         // get_color(COLOR_BLACK), &dest);
       } else {
         if (client_state->do_discard_draw) {
-          // printf("do_draw: %d\n", client_state->do_discard_draw);
+          for (int i = 0; i < HAND_SIZE; i++)
+            if (turn->hand.card[i].face_val == ACE) {
+              client_state->has_ace = true;
+              break;
+            }
+          uint8_t max_allowed = client_state->has_ace ? 4 : 3;
+          action_button[DISCARD].enabled = client_state->n_cards_selected <= max_allowed;
+          if (!action_button[DISCARD].enabled) {
+            char tmp[50] = {0};
+            snprintf(tmp, sizeof(tmp), "You may only discard a maximum of %d cards", max_allowed);
+            render_text_plain(sdl_context->renderer, font->fonts[OTHER], tmp,
+                              get_color(COLOR_WHITE),
+                              &(SDL_Rect){action_button->rect.x, action_button->rect.y + 50, 0, 0});
+          }
           render_button(&action_button[DISCARD]);
         } else if (game_state->turn_id == my_id) {
           if (game_state->total_bets_plus_raises == 0 && !game_state->player[my_id].has_checked) {
