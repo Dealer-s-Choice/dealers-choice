@@ -627,15 +627,13 @@ static int get_next_dealer(int current, const bool *slot_taken) {
 }
 
 void game_five_card_draw(GAME_ARGS) {
-  (void)players_array;
-  (void)deck;
 
   Player_t *starting_player = get_next_player(players_array, dealer->id);
   server_handle_ante(args->game_state, dealer, 250);
 
   Player_t *turn = starting_player;
   RoundResults results;
-  for (int i = 0; i < rounds; i++) {
+  for (int i = 0; i < n_betting_rounds; i++) {
     results = handle_round();
     if (results.n_winners > 0 || i == draws)
       break;
@@ -663,23 +661,23 @@ void game_five_card_stud(GAME_ARGS) {
 
   (void)draws;
   RoundResults results;
-  for (int i = 0; i < rounds; i++) {
+  for (int i = 0; i < n_betting_rounds; i++) {
     results = handle_round();
 
     if (results.n_winners > 0)
       break;
 
-    if (i < rounds) {
+    if (i < n_betting_rounds) {
       printf("round: %d\n", i);
-      Player_t *turn = get_next_player(players_array, dealer->id);
-      Player_t *start = turn;
+      Player_t *starting_player = get_next_player(players_array, dealer->id);
+      Player_t *turn = starting_player;
       do {
         int id = turn->id;
-        struct pokeval_hand_t *hand = &args->game_state->player[id].hand;
+        struct pokeval_hand_t *hand = &turn->hand;
         uint8_t n = i + 2;
         hand->card[n] = DH_deal_top_card(deck);
         args->real_hand->player[id].card[n] = hand->card[n];
-      } while ((turn = get_next_player(players_array, turn->id)) != start);
+      } while ((turn = get_next_player(players_array, turn->id)) != starting_player);
     }
   }
   determine_winner(args, &results);
@@ -695,7 +693,7 @@ static void play_game(const char game_type, ArgsBroadcastGameState_t *args, Play
   // Using function pointers...
   const GameChoice_t *choice = find_game_choice_by_type(game_type);
   if (choice && choice->func) {
-    choice->func(args, players_array, dealer, deck, choice->rounds, choice->draws);
+    choice->func(args, players_array, dealer, deck, choice->n_betting_rounds, choice->draws);
   }
 }
 
