@@ -65,6 +65,11 @@ Config_t get_config(Path_t *path) {
 
   int cfg_idx = 0;
   while (cfg_node != NULL) {
+    if (strcmp(cfg_node->key, opt[cfg_idx].opt) != 0) {
+      fprintf(stderr, "Invalid option: %s\n", cfg_node->key);
+      exit(EXIT_FAILURE);
+      break;
+    }
     switch (opt[cfg_idx].id) {
     case END_OF_ROUND_TIMEOUT_MS:
       config.end_of_round_time_out_ms = atoi(cfg_node->value);
@@ -72,11 +77,10 @@ Config_t get_config(Path_t *path) {
     case ACTION_TIMEOUT_MS:
       config.action_time_out_ms = atoi(cfg_node->value);
       break;
-
     default:
-    case INVALID_OPTION:
-      fprintf(stderr, "Invalid option: %s\n", cfg_node->key);
+      break;
     }
+    cfg_idx++;
     canfigger_free_current_key_node_advance(&cfg_node);
   }
   return config;
