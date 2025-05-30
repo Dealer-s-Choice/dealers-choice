@@ -32,7 +32,6 @@ const uint16_t default_port = 22777;
 
 static void fill_player_message(struct player_message_builder_t *builder, const Player_t *src) {
   player__init(&builder->msg);
-  pos__init(&builder->pos);
   hand__init(&builder->hand);
 
   // Name

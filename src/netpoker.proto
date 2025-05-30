@@ -9,21 +9,15 @@ message Hand {
   repeated Card card = 1;
 }
 
-message Pos {
-  int32 x = 1;
-  int32 y = 2;
-}
-
 message Player {
   string name = 1;
   int32 id = 2;
-  Pos pos = 3;
-  Hand hand = 4;
-  int32 coins = 5;
-  bool in = 6;
-  uint32 total_paid = 7;
-  bool winner = 8;
-  bool has_checked = 9;
+  Hand hand = 3;
+  int32 coins = 4;
+  bool in = 5;
+  uint32 total_paid = 6;
+  bool winner = 7;
+  bool has_checked = 8;
 }
 
 message GameState {

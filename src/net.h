@@ -69,7 +69,6 @@ typedef struct {
 struct player_message_builder_t {
   // These types come from the generated protobuf header file
   Player msg;
-  Pos pos;
   Hand hand;
   Card cards[HAND_SIZE];
   Card *card_ptrs[HAND_SIZE];
