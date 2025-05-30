@@ -2,7 +2,7 @@ project(
   'Dealer\'s Choice',
   'c',
   version: '0.0.1.555',
-  meson_version: '>= 0.51.0',
+  meson_version: '>= 0.56.0',
   default_options: [
     'warning_level=3',
     'b_sanitize=address,undefined',
