@@ -54,7 +54,7 @@ Player_t *get_next_player(Player_t *players_array, int cur) {
   return NULL; // No other active player found
 }
 
-static int8_t send_game_select(TCPsocket sock, uint8_t game_type) {
+int8_t send_game_select(TCPsocket sock, uint8_t game_type) {
   uint8_t buffer[3];
   buffer[0] = (MSG_GAME_SELECT >> 8) & 0xFF;
   buffer[1] = (MSG_GAME_SELECT) & 0xFF;
@@ -269,7 +269,7 @@ static void draw_card_back_pattern(SDL_Renderer *renderer, SDL_Rect *card_rect) 
   }
 }
 
-static int8_t send_player_action(TCPsocket sock, uint8_t action, uint32_t amount) {
+int8_t send_player_action(TCPsocket sock, uint8_t action, uint32_t amount) {
   uint8_t buffer[7];
 
   buffer[0] = (MSG_PLAYER_ACTION >> 8) & 0xFF;

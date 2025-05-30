@@ -73,4 +73,10 @@ void run_sdl_loop(GameState_t *game_state, ClientState_t *client_state, SdlConte
                   Font_t *font, TCPsocket client_socket, SDLNet_SocketSet socket_set,
                   const uint8_t my_id);
 
+int8_t send_game_select(TCPsocket sock, uint8_t game_type);
+
+int8_t send_player_action(TCPsocket sock, uint8_t action, uint32_t amount);
+
+extern const GameChoice_t game_choices[];
+
 #endif
