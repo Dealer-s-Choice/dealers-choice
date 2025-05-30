@@ -7,7 +7,9 @@ get_data_dir(&path);
 
 GameState_t game_state;
 
-Config_t config = init_game_state(&game_state, &path);
+// The config isn't used in tests yet, so removing the variable assignment for now
+// Config_t config = init_game_state(&game_state, &path);
+init_game_state(&game_state, &path);
 
 for (int i = 0; i < 3; i++) {
   game_state.player[i].id = i;

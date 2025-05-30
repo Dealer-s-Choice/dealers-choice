@@ -79,6 +79,5 @@ Config_t get_config(Path_t *path) {
     }
     canfigger_free_current_key_node_advance(&cfg_node);
   }
-  printf("%d\n", config.end_of_round_time_out_ms);
   return config;
 }
