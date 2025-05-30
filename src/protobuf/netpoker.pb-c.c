@@ -97,51 +97,6 @@ void   hand__free_unpacked
   assert(message->base.descriptor == &hand__descriptor);
   protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
 }
-void   pos__init
-                     (Pos         *message)
-{
-  static const Pos init_value = POS__INIT;
-  *message = init_value;
-}
-size_t pos__get_packed_size
-                     (const Pos *message)
-{
-  assert(message->base.descriptor == &pos__descriptor);
-  return protobuf_c_message_get_packed_size ((const ProtobufCMessage*)(message));
-}
-size_t pos__pack
-                     (const Pos *message,
-                      uint8_t       *out)
-{
-  assert(message->base.descriptor == &pos__descriptor);
-  return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
-}
-size_t pos__pack_to_buffer
-                     (const Pos *message,
-                      ProtobufCBuffer *buffer)
-{
-  assert(message->base.descriptor == &pos__descriptor);
-  return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
-}
-Pos *
-       pos__unpack
-                     (ProtobufCAllocator  *allocator,
-                      size_t               len,
-                      const uint8_t       *data)
-{
-  return (Pos *)
-     protobuf_c_message_unpack (&pos__descriptor,
-                                allocator, len, data);
-}
-void   pos__free_unpacked
-                     (Pos *message,
-                      ProtobufCAllocator *allocator)
-{
-  if(!message)
-    return;
-  assert(message->base.descriptor == &pos__descriptor);
-  protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
-}
 void   player__init
                      (Player         *message)
 {
@@ -321,58 +276,7 @@ const ProtobufCMessageDescriptor hand__descriptor =
   (ProtobufCMessageInit) hand__init,
   NULL,NULL,NULL    /* reserved[123] */
 };
-static const ProtobufCFieldDescriptor pos__field_descriptors[2] =
-{
-  {
-    "x",
-    1,
-    PROTOBUF_C_LABEL_NONE,
-    PROTOBUF_C_TYPE_INT32,
-    0,   /* quantifier_offset */
-    offsetof(Pos, x),
-    NULL,
-    NULL,
-    0,             /* flags */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
-  {
-    "y",
-    2,
-    PROTOBUF_C_LABEL_NONE,
-    PROTOBUF_C_TYPE_INT32,
-    0,   /* quantifier_offset */
-    offsetof(Pos, y),
-    NULL,
-    NULL,
-    0,             /* flags */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
-};
-static const unsigned pos__field_indices_by_name[] = {
-  0,   /* field[0] = x */
-  1,   /* field[1] = y */
-};
-static const ProtobufCIntRange pos__number_ranges[1 + 1] =
-{
-  { 1, 0 },
-  { 0, 2 }
-};
-const ProtobufCMessageDescriptor pos__descriptor =
-{
-  PROTOBUF_C__MESSAGE_DESCRIPTOR_MAGIC,
-  "Pos",
-  "Pos",
-  "Pos",
-  "",
-  sizeof(Pos),
-  2,
-  pos__field_descriptors,
-  pos__field_indices_by_name,
-  1,  pos__number_ranges,
-  (ProtobufCMessageInit) pos__init,
-  NULL,NULL,NULL    /* reserved[123] */
-};
-static const ProtobufCFieldDescriptor player__field_descriptors[9] =
+static const ProtobufCFieldDescriptor player__field_descriptors[8] =
 {
   {
     "name",
@@ -399,20 +303,8 @@ static const ProtobufCFieldDescriptor player__field_descriptors[9] =
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
   {
-    "pos",
-    3,
-    PROTOBUF_C_LABEL_NONE,
-    PROTOBUF_C_TYPE_MESSAGE,
-    0,   /* quantifier_offset */
-    offsetof(Player, pos),
-    &pos__descriptor,
-    NULL,
-    0,             /* flags */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
-  {
     "hand",
-    4,
+    3,
     PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_MESSAGE,
     0,   /* quantifier_offset */
@@ -424,7 +316,7 @@ static const ProtobufCFieldDescriptor player__field_descriptors[9] =
   },
   {
     "coins",
-    5,
+    4,
     PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_INT32,
     0,   /* quantifier_offset */
@@ -436,7 +328,7 @@ static const ProtobufCFieldDescriptor player__field_descriptors[9] =
   },
   {
     "in",
-    6,
+    5,
     PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_BOOL,
     0,   /* quantifier_offset */
@@ -448,7 +340,7 @@ static const ProtobufCFieldDescriptor player__field_descriptors[9] =
   },
   {
     "total_paid",
-    7,
+    6,
     PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_UINT32,
     0,   /* quantifier_offset */
@@ -460,7 +352,7 @@ static const ProtobufCFieldDescriptor player__field_descriptors[9] =
   },
   {
     "winner",
-    8,
+    7,
     PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_BOOL,
     0,   /* quantifier_offset */
@@ -472,7 +364,7 @@ static const ProtobufCFieldDescriptor player__field_descriptors[9] =
   },
   {
     "has_checked",
-    9,
+    8,
     PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_BOOL,
     0,   /* quantifier_offset */
@@ -484,20 +376,19 @@ static const ProtobufCFieldDescriptor player__field_descriptors[9] =
   },
 };
 static const unsigned player__field_indices_by_name[] = {
-  4,   /* field[4] = coins */
-  3,   /* field[3] = hand */
-  8,   /* field[8] = has_checked */
+  3,   /* field[3] = coins */
+  2,   /* field[2] = hand */
+  7,   /* field[7] = has_checked */
   1,   /* field[1] = id */
-  5,   /* field[5] = in */
+  4,   /* field[4] = in */
   0,   /* field[0] = name */
-  2,   /* field[2] = pos */
-  6,   /* field[6] = total_paid */
-  7,   /* field[7] = winner */
+  5,   /* field[5] = total_paid */
+  6,   /* field[6] = winner */
 };
 static const ProtobufCIntRange player__number_ranges[1 + 1] =
 {
   { 1, 0 },
-  { 0, 9 }
+  { 0, 8 }
 };
 const ProtobufCMessageDescriptor player__descriptor =
 {
@@ -507,7 +398,7 @@ const ProtobufCMessageDescriptor player__descriptor =
   "Player",
   "",
   sizeof(Player),
-  9,
+  8,
   player__field_descriptors,
   player__field_indices_by_name,
   1,  player__number_ranges,
@@ -604,7 +495,7 @@ static const ProtobufCFieldDescriptor game_state__field_descriptors[10] =
     "action_time_out_ms",
     8,
     PROTOBUF_C_LABEL_NONE,
-    PROTOBUF_C_TYPE_UINT32,
+    PROTOBUF_C_TYPE_INT32,
     0,   /* quantifier_offset */
     offsetof(GameState, action_time_out_ms),
     NULL,
@@ -616,7 +507,7 @@ static const ProtobufCFieldDescriptor game_state__field_descriptors[10] =
     "end_of_round_time_out_ms",
     9,
     PROTOBUF_C_LABEL_NONE,
-    PROTOBUF_C_TYPE_UINT32,
+    PROTOBUF_C_TYPE_INT32,
     0,   /* quantifier_offset */
     offsetof(GameState, end_of_round_time_out_ms),
     NULL,

@@ -1,5 +1,5 @@
 /*
- server.h
+ util.c
  https://github.com/Dealer-s-Choice/dealers_choice
 
  MIT License
@@ -26,27 +26,22 @@
 
 */
 
-#ifndef __SERVER_H
-#define __SERVER_H
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include "dc_config.h"
-#include "net.h"
-#include "types.h"
+#include "util.h"
 
-#define GAME_ARGS                                                                                  \
-  ArgsBroadcastGameState_t *args, Player_t *players_array, Player_t *dealer, DH_Deck *deck,        \
-      const uint8_t n_betting_rounds, const uint8_t draws
-
-Config_t init_game_state(GameState_t *game_state, Path_t *path);
-
-RealHand_t deal_cards_to_players(GameState_t *game_state, Player_t *dealer, DH_Deck *deck,
-                                 const uint8_t game_type);
-
-void game_five_card_draw(ArgsBroadcastGameState_t *args, Player_t *players_array, Player_t *dealer,
-                         DH_Deck *deck, const uint8_t n_betting_rounds, const uint8_t draws);
-
-void game_five_card_stud(GAME_ARGS);
-
-int run_server(void);
-
-#endif
+void get_data_dir(Path_t *path) {
+  // TODO: Maybe we need a different name for this. It's also defined
+  // as a macro during compilation
+  char *datadir = getenv("DEALERSCHOICE_DATADIR");
+  if (datadir != NULL) {
+    snprintf(path->data, sizeof path->data, "%s", datadir);
+    return;
+  }
+  // This will be changed before the first release. We'll look here and
+  strcpy(path->data, "../data");
+  return;
+}

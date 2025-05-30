@@ -4,7 +4,7 @@ foreach test : cases
 
   exe = executable(
     'test_' + test,
-    test + '.c',
+    [test + '.c', '00_test.c'],
     dependencies: game_dep,
     override_options: ['b_lto=false'],
   )

@@ -1,12 +1,13 @@
 #ifdef NDEBUG
 #undef NDEBUG
 #endif
-#include <assert.h>
-
+#include "dc_config.h"
 #include "debug.h"
 #include "game.h"
 #include "net.h"
 #include "server.h"
+#include "util.h"
+#include <assert.h>
 
 #define _MAIN_HEAD_                                                                                \
   int main(int argc, char *argv[]) {                                                               \

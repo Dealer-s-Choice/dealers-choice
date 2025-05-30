@@ -5,12 +5,14 @@ endif
 
 shared_src = files(
   'client.c',
+  'dc_config.c',
   'debug.c',
   'game.c',
   'graphics.c',
   'net.c',
   'protobuf/netpoker.pb-c.c',
   'server.c',
+  'util.c',
 )
 
 conf = configuration_data()

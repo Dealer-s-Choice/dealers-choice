@@ -1,5 +1,5 @@
 /*
- server.h
+ dc_config.h
  https://github.com/Dealer-s-Choice/dealers_choice
 
  MIT License
@@ -26,27 +26,18 @@
 
 */
 
-#ifndef __SERVER_H
-#define __SERVER_H
+#ifndef __DC_CONFIG_H
+#define __DC_CONFIG_H
 
-#include "dc_config.h"
-#include "net.h"
-#include "types.h"
+#include <stdint.h>
 
-#define GAME_ARGS                                                                                  \
-  ArgsBroadcastGameState_t *args, Player_t *players_array, Player_t *dealer, DH_Deck *deck,        \
-      const uint8_t n_betting_rounds, const uint8_t draws
+#include "util.h"
 
-Config_t init_game_state(GameState_t *game_state, Path_t *path);
+typedef struct {
+  int32_t end_of_round_time_out_ms;
+  int32_t action_time_out_ms;
+} Config_t;
 
-RealHand_t deal_cards_to_players(GameState_t *game_state, Player_t *dealer, DH_Deck *deck,
-                                 const uint8_t game_type);
-
-void game_five_card_draw(ArgsBroadcastGameState_t *args, Player_t *players_array, Player_t *dealer,
-                         DH_Deck *deck, const uint8_t n_betting_rounds, const uint8_t draws);
-
-void game_five_card_stud(GAME_ARGS);
-
-int run_server(void);
+Config_t get_config(Path_t *path);
 
 #endif

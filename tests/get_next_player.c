@@ -2,8 +2,12 @@
 
 _MAIN_HEAD_
 
+Path_t path = {0};
+get_data_dir(&path);
+
 GameState_t game_state;
-init_game_state(&game_state);
+
+Config_t config = init_game_state(&game_state, &path);
 
 for (int i = 0; i < 3; i++) {
   game_state.player[i].id = i;

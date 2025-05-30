@@ -30,8 +30,10 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "dc_config.h"
 #include "game.h"
 #include "server.h"
+#include "util.h"
 
 #define handle_round() handle_round_real(args, dealer)
 
@@ -83,7 +85,8 @@ static void print_ipaddress(const IPaddress *ip) {
   printf("%s:%u\n", ipaddr, SDL_SwapBE16(ip->port));
 }
 
-void init_game_state(GameState_t *game_state) {
+Config_t init_game_state(GameState_t *game_state, Path_t *path) {
+  Config_t config = get_config(path);
   for (int i = 0; i < MAX_PLAYERS; i++) {
     game_state->player[i] = (Player_t){
         .id = -1,
@@ -101,8 +104,9 @@ void init_game_state(GameState_t *game_state) {
   game_state->player_count = 0;
   game_state->total_bets_plus_raises = 0;
   game_state->winner_declared = false;
-  game_state->action_time_out_ms = ACTION_TIMEOUT_MS;
-  game_state->end_of_round_time_out_ms = ACTION_TIMEOUT_MS;
+  game_state->action_time_out_ms = config.action_time_out_ms;
+  game_state->end_of_round_time_out_ms = config.end_of_round_time_out_ms;
+  return config;
 }
 
 // In the future, hands will be sent using functions like this, rather than how it's
@@ -722,8 +726,11 @@ static void play_game(const char game_type, ArgsBroadcastGameState_t *args, Play
 }
 
 int run_server(void) {
+  Path_t path = {0};
+  get_data_dir(&path);
+
   GameState_t game_state = {0};
-  init_game_state(&game_state);
+  Config_t config = init_game_state(&game_state, &path);
   game_state.pot = 0;
 
   if (SDL_Init(0) == -1 || SDLNet_Init() == -1) {
@@ -883,7 +890,9 @@ int run_server(void) {
 
         broadcast_game_state(&args_broadcast_game_state);
 
-        Uint32 wait_ms = 10000; // wait up to 10 seconds before presenting the game menu
+        Uint32 wait_ms =
+            config
+                .end_of_round_time_out_ms; // wait up to 10 seconds before presenting the game menu
         Uint32 start = SDL_GetTicks();
         while (SDL_GetTicks() - start < wait_ms)
           ;
