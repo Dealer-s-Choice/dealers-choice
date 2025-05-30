@@ -47,6 +47,6 @@ void game_five_card_draw(ArgsBroadcastGameState_t *args, Player_t *players_array
 
 void game_five_card_stud(GAME_ARGS);
 
-int run_server(void);
+int run_server(const bool test_mode);
 
 #endif

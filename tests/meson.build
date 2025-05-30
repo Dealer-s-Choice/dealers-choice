@@ -1,3 +1,4 @@
+# cases = ['5_card_showdown', 'serialization', 'get_next_player', 'debug_print_cards']
 cases = ['serialization', 'get_next_player', 'debug_print_cards']
 
 env = environment()

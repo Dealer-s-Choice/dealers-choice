@@ -99,16 +99,23 @@ static int menu_display_connect(char *input_text, SDL_Renderer *renderer, Font_t
 }
 
 int main(int argc, char *argv[]) {
-  if (argc == 2) {
-    if (strcmp("--server", argv[1]) == 0)
-      return run_server();
-    else {
-      printf("Usage:\n\n\
-  %s\n\
-  %s --server\n\n",
-             argv[0], argv[0]);
+  bool test_mode = false;
+  bool run_server_flag = false;
+
+  for (int i = 1; i < argc; ++i) {
+    if (strcmp(argv[i], "--server") == 0) {
+      run_server_flag = true;
+    } else if (strcmp(argv[i], "---test") == 0) {
+      test_mode = true;
+    } else {
+      // Unrecognized arg
+      fprintf(stderr, "Usage:\n\n  %s\n  %s --server\n", argv[0], argv[0]);
       exit(EXIT_FAILURE);
     }
+  }
+
+  if (run_server_flag) {
+    return run_server(test_mode);
   }
 
   if (SDL_Init(SDL_INIT_VIDEO) == -1 || SDLNet_Init() == -1) {
@@ -134,12 +141,13 @@ int main(int argc, char *argv[]) {
   char addr[MAX_INPUT_LENGTH] = "127.0.0.1";
   if (menu_display_connect(addr, sdl_context.renderer, &font) == RUN_CLIENT) {
     printf("Attempting to connect to: %s\n", addr);
-    run_client(addr, &sdl_context, &font);
+    run_client(addr, &sdl_context, &font, test_mode);
   }
 
   for (int i = 0; i < NUM_FONTS; ++i)
     TTF_CloseFont(font.fonts[i]);
   TTF_Quit();
   do_sdl_cleanup(&sdl_context);
+
   return 0;
 }

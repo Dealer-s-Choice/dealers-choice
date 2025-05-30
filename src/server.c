@@ -725,7 +725,7 @@ static void play_game(const char game_type, ArgsBroadcastGameState_t *args, Play
   }
 }
 
-int run_server(void) {
+int run_server(const bool test_mode) {
   Path_t path = {0};
   get_data_dir(&path);
 
@@ -768,7 +768,11 @@ int run_server(void) {
   }
 
   DH_Deck deck = DH_get_new_deck();
-  DH_pcg_srand_auto();
+
+  if (!test_mode)
+    DH_pcg_srand_auto();
+  else
+    DH_pcg_srand(1, 1);
 
   int game_started = 0;
   RealHand_t real_hand = {0};
