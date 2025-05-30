@@ -5,6 +5,8 @@ _MAIN_HEAD_
 Path_t path = {0};
 get_data_dir(&path);
 
+fprintf(stderr, "datadir: %s\n", path.data);
+
 GameState_t game_state;
 init_game_state(&game_state, &path);
 
