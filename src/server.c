@@ -436,6 +436,7 @@ static void determine_winner(ArgsBroadcastGameState_t *args, RoundResults *resul
     args->game_state->pot = args->game_state->pot % results->n_winners;
     winner->coins += share;
   }
+  broadcast_game_state(args);
 }
 
 static RoundResults handle_round_real(ArgsBroadcastGameState_t *args, Player_t *dealer) {
