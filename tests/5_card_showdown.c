@@ -16,7 +16,7 @@ for (int i = 0; i < 2; i++) {
   assert(socket_context[i].sock != NULL);
 }
 
-sleep(0.5);
+sleep(1);
 
 for (int game = 0; game < 3; game++) {
   for (int i = 0; i < 2; i++) {
