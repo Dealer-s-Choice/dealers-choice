@@ -200,7 +200,7 @@ int send_all_tcp(TCPsocket sock, const void *data, size_t length) {
       return -1;
     }
     total_sent += sent;
-    printf("Total sent: %zd\n", total_sent);
+    // printf("Total sent: %zd\n", total_sent);
   }
 
   // TODO: This should probably return total sent

@@ -894,9 +894,7 @@ int run_server(const bool test_mode) {
 
         broadcast_game_state(&args_broadcast_game_state);
 
-        Uint32 wait_ms =
-            config
-                .end_of_round_time_out_ms; // wait up to 10 seconds before presenting the game menu
+        Uint32 wait_ms = (test_mode) ? 500 : config.end_of_round_time_out_ms;
         Uint32 start = SDL_GetTicks();
         while (SDL_GetTicks() - start < wait_ms)
           ;
