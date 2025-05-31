@@ -695,7 +695,7 @@ void game_five_card_stud(GAME_ARGS) {
     if (results.n_winners > 0)
       break;
 
-    if (i < n_betting_rounds) {
+    if (i < n_betting_rounds - 1) {
       printf("round: %d\n", i);
       Player_t *starting_player = get_next_player(players_array, dealer->id);
       Player_t *turn = starting_player;
