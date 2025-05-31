@@ -798,9 +798,9 @@ int run_server(const bool test_mode) {
     };
 
     int num_ready = SDLNet_CheckSockets(socket_set, 0);
-    // if (num_ready > 0)
-    // if (handle_disconnections(clients, socket_set, slot_taken, &game_state) && active_clients >
-    // 0) broadcast_game_state(&args_broadcast_game_state);
+    if (num_ready > 0)
+      if (handle_disconnections(clients, socket_set, slot_taken, &game_state) && active_clients > 0)
+        broadcast_game_state(&args_broadcast_game_state);
 
     TCPsocket new_client = SDLNet_TCP_Accept(server);
     if (new_client) {
