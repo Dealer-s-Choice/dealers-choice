@@ -16,6 +16,9 @@ for (int i = 0; i < 3; i++) {
   game_state.player[i].in = true;
 }
 
+game_state.player[3].in = true;
+game_state.player[4].in = true;
+
 game_state.player[4].id = 4;
 
 assert(game_state.player[1].id == 1);

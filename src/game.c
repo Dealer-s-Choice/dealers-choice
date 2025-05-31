@@ -47,7 +47,7 @@ Player_t *get_next_player(Player_t *players_array, int cur) {
   int start = cur;
   do {
     cur = (cur + 1) % MAX_PLAYERS;
-    if (players_array[cur].id != -1 || players_array[cur].in != false)
+    if (players_array[cur].id != -1 && players_array[cur].in != false)
       return &players_array[cur];
   } while (cur != start);
 
