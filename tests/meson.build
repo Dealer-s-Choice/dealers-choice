@@ -32,6 +32,21 @@ test(
   env: env,
   timeout: 60,
   )
+  
+ # This is used by script, so not tested with the others above
+executable(
+  'test_5_card_stud',
+  ['5_card_stud.c', '00_test.c'],
+  dependencies: game_dep,
+  override_options: ['b_lto=false'],
+)
+
+test(
+  'test_5_card_stud',
+  files(join_paths(meson.current_source_dir(), '5_card_stud.sh')),
+  env: env,
+  timeout: 120,
+  )
 
 #add_test_setup(
 #    'test_5_card_show_down',
