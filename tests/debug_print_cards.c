@@ -12,6 +12,7 @@ init_game_state(&game_state, &path);
 
 for (int i = 0; i < 3; i++) {
   game_state.player[i].id = i;
+  game_state.player[i].in = true;
 }
 
 DH_Deck deck = DH_get_new_deck();
