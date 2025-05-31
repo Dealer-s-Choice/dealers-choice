@@ -18,35 +18,30 @@ foreach test : cases
     )
 endforeach
 
-# This is used by script, so not tested with the others above
-executable(
-  'test_5_card_showdown',
-  ['5_card_showdown.c', '00_test.c'],
-  dependencies: game_dep,
-  override_options: ['b_lto=false'],
-)
+game_logic = [
+  '5_card_showdown',
+  '5_card_stud',
+]
 
-test(
-  'test_5_card_showdown',
-  files(join_paths(meson.current_source_dir(), '5_card_showdown.sh')),
-  env: env,
-  timeout: 60,
+foreach test : game_logic
+  # This is used by script, so not tested with the others above
+  exe = executable(
+    'test_' + test,
+    [test + '.c', '00_test.c'],
+    dependencies: game_dep,
+    override_options: ['b_lto=false'],
   )
-  
- # This is used by script, so not tested with the others above
-executable(
-  'test_5_card_stud',
-  ['5_card_stud.c', '00_test.c'],
-  dependencies: game_dep,
-  override_options: ['b_lto=false'],
-)
 
-test(
-  'test_5_card_stud',
-  files(join_paths(meson.current_source_dir(), '5_card_stud.sh')),
-  env: env,
-  timeout: 120,
-  )
+  test(
+    'test_' + test,
+    files(join_paths(meson.current_source_dir(), '5_card_showdown.sh')),
+    args: ['test_' + test],
+    env: env,
+    is_parallel: false,
+    timeout: 60,
+    depends: [_lib, exe_target],
+    )
+endforeach
 
 #add_test_setup(
 #    'test_5_card_show_down',

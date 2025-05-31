@@ -1,5 +1,6 @@
 #!/bin/sh
 set -e
+test "${1}" != ""
 
 # Launch the server with ---test and capture its PID
 "${MESON_BUILD_ROOT}/dealerschoice" --server ---test &
@@ -13,7 +14,7 @@ cleanup() {
 trap cleanup EXIT
 
 # Wait for server to initialize (adjust if needed)
-sleep 1
+sleep 5
 
 # Run the test client which connects to the server
-"${MESON_BUILD_TEST_ROOT}/test_5_card_showdown"
+"${MESON_BUILD_TEST_ROOT}/${1}"

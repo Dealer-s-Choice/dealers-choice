@@ -18,9 +18,8 @@ DH_Deck deck = DH_get_new_deck();
 DH_pcg_srand(1, 1);
 DH_shuffle_deck(&deck);
 
-Player_t *dealer = &game_state.player[0];
 RealHand_t real_hand =
-    deal_cards_to_players(&game_state, dealer, &deck, game_choices[FIVE_CARD_DRAW].game_type);
+    deal_cards_to_players(&game_state, &deck, game_choices[FIVE_CARD_DRAW].game_type);
 DebugPrintCards_t cards_str = debug_print_cards(&real_hand.player[0]);
 
 fprintf(stderr, "--%s--", cards_str.str);

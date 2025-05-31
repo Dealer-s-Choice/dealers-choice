@@ -47,7 +47,7 @@ Player_t *get_next_player(Player_t *players_array, int cur) {
   int start = cur;
   do {
     cur = (cur + 1) % MAX_PLAYERS;
-    if (players_array[cur].id != -1)
+    if (players_array[cur].id != -1 || players_array[cur].in != false)
       return &players_array[cur];
   } while (cur != start);
 
@@ -190,7 +190,7 @@ static int menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet s
           if (SDL_PointInRect(&mouse_pos, &game_choice_button[i].rect) &&
               game_state->dealer_id == my_id) {
             if (send_game_select(client_socket, game_choices[i].game_type) == 0) {
-              printf("Game type sent: %s", game_choices[i].str);
+              printf("Game type sent: %s\n", game_choices[i].str);
               running = false;
               break;
             } else {
