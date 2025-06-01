@@ -85,7 +85,7 @@ static void print_ipaddress(const IPaddress *ip) {
   printf("%s:%u\n", ipaddr, SDL_SwapBE16(ip->port));
 }
 
-Config_t init_game_state(GameState_t *game_state, Path_t *path) {
+Config_t init_game_state(GameState_t *game_state, Path_t *path, const bool test_mode) {
   Config_t config = get_config(path);
   for (int i = 0; i < MAX_PLAYERS; i++) {
     game_state->player[i] = (Player_t){
@@ -236,9 +236,9 @@ static void broadcast_status_message(const ArgsBroadcastGameState_t *args, const
     if (!sock)
       continue;
 
-    // if (send_status_message(sock, msg) <= 0) {
-    //   fprintf(stderr, "[broadcast_status_message] Failed to send to client %d\n", i);
-    // }
+    if (send_status_message(sock, msg) < 0) {
+      fprintf(stderr, "[broadcast_status_message] Failed to send to client %d\n", i);
+    }
   }
 }
 
@@ -431,7 +431,7 @@ static void determine_winner(ArgsBroadcastGameState_t *args, RoundResults *resul
              // don't need to call that yet, so using the values from "real_hand" for now
              "%s wins with %s\n", winner->name,
              pokeval_ranks[pokeval_evaluate_hand(args->real_hand->player[winner->id])]);
-    // broadcast_status_message(args, status_str);
+    broadcast_status_message(args, status_str);
     uint32_t share = args->game_state->pot / results->n_winners;
     args->game_state->pot = args->game_state->pot % results->n_winners;
     winner->coins += share;
@@ -509,7 +509,7 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args) {
 
     snprintf(status_str, sizeof(status_str), "Received action from %s: %u with amount %u\n",
              turn->name, action.action, action.amount);
-    // broadcast_status_message(args, status_str);
+    broadcast_status_message(args, status_str);
 
     turn = get_next_player(players_array, turn->id);
 
@@ -528,7 +528,7 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args) {
           else
             snprintf(status_str, sizeof(status_str), "%s wins with %s\n", turn->name,
                      pokeval_ranks[pokeval_evaluate_hand(turn->hand)]);
-          // broadcast_status_message(args, status_str);
+          broadcast_status_message(args, status_str);
 
           args->game_state->winner_declared = true;
           results.n_winners = 1;

@@ -1,5 +1,13 @@
-To change the number of passes (default is 3 when using `meson test`) for the
-5_card_{stud,showdown} tests:
+
+##
+To change the number of passes to 1 (default is 3 when using `meson test`) for
+the 5_card_{stud,showdown} tests:
+
+### Using additional meson test setup
+
+    meson test -v --setup=One_pass
+
+### Manually
 
 Run the server:
 

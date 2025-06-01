@@ -60,7 +60,15 @@ int8_t send_game_select(TCPsocket sock, uint8_t game_type) {
   buffer[1] = (MSG_GAME_SELECT) & 0xFF;
   buffer[2] = game_type;
 
-  return send_all_tcp(sock, buffer, sizeof(buffer));
+  const GameChoice_t *choice = find_game_choice_by_type(game_type);
+  int r = send_all_tcp(sock, buffer, sizeof(buffer));
+  if (r == 0) {
+    fprintf(stderr, "Game type sent: %s\n", choice->str);
+    return r;
+  }
+
+  fprintf(stderr, "Game type failed to send: %s\n", choice->str);
+  return r;
 }
 
 // These two buttons for creating the buttons are mostly identical. In the future,
@@ -190,7 +198,6 @@ static int menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet s
           if (SDL_PointInRect(&mouse_pos, &game_choice_button[i].rect) &&
               game_state->dealer_id == my_id) {
             if (send_game_select(client_socket, game_choices[i].game_type) == 0) {
-              printf("Game type sent: %s\n", game_choices[i].str);
               running = false;
               break;
             } else {

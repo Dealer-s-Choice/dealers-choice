@@ -9,7 +9,9 @@ GameState_t game_state;
 
 // The config isn't used in tests yet, so removing the variable assignment for now
 // Config_t config = init_game_state(&game_state, &path);
-init_game_state(&game_state, &path);
+// test_mode isn't needed here; it isn't used or required for all tests
+bool test_mode = false;
+init_game_state(&game_state, &path, test_mode);
 
 for (int i = 0; i < 3; i++) {
   game_state.player[i].id = i;
