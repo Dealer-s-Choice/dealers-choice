@@ -6,7 +6,7 @@ SdlContext_t sdl_context = {0};
 Font_t font = {0};
 
 GameState_t game_state[2] = {0};
-ClientState_t client_state = {0};
+ClientState_t client_state[2] = {0};
 const bool test_mode = true;
 char addr[] = "127.0.0.1";
 SocketContext_t socket_context[2];
@@ -21,7 +21,7 @@ sleep(1);
 for (int game = 0; game < 3; game++) {
   for (int i = 0; i < 2; i++) {
     assert(recv_game_state(socket_context[i].sock, socket_context[i].set, &game_state[i],
-                           &client_state, socket_context[i].id) != RECV_ERROR);
+                           &client_state[i], socket_context[i].id) != RECV_ERROR);
     // assert(socket_context[i].sock != NULL);
   }
 
@@ -36,7 +36,7 @@ for (int game = 0; game < 3; game++) {
 
   for (int i = 0; i < 2; i++) {
     assert(recv_game_state(socket_context[i].sock, socket_context[i].set, &game_state[i],
-                           &client_state, socket_context[i].id) != RECV_ERROR);
+                           &client_state[i], socket_context[i].id) != RECV_ERROR);
     // assert(socket_context[i].sock != NULL);
   }
 
@@ -54,13 +54,13 @@ for (int game = 0; game < 3; game++) {
   // At this point (after the player action), the server should send the status message
   for (int i = 0; i < 2; i++) {
     assert(recv_game_state(socket_context[i].sock, socket_context[i].set, &game_state[i],
-                           &client_state, socket_context[i].id) != RECV_ERROR);
+                           &client_state[i], socket_context[i].id) != RECV_ERROR);
   }
 
   // Then the game state struct
   for (int i = 0; i < 2; i++) {
     assert(recv_game_state(socket_context[i].sock, socket_context[i].set, &game_state[i],
-                           &client_state, socket_context[i].id) != RECV_ERROR);
+                           &client_state[i], socket_context[i].id) != RECV_ERROR);
   }
 
   sleep(1);
@@ -72,7 +72,7 @@ for (int game = 0; game < 3; game++) {
   // recv status msg
   for (int i = 0; i < 2; i++) {
     assert(recv_game_state(socket_context[i].sock, socket_context[i].set, &game_state[i],
-                           &client_state, socket_context[i].id) != RECV_ERROR);
+                           &client_state[i], socket_context[i].id) != RECV_ERROR);
     fprintf(stderr, "%d\n", game_state[i].player[i].coins);
     fprintf(stderr, "%d\n", game_state[i].pot);
   }
@@ -80,7 +80,7 @@ for (int game = 0; game < 3; game++) {
   // recv another status message indicating winner
   for (int i = 0; i < 2; i++) {
     assert(recv_game_state(socket_context[i].sock, socket_context[i].set, &game_state[i],
-                           &client_state, socket_context[i].id) != RECV_ERROR);
+                           &client_state[i], socket_context[i].id) != RECV_ERROR);
     fprintf(stderr, "%d\n", game_state[i].player[i].coins);
     fprintf(stderr, "%d\n", game_state[i].pot);
   }
@@ -88,7 +88,7 @@ for (int game = 0; game < 3; game++) {
   // recv game state struct
   for (int i = 0; i < 2; i++) {
     assert(recv_game_state(socket_context[i].sock, socket_context[i].set, &game_state[i],
-                           &client_state, socket_context[i].id) != RECV_ERROR);
+                           &client_state[i], socket_context[i].id) != RECV_ERROR);
     fprintf(stderr, "%d\n", game_state[i].player[i].coins);
     fprintf(stderr, "%d\n", game_state[i].pot);
   }
@@ -97,7 +97,7 @@ for (int game = 0; game < 3; game++) {
 
   for (int i = 0; i < 2; i++) {
     assert(recv_game_state(socket_context[i].sock, socket_context[i].set, &game_state[i],
-                           &client_state, socket_context[i].id) != RECV_ERROR);
+                           &client_state[i], socket_context[i].id) != RECV_ERROR);
     fprintf(stderr, "%d: %d\n", i, game_state[i].player[i].coins);
   }
   fprintf(stderr, "%d\n", game_state[0].pot);

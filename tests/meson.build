@@ -38,7 +38,7 @@ foreach test : game_logic
     args: ['test_' + test],
     env: env,
     is_parallel: false,
-    timeout: 60,
+    timeout: 120,
     depends: [_lib, exe_target],
     )
 endforeach

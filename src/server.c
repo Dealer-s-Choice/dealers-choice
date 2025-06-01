@@ -663,7 +663,7 @@ void game_five_card_draw(GAME_ARGS) {
   server_handle_ante(args->game_state, 250);
 
   Player_t *turn = starting_player;
-  RoundResults results;
+  RoundResults results = {0};
   for (int i = 0; i < n_betting_rounds; i++) {
     results = handle_round();
     if (results.n_winners > 0 || i == draws)
@@ -684,33 +684,29 @@ void game_five_card_draw(GAME_ARGS) {
     } while ((turn = get_next_player(players_array, turn->id)) != starting_player);
     broadcast_game_state(args);
   }
-
   determine_winner(args, &results);
 }
 
 void game_five_card_stud(GAME_ARGS) {
 
-  (void)draws;
-  RoundResults results;
+  Player_t *starting_player = get_next_player(players_array, args->game_state->dealer_id);
+  Player_t *turn = starting_player;
+  RoundResults results = {0};
   for (int i = 0; i < n_betting_rounds; i++) {
     results = handle_round();
 
-    if (results.n_winners > 0)
+    if (results.n_winners > 0 || i == draws)
       break;
 
-    if (i < n_betting_rounds - 1) {
-      printf("round: %d\n", i);
-      Player_t *starting_player = get_next_player(players_array, args->game_state->dealer_id);
-      Player_t *turn = starting_player;
-      do {
-        int id = turn->id;
-        struct pokeval_hand_t *hand = &turn->hand;
-        uint8_t n = i + 2;
-        hand->card[n] = DH_deal_top_card(deck);
-        args->real_hand->player[id].card[n] = hand->card[n];
-        broadcast_game_state(args);
-      } while ((turn = get_next_player(players_array, turn->id)) != starting_player);
-    }
+    printf("round: %d\n", i);
+    do {
+      int id = turn->id;
+      struct pokeval_hand_t *hand = &turn->hand;
+      uint8_t n = i + 2;
+      hand->card[n] = DH_deal_top_card(deck);
+      args->real_hand->player[id].card[n] = hand->card[n];
+      // broadcast_game_state(args);
+    } while ((turn = get_next_player(players_array, turn->id)) != starting_player);
     broadcast_game_state(args);
   }
   determine_winner(args, &results);
@@ -723,6 +719,7 @@ static void play_game(const char game_type, ArgsBroadcastGameState_t *args, DH_D
   *args->real_hand = deal_cards_to_players(args->game_state, deck, game_type);
   args->game_state->winner_declared = false;
   args->game_state->player_count = count_active_clients(*args->slot_taken);
+  fprintf(stderr, "player count: %d\n", args->game_state->player_count);
   args->game_state->total_bets_plus_raises = 0;
   args->game_state->winner_declared = false;
 
@@ -906,7 +903,7 @@ int run_server(const bool test_mode) {
         if (next_dealer != -1) {
           game_state.dealer_id = next_dealer;
           broadcast_game_state(&args_broadcast_game_state);
-          printf("Dealer rotated to player %d\n", next_dealer);
+          fprintf(stderr, "Dealer rotated to player %d\n", next_dealer);
         } else {
           printf("No valid dealer found after rotation\n");
           game_state.dealer_id = -1;
