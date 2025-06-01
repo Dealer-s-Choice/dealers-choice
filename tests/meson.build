@@ -34,7 +34,7 @@ foreach test : game_logic
 
   test(
     'test_' + test,
-    files(join_paths(meson.current_source_dir(), '5_card_showdown.sh')),
+    files(join_paths(meson.current_source_dir(), 'game_logic.py')),
     args: ['test_' + test],
     env: env,
     is_parallel: false,
