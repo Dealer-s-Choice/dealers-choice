@@ -105,7 +105,7 @@ Config_t init_game_state(GameState_t *game_state, Path_t *path, const bool test_
   game_state->total_bets_plus_raises = 0;
   game_state->winner_declared = false;
   game_state->action_time_out_ms = config.action_time_out_ms;
-  game_state->end_of_round_time_out_ms = config.end_of_round_time_out_ms;
+  game_state->end_of_round_time_out_ms = (test_mode) ? 500 : config.end_of_round_time_out_ms;
   return config;
 }
 
@@ -735,7 +735,9 @@ int run_server(const bool test_mode) {
   get_data_dir(&path);
 
   GameState_t game_state = {0};
-  Config_t config = init_game_state(&game_state, &path);
+  // config isn't used in this function yet
+  // Config_t config = init_game_state(&game_state, &path, test_mode);
+  init_game_state(&game_state, &path, test_mode);
   game_state.pot = 0;
 
   if (SDL_Init(0) == -1 || SDLNet_Init() == -1) {
@@ -890,7 +892,7 @@ int run_server(const bool test_mode) {
 
         broadcast_game_state(&args_broadcast_game_state);
 
-        Uint32 wait_ms = (test_mode) ? 500 : config.end_of_round_time_out_ms;
+        Uint32 wait_ms = game_state.end_of_round_time_out_ms;
         Uint32 start = SDL_GetTicks();
         while (SDL_GetTicks() - start < wait_ms)
           ;
