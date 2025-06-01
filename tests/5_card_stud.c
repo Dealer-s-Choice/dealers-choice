@@ -1,6 +1,9 @@
 #include "00_test.h"
 
-_MAIN_HEAD_
+int main(int argc, char *argv[]) {
+int n_passes = 3;
+if (argc > 1)
+  n_passes = atoi(argv[1]);
 
 SdlContext_t sdl_context = {0};
 Font_t font = {0};
@@ -20,7 +23,7 @@ for (int i = 0; i < 2; i++) {
   assert(socket_context[i].sock != NULL);
 }
 
-for (int game = 0; game < 3; game++) {
+for (int game = 0; game < n_passes; game++) {
   sleep(3);
   fprintf(stderr, "\n-#- game: %d\n", game);
   for (int i = 0; i < 2; i++) {
@@ -147,5 +150,4 @@ for (int i = 0; i < 2; i++) {
 }
 
 return 0;
-
-_MAIN_TAIL_
+}
