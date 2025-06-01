@@ -11,7 +11,9 @@ const bool test_mode = true;
 char addr[] = "127.0.0.1";
 SocketContext_t socket_context[2];
 
-sleep(7);
+// There is a check for server readiness in the script that launches this
+// when using 'meson test ...'
+// sleep(7);
 
 for (int i = 0; i < 2; i++) {
   socket_context[i] = run_client(addr, &sdl_context, &font, test_mode);

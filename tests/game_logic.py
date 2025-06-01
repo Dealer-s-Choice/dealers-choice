@@ -1,52 +1,56 @@
 #!/usr/bin/env python3
-import os
-import sys
-import subprocess
+
+import socket
 import time
+import subprocess
+import sys
+import os
 import signal
 
-# Ensure a test name was given
-if len(sys.argv) != 2:
-    print("Usage: {} <test_name>".format(sys.argv[0]), file=sys.stderr)
-    sys.exit(1)
+def wait_for_server(host, port, timeout=10):
+    """Wait until a TCP server is listening on (host, port)."""
+    start_time = time.time()
+    while time.time() - start_time < timeout:
+        try:
+            with socket.create_connection((host, port), timeout=1):
+                return True
+        except (ConnectionRefusedError, OSError):
+            time.sleep(0.2)
+    return False
 
-test_name = sys.argv[1]
-
-# Get environment variables
-meson_build_root = os.environ.get("MESON_BUILD_ROOT")
-meson_build_test_root = os.environ.get("MESON_BUILD_TEST_ROOT")
-
-if not meson_build_root or not meson_build_test_root:
-    print("MESON_BUILD_ROOT and MESON_BUILD_TEST_ROOT must be set in the environment", file=sys.stderr)
-    sys.exit(1)
-
-# Launch the server
-server_path = os.path.join(meson_build_root, "dealerschoice")
-server_proc = subprocess.Popen([server_path, "--server", "---test"])
-
-def cleanup():
+def cleanup(server_proc):
     print("Cleaning up server...")
     try:
         server_proc.terminate()
-        server_proc.wait(timeout=5)
+        server_proc.wait(timeout=3)
     except Exception:
-        try:
-            server_proc.kill()
-        except Exception:
-            pass
+        server_proc.kill()
 
-# Ensure cleanup happens no matter what
-import atexit
-atexit.register(cleanup)
-signal.signal(signal.SIGINT, lambda sig, frame: sys.exit(1))
-signal.signal(signal.SIGTERM, lambda sig, frame: sys.exit(1))
+def main():
+    if len(sys.argv) != 2:
+        print(f"Usage: {sys.argv[0]} <test_binary_name>", file=sys.stderr)
+        sys.exit(1)
 
-# Wait for the server to initialize
-time.sleep(5)
+    test_binary = os.path.join(os.environ["MESON_BUILD_TEST_ROOT"], sys.argv[1])
+    server_binary = os.path.join(os.environ["MESON_BUILD_ROOT"], "dealerschoice")
 
-# Run the test
-test_path = os.path.join(meson_build_test_root, test_name)
-result = subprocess.run([test_path])
+    # Launch the server in test mode
+    server_proc = subprocess.Popen([server_binary, "--server", "---test"])
 
-# Exit with the test's status code
-sys.exit(result.returncode)
+    try:
+        # Wait until the server is ready on port 22777
+        if not wait_for_server("127.0.0.1", 22777):
+            print("Server did not become ready in time", file=sys.stderr)
+            cleanup(server_proc)
+            sys.exit(1)
+
+        # Run the test client
+        result = subprocess.run([test_binary])
+        exit_code = result.returncode
+    finally:
+        cleanup(server_proc)
+
+    sys.exit(exit_code)
+
+if __name__ == "__main__":
+    main()
