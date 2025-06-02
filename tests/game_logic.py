@@ -35,7 +35,11 @@ def main():
     server_binary = os.path.join(os.environ["MESON_BUILD_ROOT"], "dealerschoice")
 
     # Launch the server in test mode
-    server_proc = subprocess.Popen([server_binary, "--server", "---test"])
+    server_proc = subprocess.Popen(
+        [server_binary, "--server", "---test"],
+        stdout=sys.stderr,  # redirect stdout to stderr
+        stderr=sys.stderr
+    )
 
     try:
         # Wait until the server is ready on port 22777
@@ -45,7 +49,7 @@ def main():
             sys.exit(1)
 
         # Run the test client
-        result = subprocess.run([test_binary])
+        result = subprocess.run([test_binary], stdout=sys.stdout, stderr=sys.stderr)
         exit_code = result.returncode
     finally:
         cleanup(server_proc)
