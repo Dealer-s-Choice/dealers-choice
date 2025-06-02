@@ -61,6 +61,10 @@ jobs:
       continue-on-error: true
       run: |
         meson test --no-stdsplit -v -C _build
+
+    - name: View Meson testlog
+      shell: msys2 {0}
+      run: |
         cat D:/a/dealers_choice/dealers_choice/_build/meson-logs/testlog.txt
 
 
