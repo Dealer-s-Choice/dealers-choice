@@ -27,19 +27,12 @@ jobs:
         os:
           - ubuntu-24.04-arm
           - ubuntu-24.04
-          - ubuntu-22.04
         cc:
           - gcc
           - clang
-        exclude:
-          # Prevent duplicate combinations
-          - os: ubuntu-22.04
-            cc: clang
         include:
-          # Enable dist_test only for this one combination
           - os: ubuntu-22.04
             cc: gcc
-            dist_test: true
 
     runs-on: ${{ matrix.os }}
     env:
@@ -66,7 +59,7 @@ jobs:
       run: meson test -v -C _build
 
     - name: Dist test
-      if: ${{ matrix.dist_test == 'true' }}
+      if: ${{ contains(matrix.os, '22.04') }}
       run: meson dist -C _build
 
     - name: Install test
