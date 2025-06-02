@@ -60,7 +60,7 @@ jobs:
       run: meson test -v -C _build
 
     - name: Dist test
-      if: ${{ matrix.dist_test == 'true' }}
+      if: ${{ matrix.dist_test == 'true' || false }}
       run: meson dist -C _build
 
     - name: Install test
