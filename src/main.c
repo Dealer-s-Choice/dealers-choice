@@ -99,6 +99,7 @@ static int menu_display_connect(char *input_text, SDL_Renderer *renderer, Font_t
 }
 
 int main(int argc, char *argv[]) {
+  const char *bind_address = NULL; // Default is NULL, meaning "0.0.0.0"
   bool test_mode = false;
   bool run_server_flag = false;
 
@@ -107,15 +108,25 @@ int main(int argc, char *argv[]) {
       run_server_flag = true;
     } else if (strcmp(argv[i], "---test") == 0) {
       test_mode = true;
+    } else if (strcmp(argv[i], "--bind-address") == 0) {
+      if (i + 1 >= argc) {
+        fprintf(stderr, "Error: --bind-address requires an argument\n");
+        exit(EXIT_FAILURE);
+      }
+      bind_address = argv[++i]; // Advance i to get the argument
     } else {
       // Unrecognized arg
-      fprintf(stderr, "Usage:\n\n  %s\n  %s --server\n", argv[0], argv[0]);
+      fprintf(stderr,
+              "Usage:\n"
+              "  %s\n"
+              "  %s --server [--bind-address IP]\n",
+              argv[0], argv[0]);
       exit(EXIT_FAILURE);
     }
   }
 
   if (run_server_flag) {
-    return run_server(test_mode);
+    return run_server(bind_address, test_mode);
   }
 
   if (SDL_Init(SDL_INIT_VIDEO) == -1 || SDLNet_Init() == -1) {

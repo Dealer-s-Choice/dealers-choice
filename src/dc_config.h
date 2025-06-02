@@ -31,9 +31,11 @@
 
 #include <stdint.h>
 
+#include "net.h"
 #include "util.h"
 
 typedef struct {
+  char bind_address[INET6_ADDRSTRLEN];
   int32_t end_of_round_time_out_ms;
   int32_t action_time_out_ms;
 } Config_t;

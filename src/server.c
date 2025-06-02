@@ -55,12 +55,6 @@ typedef struct {
 // ArgsBroadcastGameState_t *broadcast_args;
 //} args_handle_round_t;
 
-// On Windows, this is defined in <ws2tcpip.h>. Rather than include the file
-// let's just do this...
-#ifndef INET6_ADDRSTRLEN
-#define INET6_ADDRSTRLEN 46
-#endif
-
 static void remove_disconnected_player(TCPsocket *clients, SDLNet_SocketSet socket_set,
                                        bool *slot_taken, Player_t *p);
 
@@ -85,7 +79,7 @@ static void print_ipaddress(const IPaddress *ip) {
   printf("%s:%u\n", ipaddr, SDL_SwapBE16(ip->port));
 }
 
-void init_game_state(GameState_t *game_state, Path_t *path, const bool test_mode) {
+Config_t init_game_state(GameState_t *game_state, Path_t *path, const bool test_mode) {
   Config_t config = get_config(path);
   for (int i = 0; i < MAX_PLAYERS; i++) {
     game_state->player[i] = (Player_t){
@@ -106,7 +100,7 @@ void init_game_state(GameState_t *game_state, Path_t *path, const bool test_mode
   game_state->winner_declared = false;
   game_state->action_time_out_ms = config.action_time_out_ms;
   game_state->end_of_round_time_out_ms = (test_mode) ? 500 : config.end_of_round_time_out_ms;
-  return;
+  return config;
 }
 
 // In the future, hands will be sent using functions like this, rather than how it's
@@ -583,7 +577,7 @@ static void remove_disconnected_player(TCPsocket *clients, SDLNet_SocketSet sock
                                        bool *slot_taken, Player_t *p) {
   const int id = p->id;
   if (SDLNet_TCP_DelSocket(socket_set, clients[id]) == -1) {
-    puts(SDL_GetError());
+    fputs(SDLNet_GetError(), stderr);
     return;
   }
 
@@ -730,12 +724,12 @@ static void play_game(const char game_type, ArgsBroadcastGameState_t *args, DH_D
   }
 }
 
-int run_server(const bool test_mode) {
+int run_server(const char *bind_address, const bool test_mode) {
   Path_t path = {0};
   get_data_dir(&path);
 
   GameState_t game_state = {0};
-  init_game_state(&game_state, &path, test_mode);
+  Config_t config = init_game_state(&game_state, &path, test_mode);
   game_state.pot = 0;
 
   if (SDL_Init(0) == -1 || SDLNet_Init() == -1) {
@@ -744,8 +738,18 @@ int run_server(const bool test_mode) {
   }
 
   IPaddress ip;
-  if (SDLNet_ResolveHost(&ip, NULL, default_port) == -1) {
-    fprintf(stderr, "Failed to resolve host: %s\n", SDLNet_GetError());
+  char *host = config.bind_address;
+  if (!bind_address) {
+    // ip.host = SDL_SwapBE32(INADDR_LOOPBACK);  // 127.0.0.1
+    // ip.port = SDL_SwapBE16(default_port);
+    host = config.bind_address;
+    if (strcmp(config.bind_address, "NULL") == 0)
+      host = NULL;
+  } else
+    host = (char *)bind_address;
+  fprintf(stderr, "Resolving host: %s\n", (host) ? host : "NULL");
+  if (SDLNet_ResolveHost(&ip, host, default_port) == -1) {
+    fprintf(stderr, "SDLNet_ResolveHost: %s\n", SDLNet_GetError());
     SDLNet_Quit();
     SDL_Quit();
     return 1;
@@ -753,7 +757,7 @@ int run_server(const bool test_mode) {
 
   TCPsocket server = SDLNet_TCP_Open(&ip);
   if (!server) {
-    fprintf(stderr, "Failed to open server socket: %s\n", SDLNet_GetError());
+    fprintf(stderr, "SDLNet_TCP_Open: %s\n", SDLNet_GetError());
     SDLNet_Quit();
     SDL_Quit();
     return 1;
