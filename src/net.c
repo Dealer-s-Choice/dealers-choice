@@ -325,3 +325,10 @@ ERecvStatus_t recv_game_state(TCPsocket client_socket, SDLNet_SocketSet socket_s
   free(buffer);
   return RECV_SUCCESS;
 }
+
+void socket_cleanup(TCPsocket sock, SDLNet_SocketSet set) {
+  if (SDLNet_TCP_DelSocket(set, sock) == -1)
+    fputs(SDLNet_GetError(), stderr);
+  SDLNet_FreeSocketSet(set);
+  SDLNet_TCP_Close(sock);
+}

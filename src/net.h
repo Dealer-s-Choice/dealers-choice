@@ -94,4 +94,6 @@ ERecvStatus_t recv_game_state(TCPsocket client_socket, SDLNet_SocketSet socket_s
                               GameState_t *game_state, ClientState_t *client_state,
                               const int8_t id);
 
+void socket_cleanup(TCPsocket sock, SDLNet_SocketSet set);
+
 #endif

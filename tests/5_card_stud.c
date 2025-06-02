@@ -4,8 +4,8 @@ int main(int argc, char *argv[]) {
   _SETUP_SOCKET_CONTEXT_
 
   sleep(n_seconds);
-  fprintf(stderr, "Dealer %d selecting game\n", dealer_id);
-  assert(send_game_select(socket_context[game_state[0].dealer_id].sock,
+  fprintf(stderr, "Dealer %d selecting game\n", *dealer_id);
+  assert(send_game_select(socket_context[*dealer_id].sock,
                           game_choices[FIVE_CARD_STUD].game_type) == 0);
 
   sleep(n_seconds);
@@ -16,10 +16,15 @@ int main(int argc, char *argv[]) {
 
   for (int n_rounds = 0; n_rounds < game_choices[FIVE_CARD_STUD].n_betting_rounds; n_rounds++) {
     fprintf(stderr, "\n -#- game: %d -#- n_rounds: %d\n", game, n_rounds);
-    sleep(n_seconds);
 
-    fprintf(stderr, "turn_id: %d sending bet...\n", game_state[0].turn_id);
-    assert(send_player_action(socket_context[game_state[0].turn_id].sock, ACTION_BET, 500) == 0);
+    int8_t *turn_id = &game_state[0].turn_id;
+
+    const int expected_bet_turn[3] = {1, 0, 1};
+    assert(expected_bet_turn[game] == *turn_id);
+
+    sleep(n_seconds);
+    fprintf(stderr, "turn_id: %d sending bet...\n", *turn_id);
+    assert(send_player_action(socket_context[*turn_id].sock, ACTION_BET, 500) == 0);
 
     for (i = 0; i < 2; i++) {
       debug_print_cards(&game_state[i].player[i].hand);
@@ -35,10 +40,12 @@ int main(int argc, char *argv[]) {
       }
     }
 
-    sleep(n_seconds);
+    const int expected_call_turn[3] = {0, 1, 0};
+    assert(expected_call_turn[game] == *turn_id);
 
-    fprintf(stderr, "turn_id: %d\n", game_state[0].turn_id);
-    assert(send_player_action(socket_context[game_state[0].turn_id].sock, ACTION_CALL, 0) == 0);
+    sleep(n_seconds);
+    fprintf(stderr, "turn_id: %d\n", *turn_id);
+    assert(send_player_action(socket_context[*turn_id].sock, ACTION_CALL, 0) == 0);
 
     for (int recv = 0; recv < 3; recv++) {
       sleep(n_seconds);
@@ -58,33 +65,14 @@ int main(int argc, char *argv[]) {
   }
   fprintf(stderr, "%d\n", game_state[0].pot);
 
-  sleep(n_seconds);
+  const int expected_coins[3][2] = {{22000, 18000}, {20000, 20000}, {18000, 22000}};
+  assert(game_state[0].player[0].coins == expected_coins[game][0]);
+  assert(game_state[0].player[1].coins == expected_coins[game][1]);
 
-  switch (game) {
-  case 0:
-    assert(game_state[0].player[0].coins == 22000);
-    assert(game_state[0].player[1].coins == 18000);
-    break;
-  case 1:
-    assert(game_state[0].player[0].coins == 20000);
-    assert(game_state[0].player[1].coins == 20000);
-    break;
-  case 2:
-    assert(game_state[0].player[0].coins == 18000);
-    assert(game_state[0].player[1].coins == 22000);
-    break;
-  }
   sleep(n_seconds);
 }
 
-sleep(2);
-
-for (int i = 0; i < 2; i++) {
-  SDLNet_TCP_DelSocket(socket_context[i].set, socket_context[i].sock);
-  SDLNet_FreeSocketSet(socket_context[i].set);
-  SDLNet_TCP_Close(socket_context[i].sock);
-  SDLNet_Quit();
-}
+_SOCKET_CLEANUP_AND_NET_QUIT_
 
 return 0;
 }

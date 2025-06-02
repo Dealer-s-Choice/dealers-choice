@@ -152,7 +152,7 @@ int main(int argc, char *argv[]) {
   char addr[MAX_INPUT_LENGTH] = "127.0.0.1";
   if (menu_display_connect(addr, sdl_context.renderer, &font) == RUN_CLIENT) {
     printf("Attempting to connect to: %s\n", addr);
-    run_client(addr, &sdl_context, &font, test_mode);
+    get_socket_context_and_run_client(addr, &sdl_context, &font, test_mode);
   }
 
   for (int i = 0; i < NUM_FONTS; ++i)

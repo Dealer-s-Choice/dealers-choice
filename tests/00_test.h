@@ -40,7 +40,7 @@
   SocketContext_t socket_context[2];                                                               \
                                                                                                    \
   for (int i = 0; i < 2; i++) {                                                                    \
-    socket_context[i] = run_client(addr, &sdl_context, &font, test_mode);                          \
+    socket_context[i] = get_socket_context_and_run_client(addr, &sdl_context, &font, test_mode);   \
     sleep(1);                                                                                      \
     assert(socket_context[i].sock != NULL);                                                        \
   }                                                                                                \
@@ -60,15 +60,13 @@
       }                                                                                            \
     }                                                                                              \
                                                                                                    \
-    const int dealer_id = game_state[0].dealer_id;                                                 \
-    switch (game) {                                                                                \
-    case 0:                                                                                        \
-      assert(dealer_id == 0);                                                                      \
-      break;                                                                                       \
-    case 1:                                                                                        \
-      assert(dealer_id == 1);                                                                      \
-      break;                                                                                       \
-    case 2:                                                                                        \
-      assert(dealer_id == 0);                                                                      \
-      break;                                                                                       \
-    }
+    int8_t *dealer_id = &game_state[0].dealer_id;                                                  \
+    const int expected_dealer_turn[3][3] = {{0, 0}, {1, 1}, {2, 0}};                               \
+    assert(expected_dealer_turn[game][1] == *dealer_id);
+
+#define _SOCKET_CLEANUP_AND_NET_QUIT_                                                              \
+  sleep(2);                                                                                        \
+  for (int i = 0; i < 2; i++) {                                                                    \
+    socket_cleanup(socket_context[i].sock, socket_context[i].set);                                 \
+  }                                                                                                \
+  SDLNet_Quit();

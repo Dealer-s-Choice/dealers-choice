@@ -35,8 +35,8 @@
 #include "game.h"
 #include "graphics.h"
 
-SocketContext_t run_client(const char *addr, SdlContext_t *sdl_context, Font_t *font,
-                           const bool test_mode) {
+SocketContext_t get_socket_context_and_run_client(const char *addr, SdlContext_t *sdl_context,
+                                                  Font_t *font, const bool test_mode) {
   IPaddress server_ip;
   SocketContext_t socket_context = {NULL, NULL, -1};
   if (SDLNet_ResolveHost(&server_ip, addr, default_port) == -1) {
@@ -82,9 +82,7 @@ SocketContext_t run_client(const char *addr, SdlContext_t *sdl_context, Font_t *
     return socket_context;
 
 cleanup:
-  SDLNet_TCP_DelSocket(socket_context.set, socket_context.sock);
-  SDLNet_FreeSocketSet(socket_context.set);
-  SDLNet_TCP_Close(socket_context.sock);
+  socket_cleanup(socket_context.sock, socket_context.set);
   SDLNet_Quit();
   return socket_context;
 }
