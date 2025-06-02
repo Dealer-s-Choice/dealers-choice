@@ -33,10 +33,14 @@ int main(int argc, char *argv[]) {
     const int n_seconds = 1;
     sleep(n_seconds);
     int i;
-    for (i = 0; i < 2; i++) {
-      assert(recv_game_state(socket_context[i].sock, socket_context[i].set, &game_state[i],
-                             &client_state[i], socket_context[i].id) != RECV_ERROR);
-      assert(socket_context[i].sock != NULL);
+
+    for (int recv = 0; recv < 2; recv++) {
+      sleep(n_seconds);
+      for (i = 0; i < 2; i++) {
+        assert(recv_game_state(socket_context[i].sock, socket_context[i].set, &game_state[i],
+                               &client_state[i], socket_context[i].id) != RECV_ERROR);
+        assert(socket_context[i].sock != NULL);
+      }
     }
 
     const int dealer_id = game_state[0].dealer_id;

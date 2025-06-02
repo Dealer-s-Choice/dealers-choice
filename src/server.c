@@ -85,7 +85,7 @@ static void print_ipaddress(const IPaddress *ip) {
   printf("%s:%u\n", ipaddr, SDL_SwapBE16(ip->port));
 }
 
-Config_t init_game_state(GameState_t *game_state, Path_t *path, const bool test_mode) {
+void init_game_state(GameState_t *game_state, Path_t *path, const bool test_mode) {
   Config_t config = get_config(path);
   for (int i = 0; i < MAX_PLAYERS; i++) {
     game_state->player[i] = (Player_t){
@@ -106,7 +106,7 @@ Config_t init_game_state(GameState_t *game_state, Path_t *path, const bool test_
   game_state->winner_declared = false;
   game_state->action_time_out_ms = config.action_time_out_ms;
   game_state->end_of_round_time_out_ms = (test_mode) ? 500 : config.end_of_round_time_out_ms;
-  return config;
+  return;
 }
 
 // In the future, hands will be sent using functions like this, rather than how it's
@@ -735,8 +735,6 @@ int run_server(const bool test_mode) {
   get_data_dir(&path);
 
   GameState_t game_state = {0};
-  // config isn't used in this function yet
-  // Config_t config = init_game_state(&game_state, &path, test_mode);
   init_game_state(&game_state, &path, test_mode);
   game_state.pot = 0;
 

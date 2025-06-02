@@ -59,4 +59,4 @@ jobs:
     - name: Test
       shell: msys2 {0}
       run: |
-        meson test -v -C _build
+        meson test --no-stdsplit -v -C _build

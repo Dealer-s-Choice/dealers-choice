@@ -238,7 +238,7 @@ ERecvStatus_t recv_game_state(TCPsocket client_socket, SDLNet_SocketSet socket_s
 
   if (result == 0) {
     // This output can be particularly useful for debugging tests
-    fputs("[recv_game_state] No activity on socket\n", stderr);
+    // fputs("[recv_game_state] No activity on socket\n", stderr);
     return RECV_NOTHING;
   }
 

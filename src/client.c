@@ -69,15 +69,15 @@ SocketContext_t run_client(const char *addr, SdlContext_t *sdl_context, Font_t *
     goto cleanup;
   }
 
-  GameState_t game_state = {0};
+  // GameState_t game_state = {0};
   ClientState_t client_state = {0};
-  if (recv_game_state(socket_context.sock, socket_context.set, &game_state, &client_state,
-                      socket_context.id) != RECV_SUCCESS)
-    goto cleanup;
+  // if (recv_game_state(socket_context.sock, socket_context.set, &game_state, &client_state,
+  //                 socket_context.id) != RECV_SUCCESS)
+  // goto cleanup;
 
   if (!test_mode)
-    run_sdl_loop(&game_state, &client_state, sdl_context, font, socket_context.sock,
-                 socket_context.set, socket_context.id);
+    run_sdl_loop(&client_state, sdl_context, font, socket_context.sock, socket_context.set,
+                 socket_context.id);
   else
     return socket_context;
 
