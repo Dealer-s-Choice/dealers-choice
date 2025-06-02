@@ -1,2 +1,0 @@
-default_setup = meson setup _build
-default_builddir = _build
