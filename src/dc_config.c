@@ -49,6 +49,7 @@ Config_t get_config(Path_t *path) {
   //
   // Jammy should improve the variable names before the first release ;)
   typedef enum {
+    BIND_ADDRESS,
     END_OF_ROUND_TIMEOUT_MS,
     ACTION_TIMEOUT_MS,
     INVALID_OPTION,
@@ -59,7 +60,8 @@ Config_t get_config(Path_t *path) {
     cfg_opt_id id;
   };
 
-  struct Opt_t opt[] = {{"end_of_round_time_out_ms", END_OF_ROUND_TIMEOUT_MS},
+  struct Opt_t opt[] = {{"bind_address", BIND_ADDRESS},
+                        {"end_of_round_time_out_ms", END_OF_ROUND_TIMEOUT_MS},
                         {"action_time_out_ms", ACTION_TIMEOUT_MS},
                         {NULL, INVALID_OPTION}};
 
@@ -71,6 +73,9 @@ Config_t get_config(Path_t *path) {
       break;
     }
     switch (opt[cfg_idx].id) {
+    case BIND_ADDRESS:
+      snprintf(config.bind_address, sizeof(config.bind_address), "%s", cfg_node->value);
+      break;
     case END_OF_ROUND_TIMEOUT_MS:
       config.end_of_round_time_out_ms = atoi(cfg_node->value);
       break;

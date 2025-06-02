@@ -7,14 +7,17 @@ get_data_dir(&path);
 
 GameState_t game_state;
 
-// The config isn't used in tests yet, so removing the variable assignment for now
-// Config_t config = init_game_state(&game_state, &path);
-init_game_state(&game_state, &path);
+// test_mode isn't needed here; it isn't used or required for all tests
+bool test_mode = false;
+init_game_state(&game_state, &path, test_mode);
 
 for (int i = 0; i < 3; i++) {
   game_state.player[i].id = i;
   game_state.player[i].in = true;
 }
+
+game_state.player[3].in = true;
+game_state.player[4].in = true;
 
 game_state.player[4].id = 4;
 

@@ -82,7 +82,7 @@ game_dep = declare_dependency(
   include_directories: shared_inc,
 )
 
-executable(
+exe_target = executable(
   binary_name,
   ['src/main.c'],
   dependencies: game_dep,

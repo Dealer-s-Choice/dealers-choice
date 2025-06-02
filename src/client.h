@@ -32,4 +32,11 @@
 #include "net.h"
 #include "types.h"
 
-int run_client(const char *addr, SdlContext_t *sdl_context, Font_t *font);
+typedef struct {
+  TCPsocket sock;
+  SDLNet_SocketSet set;
+  int8_t id;
+} SocketContext_t;
+
+SocketContext_t get_socket_context_and_run_client(const char *addr, SdlContext_t *sdl_context,
+                                                  Font_t *font, const bool test_mode);

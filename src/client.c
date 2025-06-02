@@ -35,49 +35,54 @@
 #include "game.h"
 #include "graphics.h"
 
-int run_client(const char *addr, SdlContext_t *sdl_context, Font_t *font) {
+SocketContext_t get_socket_context_and_run_client(const char *addr, SdlContext_t *sdl_context,
+                                                  Font_t *font, const bool test_mode) {
   IPaddress server_ip;
+  SocketContext_t socket_context = {NULL, NULL, -1};
   if (SDLNet_ResolveHost(&server_ip, addr, default_port) == -1) {
     fprintf(stderr, "Failed to resolve server: %s\n", SDLNet_GetError());
-    return 1;
+    return socket_context;
   }
 
-  TCPsocket client_socket = SDLNet_TCP_Open(&server_ip);
-  if (!client_socket) {
+  socket_context.sock = SDLNet_TCP_Open(&server_ip);
+  if (!socket_context.sock) {
     fprintf(stderr, "Failed to connect to server: %s\n", SDLNet_GetError());
-    return 1;
+    return socket_context;
+    ;
   }
 
-  SDLNet_SocketSet socket_set = SDLNet_AllocSocketSet(1);
-  if (!socket_set) {
+  socket_context.set = SDLNet_AllocSocketSet(1);
+  if (!socket_context.set) {
     fprintf(stderr, "Failed to allocate socket set: %s\n", SDLNet_GetError());
-    SDLNet_TCP_Close(client_socket);
-    return 1;
+    SDLNet_TCP_Close(socket_context.sock);
+    return socket_context;
   }
 
-  if (SDLNet_TCP_AddSocket(socket_set, client_socket) == -1)
+  if (SDLNet_TCP_AddSocket(socket_context.set, socket_context.sock) == -1)
     fputs("Socket set full\n", stderr);
 
   int32_t net_player_id;
-  uint32_t my_id;
-  if (recv_all_tcp(client_socket, &net_player_id, sizeof(int32_t)) > 0) {
-    my_id = ntohl(net_player_id);
-    printf("Assigned id %d by server\n", my_id);
+  if (recv_all_tcp(socket_context.sock, &net_player_id, sizeof(int32_t)) > 0) {
+    socket_context.id = ntohl(net_player_id);
+    printf("Assigned id %d by server\n", socket_context.id);
   } else {
     goto cleanup;
   }
 
-  GameState_t game_state = {0};
+  // GameState_t game_state = {0};
   ClientState_t client_state = {0};
-  if (recv_game_state(client_socket, socket_set, &game_state, &client_state, my_id) != RECV_SUCCESS)
-    goto cleanup;
+  // if (recv_game_state(socket_context.sock, socket_context.set, &game_state, &client_state,
+  //                 socket_context.id) != RECV_SUCCESS)
+  // goto cleanup;
 
-  run_sdl_loop(&game_state, &client_state, sdl_context, font, client_socket, socket_set, my_id);
+  if (!test_mode)
+    run_sdl_loop(&client_state, sdl_context, font, socket_context.sock, socket_context.set,
+                 socket_context.id);
+  else
+    return socket_context;
 
 cleanup:
-  SDLNet_TCP_DelSocket(socket_set, client_socket);
-  SDLNet_FreeSocketSet(socket_set);
-  SDLNet_TCP_Close(client_socket);
+  socket_cleanup(socket_context.sock, socket_context.set);
   SDLNet_Quit();
-  return 0;
+  return socket_context;
 }

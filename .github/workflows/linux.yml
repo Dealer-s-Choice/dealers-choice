@@ -59,6 +59,7 @@ jobs:
       run: meson test -v -C _build
 
     - name: Dist test
+      if: ${{ contains(matrix.os, '22.04') }}
       run: meson dist -C _build
 
     - name: Install test

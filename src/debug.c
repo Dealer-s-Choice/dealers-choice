@@ -52,5 +52,6 @@ DebugPrintCards_t debug_print_cards(struct pokeval_hand_t *hand) {
     snprintf(ptr, sizeof str.str - len, "%s", result);
     ptr += strlen(result);
   }
+  fputc('\n', stderr);
   return str;
 }

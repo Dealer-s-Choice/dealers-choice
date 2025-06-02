@@ -41,6 +41,12 @@
 #include "netpoker.pb-c.h"
 #include "types.h"
 
+// On Windows, this is defined in <ws2tcpip.h>. Rather than include the file
+// let's just do this...
+#ifndef INET6_ADDRSTRLEN
+#define INET6_ADDRSTRLEN 46
+#endif
+
 #define MSG_GAME_SELECT 0x0001       // Player_t chooses a game variant
 #define MSG_PLAYER_ACTION 0x0002     // Player_t bets, folds, etc.
 #define MSG_GAME_START 0x0004        // Game begins
@@ -87,5 +93,7 @@ int recv_all_tcp(TCPsocket sock, void *data, int32_t length);
 ERecvStatus_t recv_game_state(TCPsocket client_socket, SDLNet_SocketSet socket_set,
                               GameState_t *game_state, ClientState_t *client_state,
                               const int8_t id);
+
+void socket_cleanup(TCPsocket sock, SDLNet_SocketSet set);
 
 #endif

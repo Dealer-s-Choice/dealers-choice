@@ -200,7 +200,7 @@ int send_all_tcp(TCPsocket sock, const void *data, size_t length) {
       return -1;
     }
     total_sent += sent;
-    printf("Total sent: %zd\n", total_sent);
+    // printf("Total sent: %zd\n", total_sent);
   }
 
   // TODO: This should probably return total sent
@@ -237,7 +237,8 @@ ERecvStatus_t recv_game_state(TCPsocket client_socket, SDLNet_SocketSet socket_s
   }
 
   if (result == 0) {
-    // printf("[recv_game_state] No activity on socket\n");
+    // This output can be particularly useful for debugging tests
+    // fputs("[recv_game_state] No activity on socket\n", stderr);
     return RECV_NOTHING;
   }
 
@@ -289,7 +290,7 @@ ERecvStatus_t recv_game_state(TCPsocket client_socket, SDLNet_SocketSet socket_s
       msg_len = 100;
     memcpy(client_state->server_status_str, &buffer[2], msg_len);
     client_state->server_status_str[msg_len] = '\0';
-    printf("[Status Message] %s\n", client_state->server_status_str);
+    fprintf(stderr, "[Status Message] %s\n", client_state->server_status_str);
   } break;
   case MSG_NEW_HAND: {
     if (size < 3) {
@@ -323,4 +324,11 @@ ERecvStatus_t recv_game_state(TCPsocket client_socket, SDLNet_SocketSet socket_s
 
   free(buffer);
   return RECV_SUCCESS;
+}
+
+void socket_cleanup(TCPsocket sock, SDLNet_SocketSet set) {
+  if (SDLNet_TCP_DelSocket(set, sock) == -1)
+    fputs(SDLNet_GetError(), stderr);
+  SDLNet_FreeSocketSet(set);
+  SDLNet_TCP_Close(sock);
 }
