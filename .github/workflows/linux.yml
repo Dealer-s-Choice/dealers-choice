@@ -33,6 +33,7 @@ jobs:
         include:
           - os: ubuntu-22.04
             cc: gcc
+            dist_test: true
 
     runs-on: ${{ matrix.os }}
     env:
@@ -59,6 +60,7 @@ jobs:
       run: meson test -v -C _build
 
     - name: Dist test
+      if: ${{ matrix.dist_test == 'true' }}
       run: meson dist -C _build
 
     - name: Install test
