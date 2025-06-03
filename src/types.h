@@ -34,6 +34,7 @@
 #define MAX_PLAYERS 5
 #define MAX_CLIENTS 5
 #define SIZEOF_NICK 15
+#define MAX_INPUT_LENGTH 64
 
 #define LEN_STATUS_STR 100
 

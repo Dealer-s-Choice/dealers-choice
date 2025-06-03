@@ -29,6 +29,7 @@
 #ifndef __DC_CONFIG_H
 #define __DC_CONFIG_H
 
+#include <stddef.h>
 #include <stdint.h>
 
 #include "net.h"
@@ -42,8 +43,29 @@ typedef struct {
 
 typedef struct {
   bool loaded;
-  char nick[SIZEOF_NICK];
+  char nick[64];
+  char host[MAX_INPUT_LENGTH];
+  int port;
 } PlayerConfig_t;
+
+typedef enum { CFG_TYPE_STRING, CFG_TYPE_INT } ConfigType;
+
+typedef struct {
+  const char *key;
+  ConfigType type;
+  const char *default_value; // Stored as string
+  size_t offset;             // Offset into PlayerConfig_t
+  size_t size;               // Size of the target field
+} ConfigEntry;
+
+static const ConfigEntry config_entries[] = {
+    {"nick", CFG_TYPE_STRING, "New Player", offsetof(PlayerConfig_t, nick),
+     sizeof(((PlayerConfig_t *)0)->nick)},
+    {"host", CFG_TYPE_STRING, "127.0.0.1", offsetof(PlayerConfig_t, host),
+     sizeof(((PlayerConfig_t *)0)->host)},
+    {"port", CFG_TYPE_INT, DEFAULT_PORT, offsetof(PlayerConfig_t, port), sizeof(int)}};
+
+static const size_t config_entry_count = sizeof(config_entries) / sizeof(config_entries[0]);
 
 Config_t get_config(Path_t *path);
 

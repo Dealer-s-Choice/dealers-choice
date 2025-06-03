@@ -748,7 +748,7 @@ int run_server(const char *bind_address, const bool test_mode) {
   } else
     host = (char *)bind_address;
   fprintf(stderr, "Resolving host: %s\n", (host) ? host : "NULL");
-  if (SDLNet_ResolveHost(&ip, host, default_port) == -1) {
+  if (SDLNet_ResolveHost(&ip, host, atoi(DEFAULT_PORT)) == -1) {
     fprintf(stderr, "SDLNet_ResolveHost: %s\n", SDLNet_GetError());
     SDLNet_Quit();
     SDL_Quit();
