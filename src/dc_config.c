@@ -120,7 +120,6 @@ PlayerConfig_t get_player_config(void) {
     return config;
   }
 
-  // Now cfgdir points to a usable config directory
   printf("Using config dir: %s\n", cfgdir);
 
   // TODO: Use pathconf() instead, and also check NAME_MAX
@@ -145,21 +144,22 @@ PlayerConfig_t get_player_config(void) {
     }
   }
 
-  int cfg_idx = 0;
   while (cfg_node != NULL) {
-    if (strcmp(cfg_node->key, key[cfg_idx]) != 0) {
-      fprintf(stderr, "Invalid option: %s\n", cfg_node->key);
-      exit(EXIT_FAILURE);
-      break;
+    int cfg_idx = 0;
+    while (cfg_idx != MAX_KEYS) {
+      if (strcasecmp(key[cfg_idx], cfg_node->key) == 0)
+        break;
+      cfg_idx++;
     }
+
     switch (cfg_idx) {
     case NICK:
       snprintf(config.nick, sizeof(config.nick), "%s", cfg_node->value);
       break;
     default:
+      fprintf(stderr, "Invalid config option: %s\n", cfg_node->key);
       break;
     }
-    cfg_idx++;
     canfigger_free_current_key_node_advance(&cfg_node);
   }
   config.loaded = true;
