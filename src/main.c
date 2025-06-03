@@ -39,6 +39,30 @@
 enum { RUN_CLIENT = 20 };
 
 static int menu_display_connect(char *input_text, SDL_Renderer *renderer, Font_t *font) {
+
+  char *cfgdir = get_config_dir();
+  if (!cfgdir) {
+    fprintf(stderr, "Unable to determine config directory.\n");
+    return -1;
+  }
+
+  EPathState state = check_pathname_state(cfgdir);
+  if (state == PATH_NOT_FOUND) {
+    if (make_directory_recursive(cfgdir) != 0) {
+      fprintf(stderr, "Failed to create config dir: %s\n", cfgdir);
+      free(cfgdir);
+      return -1;
+    }
+  } else if (state == PATH_ERROR) {
+    fprintf(stderr, "Error checking config dir: %s\n", cfgdir);
+    free(cfgdir);
+    return -1;
+  }
+
+  // Now cfgdir points to a usable config directory
+  printf("Using config dir: %s\n", cfgdir);
+  free(cfgdir);
+
   Button_t button_connect = {
       .text = "Connect",
       .renderer = renderer,

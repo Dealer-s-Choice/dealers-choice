@@ -11,7 +11,7 @@ the 5_card_{stud,showdown} tests:
 
 Run the server:
 
-    ./dealerschoice ---test --server
+    ./dealers-choice ---test --server
 
 In another terminal, from the build directory:
 

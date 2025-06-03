@@ -32,7 +32,7 @@ def main():
         sys.exit(1)
 
     test_binary = os.path.join(os.environ["MESON_BUILD_TEST_ROOT"], sys.argv[1])
-    server_binary = os.path.join(os.environ["MESON_BUILD_ROOT"], "dealerschoice")
+    server_binary = os.path.join(os.environ["MESON_BUILD_ROOT"], "dealers-choice")
 
     # Launch the server in test mode
     server_proc = subprocess.Popen(

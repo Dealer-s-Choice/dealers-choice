@@ -1,5 +1,5 @@
 /*
- util.h
+ dc_windows.h
  https://github.com/Dealer-s-Choice/dealers_choice
 
  MIT License
@@ -26,29 +26,14 @@
 
 */
 
-#ifndef __UTIL_H
-#define __UTIL_H
+#ifndef __DC_WINDOWS_H
+#define __DC_WINDOWS_H
 
-typedef struct {
-  char data[2048];
-  char config[2048];
-  char server_conf_name[2148];
-} Path_t;
-
-typedef enum {
-  PATH_EXISTS = 1,
-  PATH_NOT_FOUND = 2,
-  PATH_ERROR = -1,
-} EPathState;
-
-void get_data_dir(Path_t *path);
-
-EPathState check_pathname_state(const char *pathname);
-
-EPathState check_pathname_state(const char *pathname);
-
-char *get_config_dir(void);
-
-int make_directory_recursive(const char *path);
-
+#ifdef _WIN32
+// clang-format off
+// winsock2.h needs to be included before windows.h
+#include <winsock2.h>
+#include <windows.h>
+// clang-format on
+#endif
 #endif
