@@ -35,11 +35,12 @@
 #include "game.h"
 #include "graphics.h"
 
-SocketContext_t get_socket_context_and_run_client(const char *addr, SdlContext_t *sdl_context,
-                                                  Font_t *font, const bool test_mode) {
+SocketContext_t get_socket_context_and_run_client(PlayerConfig_t *player_config,
+                                                  SdlContext_t *sdl_context, Font_t *font,
+                                                  const bool test_mode) {
   IPaddress server_ip;
   SocketContext_t socket_context = {NULL, NULL, -1};
-  if (SDLNet_ResolveHost(&server_ip, addr, default_port) == -1) {
+  if (SDLNet_ResolveHost(&server_ip, player_config->host, player_config->port) == -1) {
     fprintf(stderr, "Failed to resolve server: %s\n", SDLNet_GetError());
     return socket_context;
   }
@@ -67,6 +68,15 @@ SocketContext_t get_socket_context_and_run_client(const char *addr, SdlContext_t
     printf("Assigned id %d by server\n", socket_context.id);
   } else {
     goto cleanup;
+  }
+
+  if (!test_mode) {
+    char *nick = player_config->nick;
+    size_t len = strlen(nick);
+    int32_t net_len = htonl(len);
+    send_all_tcp(socket_context.sock, &net_len, sizeof(int32_t));
+    if (send_all_tcp(socket_context.sock, player_config->nick, len) != 0)
+      fprintf(stderr, "Failed to send player nick to server\n");
   }
 
   // GameState_t game_state = {0};

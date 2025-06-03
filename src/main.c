@@ -34,35 +34,9 @@
 #include "main.h"
 #include "server.h"
 
-#define MAX_INPUT_LENGTH 64
-
 enum { RUN_CLIENT = 20 };
 
-static int menu_display_connect(char *input_text, SDL_Renderer *renderer, Font_t *font) {
-
-  char *cfgdir = get_config_dir();
-  if (!cfgdir) {
-    fprintf(stderr, "Unable to determine config directory.\n");
-    return -1;
-  }
-
-  EPathState state = check_pathname_state(cfgdir);
-  if (state == PATH_NOT_FOUND) {
-    if (make_directory_recursive(cfgdir) != 0) {
-      fprintf(stderr, "Failed to create config dir: %s\n", cfgdir);
-      free(cfgdir);
-      return -1;
-    }
-  } else if (state == PATH_ERROR) {
-    fprintf(stderr, "Error checking config dir: %s\n", cfgdir);
-    free(cfgdir);
-    return -1;
-  }
-
-  // Now cfgdir points to a usable config directory
-  printf("Using config dir: %s\n", cfgdir);
-  free(cfgdir);
-
+static int menu_display_connect(char *host_str, SDL_Renderer *renderer, Font_t *font) {
   Button_t button_connect = {
       .text = "Connect",
       .renderer = renderer,
@@ -91,12 +65,12 @@ static int menu_display_connect(char *input_text, SDL_Renderer *renderer, Font_t
           running = false;
         }
       } else if (e.type == SDL_TEXTINPUT) {
-        if (strlen(input_text) + strlen(e.text.text) < MAX_INPUT_LENGTH) {
-          strcat(input_text, e.text.text);
+        if (strlen(host_str) + strlen(e.text.text) < MAX_INPUT_LENGTH) {
+          strcat(host_str, e.text.text);
         }
       } else if (e.type == SDL_KEYDOWN) {
-        if (e.key.keysym.sym == SDLK_BACKSPACE && strlen(input_text) > 0) {
-          input_text[strlen(input_text) - 1] = '\0';
+        if (e.key.keysym.sym == SDLK_BACKSPACE && strlen(host_str) > 0) {
+          host_str[strlen(host_str) - 1] = '\0';
         } else if (e.key.keysym.sym == SDLK_RETURN) {
           run_client = true;
           running = false;
@@ -112,7 +86,7 @@ static int menu_display_connect(char *input_text, SDL_Renderer *renderer, Font_t
     SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
     SDL_RenderDrawRect(renderer, &input_box);
     SDL_Rect input_text_pos = {input_box.x, input_box.y, 0, 0};
-    render_text(renderer, font->fonts[OTHER], input_text, get_color(COLOR_WHITE), &input_text_pos);
+    render_text(renderer, font->fonts[OTHER], host_str, get_color(COLOR_WHITE), &input_text_pos);
 
     SDL_RenderPresent(renderer);
     SDL_Delay(16);
@@ -123,7 +97,8 @@ static int menu_display_connect(char *input_text, SDL_Renderer *renderer, Font_t
 }
 
 int main(int argc, char *argv[]) {
-  const char *bind_address = NULL; // Default is NULL, meaning "0.0.0.0"
+  const char *bind_address = NULL; // Defaults to "0.0.0.0" if NULL
+  const char *host = NULL;
   bool test_mode = false;
   bool run_server_flag = false;
 
@@ -137,14 +112,21 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "Error: --bind-address requires an argument\n");
         exit(EXIT_FAILURE);
       }
-      bind_address = argv[++i]; // Advance i to get the argument
+      bind_address = argv[++i];
+    } else if (strcmp(argv[i], "--host") == 0) {
+      if (i + 1 >= argc) {
+        fprintf(stderr, "Error: --host requires an argument\n");
+        exit(EXIT_FAILURE);
+      }
+      host = argv[++i];
     } else {
-      // Unrecognized arg
+      // Unrecognized argument
       fprintf(stderr,
               "Usage:\n"
-              "  %s\n"
-              "  %s --server [--bind-address IP]\n",
-              argv[0], argv[0]);
+              "  %s [--test]\n"
+              "  %s --server [--bind-address IP]\n"
+              "  %s --host IP (for clients to connect to)\n",
+              argv[0], argv[0], argv[0]);
       exit(EXIT_FAILURE);
     }
   }
@@ -173,10 +155,19 @@ int main(int argc, char *argv[]) {
       return -1;
   }
 
-  char addr[MAX_INPUT_LENGTH] = "127.0.0.1";
-  if (menu_display_connect(addr, sdl_context.renderer, &font) == RUN_CLIENT) {
-    printf("Attempting to connect to: %s\n", addr);
-    get_socket_context_and_run_client(addr, &sdl_context, &font, test_mode);
+  PlayerConfig_t player_config = get_player_config();
+  if (!player_config.loaded) {
+    fprintf(stderr, "Unabled to load config\n");
+    exit(EXIT_FAILURE);
+  }
+  printf("nick: %s\n", player_config.nick);
+
+  char host_str[MAX_INPUT_LENGTH] = {0};
+  snprintf(host_str, sizeof(host_str), "%s", (host) ? host : player_config.host);
+
+  if (menu_display_connect(host_str, sdl_context.renderer, &font) == RUN_CLIENT) {
+    printf("Attempting to connect to: %s\n", host_str);
+    get_socket_context_and_run_client(&player_config, &sdl_context, &font, test_mode);
   }
 
   for (int i = 0; i < NUM_FONTS; ++i)

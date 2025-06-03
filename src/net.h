@@ -57,7 +57,7 @@
 #define MSG_STATUS_MESSAGE 0x0009
 #define MSG_NEW_HAND 0x0010
 
-extern const uint16_t default_port;
+#define DEFAULT_PORT "22777"
 
 typedef enum {
   RECV_ERROR,

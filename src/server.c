@@ -748,7 +748,7 @@ int run_server(const char *bind_address, const bool test_mode) {
   } else
     host = (char *)bind_address;
   fprintf(stderr, "Resolving host: %s\n", (host) ? host : "NULL");
-  if (SDLNet_ResolveHost(&ip, host, default_port) == -1) {
+  if (SDLNet_ResolveHost(&ip, host, atoi(DEFAULT_PORT)) == -1) {
     fprintf(stderr, "SDLNet_ResolveHost: %s\n", SDLNet_GetError());
     SDLNet_Quit();
     SDL_Quit();
@@ -831,6 +831,26 @@ int run_server(const char *bind_address, const bool test_mode) {
 
         int32_t net_player_id = htonl(slot);
         send_all_tcp(new_client, &net_player_id, sizeof(int32_t));
+
+        if (!test_mode) {
+          int32_t net_len;
+          // Recv the size first
+          if (recv_all_tcp(new_client, &net_len, sizeof(int32_t)) > 0) {
+            size_t len = ntohl(net_len);
+
+            // Then the actual data (player name, in this case)
+            if (recv_all_tcp(new_client, game_state.player[slot].name, len) <= 0) {
+              fprintf(stderr, "Failed to receive nickname.\n");
+              SDLNet_TCP_Close(new_client);
+              game_state.player[slot].id = -1;
+              game_state.player[slot].in = false;
+              slot_taken[slot] = false;
+              break;
+            }
+          } else {
+            // TODO: handle error
+          }
+        }
 
         // Count how many clients are currently connected
         active_clients = count_active_clients(slot_taken);
