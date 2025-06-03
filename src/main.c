@@ -38,30 +38,15 @@
 
 enum { RUN_CLIENT = 20 };
 
-static int menu_display_connect(char *input_text, SDL_Renderer *renderer, Font_t *font) {
-
-  char *cfgdir = get_config_dir();
-  if (!cfgdir) {
-    fprintf(stderr, "Unable to determine config directory.\n");
-    return -1;
+static int menu_display_connect(PlayerConfig_t *player_config, char *input_text,
+                                SDL_Renderer *renderer, Font_t *font) {
+  *player_config = get_player_config();
+  if (!player_config->loaded) {
+    fprintf(stderr, "Unabled to load config\n");
+    exit(EXIT_FAILURE);
   }
 
-  EPathState state = check_pathname_state(cfgdir);
-  if (state == PATH_NOT_FOUND) {
-    if (make_directory_recursive(cfgdir) != 0) {
-      fprintf(stderr, "Failed to create config dir: %s\n", cfgdir);
-      free(cfgdir);
-      return -1;
-    }
-  } else if (state == PATH_ERROR) {
-    fprintf(stderr, "Error checking config dir: %s\n", cfgdir);
-    free(cfgdir);
-    return -1;
-  }
-
-  // Now cfgdir points to a usable config directory
-  printf("Using config dir: %s\n", cfgdir);
-  free(cfgdir);
+  printf("nick: %s\n", player_config->nick);
 
   Button_t button_connect = {
       .text = "Connect",
@@ -174,9 +159,10 @@ int main(int argc, char *argv[]) {
   }
 
   char addr[MAX_INPUT_LENGTH] = "127.0.0.1";
-  if (menu_display_connect(addr, sdl_context.renderer, &font) == RUN_CLIENT) {
+  PlayerConfig_t player_config;
+  if (menu_display_connect(&player_config, addr, sdl_context.renderer, &font) == RUN_CLIENT) {
     printf("Attempting to connect to: %s\n", addr);
-    get_socket_context_and_run_client(addr, &sdl_context, &font, test_mode);
+    get_socket_context_and_run_client(&player_config, addr, &sdl_context, &font, test_mode);
   }
 
   for (int i = 0; i < NUM_FONTS; ++i)

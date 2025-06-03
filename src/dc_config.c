@@ -90,3 +90,78 @@ Config_t get_config(Path_t *path) {
   }
   return config;
 }
+
+PlayerConfig_t get_player_config(void) {
+  enum {
+    NICK,
+    MAX_KEYS,
+  };
+
+  const char *key[] = {[NICK] = "nick", [MAX_KEYS] = NULL};
+
+  PlayerConfig_t config = {0};
+  config.loaded = false;
+  char *cfgdir = get_config_dir();
+  if (!cfgdir) {
+    fprintf(stderr, "Unable to determine config directory.\n");
+    return config;
+  }
+
+  EPathState state = check_pathname_state(cfgdir);
+  if (state == PATH_NOT_FOUND) {
+    if (make_directory_recursive(cfgdir) != 0) {
+      fprintf(stderr, "Failed to create config dir: %s\n", cfgdir);
+      free(cfgdir);
+      return config;
+    }
+  } else if (state == PATH_ERROR) {
+    fprintf(stderr, "Error checking config dir: %s\n", cfgdir);
+    free(cfgdir);
+    return config;
+  }
+
+  // Now cfgdir points to a usable config directory
+  printf("Using config dir: %s\n", cfgdir);
+
+  // TODO: Use pathconf() instead, and also check NAME_MAX
+  char cfg_pathname[PATH_MAX];
+  snprintf(cfg_pathname, sizeof(cfg_pathname), "%s/player.conf", cfgdir);
+  free(cfgdir);
+  struct Canfigger *cfg_node = canfigger_parse_file(cfg_pathname, ',');
+  if (!cfg_node) {
+    if (check_pathname_state(cfg_pathname) == PATH_NOT_FOUND) {
+      FILE *fp = fopen(cfg_pathname, "w");
+      if (fp) {
+        snprintf(config.nick, sizeof(config.nick), "New Player");
+        fprintf(fp, "%s = New Player\n", key[NICK]);
+        fclose(fp);
+      } else {
+        perror("fopen");
+        exit(EXIT_FAILURE);
+      }
+    } else {
+      fprintf(stderr, "Error when trying to access %s\n", cfg_pathname);
+      exit(EXIT_FAILURE);
+    }
+  }
+
+  int cfg_idx = 0;
+  while (cfg_node != NULL) {
+    if (strcmp(cfg_node->key, key[cfg_idx]) != 0) {
+      fprintf(stderr, "Invalid option: %s\n", cfg_node->key);
+      exit(EXIT_FAILURE);
+      break;
+    }
+    switch (cfg_idx) {
+    case NICK:
+      snprintf(config.nick, sizeof(config.nick), "%s", cfg_node->value);
+      break;
+    default:
+      break;
+    }
+    cfg_idx++;
+    canfigger_free_current_key_node_advance(&cfg_node);
+  }
+  config.loaded = true;
+  return config;
+}

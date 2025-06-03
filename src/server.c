@@ -832,6 +832,14 @@ int run_server(const char *bind_address, const bool test_mode) {
         int32_t net_player_id = htonl(slot);
         send_all_tcp(new_client, &net_player_id, sizeof(int32_t));
 
+        if (!test_mode) {
+          if (recv_all_tcp(new_client, game_state.player[slot].name, SIZEOF_NICK) <= 0) {
+            fprintf(stderr, "Failed to receive nickname.\n");
+            SDLNet_TCP_Close(new_client);
+            break;
+          }
+        }
+
         // Count how many clients are currently connected
         active_clients = count_active_clients(slot_taken);
 

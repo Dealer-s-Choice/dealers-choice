@@ -35,12 +35,14 @@
                                                                                                    \
   GameState_t game_state[2] = {0};                                                                 \
   ClientState_t client_state[2] = {0};                                                             \
+  PlayerConfig_t player_config = {0};                                                              \
   const bool test_mode = true;                                                                     \
   char addr[] = "127.0.0.1";                                                                       \
   SocketContext_t socket_context[2];                                                               \
                                                                                                    \
   for (int i = 0; i < 2; i++) {                                                                    \
-    socket_context[i] = get_socket_context_and_run_client(addr, &sdl_context, &font, test_mode);   \
+    socket_context[i] =                                                                            \
+        get_socket_context_and_run_client(&player_config, addr, &sdl_context, &font, test_mode);   \
     sleep(1);                                                                                      \
     assert(socket_context[i].sock != NULL);                                                        \
   }                                                                                                \

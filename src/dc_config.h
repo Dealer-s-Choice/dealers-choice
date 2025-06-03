@@ -40,6 +40,13 @@ typedef struct {
   int32_t action_time_out_ms;
 } Config_t;
 
+typedef struct {
+  bool loaded;
+  char nick[SIZEOF_NICK];
+} PlayerConfig_t;
+
 Config_t get_config(Path_t *path);
+
+PlayerConfig_t get_player_config(void);
 
 #endif

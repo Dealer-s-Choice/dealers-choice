@@ -28,6 +28,7 @@
 
 #include <deckhandler.h>
 
+#include "dc_config.h"
 #include "graphics.h"
 #include "net.h"
 #include "types.h"
@@ -38,5 +39,6 @@ typedef struct {
   int8_t id;
 } SocketContext_t;
 
-SocketContext_t get_socket_context_and_run_client(const char *addr, SdlContext_t *sdl_context,
-                                                  Font_t *font, const bool test_mode);
+SocketContext_t get_socket_context_and_run_client(PlayerConfig_t *player_config, const char *addr,
+                                                  SdlContext_t *sdl_context, Font_t *font,
+                                                  const bool test_mode);

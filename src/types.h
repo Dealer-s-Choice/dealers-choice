@@ -33,6 +33,7 @@
 
 #define MAX_PLAYERS 5
 #define MAX_CLIENTS 5
+#define SIZEOF_NICK 15
 
 #define LEN_STATUS_STR 100
 
@@ -45,7 +46,7 @@ typedef enum {
 } EMenuOption_t;
 
 typedef struct {
-  char name[12];
+  char name[SIZEOF_NICK];
   int8_t id;
   struct pokeval_hand_t hand;
   int32_t coins;
