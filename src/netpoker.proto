@@ -10,7 +10,7 @@ message Hand {
 }
 
 message Player {
-  string name = 1;
+  string nick = 1;
   int32 id = 2;
   Hand hand = 3;
   int32 coins = 4;

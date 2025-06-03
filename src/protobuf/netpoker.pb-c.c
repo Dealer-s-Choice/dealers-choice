@@ -279,12 +279,12 @@ const ProtobufCMessageDescriptor hand__descriptor =
 static const ProtobufCFieldDescriptor player__field_descriptors[8] =
 {
   {
-    "name",
+    "nick",
     1,
     PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_STRING,
     0,   /* quantifier_offset */
-    offsetof(Player, name),
+    offsetof(Player, nick),
     NULL,
     &protobuf_c_empty_string,
     0,             /* flags */
@@ -381,7 +381,7 @@ static const unsigned player__field_indices_by_name[] = {
   7,   /* field[7] = has_checked */
   1,   /* field[1] = id */
   4,   /* field[4] = in */
-  0,   /* field[0] = name */
+  0,   /* field[0] = nick */
   5,   /* field[5] = total_paid */
   6,   /* field[6] = winner */
 };

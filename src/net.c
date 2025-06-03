@@ -33,7 +33,7 @@ static void fill_player_message(struct player_message_builder_t *builder, const 
   hand__init(&builder->hand);
 
   // Name
-  builder->msg.name = (char *)src->name;
+  builder->msg.nick = (char *)src->nick;
 
   // ID and Chips
   builder->msg.id = src->id;
@@ -60,8 +60,8 @@ static void fill_player_from_message(Player_t *dst, const Player *msg) {
   if (!msg)
     return;
 
-  if (msg->name)
-    snprintf(dst->name, sizeof(dst->name), "%s", msg->name);
+  if (msg->nick)
+    snprintf(dst->nick, sizeof(dst->nick), "%s", msg->nick);
 
   dst->id = msg->id;
   dst->coins = msg->coins;

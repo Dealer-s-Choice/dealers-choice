@@ -231,8 +231,8 @@ static int menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet s
     for (int i = 0; i < MAX_PLAYERS; i++) {
       if (game_state->player[i].in) {
         offset_y += 40;
-        char tmp[sizeof(game_state->player[i].name) + 20] = {0};
-        snprintf(tmp, sizeof tmp, "%s%s", game_state->player[i].name,
+        char tmp[sizeof(game_state->player[i].nick) + 20] = {0};
+        snprintf(tmp, sizeof tmp, "%s%s", game_state->player[i].nick,
                  game_state->dealer_id == i ? " (Dealer)" : "");
         SDL_Rect text_pos = {offset_x, offset_y, 0, 0};
         render_text_plain(sdl_context->renderer, font->fonts[OTHER], tmp, get_color(COLOR_WHITE),
@@ -733,12 +733,12 @@ void run_sdl_loop(ClientState_t *client_state, SdlContext_t *sdl_context, Font_t
           }
         } while ((turn = get_next_player(players_array, turn->id)) != starting_turn);
 
-        // char winner_text[sizeof(turn->name) + 64] = {0};
+        // char winner_text[sizeof(turn->nick) + 64] = {0};
         // if (game_state->player_count > 1)
-        // snprintf(winner_text, sizeof winner_text, "%s wins with %s", turn->name,
+        // snprintf(winner_text, sizeof winner_text, "%s wins with %s", turn->nick,
         // pokeval_ranks[pokeval_evaluate_hand(turn->hand)]);
         // else
-        // snprintf(winner_text, sizeof winner_text, "%s wins", turn->name);
+        // snprintf(winner_text, sizeof winner_text, "%s wins", turn->nick);
 
         // SDL_Rect dest = {sdl_context->win_center.x, sdl_context->win_center.y - 50, 80, 20};
         // render_text_plain(sdl_context->renderer, font->fonts[OTHER], winner_text,
@@ -800,8 +800,8 @@ void run_sdl_loop(ClientState_t *client_state, SdlContext_t *sdl_context, Font_t
         render_text_plain(sdl_context->renderer, font->fonts[OTHER], coins_text,
                           get_color(COLOR_BLACK), &dest);
 
-        char name_text[sizeof(turn->name)] = {0};
-        snprintf(name_text, sizeof name_text, "%s", turn->name);
+        char name_text[sizeof(turn->nick)] = {0};
+        snprintf(name_text, sizeof name_text, "%s", turn->nick);
         SDL_Rect dest_name = {player_pos[id].x + 30, player_pos[id].y + (card_height * 1.2), 40,
                               20};
         render_text_plain(sdl_context->renderer, font->fonts[OTHER], name_text,

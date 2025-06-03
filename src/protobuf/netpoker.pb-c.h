@@ -51,7 +51,7 @@ struct  Hand
 struct  Player
 {
   ProtobufCMessage base;
-  char *name;
+  char *nick;
   int32_t id;
   Hand *hand;
   int32_t coins;

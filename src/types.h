@@ -47,7 +47,7 @@ typedef enum {
 } EMenuOption_t;
 
 typedef struct {
-  char name[SIZEOF_NICK];
+  char nick[SIZEOF_NICK];
   int8_t id;
   struct pokeval_hand_t hand;
   int32_t coins;
