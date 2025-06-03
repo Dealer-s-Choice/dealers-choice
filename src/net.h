@@ -33,7 +33,7 @@
 
 // htonl and ntohl
 #ifdef _WIN32
-#include <winsock2.h>
+#include "dc_windows.h"
 #else
 #include <arpa/inet.h>
 #endif

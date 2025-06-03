@@ -1,5 +1,5 @@
 project(
-  'Dealer\'s Choice',
+  'dealers-choice',
   'c',
   version: '0.0.1.555',
   meson_version: '>= 0.56.0',
@@ -18,7 +18,10 @@ platform_is_windows = (host_sys == 'windows')
 
 win_deps = []
 if platform_is_windows
-  win_deps += cc.find_library('ws2_32')
+  w_lib = ['ws2_32', 'user32']
+  foreach lib : w_lib
+    win_deps += cc.find_library(lib, required: true)
+  endforeach
 endif
 
 # definitions = ['-D_DEFAULT_SOURCE']
@@ -36,7 +39,6 @@ extra_flags = [
 ]
 
 add_project_arguments(cc.get_supported_arguments(extra_flags), language: 'c')
-binary_name = 'dealerschoice'
 
 canfigger_dep = dependency(
   'canfigger',
@@ -83,7 +85,7 @@ game_dep = declare_dependency(
 )
 
 exe_target = executable(
-  binary_name,
+  meson.project_name(),
   ['src/main.c'],
   dependencies: game_dep,
   install: false,

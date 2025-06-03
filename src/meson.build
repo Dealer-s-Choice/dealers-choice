@@ -17,8 +17,8 @@ shared_src = files(
 
 conf = configuration_data()
 conf.set_quoted('DEALERSCHOICE_VERSION', meson.project_version())
+conf.set_quoted('DEALERSCHOICE_FORMAL_NAME', 'Dealer\'s Choice')
 conf.set_quoted('DEALERSCHOICE_NAME', meson.project_name())
-conf.set_quoted('DEALERSCHOICE_BINARY_NAME', binary_name)
 conf.set_quoted(
   'DEALERSCHOICE_URL',
   'https://github.com/Dealer-s-Choice/dealers_choice',
@@ -29,7 +29,7 @@ conf.set_quoted(
 )
 conf.set_quoted(
   'DEALERSCHOICE_DATADIR',
-  join_paths(get_option('prefix'), get_option('datadir'), 'games', binary_name),
+  join_paths(get_option('prefix'), get_option('datadir'), 'games', meson.project_name()),
 )
 
 configure_file(output: 'config.h', configuration: conf)
