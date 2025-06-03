@@ -833,14 +833,22 @@ int run_server(const char *bind_address, const bool test_mode) {
         send_all_tcp(new_client, &net_player_id, sizeof(int32_t));
 
         if (!test_mode) {
-          if (recv_all_tcp(new_client, game_state.player[slot].name,
-                           sizeof(game_state.player[slot].name)) <= 0) {
-            fprintf(stderr, "Failed to receive nickname.\n");
-            SDLNet_TCP_Close(new_client);
-            game_state.player[slot].id = -1;
-            game_state.player[slot].in = false;
-            slot_taken[slot] = false;
-            break;
+          int32_t net_len;
+          // Recv the size first
+          if (recv_all_tcp(new_client, &net_len, sizeof(int32_t)) > 0) {
+            size_t len = ntohl(net_len);
+
+            // Then the actual data (player name, in this case)
+            if (recv_all_tcp(new_client, game_state.player[slot].name, len) <= 0) {
+              fprintf(stderr, "Failed to receive nickname.\n");
+              SDLNet_TCP_Close(new_client);
+              game_state.player[slot].id = -1;
+              game_state.player[slot].in = false;
+              slot_taken[slot] = false;
+              break;
+            }
+          } else {
+            // TODO: handle error
           }
         }
 

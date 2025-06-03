@@ -70,9 +70,14 @@ SocketContext_t get_socket_context_and_run_client(PlayerConfig_t *player_config,
     goto cleanup;
   }
 
-  if (!test_mode)
-    if (send_all_tcp(socket_context.sock, player_config->nick, sizeof(player_config->nick)) != 0)
+  if (!test_mode) {
+    char *nick = player_config->nick;
+    size_t len = strlen(nick);
+    int32_t net_len = htonl(len);
+    send_all_tcp(socket_context.sock, &net_len, sizeof(int32_t));
+    if (send_all_tcp(socket_context.sock, player_config->nick, len) != 0)
       fprintf(stderr, "Failed to send player nick to server\n");
+  }
 
   // GameState_t game_state = {0};
   ClientState_t client_state = {0};
