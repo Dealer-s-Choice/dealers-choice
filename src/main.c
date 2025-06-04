@@ -36,7 +36,8 @@
 
 enum { RUN_CLIENT = 20 };
 
-static int menu_display_connect(char *host_str, SDL_Renderer *renderer, Font_t *font) {
+static int menu_display_connect(PlayerConfig_t *player_config, char *host_str,
+                                SDL_Renderer *renderer, Font_t *font) {
   Button_t button_connect = {
       .text = "Connect",
       .renderer = renderer,
@@ -48,6 +49,11 @@ static int menu_display_connect(char *host_str, SDL_Renderer *renderer, Font_t *
   };
 
   SDL_Rect input_box = make_rect(100, 220, 200, 40);
+
+  // TODO: Create a 'input_box' struct similar to CardContext_t. It will
+  // be used for inputs such as the host ip, nick, and port
+  // This isn't actually an input yet.
+  SDL_Rect input_nick = make_rect(100, 380, 300, 40);
   SDL_StartTextInput();
 
   bool run_client = false;
@@ -87,6 +93,10 @@ static int menu_display_connect(char *host_str, SDL_Renderer *renderer, Font_t *
     SDL_RenderDrawRect(renderer, &input_box);
     SDL_Rect input_text_pos = {input_box.x, input_box.y, 0, 0};
     render_text(renderer, font->fonts[OTHER], host_str, get_color(COLOR_WHITE), &input_text_pos);
+
+    SDL_Rect input_nick_pos = {input_nick.x, input_nick.y, 0, 0};
+    render_text_plain(renderer, font->fonts[OTHER], player_config->nick, get_color(COLOR_BLACK),
+                      &input_nick_pos);
 
     SDL_RenderPresent(renderer);
     SDL_Delay(16);
@@ -160,12 +170,11 @@ int main(int argc, char *argv[]) {
     fprintf(stderr, "Unabled to load config\n");
     exit(EXIT_FAILURE);
   }
-  printf("nick: %s\n", player_config.nick);
 
   char host_str[MAX_INPUT_LENGTH] = {0};
   snprintf(host_str, sizeof(host_str), "%s", (host) ? host : player_config.host);
 
-  if (menu_display_connect(host_str, sdl_context.renderer, &font) == RUN_CLIENT) {
+  if (menu_display_connect(&player_config, host_str, sdl_context.renderer, &font) == RUN_CLIENT) {
     printf("Attempting to connect to: %s\n", host_str);
     get_socket_context_and_run_client(&player_config, &sdl_context, &font, test_mode);
   }

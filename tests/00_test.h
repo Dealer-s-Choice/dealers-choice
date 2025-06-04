@@ -36,7 +36,7 @@
   GameState_t game_state[2] = {0};                                                                 \
   ClientState_t client_state[2] = {0};                                                             \
   PlayerConfig_t player_config = get_player_config();                                              \
-  snprintf(player_config.host, sizeof(player_config.host), "127.0.0.1");                           \
+  strcpy(player_config.host, "127.0.0.1");                                                         \
   const bool test_mode = true;                                                                     \
   SocketContext_t socket_context[2];                                                               \
   const int n_seconds = 1;                                                                         \

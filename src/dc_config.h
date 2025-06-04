@@ -43,7 +43,7 @@ typedef struct {
 
 typedef struct {
   bool loaded;
-  char nick[64];
+  char nick[SIZEOF_NICK];
   char host[MAX_INPUT_LENGTH];
   int port;
 } PlayerConfig_t;
