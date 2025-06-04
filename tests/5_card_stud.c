@@ -1,8 +1,7 @@
 #include "00_test.h"
 
 int main(int argc, char *argv[]) {
-  _SETUP_SOCKET_CONTEXT_
-
+#include "_setup_socket_context.c"
   sleep(n_seconds);
   fprintf(stderr, "Dealer %d selecting game\n", *dealer_id);
   assert(send_game_select(socket_context[*dealer_id].sock,
