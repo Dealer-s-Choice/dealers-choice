@@ -84,7 +84,7 @@ Config_t init_game_state(GameState_t *game_state, Path_t *path, const bool test_
   for (int i = 0; i < MAX_PLAYERS; i++) {
     game_state->player[i] = (Player_t){
         .id = -1,
-        .coins = 20000,
+        .coins = STARTING_N_COINS,
         .in = false,
         .total_paid = 0,
         .winner = false,
@@ -587,6 +587,8 @@ static void remove_disconnected_player(TCPsocket *clients, SDLNet_SocketSet sock
   slot_taken[id] = false;
 
   // Reset player info
+  memset(p->nick, 0, sizeof(p->nick));
+  p->coins = STARTING_N_COINS;
   p->total_paid = 0;
   p->winner = false;
   p->has_checked = false;
@@ -724,6 +726,75 @@ static void play_game(const char game_type, ArgsBroadcastGameState_t *args, DH_D
   }
 }
 
+static size_t utf8_char_len(const char *s) {
+  unsigned char c = (unsigned char)*s;
+  if (c < 0x80)
+    return 1;
+  else if ((c >> 5) == 0x6)
+    return 2;
+  else if ((c >> 4) == 0xE)
+    return 3;
+  else if ((c >> 3) == 0x1E)
+    return 4;
+  return 1; // Invalid or overlong UTF-8; treat as 1 byte
+}
+
+static void utf8_truncate(char *dest, const char *src, size_t max_bytes) {
+  size_t used = 0;
+  while (*src) {
+    size_t len = utf8_char_len(src);
+    if (used + len > max_bytes - 1) // Ensure space for '\0'
+      break;
+    memcpy(dest + used, src, len);
+    used += len;
+    src += len;
+  }
+  dest[used] = '\0';
+}
+
+static void ensure_unique_nick(GameState_t *game_state, Player_t *player, const int slot) {
+  const size_t max_len = sizeof(player->nick) - 1;
+  const int suffix_limit = 1000;
+
+  char base[sizeof(player->nick)];
+  utf8_truncate(base, player->nick, sizeof(player->nick));
+  base[max_len] = '\0';
+
+  char candidate[sizeof(player->nick)];
+  int suffix = 0;
+
+  while (suffix < suffix_limit) {
+    if (suffix == 0) {
+      strncpy(candidate, base, sizeof(candidate));
+      candidate[sizeof(candidate) - 1] = '\0';
+    } else {
+      int needed = snprintf(NULL, 0, "_%d", suffix);
+      size_t base_limit = max_len - needed;
+
+      utf8_truncate(candidate, base, base_limit + 1);
+      snprintf(candidate + strlen(candidate), sizeof(candidate) - strlen(candidate), "_%d", suffix);
+    }
+
+    bool unique = true;
+    for (int i = 0; i < MAX_PLAYERS; ++i) {
+      if (i != slot && strcmp(candidate, game_state->player[i].nick) == 0) {
+        unique = false;
+        break;
+      }
+    }
+
+    if (unique) {
+      strncpy(player->nick, candidate, sizeof(player->nick));
+      player->nick[sizeof(player->nick) - 1] = '\0';
+      return;
+    }
+
+    suffix++;
+  }
+
+  fprintf(stderr, "Could not find a unique nickname after %d attempts\n", suffix_limit);
+}
+
 int run_server(const char *bind_address, const bool test_mode) {
   Path_t path = {0};
   get_data_dir(&path);
@@ -834,22 +905,26 @@ int run_server(const char *bind_address, const bool test_mode) {
 
         if (!test_mode) {
           int32_t net_len;
+
+          Player_t *player = &game_state.player[slot];
           // Recv the size first
           if (recv_all_tcp(new_client, &net_len, sizeof(int32_t)) > 0) {
             size_t len = ntohl(net_len);
 
+            memset(player->nick, 0, sizeof(player->nick));
             // Then the actual data (player name, in this case)
-            if (recv_all_tcp(new_client, game_state.player[slot].nick, len) <= 0) {
+            if (recv_all_tcp(new_client, player->nick, len) <= 0) {
               fprintf(stderr, "Failed to receive nickname.\n");
               SDLNet_TCP_Close(new_client);
-              game_state.player[slot].id = -1;
-              game_state.player[slot].in = false;
+              player->id = -1;
+              player->in = false;
               slot_taken[slot] = false;
               break;
             }
           } else {
             // TODO: handle error
           }
+          ensure_unique_nick(&game_state, player, slot);
         }
 
         // Count how many clients are currently connected

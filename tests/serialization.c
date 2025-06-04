@@ -2,7 +2,7 @@
 
 void test_player(void) {
   Player_t player = {0};
-  player = (Player_t){.nick = "Foo", .id = 1, .coins = 20000};
+  player = (Player_t){.nick = "Foo", .id = 1, .coins = STARTING_N_COINS};
 
   size_t size = 0;
   uint8_t *data = serialize_player(&player, &size);
@@ -19,7 +19,7 @@ void test_player(void) {
 
   assert(strcmp(player_receiver.nick, "Foo") == 0);
   assert(player_receiver.id == 1);
-  assert(player_receiver.coins == 20000);
+  assert(player_receiver.coins == STARTING_N_COINS);
 }
 
 void test_game_state(void) {
@@ -31,7 +31,7 @@ void test_game_state(void) {
                              .player[0] = {
                                  .nick = "Foo",
                                  .id = 0,
-                                 .coins = 20000,
+                                 .coins = STARTING_N_COINS,
                                  .in = true,
                                  .total_paid = 50,
                              }};
@@ -55,7 +55,7 @@ void test_game_state(void) {
   assert(game_state_receiver.total_bets_plus_raises == 623);
   assert(game_state_receiver.turn_id == 3);
   assert(game_state_receiver.player[0].id == 0);
-  assert(game_state_receiver.player[0].coins == 20000);
+  assert(game_state_receiver.player[0].coins == STARTING_N_COINS);
   assert(game_state_receiver.player[0].in);
   assert(game_state_receiver.player[0].total_paid == 50);
 }

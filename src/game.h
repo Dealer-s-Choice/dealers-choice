@@ -41,6 +41,8 @@
 #include "server.h"
 #include "types.h"
 
+#define STARTING_N_COINS 20000
+
 typedef enum {
   ACTION_INVALID = 0x00,
   ACTION_CHECK = 0x01,
