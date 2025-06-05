@@ -138,6 +138,7 @@ PlayerConfig_t get_player_config(void) {
   struct Canfigger *cfg_node = canfigger_parse_file(cfg_pathname, ',');
   if (!cfg_node) {
     if (check_pathname_state(cfg_pathname) == PATH_NOT_FOUND) {
+      printf("Creating %s\n", cfg_pathname);
       FILE *fp = fopen(cfg_pathname, "w");
       if (fp) {
         for (size_t i = 0; i < config_entry_count; i++) {
