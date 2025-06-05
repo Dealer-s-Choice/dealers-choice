@@ -69,6 +69,7 @@ typedef struct {
   bool do_discard_draw;
   bool has_ace;
   uint8_t n_cards_selected;
+  int selected_amount;
   char server_status_str[LEN_STATUS_STR];
 } ClientState_t;
 

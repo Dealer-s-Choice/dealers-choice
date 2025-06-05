@@ -50,15 +50,16 @@ typedef enum {
   ACTION_BET = 0x03,
   ACTION_RAISE = 0x04,
   ACTION_FOLD = 0x05
-} player_action_t;
+} EPlayerAction_t;
 
 #define MSG_PLAYER_ACTION 0x0002
 #define SIZE_MESSAGE_GAME_SELECT 3
 
-struct player_action_msg_t {
+typedef struct {
   uint8_t action;
   uint32_t amount; // only used for bet/raise
-};
+  const char *str;
+} PlayerActionMsg_t;
 
 const GameChoice_t *find_game_choice_by_type(const uint8_t type);
 

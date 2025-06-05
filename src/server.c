@@ -251,12 +251,14 @@ static int8_t recv_game_select(TCPsocket sock, uint8_t *out_game_type) {
   return bytes_n;
 }
 
-static int recv_player_action(TCPsocket sock, struct player_action_msg_t *out_action) {
+static int recv_player_action(TCPsocket sock, PlayerActionMsg_t *out_action) {
   uint8_t buffer[7];
 
   int n_bytes;
-  if ((n_bytes = recv_all_tcp(sock, buffer, sizeof(buffer))) <= 0)
+  if ((n_bytes = recv_all_tcp(sock, buffer, sizeof(buffer))) <= 0) {
+    fprintf(stderr, "Failed to receive player action\n");
     return n_bytes;
+  }
 
   uint16_t opcode = (buffer[0] << 8) | buffer[1];
   if (opcode != MSG_PLAYER_ACTION)
@@ -266,6 +268,7 @@ static int recv_player_action(TCPsocket sock, struct player_action_msg_t *out_ac
   out_action->amount = ((uint32_t)buffer[3] << 24) | ((uint32_t)buffer[4] << 16) |
                        ((uint32_t)buffer[5] << 8) | ((uint32_t)buffer[6]);
 
+  fprintf(stderr, "Received action %u with amount %u\n", out_action->action, out_action->amount);
   return n_bytes;
 }
 
@@ -362,13 +365,13 @@ static void handle_draw(ArgsBroadcastGameState_t *args, TCPsocket sock, const in
   broadcast_status_message(args, status_str);
 }
 
-static player_action_t handle_check(Player_t *turn) {
+static EPlayerAction_t handle_check(Player_t *turn) {
   turn->has_checked = true;
   puts("player checks");
   return ACTION_CHECK;
 }
 
-static player_action_t handle_fold(ArgsBroadcastGameState_t *args, Player_t *turn) {
+static EPlayerAction_t handle_fold(ArgsBroadcastGameState_t *args, Player_t *turn) {
   turn->in = false;
   args->game_state->player_count--;
   return ACTION_FOLD;
@@ -445,44 +448,45 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args) {
   RoundResults results = {0};
 
   do {
-    char status_str[LEN_STATUS_STR] = {0};
     args->game_state->turn_id = turn->id;
     broadcast_game_state(args);
 
     Uint32 wait_ms = args->game_state->action_time_out_ms;
     Uint32 start = SDL_GetTicks();
 
-    struct player_action_msg_t action = {0};
+    PlayerActionMsg_t action = {0};
     while (SDL_GetTicks() - start < wait_ms) {
       // fprintf(stderr, "Waiting for action from %d\n", args->game_state->turn_id);
       SDLNet_CheckSockets(*args->socket_set, 100); // wait up to 100ms
       if (SDLNet_SocketReady((*args->clients)[turn->id])) {
         // puts("socket ready");
         // char tmp[sizeof args->game_state->status_str];
-        if (recv_player_action((*args->clients)[args->game_state->turn_id], &action) > 0) {
-          printf("Received action %u with amount %u\n", action.action, action.amount);
-
+        if (recv_player_action((*args->clients)[turn->id], &action) > 0) {
           switch (action.action) {
           case ACTION_CHECK:
             handle_check(turn);
+            action.str = "checks";
             break;
           case ACTION_BET:
             server_handle_bet(args->game_state, turn->id, action.amount);
+            action.str = "bets ";
             break;
           case ACTION_FOLD:
             handle_fold(args, turn);
+            action.str = "folds";
             break;
           case ACTION_CALL:
             server_handle_call(args->game_state, turn->id);
+            action.str = "calls";
             break;
           case ACTION_RAISE:
             server_handle_raise(args->game_state, turn->id, action.amount);
+            action.str = "raises ";
             break;
           default:
             fprintf(stderr, "Invalid Action received\n");
           }
         } else {
-          fprintf(stderr, "Failed to receive player action\n");
           remove_disconnected_player(*args->clients, *args->socket_set, *args->slot_taken, turn);
           args->game_state->player_count--;
           (*args->active_clients)--;
@@ -501,8 +505,11 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args) {
       }
     }
 
-    snprintf(status_str, sizeof(status_str), "Received action from %s: %u with amount %u\n",
-             turn->nick, action.action, action.amount);
+    char status_str[LEN_STATUS_STR] = {0};
+    if (action.amount > 0)
+      snprintf(status_str, sizeof status_str, "%s %s%d\n", turn->nick, action.str, action.amount);
+    else
+      snprintf(status_str, sizeof status_str, "%s %s\n", turn->nick, action.str);
     broadcast_status_message(args, status_str);
 
     turn = get_next_player(players_array, turn->id);

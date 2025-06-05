@@ -85,8 +85,6 @@ void clear_screen(SDL_Renderer *renderer);
 
 void init_sdl_window(SdlContext_t *sdl_context, const char *title);
 
-SDL_Rect make_rect(int x, int y, int w, int h);
-
 void render_text(SDL_Renderer *renderer, TTF_Font *font, const char *text, SDL_Color color,
                  SDL_Rect *dest);
 
@@ -97,9 +95,10 @@ typedef struct {
   SDL_Color fg_color;
   SDL_Rect rect;
   TTF_Font *font;
-  bool hovered;
-  bool enabled;
+  bool hovered, enabled, selected;
 } Button_t;
+
+void mark_selected(SDL_Renderer *renderer, SDL_Rect *rect);
 
 void render_button(Button_t *button);
 
