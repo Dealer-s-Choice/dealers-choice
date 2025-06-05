@@ -1,0 +1,34 @@
+name: Deploy Docs
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
+
+on:
+  push:
+    branches: [trunk]
+    paths:
+      - 'README.md'
+      - '!**.yml'
+      - '**/deploy-docs.yml'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source repo
+        uses: actions/checkout@v4
+
+      - name: Prepare files for deployment
+        run: |
+          mkdir deploy
+          cp README.md deploy/
+
+      - name: Deploy to destination repo
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          deploy_key: ${{ secrets.ACTIONS_DEPLOY_KEY }}
+          external_repository: dealer-s-choice/dealer-s-choice.github.io
+          publish_branch: trunk
+          publish_dir: ./deploy
+          keep_files: true
