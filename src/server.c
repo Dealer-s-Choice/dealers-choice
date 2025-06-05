@@ -913,7 +913,7 @@ int run_server(const char *bind_address, const bool test_mode) {
 
             memset(player->nick, 0, sizeof(player->nick));
             // Then the actual data (player name, in this case)
-            if (recv_all_tcp(new_client, player->nick, len) <= 0) {
+            if (recv_all_tcp(new_client, player->nick, len) != (ssize_t)len) {
               fprintf(stderr, "Failed to receive nickname.\n");
               SDLNet_TCP_Close(new_client);
               player->id = -1;
