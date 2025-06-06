@@ -365,15 +365,18 @@ static void handle_draw(ArgsBroadcastGameState_t *args, TCPsocket sock, const in
   broadcast_status_message(args, status_str);
 }
 
-static EPlayerAction_t handle_check(Player_t *turn) {
+static EPlayerAction_t handle_check(Player_t *turn, PlayerActionMsg_t *action) {
   turn->has_checked = true;
   puts("player checks");
+  action->str = "checks";
   return ACTION_CHECK;
 }
 
-static EPlayerAction_t handle_fold(ArgsBroadcastGameState_t *args, Player_t *turn) {
+static EPlayerAction_t handle_fold(ArgsBroadcastGameState_t *args, Player_t *turn,
+                                   PlayerActionMsg_t *action) {
   turn->in = false;
   args->game_state->player_count--;
+  action->str = "folds";
   return ACTION_FOLD;
 }
 
@@ -464,16 +467,14 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args) {
         if (recv_player_action((*args->clients)[turn->id], &action) > 0) {
           switch (action.action) {
           case ACTION_CHECK:
-            handle_check(turn);
-            action.str = "checks";
+            handle_check(turn, &action);
             break;
           case ACTION_BET:
             server_handle_bet(args->game_state, turn->id, action.amount);
             action.str = "bets ";
             break;
           case ACTION_FOLD:
-            handle_fold(args, turn);
-            action.str = "folds";
+            handle_fold(args, turn, &action);
             break;
           case ACTION_CALL:
             server_handle_call(args->game_state, turn->id);
@@ -499,9 +500,9 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args) {
 
     if (action.action == 0) {
       if (!has_paid_all_bets(args->game_state, turn)) {
-        action.action = handle_fold(args, turn);
+        action.action = handle_fold(args, turn, &action);
       } else if (args->game_state->total_bets_plus_raises == 0) {
-        action.action = handle_check(turn);
+        action.action = handle_check(turn, &action);
       }
     }
 
