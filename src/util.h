@@ -51,4 +51,6 @@ char *get_config_dir(void);
 
 int make_directory_recursive(const char *path);
 
+void *calloc_wrap(const size_t n, const size_t size);
+
 #endif

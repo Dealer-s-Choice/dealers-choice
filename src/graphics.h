@@ -31,6 +31,7 @@
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
+#include <SDL_image.h>
 
 #include "net.h"
 #include "types.h"
@@ -109,5 +110,7 @@ void render_text_plain(SDL_Renderer *renderer, TTF_Font *font, const char *text,
                        SDL_Rect *dest);
 
 void do_sdl_cleanup(SdlContext_t *sdl_context);
+
+SDL_Texture *load_texture(SDL_Renderer *renderer, const char *path);
 
 #endif

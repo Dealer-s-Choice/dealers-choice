@@ -111,6 +111,8 @@ int main(int argc, char *argv[]) {
   const char *host = NULL;
   bool test_mode = false;
   bool run_server_flag = false;
+  Path_t path = {0};
+  get_data_dir(&path);
 
   for (int i = 1; i < argc; ++i) {
     if (strcmp(argv[i], "--server") == 0) {
@@ -142,7 +144,7 @@ int main(int argc, char *argv[]) {
   }
 
   if (run_server_flag) {
-    return run_server(bind_address, test_mode);
+    return run_server(bind_address, &path, test_mode);
   }
 
   if (SDL_Init(SDL_INIT_VIDEO) == -1 || SDLNet_Init() == -1) {
@@ -176,7 +178,8 @@ int main(int argc, char *argv[]) {
 
   if (menu_display_connect(&player_config, host_str, sdl_context.renderer, &font) == RUN_CLIENT) {
     printf("Attempting to connect to: %s\n", host_str);
-    get_socket_context_and_run_client(&player_config, host_str, &sdl_context, &font, test_mode);
+    get_socket_context_and_run_client(&player_config, host_str, &sdl_context, &font, &path,
+                                      test_mode);
   }
 
   for (int i = 0; i < NUM_FONTS; ++i)
