@@ -40,5 +40,5 @@ typedef struct {
 } SocketContext_t;
 
 SocketContext_t get_socket_context_and_run_client(PlayerConfig_t *player_config,
-                                                  SdlContext_t *sdl_context, Font_t *font,
-                                                  const bool test_mode);
+                                                  const char *host_str, SdlContext_t *sdl_context,
+                                                  Font_t *font, const bool test_mode);

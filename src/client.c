@@ -36,11 +36,11 @@
 #include "graphics.h"
 
 SocketContext_t get_socket_context_and_run_client(PlayerConfig_t *player_config,
-                                                  SdlContext_t *sdl_context, Font_t *font,
-                                                  const bool test_mode) {
+                                                  const char *host_str, SdlContext_t *sdl_context,
+                                                  Font_t *font, const bool test_mode) {
   IPaddress server_ip;
   SocketContext_t socket_context = {NULL, NULL, -1};
-  if (SDLNet_ResolveHost(&server_ip, player_config->host, player_config->port) == -1) {
+  if (SDLNet_ResolveHost(&server_ip, host_str, player_config->port) == -1) {
     fprintf(stderr, "Failed to resolve server: %s\n", SDLNet_GetError());
     return socket_context;
   }

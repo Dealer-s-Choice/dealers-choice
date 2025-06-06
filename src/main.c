@@ -176,7 +176,7 @@ int main(int argc, char *argv[]) {
 
   if (menu_display_connect(&player_config, host_str, sdl_context.renderer, &font) == RUN_CLIENT) {
     printf("Attempting to connect to: %s\n", host_str);
-    get_socket_context_and_run_client(&player_config, &sdl_context, &font, test_mode);
+    get_socket_context_and_run_client(&player_config, host_str, &sdl_context, &font, test_mode);
   }
 
   for (int i = 0; i < NUM_FONTS; ++i)
