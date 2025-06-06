@@ -48,12 +48,12 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str,
       .enabled = true,
   };
 
-  SDL_Rect input_box = make_rect(100, 220, 200, 40);
+  SDL_Rect input_box = (SDL_Rect){100, 220, 200, 40};
 
   // TODO: Create a 'input_box' struct similar to CardContext_t. It will
   // be used for inputs such as the host ip, nick, and port
   // This isn't actually an input yet.
-  SDL_Rect input_nick = make_rect(100, 380, 300, 40);
+  SDL_Rect input_nick = (SDL_Rect){100, 380, 300, 40};
   SDL_StartTextInput();
 
   bool run_client = false;

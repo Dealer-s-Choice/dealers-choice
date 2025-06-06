@@ -86,6 +86,7 @@ static Button_t create_button(const char *text, SDL_Renderer *renderer, SDL_Poin
       .font = font,
       .hovered = false,
       .enabled = true,
+      .selected = false,
   };
   return button;
 }
@@ -101,6 +102,7 @@ static Button_t create_game_choice_button(const char *text, SDL_Renderer *render
       .font = font,
       .hovered = false,
       .enabled = false,
+      .selected = false,
   };
   return button;
 }
@@ -389,16 +391,8 @@ static void render_card(CardContext_t *context, TTF_Font *font) {
     SDL_SetRenderDrawBlendMode(context->renderer, SDL_BLENDMODE_NONE);
   }
 
-  // Draw thick lightgrey border if selected
-  if (context->selected) {
-    SDL_SetRenderDrawColor(context->renderer, 200, 200, 200, 255); // light grey
-    int thickness = 4;
-    for (int i = 0; i < thickness; ++i) {
-      SDL_Rect border = {context->rect.x - i, context->rect.y - i, context->rect.w + 2 * i,
-                         context->rect.h + 2 * i};
-      SDL_RenderDrawRect(context->renderer, &border);
-    }
-  }
+  if (context->selected)
+    mark_selected(context->renderer, &context->rect);
 
   // Draw card border
   SDL_SetRenderDrawColor(context->renderer, 0, 0, 0, 255);
@@ -526,13 +520,36 @@ void run_sdl_loop(ClientState_t *client_state, SdlContext_t *sdl_context, Font_t
   const char *action[] = {[BET] = "Bet",     [CHECK] = "Check", [FOLD] = "Fold",
                           [RAISE] = "Raise", [CALL] = "Call",   [DISCARD] = "Discard"};
 
-  int x_offset = 100;
+  const int start_x_offset = 100;
+  int x_offset = start_x_offset;
+  const int action_button_y = sdl_context->win_center.y;
   Button_t action_button[MAX_ACTIONS];
   for (int i = 0; i < MAX_ACTIONS; i++) {
-    SDL_Point butt_pos = {x_offset += 130, sdl_context->win_center.y + 20};
+    SDL_Point butt_pos = {x_offset += 130, action_button_y + 20};
     action_button[i] =
         create_button(action[i], sdl_context->renderer, &butt_pos, font->fonts[OTHER]);
   }
+
+  x_offset = start_x_offset + 150;
+  const uint8_t n_amounts = 3;
+  Button_t amount_button[n_amounts];
+  const char *amount[] = {"100", "250", "500"};
+  for (int i = 0; i < n_amounts; i++) {
+    const uint8_t w = 60;
+    const uint8_t space = 5;
+    amount_button[i] = (Button_t){
+        amount[i],
+        sdl_context->renderer,
+        get_color(COLOR_WHITE),
+        get_color(COLOR_BROWN),
+        (SDL_Rect){x_offset + (i * (w + space)), action_button_y + 80, w, 40},
+        font->fonts[OTHER],
+        false,
+        true,
+        false,
+    };
+  }
+  amount_button[0].selected = true;
 
   int card_width = 80, card_height = 50;
 
@@ -564,6 +581,7 @@ void run_sdl_loop(ClientState_t *client_state, SdlContext_t *sdl_context, Font_t
         cards_dealt = false;
         starting_turn = &game_state.player[game_state.turn_id];
         memset(client_state, 0, sizeof *client_state);
+        client_state->selected_amount = atoi(amount[0]);
         memset(status_msg, 0, sizeof status_msg);
         continue;
       }
@@ -628,14 +646,33 @@ void run_sdl_loop(ClientState_t *client_state, SdlContext_t *sdl_context, Font_t
         for (int i = 0; i < MAX_ACTIONS; i++) {
           action_button[i].hovered = SDL_PointInRect(&mouse_pos, &action_button[i].rect);
         }
+        for (int i = 0; i < n_amounts; i++) {
+          amount_button[i].hovered = SDL_PointInRect(&mouse_pos, &amount_button[i].rect);
+          if (amount_button[i].hovered && event.type == SDL_MOUSEBUTTONDOWN) {
+            amount_button[i].selected = true;
+            client_state->selected_amount = atoi(amount_button[i].text);
+            break;
+          }
+        }
         if (event.type == SDL_QUIT) {
           running = false;
         } else if (event.type == SDL_MOUSEBUTTONDOWN) {
+          for (int i = 0; i < n_amounts; i++) {
+            if (SDL_PointInRect(&mouse_pos, &amount_button[i].rect)) {
+              // Deselect all buttons
+              for (int j = 0; j < n_amounts; j++) {
+                amount_button[j].selected = false;
+              }
+              // Select the clicked one
+              amount_button[i].selected = true;
+              break;
+            }
+          }
           if (game_state.turn_id == my_id && !client_state->do_discard_draw) {
             // TODO: use existing array (or modify it) to loop through each action
             if (SDL_PointInRect(&mouse_pos, &action_button[BET].rect)) {
               puts("sending bet");
-              if (send_player_action(client_socket, ACTION_BET, 500) != 0)
+              if (send_player_action(client_socket, ACTION_BET, client_state->selected_amount) != 0)
                 fprintf(stderr, "Failed to send bet\n");
             } else if (SDL_PointInRect(&mouse_pos, &action_button[FOLD].rect)) {
               puts("folding");
@@ -647,7 +684,8 @@ void run_sdl_loop(ClientState_t *client_state, SdlContext_t *sdl_context, Font_t
                 fprintf(stderr, "Failed to check\n");
             } else if (SDL_PointInRect(&mouse_pos, &action_button[RAISE].rect)) {
               puts("raising");
-              if (send_player_action(client_socket, ACTION_RAISE, 500) != 0)
+              if (send_player_action(client_socket, ACTION_RAISE, client_state->selected_amount) !=
+                  0)
                 fprintf(stderr, "Failed to raise\n");
             } else if (SDL_PointInRect(&mouse_pos, &action_button[CALL].rect)) {
               puts("calling");
@@ -770,6 +808,8 @@ void run_sdl_loop(ClientState_t *client_state, SdlContext_t *sdl_context, Font_t
             render_button(&action_button[RAISE]);
             render_button(&action_button[FOLD]);
           }
+          for (int i = 0; i < n_amounts; i++)
+            render_button(&amount_button[i]);
         } else {
 
           // Uint32 now = SDL_GetTicks();

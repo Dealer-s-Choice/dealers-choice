@@ -140,11 +140,6 @@ void render_text_centered(SDL_Renderer *renderer, TTF_Font *font, const char *te
   SDL_FreeSurface(surface);
 }
 
-SDL_Rect make_rect(int x, int y, int w, int h) {
-  SDL_Rect r = {x, y, w, h};
-  return r;
-}
-
 void render_text(SDL_Renderer *renderer, TTF_Font *font, const char *text, SDL_Color color,
                  SDL_Rect *dest) {
   if (!text)
@@ -214,6 +209,15 @@ void render_text_plain(SDL_Renderer *renderer, TTF_Font *font, const char *text,
   SDL_DestroyTexture(texture);
 }
 
+void mark_selected(SDL_Renderer *renderer, SDL_Rect *rect) {
+  SDL_SetRenderDrawColor(renderer, 200, 200, 200, 255); // light grey
+  int thickness = 4;
+  for (int i = 0; i < thickness; ++i) {
+    SDL_Rect border = {rect->x - i, rect->y - i, rect->w + 2 * i, rect->h + 2 * i};
+    SDL_RenderDrawRect(renderer, &border);
+  }
+}
+
 void render_button(Button_t *button) {
   // Draw the filled background
   SDL_SetRenderDrawColor(button->renderer, button->bg_color.r, button->bg_color.g,
@@ -221,8 +225,8 @@ void render_button(Button_t *button) {
   SDL_RenderFillRect(button->renderer, &button->rect);
 
   // Adjust intensity scale based on hover state
-  float lighten_factor = (button->hovered && button->enabled) ? 0.5f : 0.3f;
-  float darken_factor = (button->hovered && button->enabled) ? 0.5f : 0.7f;
+  float lighten_factor = (button->hovered && button->enabled) ? 0.7f : 0.3f;
+  float darken_factor = (button->hovered && button->enabled) ? 0.5f : 0.9f;
 
   // Compute lighter and darker shades of the background color
   Uint8 light_r = button->bg_color.r + (Uint8)((255 - button->bg_color.r) * lighten_factor);
@@ -245,6 +249,9 @@ void render_button(Button_t *button) {
     SDL_RenderDrawLine(button->renderer, button->rect.x + i, button->rect.y, button->rect.x + i,
                        button->rect.y + button->rect.h - 1); // Left
   }
+
+  if (button->selected)
+    mark_selected(button->renderer, &button->rect);
 
   // Draw bottom-right (dark) border
   SDL_SetRenderDrawColor(button->renderer, dark_r, dark_g, dark_b, 255);
