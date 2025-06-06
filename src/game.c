@@ -466,7 +466,27 @@ static void create_card_context(CardContext_t card_context[MAX_PLAYERS][HAND_SIZ
 
 void run_sdl_loop(ClientState_t *client_state, SdlContext_t *sdl_context, Font_t *font,
                   TCPsocket client_socket, SDLNet_SocketSet socket_set, const uint8_t my_id) {
+  Uint32 start_time = SDL_GetTicks(); // milliseconds
+  const Uint32 timeout = 2000;        // 2 seconds
+  const Uint32 retry_delay = 100;     // milliseconds per retry
+
+  ERecvStatus_t recv_status;
   GameState_t game_state = {0};
+
+  do {
+    recv_status = recv_game_state(client_socket, socket_set, &game_state, client_state, my_id);
+
+    if (recv_status == RECV_SUCCESS) {
+      break;
+    } else if (recv_status == RECV_ERROR) {
+      fprintf(stderr, "Initial game state not received\n");
+      exit(EXIT_FAILURE);
+    }
+
+    SDL_Delay(retry_delay);
+  } while (SDL_GetTicks() - start_time < timeout);
+  if (recv_status != RECV_SUCCESS)
+    exit(EXIT_FAILURE);
 
   const SDL_Point player_pos[MAX_PLAYERS] = {
       // P0: bottom center
@@ -564,8 +584,7 @@ void run_sdl_loop(ClientState_t *client_state, SdlContext_t *sdl_context, Font_t
   Player_t *turn = NULL;
   Player_t *starting_turn = NULL;
   while (running) {
-    ERecvStatus_t recv_status =
-        recv_game_state(client_socket, socket_set, &game_state, client_state, my_id);
+    recv_status = recv_game_state(client_socket, socket_set, &game_state, client_state, my_id);
     // printf("%d\n", __LINE__);
     if (recv_status == RECV_ERROR)
       running = false;

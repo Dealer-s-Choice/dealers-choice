@@ -932,6 +932,7 @@ int run_server(const char *bind_address, const bool test_mode) {
           } else {
             // TODO: handle error
           }
+          printf("received nick: %s\n", player->nick);
           ensure_unique_nick(&game_state, player, slot);
         }
 
