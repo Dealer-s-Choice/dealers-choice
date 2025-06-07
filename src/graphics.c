@@ -209,6 +209,41 @@ void render_text_plain(SDL_Renderer *renderer, TTF_Font *font, const char *text,
   SDL_DestroyTexture(texture);
 }
 
+void render_nick(SDL_Renderer *renderer, TTF_Font *font, const char *text, SDL_Color color,
+                 SDL_Rect *dest, const bool is_turn) {
+  if (!text)
+    text = "";
+
+  SDL_Surface *surface = TTF_RenderUTF8_Blended(font, *text ? text : " ", color);
+  if (!surface) {
+    fprintf(stderr, "TTF_RenderUTF8_Blended error: %s\n", TTF_GetError());
+    return;
+  }
+
+  SDL_Texture *texture = SDL_CreateTextureFromSurface(renderer, surface);
+  if (!texture) {
+    fprintf(stderr, "SDL_CreateTextureFromSurface error: %s\n", SDL_GetError());
+    SDL_FreeSurface(surface);
+    return;
+  }
+
+  dest->w = surface->w;
+  dest->h = surface->h;
+
+  // Optional blinking background if it's their turn
+  if (is_turn && (SDL_GetTicks() / 500) % 2 == 0) { // Blinks every 500ms
+    SDL_Color blink_color = {255, 255, 0, 64};      // Yellow, transparent
+    SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+    SDL_SetRenderDrawColor(renderer, blink_color.r, blink_color.g, blink_color.b, blink_color.a);
+    SDL_RenderFillRect(renderer, dest);
+  }
+
+  SDL_RenderCopy(renderer, texture, NULL, dest);
+
+  SDL_FreeSurface(surface);
+  SDL_DestroyTexture(texture);
+}
+
 void mark_selected(SDL_Renderer *renderer, SDL_Rect *rect) {
   SDL_SetRenderDrawColor(renderer, 200, 200, 200, 255); // light grey
   int thickness = 4;

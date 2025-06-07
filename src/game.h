@@ -65,6 +65,8 @@ const GameChoice_t *find_game_choice_by_type(const uint8_t type);
 
 Player_t *get_next_player(Player_t *players_array, int cur);
 
+Player_t *get_next_connected_client(Player_t *players_array, int cur);
+
 bool is_dh_card_back(DH_Card a);
 
 bool is_dh_card_null(DH_Card a);

@@ -54,6 +54,17 @@ Player_t *get_next_player(Player_t *players_array, int cur) {
   return NULL; // No other active player found
 }
 
+Player_t *get_next_connected_client(Player_t *players_array, int cur) {
+  int start = cur;
+  do {
+    cur = (cur + 1) % MAX_PLAYERS;
+    if (players_array[cur].id != -1)
+      return &players_array[cur];
+  } while (cur != start);
+
+  return NULL; // No other active player found
+}
+
 int8_t send_game_select(TCPsocket sock, uint8_t game_type) {
   uint8_t buffer[3];
   buffer[0] = (MSG_GAME_SELECT >> 8) & 0xFF;
@@ -399,6 +410,8 @@ static void create_card_context(CardContext_t card_context[MAX_PLAYERS][HAND_SIZ
 
       SDL_Color textColor = {0, 0, 0, 0};
       context.textColor = textColor;
+      if (!turn->in)
+        memcpy(card, &DH_card_back, sizeof(DH_card_back));
 
       context.is_back = is_dh_card_back(*card);
       context.is_null = is_dh_card_null(*card);
@@ -416,7 +429,7 @@ static void create_card_context(CardContext_t card_context[MAX_PLAYERS][HAND_SIZ
       }
       card_context[id][card_n] = context;
     }
-  } while ((turn = get_next_player(players_array, turn->id)) != starting_turn);
+  } while ((turn = get_next_connected_client(players_array, turn->id)) != starting_turn);
 }
 
 void run_sdl_loop(ClientState_t *client_state, SdlContext_t *sdl_context, Font_t *font,
@@ -484,17 +497,17 @@ void run_sdl_loop(ClientState_t *client_state, SdlContext_t *sdl_context, Font_t
   char status_msg[16][LEN_STATUS_STR];
 
   enum {
-    BET,
     CHECK,
+    BET,
     FOLD,
-    RAISE,
     CALL,
+    RAISE,
     DISCARD,
     MAX_ACTIONS,
   };
 
-  const char *action[] = {[BET] = "Bet",     [CHECK] = "Check", [FOLD] = "Fold",
-                          [RAISE] = "Raise", [CALL] = "Call",   [DISCARD] = "Discard"};
+  const char *action[] = {[CHECK] = "Check", [BET] = "Bet",     [FOLD] = "Fold",
+                          [CALL] = "Call",   [RAISE] = "Raise", [DISCARD] = "Discard"};
 
   const int start_x_offset = 100;
   int x_offset = start_x_offset;
@@ -502,6 +515,12 @@ void run_sdl_loop(ClientState_t *client_state, SdlContext_t *sdl_context, Font_t
   Button_t action_button[MAX_ACTIONS];
   for (int i = 0; i < MAX_ACTIONS; i++) {
     SDL_Point butt_pos = {x_offset += 130, action_button_y + 20};
+    if (i == RAISE)
+      butt_pos = (SDL_Point){action_button[BET].rect.x, action_button[BET].rect.y};
+    else if (i == CALL)
+      butt_pos = (SDL_Point){action_button[CHECK].rect.x, action_button[CHECK].rect.y};
+    else if (i == DISCARD)
+      butt_pos = (SDL_Point){action_button[BET].rect.x, action_button[BET].rect.y};
     action_button[i] =
         create_button(action[i], sdl_context->renderer, &butt_pos, font->fonts[OTHER]);
   }
@@ -557,6 +576,8 @@ void run_sdl_loop(ClientState_t *client_state, SdlContext_t *sdl_context, Font_t
     else if (recv_status == RECV_SUCCESS)
       cards_created = false;
 
+    // printf("%d\n", __LINE__);
+
     if (game_state.at_menu) {
       if (menu_display_game_choices(client_socket, socket_set, my_id, &game_state, client_state,
                                     sdl_context, font) != RECV_SUCCESS) {
@@ -575,7 +596,7 @@ void run_sdl_loop(ClientState_t *client_state, SdlContext_t *sdl_context, Font_t
       // SDL_GetTicks();
 
       turn = &game_state.player[game_state.turn_id];
-      // printf("turn id: %d\n", game_state->turn_id);
+      // printf("turn id: %d\n", turn->id);
 
       if (strcmp(client_state->server_status_str, status_msg[15]) != 0) {
         // Shift messages up by one slot: [1]..[15] → [0]..[14]
@@ -599,6 +620,7 @@ void run_sdl_loop(ClientState_t *client_state, SdlContext_t *sdl_context, Font_t
                             sdl_context->renderer);
         cards_created = true;
       }
+      // printf("%d\n", __LINE__);
 
       SDL_Event event;
       while (SDL_PollEvent(&event)) {
@@ -654,28 +676,37 @@ void run_sdl_loop(ClientState_t *client_state, SdlContext_t *sdl_context, Font_t
             }
           }
           if (game_state.turn_id == my_id && !client_state->do_discard_draw) {
-            // TODO: use existing array (or modify it) to loop through each action
-            if (SDL_PointInRect(&mouse_pos, &action_button[BET].rect)) {
-              puts("sending bet");
-              if (send_player_action(client_socket, ACTION_BET, client_state->selected_amount) != 0)
-                fprintf(stderr, "Failed to send bet\n");
-            } else if (SDL_PointInRect(&mouse_pos, &action_button[FOLD].rect)) {
-              puts("folding");
-              if (send_player_action(client_socket, ACTION_FOLD, 0) != 0)
-                fprintf(stderr, "Failed to fold\n");
-            } else if (SDL_PointInRect(&mouse_pos, &action_button[CHECK].rect)) {
-              puts("checking");
-              if (send_player_action(client_socket, ACTION_CHECK, 0) != 0)
-                fprintf(stderr, "Failed to check\n");
-            } else if (SDL_PointInRect(&mouse_pos, &action_button[RAISE].rect)) {
-              puts("raising");
-              if (send_player_action(client_socket, ACTION_RAISE, client_state->selected_amount) !=
-                  0)
-                fprintf(stderr, "Failed to raise\n");
-            } else if (SDL_PointInRect(&mouse_pos, &action_button[CALL].rect)) {
-              puts("calling");
-              if (send_player_action(client_socket, ACTION_CALL, 0) != 0)
-                fprintf(stderr, "Failed to call\n");
+            if ((game_state.total_bets_plus_raises == 0 && !turn->has_checked) ||
+                game_state.player[my_id].total_paid != game_state.total_bets_plus_raises) {
+              if (SDL_PointInRect(&mouse_pos, &action_button[FOLD].rect)) {
+                puts("folding");
+                if (send_player_action(client_socket, ACTION_FOLD, 0) != 0)
+                  fprintf(stderr, "Failed to fold\n");
+              }
+            }
+            if (game_state.total_bets_plus_raises == 0 && !turn->has_checked) {
+              // TODO: use existing array (or modify it) to loop through each action
+              if (SDL_PointInRect(&mouse_pos, &action_button[BET].rect)) {
+                puts("sending bet");
+                if (send_player_action(client_socket, ACTION_BET, client_state->selected_amount) !=
+                    0)
+                  fprintf(stderr, "Failed to send bet\n");
+              } else if (SDL_PointInRect(&mouse_pos, &action_button[CHECK].rect)) {
+                puts("checking");
+                if (send_player_action(client_socket, ACTION_CHECK, 0) != 0)
+                  fprintf(stderr, "Failed to check\n");
+              }
+            } else if (game_state.player[my_id].total_paid != game_state.total_bets_plus_raises) {
+              if (SDL_PointInRect(&mouse_pos, &action_button[RAISE].rect)) {
+                puts("raising");
+                if (send_player_action(client_socket, ACTION_RAISE,
+                                       client_state->selected_amount) != 0)
+                  fprintf(stderr, "Failed to raise\n");
+              } else if (SDL_PointInRect(&mouse_pos, &action_button[CALL].rect)) {
+                puts("calling");
+                if (send_player_action(client_socket, ACTION_CALL, 0) != 0)
+                  fprintf(stderr, "Failed to call\n");
+              }
             }
           } else if (action_button[DISCARD].enabled &&
                      SDL_PointInRect(&mouse_pos, &action_button[DISCARD].rect)) {
@@ -708,8 +739,8 @@ void run_sdl_loop(ClientState_t *client_state, SdlContext_t *sdl_context, Font_t
           }
         }
       }
-      clear_screen(sdl_context->renderer);
 
+      clear_screen(sdl_context->renderer);
       // for (size_t i = 0; i < sizeof(status_msg) / sizeof(status_msg[0][0]); i++) {
       for (int i = 0; i < 16; i++) {
         char tmp[sizeof(status_msg[0])];
@@ -721,11 +752,11 @@ void run_sdl_loop(ClientState_t *client_state, SdlContext_t *sdl_context, Font_t
         // printf("status_msg[%zd]: %s\n", i, status_msg[i]);
       }
 
+      Player_t *player_ptr = starting_turn;
       for (int card_n = 0; card_n < HAND_SIZE; ++card_n) {
-        turn = starting_turn;
         do {
           // printf("%d\n", __LINE__);
-          render_card(&card_context[turn->id][card_n], font->fonts[CARD]);
+          render_card(&card_context[player_ptr->id][card_n], font->fonts[CARD]);
 
           if (!cards_dealt) {
             Uint32 start = SDL_GetTicks();
@@ -740,32 +771,28 @@ void run_sdl_loop(ClientState_t *client_state, SdlContext_t *sdl_context, Font_t
             SDL_Delay(16);
             // fprintf(stderr, "%s:turn->id: %d\n", __func__, turn->id);
           }
-        } while ((turn = get_next_player(players_array, turn->id)) != starting_turn);
+        } while ((player_ptr = get_next_connected_client(players_array, player_ptr->id)) !=
+                 starting_turn);
       }
-      // if (recv_game_state(client_socket, socket_set, game_state) == RECV_ERROR)
-      // running = false;
 
-      // printf("%d\n", __LINE__);
+      //// printf("%d\n", __LINE__);
+      // printf("game_state.total_bets_plus_raises: %d\n",
+      // game_state.total_bets_plus_raises == 0 && !turn->has_checked);
+      // printf("turn->has_checked: %s, turn->id: %d, my_id: %d\n\n",
+      // turn->has_checked ? "true" : "false", turn->id, my_id);
 
       if (game_state.winner_declared) {
-        turn = starting_turn;
+        player_ptr = starting_turn;
         do {
           // printf("%d\n", __LINE__);
-          if (turn->winner == true) {
+          if (player_ptr->winner == true) {
             break;
           }
-        } while ((turn = get_next_player(players_array, turn->id)) != starting_turn);
+        } while ((player_ptr = get_next_connected_client(players_array, player_ptr->id)) !=
+                 starting_turn);
 
-        // char winner_text[sizeof(turn->nick) + 64] = {0};
-        // if (game_state->player_count > 1)
-        // snprintf(winner_text, sizeof winner_text, "%s wins with %s", turn->nick,
-        // pokeval_ranks[pokeval_evaluate_hand(turn->hand)]);
-        // else
-        // snprintf(winner_text, sizeof winner_text, "%s wins", turn->nick);
+        // printf("%d\n", __LINE__);
 
-        // SDL_Rect dest = {sdl_context->win_center.x, sdl_context->win_center.y - 50, 80, 20};
-        // render_text_plain(sdl_context->renderer, font->fonts[OTHER], winner_text,
-        // get_color(COLOR_BLACK), &dest);
       } else {
         if (client_state->do_discard_draw) {
           for (int i = 0; i < HAND_SIZE; i++)
@@ -787,12 +814,11 @@ void run_sdl_loop(ClientState_t *client_state, SdlContext_t *sdl_context, Font_t
           if (game_state.total_bets_plus_raises == 0 && !turn->has_checked) {
             render_button(&action_button[BET]);
             render_button(&action_button[CHECK]);
-            render_button(&action_button[FOLD]);
           } else if (game_state.player[my_id].total_paid != game_state.total_bets_plus_raises) {
             render_button(&action_button[CALL]);
             render_button(&action_button[RAISE]);
-            render_button(&action_button[FOLD]);
           }
+          render_button(&action_button[FOLD]);
           for (int i = 0; i < n_amounts; i++)
             render_button(&amount_button[i]);
         } else {
@@ -805,6 +831,7 @@ void run_sdl_loop(ClientState_t *client_state, SdlContext_t *sdl_context, Font_t
           // sdl_context->window_height - 60, 0, 0});
         }
       }
+      // printf("%d\n", __LINE__);
 
       cards_dealt = true;
       char buffer[128];
@@ -813,26 +840,30 @@ void run_sdl_loop(ClientState_t *client_state, SdlContext_t *sdl_context, Font_t
       render_text_centered(sdl_context->renderer, font->fonts[OTHER], buffer, black,
                            sdl_context->win_center);
 
+      player_ptr = starting_turn;
       do {
         // printf("%d\n", __LINE__);
-        int id = turn->id;
+        int id = player_ptr->id;
         SDL_Rect coin_rect = {
             .x = player_pos[id].x + card_width, .y = player_pos[id].y - card_height, 48, 48};
         SDL_RenderCopy(sdl_context->renderer, coin_texture, NULL, &coin_rect);
         char coins_text[24] = {0};
-        snprintf(coins_text, sizeof coins_text, "%d", turn->coins);
+        snprintf(coins_text, sizeof coins_text, "%d", player_ptr->coins);
         SDL_Rect dest = {coin_rect.x + coin_rect.w * 1.2, coin_rect.y + coin_rect.h / 4, 0, 0};
         render_text_plain(sdl_context->renderer, font->fonts[OTHER], coins_text,
                           get_color(COLOR_BLACK), &dest);
 
-        char name_text[sizeof(turn->nick)] = {0};
-        snprintf(name_text, sizeof name_text, "%s", turn->nick);
+        char name_text[sizeof(player_ptr->nick)] = {0};
+        snprintf(name_text, sizeof name_text, "%s", player_ptr->nick);
         SDL_Rect dest_name = {player_pos[id].x + 30, player_pos[id].y + (card_height * 1.2), 40,
                               20};
-        render_text_plain(sdl_context->renderer, font->fonts[OTHER], name_text,
-                          get_color(COLOR_BLACK), &dest_name);
 
-      } while ((turn = get_next_player(players_array, turn->id)) != starting_turn);
+        bool blink = id == turn->id && !game_state.winner_declared;
+        render_nick(sdl_context->renderer, font->fonts[OTHER], name_text, get_color(COLOR_BLACK),
+                    &dest_name, blink);
+
+      } while ((player_ptr = get_next_connected_client(players_array, player_ptr->id)) !=
+               starting_turn);
     }
 
     SDL_RenderPresent(sdl_context->renderer);
