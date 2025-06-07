@@ -803,12 +803,9 @@ static void ensure_unique_nick(GameState_t *game_state, Player_t *player, const 
   fprintf(stderr, "Could not find a unique nickname after %d attempts\n", suffix_limit);
 }
 
-int run_server(const char *bind_address, const bool test_mode) {
-  Path_t path = {0};
-  get_data_dir(&path);
-
+int run_server(const char *bind_address, Path_t *path, const bool test_mode) {
   GameState_t game_state = {0};
-  Config_t config = init_game_state(&game_state, &path, test_mode);
+  Config_t config = init_game_state(&game_state, path, test_mode);
   game_state.pot = 0;
 
   if (SDL_Init(0) == -1 || SDLNet_Init() == -1) {

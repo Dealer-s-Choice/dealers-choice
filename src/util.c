@@ -157,3 +157,12 @@ int make_directory_recursive(const char *path) {
 
   return 0;
 }
+
+void *calloc_wrap(const size_t n, const size_t size) {
+  void *ptr = calloc(n, size);
+  if (ptr)
+    return ptr;
+
+  perror("calloc");
+  exit(EXIT_FAILURE);
+}

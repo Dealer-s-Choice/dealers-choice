@@ -37,7 +37,8 @@
 
 SocketContext_t get_socket_context_and_run_client(PlayerConfig_t *player_config,
                                                   const char *host_str, SdlContext_t *sdl_context,
-                                                  Font_t *font, const bool test_mode) {
+                                                  Font_t *font, Path_t *path,
+                                                  const bool test_mode) {
   IPaddress server_ip;
   SocketContext_t socket_context = {NULL, NULL, -1};
   if (SDLNet_ResolveHost(&server_ip, host_str, player_config->port) == -1) {
@@ -87,7 +88,7 @@ SocketContext_t get_socket_context_and_run_client(PlayerConfig_t *player_config,
 
   if (!test_mode)
     run_sdl_loop(&client_state, sdl_context, font, socket_context.sock, socket_context.set,
-                 socket_context.id);
+                 socket_context.id, path);
   else
     return socket_context;
 

@@ -45,6 +45,6 @@ void game_five_card_draw(GAME_ARGS);
 
 void game_five_card_stud(GAME_ARGS);
 
-int run_server(const char *bind_address, const bool test_mode);
+int run_server(const char *bind_address, Path_t *path, const bool test_mode);
 
 #endif

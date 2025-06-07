@@ -288,3 +288,25 @@ void do_sdl_cleanup(SdlContext_t *sdl_context) {
   SDL_DestroyWindow(sdl_context->window);
   SDL_Quit();
 }
+
+SDL_Texture *load_texture(SDL_Renderer *renderer, const char *path) {
+  if (!(IMG_Init(IMG_INIT_PNG) & IMG_INIT_PNG)) {
+    SDL_Log("IMG_Init failed: %s", IMG_GetError());
+    exit(EXIT_FAILURE);
+  }
+
+  SDL_Surface *surface = IMG_Load(path);
+  if (!surface) {
+    SDL_Log("IMG_Load failed: %s", IMG_GetError());
+    exit(EXIT_FAILURE);
+  }
+
+  SDL_Texture *texture = SDL_CreateTextureFromSurface(renderer, surface);
+  if (!texture) {
+    SDL_Log("SDL_CreateTextureFromSurface failed: %s", SDL_GetError());
+    exit(EXIT_FAILURE);
+  }
+
+  SDL_FreeSurface(surface);
+  return texture;
+}

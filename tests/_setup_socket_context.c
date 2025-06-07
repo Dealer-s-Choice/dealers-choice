@@ -16,10 +16,11 @@ strcpy(player_config.host, "127.0.0.1");
 const bool test_mode = true;
 SocketContext_t socket_context[2];
 const int n_seconds = 1;
+Path_t path = {0};
 
 for (int i = 0; i < 2; i++) {
   socket_context[i] = get_socket_context_and_run_client(&player_config, player_config.host,
-                                                        &sdl_context, &font, test_mode);
+                                                        &sdl_context, &font, &path, test_mode);
   assert(socket_context[i].sock != NULL);
   sleep(n_seconds);
 }

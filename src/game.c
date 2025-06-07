@@ -317,51 +317,6 @@ bool is_dh_card_null(DH_Card a) {
   return a.face_val == DH_card_null.face_val && a.suit == DH_card_null.suit;
 }
 
-static void draw_filled_circle(SDL_Renderer *renderer, int cx, int cy, int radius,
-                               SDL_Color color) {
-  SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
-  for (int y = -radius; y <= radius; y++) {
-    int dx = (int)sqrt(radius * radius - y * y);
-    SDL_RenderDrawLine(renderer, cx - dx, cy + y, cx + dx, cy + y);
-  }
-}
-
-static void draw_circle_outline(SDL_Renderer *renderer, int cx, int cy, int radius,
-                                SDL_Color color) {
-  SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
-  const int points = 100;
-  for (int i = 0; i < points; ++i) {
-    float angle1 = (2.0f * M_PI * i) / points;
-    float angle2 = (2.0f * M_PI * (i + 1)) / points;
-    int x1 = cx + (int)(radius * cos(angle1));
-    int y1 = cy + (int)(radius * sin(angle1));
-    int x2 = cx + (int)(radius * cos(angle2));
-    int y2 = cy + (int)(radius * sin(angle2));
-    SDL_RenderDrawLine(renderer, x1, y1, x2, y2);
-  }
-}
-
-static void draw_silver_coin(SDL_Renderer *renderer, int centerX, int centerY) {
-  const int radius = 20; // 40px diameter
-  const int steps = 20;
-
-  // Radial gradient from light center to darker edge
-  for (int i = 0; i < steps; ++i) {
-    float t = (float)i / (steps - 1);
-    Uint8 shade = (Uint8)(200 + 55 * (1.0f - t));
-    SDL_Color color = {shade, shade, shade, 255};
-    draw_filled_circle(renderer, centerX, centerY, radius - i, color);
-  }
-
-  // Specular highlight
-  SDL_Color highlight = {255, 255, 255, 150};
-  draw_filled_circle(renderer, centerX - radius / 3, centerY - radius / 3, radius / 5, highlight);
-
-  // Outline
-  SDL_Color outline = {100, 100, 100, 255};
-  draw_circle_outline(renderer, centerX, centerY, radius, outline);
-}
-
 typedef struct {
   char text[SIZEOF_CARD_TEXT];
   SDL_Color textColor;
@@ -465,7 +420,8 @@ static void create_card_context(CardContext_t card_context[MAX_PLAYERS][HAND_SIZ
 }
 
 void run_sdl_loop(ClientState_t *client_state, SdlContext_t *sdl_context, Font_t *font,
-                  TCPsocket client_socket, SDLNet_SocketSet socket_set, const uint8_t my_id) {
+                  TCPsocket client_socket, SDLNet_SocketSet socket_set, const uint8_t my_id,
+                  Path_t *path) {
   Uint32 start_time = SDL_GetTicks(); // milliseconds
   const Uint32 timeout = 2000;        // 2 seconds
   const Uint32 retry_delay = 100;     // milliseconds per retry
@@ -583,6 +539,16 @@ void run_sdl_loop(ClientState_t *client_state, SdlContext_t *sdl_context, Font_t
   Player_t *players_array = game_state.player;
   Player_t *turn = NULL;
   Player_t *starting_turn = NULL;
+
+  const char *coin_path = "48x48_1907_Saint_Gaudens_gold_coin.png";
+  const char *subdir = "/images/";
+
+  size_t req_len = strlen(path->data) + strlen(subdir) + strlen(coin_path) + 1;
+  char *coin_location = calloc_wrap(req_len, 1);
+  snprintf(coin_location, req_len, "%s%s%s", path->data, subdir, coin_path);
+  SDL_Texture *coin_texture = load_texture(sdl_context->renderer, coin_location);
+  free(coin_location);
+
   while (running) {
     recv_status = recv_game_state(client_socket, socket_set, &game_state, client_state, my_id);
     // printf("%d\n", __LINE__);
@@ -850,12 +816,12 @@ void run_sdl_loop(ClientState_t *client_state, SdlContext_t *sdl_context, Font_t
       do {
         // printf("%d\n", __LINE__);
         int id = turn->id;
-        SDL_Point coin_pos = {.x = player_pos[id].x + (card_width * 1.2),
-                              .y = player_pos[id].y - (card_height * 0.9)};
-        draw_silver_coin(sdl_context->renderer, coin_pos.x, coin_pos.y);
+        SDL_Rect coin_rect = {
+            .x = player_pos[id].x + card_width, .y = player_pos[id].y - card_height, 48, 48};
+        SDL_RenderCopy(sdl_context->renderer, coin_texture, NULL, &coin_rect);
         char coins_text[24] = {0};
-        snprintf(coins_text, sizeof coins_text, "= %d", turn->coins);
-        SDL_Rect dest = {coin_pos.x + 30, coin_pos.y - 20, 40, 20};
+        snprintf(coins_text, sizeof coins_text, "%d", turn->coins);
+        SDL_Rect dest = {coin_rect.x + coin_rect.w * 1.2, coin_rect.y + coin_rect.h / 4, 0, 0};
         render_text_plain(sdl_context->renderer, font->fonts[OTHER], coins_text,
                           get_color(COLOR_BLACK), &dest);
 
@@ -872,6 +838,8 @@ void run_sdl_loop(ClientState_t *client_state, SdlContext_t *sdl_context, Font_t
     SDL_RenderPresent(sdl_context->renderer);
     SDL_Delay(16);
   }
+  SDL_DestroyTexture(coin_texture);
+
   // Mix_FreeChunk(card_sound);
   // Mix_CloseAudio();
 }

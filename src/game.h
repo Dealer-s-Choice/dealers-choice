@@ -73,7 +73,8 @@ void render_project_link(SDL_Renderer *renderer, TTF_Font *font, SDL_Rect *rect,
                          const bool hovered);
 
 void run_sdl_loop(ClientState_t *client_state, SdlContext_t *sdl_context, Font_t *font,
-                  TCPsocket client_socket, SDLNet_SocketSet socket_set, const uint8_t my_id);
+                  TCPsocket client_socket, SDLNet_SocketSet socket_set, const uint8_t my_id,
+                  Path_t *path);
 
 int8_t send_game_select(TCPsocket sock, uint8_t game_type);
 
