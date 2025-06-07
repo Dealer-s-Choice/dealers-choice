@@ -7,12 +7,7 @@ int main(int argc, char *argv[]) {
   assert(send_game_select(socket_context[*dealer_id].sock,
                           game_choices[FIVE_CARD_SHOWDOWN].game_type) == 0);
 
-  sleep(n_seconds);
-  for (i = 0; i < 2; i++) {
-    assert(recv_game_state(socket_context[i].sock, socket_context[i].set, &game_state[i],
-                           &client_state[i], socket_context[i].id) != RECV_ERROR);
-    assert(socket_context[i].sock != NULL);
-  }
+#include "_receive_game_state.c"
 
   int8_t *turn_id = &game_state[0].turn_id;
   const int expected_bet_turn[3] = {1, 0, 1};
@@ -27,14 +22,8 @@ int main(int argc, char *argv[]) {
     fputc('\n', stderr);
   }
 
-  for (int recv = 0; recv < 2; recv++) {
-    sleep(n_seconds);
-    for (i = 0; i < 2; i++) {
-      assert(recv_game_state(socket_context[i].sock, socket_context[i].set, &game_state[i],
-                             &client_state[i], socket_context[i].id) != RECV_ERROR);
-      assert(socket_context[i].sock != NULL);
-    }
-  }
+#include "_receive_game_state.c"
+#include "_receive_game_state.c"
 
   const int expected_call_turn[3] = {0, 1, 0};
   assert(expected_call_turn[game] == *turn_id);
@@ -42,14 +31,10 @@ int main(int argc, char *argv[]) {
   sleep(n_seconds);
   assert(send_player_action(socket_context[*turn_id].sock, ACTION_CALL, 0) == 0);
 
-  for (int recv = 0; recv < 4; recv++) {
-    sleep(n_seconds);
-    for (i = 0; i < 2; i++) {
-      assert(recv_game_state(socket_context[i].sock, socket_context[i].set, &game_state[i],
-                             &client_state[i], socket_context[i].id) != RECV_ERROR);
-      assert(socket_context[i].sock != NULL);
-    }
-  }
+#include "_receive_game_state.c"
+#include "_receive_game_state.c"
+#include "_receive_game_state.c"
+#include "_receive_game_state.c"
 
   sleep(n_seconds);
   for (i = 0; i < 2; i++) {

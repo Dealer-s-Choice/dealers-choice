@@ -7,11 +7,7 @@ int main(int argc, char *argv[]) {
   assert(send_game_select(socket_context[*dealer_id].sock,
                           game_choices[FIVE_CARD_STUD].game_type) == 0);
 
-  sleep(n_seconds);
-  for (i = 0; i < 2; i++) {
-    assert(recv_game_state(socket_context[i].sock, socket_context[i].set, &game_state[i],
-                           &client_state[i], socket_context[i].id) != RECV_ERROR);
-  }
+#include "_receive_game_state.c"
 
   for (int n_rounds = 0; n_rounds < game_choices[FIVE_CARD_STUD].n_betting_rounds; n_rounds++) {
     fprintf(stderr, "\n -#- game: %d -#- n_rounds: %d\n", game, n_rounds);
@@ -30,14 +26,9 @@ int main(int argc, char *argv[]) {
       fputc('\n', stderr);
     }
 
-    for (int recv = 0; recv < 3; recv++) {
-      sleep(n_seconds);
-      for (i = 0; i < 2; i++) {
-        assert(recv_game_state(socket_context[i].sock, socket_context[i].set, &game_state[i],
-                               &client_state[i], socket_context[i].id) != RECV_ERROR);
-        assert(socket_context[i].sock != NULL);
-      }
-    }
+#include "_receive_game_state.c"
+#include "_receive_game_state.c"
+#include "_receive_game_state.c"
 
     const int expected_call_turn[3] = {0, 1, 0};
     assert(expected_call_turn[game] == *turn_id);
@@ -46,22 +37,13 @@ int main(int argc, char *argv[]) {
     fprintf(stderr, "turn_id: %d\n", *turn_id);
     assert(send_player_action(socket_context[*turn_id].sock, ACTION_CALL, 0) == 0);
 
-    for (int recv = 0; recv < 3; recv++) {
-      sleep(n_seconds);
-      for (i = 0; i < 2; i++) {
-        assert(recv_game_state(socket_context[i].sock, socket_context[i].set, &game_state[i],
-                               &client_state[i], socket_context[i].id) != RECV_ERROR);
-      }
-    }
+#include "_receive_game_state.c"
+#include "_receive_game_state.c"
+#include "_receive_game_state.c"
   }
 
-  sleep(n_seconds);
-  for (i = 0; i < 2; i++) {
-    assert(recv_game_state(socket_context[i].sock, socket_context[i].set, &game_state[i],
-                           &client_state[i], socket_context[i].id) != RECV_ERROR);
-    fprintf(stderr, "%d: %d\n", i, game_state[i].player[i].coins);
-    assert(socket_context[i].sock != NULL);
-  }
+#include "_receive_game_state.c"
+
   fprintf(stderr, "%d\n", game_state[0].pot);
 
   const int expected_coins[3][2] = {{22000, 18000}, {20000, 20000}, {18000, 22000}};
