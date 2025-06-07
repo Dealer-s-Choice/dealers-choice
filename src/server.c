@@ -465,27 +465,41 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args) {
         // puts("socket ready");
         // char tmp[sizeof args->game_state->status_str];
         if (recv_player_action((*args->clients)[turn->id], &action) > 0) {
-          switch (action.action) {
-          case ACTION_CHECK:
-            handle_check(turn, &action);
-            break;
-          case ACTION_BET:
-            server_handle_bet(args->game_state, turn->id, action.amount);
-            action.str = "bets ";
-            break;
-          case ACTION_FOLD:
-            handle_fold(args, turn, &action);
-            break;
-          case ACTION_CALL:
-            server_handle_call(args->game_state, turn->id);
-            action.str = "calls";
-            break;
-          case ACTION_RAISE:
-            server_handle_raise(args->game_state, turn->id, action.amount);
-            action.str = "raises ";
-            break;
-          default:
-            fprintf(stderr, "Invalid Action received\n");
+          if (args->game_state->total_bets_plus_raises == 0) {
+            switch (action.action) {
+            case ACTION_CHECK:
+              handle_check(turn, &action);
+              break;
+            case ACTION_BET:
+              server_handle_bet(args->game_state, turn->id, action.amount);
+              action.str = "bets ";
+              break;
+            case ACTION_FOLD:
+              handle_fold(args, turn, &action);
+              break;
+            default:
+              fprintf(stderr, "Invalid Action received\n");
+              exit(EXIT_FAILURE);
+            }
+          } else {
+            switch (action.action) {
+            case ACTION_CALL:
+              server_handle_call(args->game_state, turn->id);
+              action.str = "calls";
+              break;
+            case ACTION_RAISE:
+              server_handle_raise(args->game_state, turn->id, action.amount);
+              action.str = "raises ";
+              break;
+            case ACTION_FOLD:
+              handle_fold(args, turn, &action);
+              break;
+            default:
+              fprintf(
+                  stderr,
+                  "Invalid Action received\nThe client is writing checks their body can't cash.\n");
+              exit(EXIT_FAILURE);
+            }
           }
         } else {
           remove_disconnected_player(*args->clients, *args->socket_set, *args->slot_taken, turn);
@@ -525,11 +539,7 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args) {
       do {
         if (turn->in) {
           turn->winner = true;
-          if (args->game_state->player_count == 1)
-            snprintf(status_str, sizeof(status_str), "%s wins\n", turn->nick);
-          else
-            snprintf(status_str, sizeof(status_str), "%s wins with %s\n", turn->nick,
-                     pokeval_ranks[pokeval_evaluate_hand(turn->hand)]);
+          snprintf(status_str, sizeof(status_str), "%s wins\n", turn->nick);
           broadcast_status_message(args, status_str);
 
           args->game_state->winner_declared = true;

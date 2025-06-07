@@ -30,14 +30,8 @@ for (int game = 0; game < n_passes; game++) {
   sleep(n_seconds);
   int i;
 
-  for (int recv = 0; recv < 2; recv++) {
-    for (i = 0; i < 2; i++) {
-      sleep(n_seconds);
-      assert(recv_game_state(socket_context[i].sock, socket_context[i].set, &game_state[i],
-                             &client_state[i], socket_context[i].id) != RECV_ERROR);
-      assert(socket_context[i].sock != NULL);
-    }
-  }
+#include "_receive_game_state.c"
+#include "_receive_game_state.c"
 
   int8_t *dealer_id = &game_state[0].dealer_id;
   const int expected_dealer_turn[3][3] = {{0, 0}, {1, 1}, {2, 0}};

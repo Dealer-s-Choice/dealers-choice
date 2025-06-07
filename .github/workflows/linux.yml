@@ -57,7 +57,7 @@ jobs:
       run: meson compile -C _build
 
     - name: Test
-      run: meson test -v -C _build
+      run: meson test --no-stdsplit -v -C _build
 
     - name: Dist test
       if: ${{ contains(matrix.os, '22.04') }}
