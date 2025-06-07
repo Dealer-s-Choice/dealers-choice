@@ -857,8 +857,10 @@ void run_sdl_loop(ClientState_t *client_state, SdlContext_t *sdl_context, Font_t
         snprintf(name_text, sizeof name_text, "%s", player_ptr->nick);
         SDL_Rect dest_name = {player_pos[id].x + 30, player_pos[id].y + (card_height * 1.2), 40,
                               20};
-        render_text_plain(sdl_context->renderer, font->fonts[OTHER], name_text,
-                          get_color(COLOR_BLACK), &dest_name);
+
+        bool blink = id == turn->id && !game_state.winner_declared;
+        render_nick(sdl_context->renderer, font->fonts[OTHER], name_text, get_color(COLOR_BLACK),
+                    &dest_name, blink);
 
       } while ((player_ptr = get_next_connected_client(players_array, player_ptr->id)) !=
                starting_turn);
