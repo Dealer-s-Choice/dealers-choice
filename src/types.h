@@ -39,6 +39,11 @@
 #define LEN_STATUS_STR 100
 
 typedef enum {
+  RC_ERR = -1,
+  RC_OK = 0,
+} EReturnCode_t;
+
+typedef enum {
   FIVE_CARD_DRAW,
   FIVE_CARD_DOUBLE_DRAW,
   FIVE_CARD_STUD,
@@ -77,7 +82,6 @@ typedef struct {
 typedef struct {
   TCPsocket (*clients)[MAX_CLIENTS];
   SDLNet_SocketSet *socket_set;
-  int *active_clients;
   GameState_t *game_state;
   RealHand_t *real_hand;
   bool (*slot_taken)[MAX_CLIENTS];

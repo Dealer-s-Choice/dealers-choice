@@ -50,7 +50,6 @@ SocketContext_t get_socket_context_and_run_client(PlayerConfig_t *player_config,
   if (!socket_context.sock) {
     fprintf(stderr, "Failed to connect to server: %s\n", SDLNet_GetError());
     return socket_context;
-    ;
   }
 
   socket_context.set = SDLNet_AllocSocketSet(1);
@@ -66,7 +65,7 @@ SocketContext_t get_socket_context_and_run_client(PlayerConfig_t *player_config,
   int32_t net_player_id;
   if (recv_all_tcp(socket_context.sock, &net_player_id, sizeof(int32_t)) > 0) {
     socket_context.id = ntohl(net_player_id);
-    printf("Assigned id %d by server\n", socket_context.id);
+    fprintf(stderr, "Assigned id %d by server\n", socket_context.id);
   } else {
     goto cleanup;
   }
@@ -80,7 +79,6 @@ SocketContext_t get_socket_context_and_run_client(PlayerConfig_t *player_config,
       fprintf(stderr, "Failed to send player nick to server\n");
   }
 
-  // GameState_t game_state = {0};
   ClientState_t client_state = {0};
   // if (recv_game_state(socket_context.sock, socket_context.set, &game_state, &client_state,
   //                 socket_context.id) != RECV_SUCCESS)

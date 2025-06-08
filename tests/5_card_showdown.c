@@ -45,8 +45,6 @@ int main(int argc, char *argv[]) {
   const int expected_coins[3][2] = {{19250, 20750}, {20000, 20000}, {20750, 19250}};
   assert(game_state[0].player[0].coins == expected_coins[game][0]);
   assert(game_state[0].player[1].coins == expected_coins[game][1]);
-
-  sleep(n_seconds);
 }
 
 _SOCKET_CLEANUP_AND_NET_QUIT_

@@ -190,8 +190,12 @@ static int menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet s
   bool running = true;
 
   while (running && game_state->at_menu) {
-    if (recv_game_state(client_socket, socket_set, game_state, client_state, my_id) == RECV_ERROR)
+    ERecvStatus_t recv_status =
+        recv_game_state(client_socket, socket_set, game_state, client_state, my_id);
+    if (recv_status == RECV_ERROR)
       return RECV_ERROR;
+    // else if (recv_status == RECV_NOTHING)
+    // fprintf(stderr, "%s: Received nothing\n", __func__);
 
     SDL_Rect link_rect = {sdl_context->win_center.x + 50, sdl_context->window_height - 40,
                           sizeof(DEALERSCHOICE_URL) * 8, 30};
@@ -224,7 +228,6 @@ static int menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet s
       }
     }
 
-    // Clear screen
     clear_screen(sdl_context->renderer);
 
     for (int i = 0; i < MAX_CHOICES; i++)
@@ -242,16 +245,19 @@ static int menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet s
     offset_x += 10;
 
     for (int i = 0; i < MAX_PLAYERS; i++) {
-      if (game_state->player[i].in) {
-        offset_y += 40;
-        char tmp[sizeof(game_state->player[i].nick) + 20] = {0};
-        snprintf(tmp, sizeof tmp, "%s%s", game_state->player[i].nick,
-                 game_state->dealer_id == i ? " (Dealer)" : "");
-        SDL_Rect text_pos = {offset_x, offset_y, 0, 0};
-        render_text_plain(sdl_context->renderer, font->fonts[OTHER], tmp, get_color(COLOR_WHITE),
-                          &text_pos);
-      }
+      Player_t *client = &game_state->player[i];
+      if (client->id == -1)
+        continue;
+      // fprintf(stderr, "%d\n", __LINE__);
+      offset_y += 40;
+      char tmp[sizeof(client->nick) + 20] = {0};
+      snprintf(tmp, sizeof tmp, "%s%s", client->nick,
+               game_state->dealer_id == client->id ? " (Dealer)" : "");
+      SDL_Rect text_pos = {offset_x, offset_y, 0, 0};
+      render_text_plain(sdl_context->renderer, font->fonts[OTHER], tmp, get_color(COLOR_WHITE),
+                        &text_pos);
     }
+    // fprintf(stderr, "%d\n", __LINE__);
 
     render_project_link(sdl_context->renderer, font->fonts[LINK], &link_rect, link_hovered);
 
