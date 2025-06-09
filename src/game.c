@@ -43,6 +43,11 @@
 
 #define CARD_DEAL_DELAY 50
 
+typedef struct {
+  uint8_t w, h;
+} CardArea_t;
+const CardArea_t card_area = {80, 50};
+
 Player_t *get_next_player(Player_t *players_array, int cur) {
   int start = cur;
   do {
@@ -470,7 +475,7 @@ void run_sdl_loop(ClientState_t *client_state, SdlContext_t *sdl_context, Font_t
       {.x = 20, .y = sdl_context->window_height / 3},
 
       // P2: top-left
-      {.x = 20, .y = 20},
+      {.x = 20, .y = card_area.h * 3},
 
       // P3: top-right
       {.x = sdl_context->window_width / 2 + 20, .y = 35},
@@ -551,8 +556,6 @@ void run_sdl_loop(ClientState_t *client_state, SdlContext_t *sdl_context, Font_t
   }
   amount_button[0].selected = true;
 
-  int card_width = 80, card_height = 50;
-
   CardContext_t card_context[MAX_PLAYERS][HAND_SIZE];
 
   int running = 1;
@@ -600,9 +603,6 @@ void run_sdl_loop(ClientState_t *client_state, SdlContext_t *sdl_context, Font_t
         continue;
       }
     } else {
-      // if (timer_start == 0 && game_state->turn_id == my_id)
-      // SDL_GetTicks();
-
       // For cases when the client who was designated as starting_turn disconnects
       if (starting_turn->id == -1)
         starting_turn = get_next_player(players_array, client_state->save_starting_turn_id);
@@ -864,7 +864,7 @@ void run_sdl_loop(ClientState_t *client_state, SdlContext_t *sdl_context, Font_t
         // printf("%d\n", __LINE__);
         int id = player_ptr->id;
         SDL_Rect coin_rect = {
-            .x = player_pos[id].x + card_width, .y = player_pos[id].y - card_height, 48, 48};
+            .x = player_pos[id].x + card_area.w, .y = player_pos[id].y - card_area.h, 48, 48};
         SDL_RenderCopy(sdl_context->renderer, coin_texture, NULL, &coin_rect);
         char coins_text[24] = {0};
         snprintf(coins_text, sizeof coins_text, "%d", player_ptr->coins);
@@ -874,7 +874,7 @@ void run_sdl_loop(ClientState_t *client_state, SdlContext_t *sdl_context, Font_t
 
         char name_text[sizeof(player_ptr->nick)] = {0};
         snprintf(name_text, sizeof name_text, "%s", player_ptr->nick);
-        SDL_Rect dest_name = {player_pos[id].x + 30, player_pos[id].y + (card_height * 1.2), 40,
+        SDL_Rect dest_name = {player_pos[id].x + 30, player_pos[id].y + (card_area.h * 1.2), 40,
                               20};
 
         bool blink = id == turn->id && !game_state.winner_declared;
