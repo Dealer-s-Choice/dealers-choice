@@ -607,7 +607,7 @@ void run_sdl_loop(ClientState_t *client_state, SdlContext_t *sdl_context, Font_t
 
       if (strcmp(client_state->server_status_str, status_msg[15]) != 0) {
         // Shift messages up by one slot: [1]..[15] → [0]..[14]
-        memmove(&status_msg[0], &status_msg[1], sizeof(status_msg[0]) * (16 - 1));
+        memmove(status_msg, status_msg + 1, sizeof(status_msg[0]) * 15);
 
         // Copy new message to the bottom
         snprintf(status_msg[15], sizeof(client_state->server_status_str), "%s",

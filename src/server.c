@@ -919,26 +919,46 @@ int run_server(const char *bind_address, Path_t *path, const bool test_mode) {
         send_all_tcp(new_client, &net_player_id, sizeof(int32_t));
 
         if (!test_mode) {
+          Player_t *player = &game_state.player[slot];
           int32_t net_len;
 
-          Player_t *player = &game_state.player[slot];
-          // Recv the size first
-          if (recv_all_tcp(new_client, &net_len, sizeof(int32_t)) > 0) {
-            size_t len = ntohl(net_len);
-
-            memset(player->nick, 0, sizeof(player->nick));
-            // Then the actual data (player name, in this case)
-            if (recv_all_tcp(new_client, player->nick, len) != (ssize_t)len) {
-              fprintf(stderr, "Failed to receive nickname.\n");
-              SDLNet_TCP_Close(new_client);
-              player->id = -1;
-              player->in = false;
-              slot_taken[slot] = false;
-              break;
-            }
-          } else {
-            // TODO: handle error
+          // Step 1: Recv the size first (must happen before interpreting it)
+          if (recv_all_tcp(new_client, &net_len, sizeof(int32_t)) <= 0) {
+            // Handle error: client disconnected or invalid
+            fprintf(stderr, "Failed to receive nickname length.\n");
+            SDLNet_TCP_Close(new_client);
+            player->id = -1;
+            player->in = false;
+            slot_taken[slot] = false;
+            break;
           }
+
+          // Step 2: Now convert
+          size_t len = ntohl(net_len);
+
+          // Step 3: Validate length
+          if (len == 0 || len >= sizeof(player->nick)) {
+            fprintf(stderr, "Invalid nickname length: %zu\n", len);
+            SDLNet_TCP_Close(new_client);
+            player->id = -1;
+            player->in = false;
+            slot_taken[slot] = false;
+            break;
+          }
+
+          // Step 4: Read nickname
+          memset(player->nick, 0, sizeof(player->nick));
+          if (recv_all_tcp(new_client, player->nick, len) != (ssize_t)len) {
+            fprintf(stderr, "Failed to receive nickname.\n");
+            SDLNet_TCP_Close(new_client);
+            player->id = -1;
+            player->in = false;
+            slot_taken[slot] = false;
+            break;
+          }
+
+          // Step 5: Null terminate
+          player->nick[len] = '\0';
           printf("received nick: %s\n", player->nick);
           ensure_unique_nick(&game_state, player, slot);
         }
