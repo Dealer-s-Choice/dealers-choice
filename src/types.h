@@ -65,8 +65,8 @@ typedef struct {
   uint8_t player_count;
   uint32_t total_bets_plus_raises;
   bool winner_declared;
-  int32_t action_time_out_ms;
-  int32_t end_of_round_time_out_ms;
+  uint32_t action_time_out_ms;
+  uint32_t end_of_round_time_out_ms;
   Player_t player[MAX_PLAYERS];
 } GameState_t;
 

@@ -553,7 +553,8 @@ void run_sdl_loop(ClientState_t *client_state, SdlContext_t *sdl_context, Font_t
   int running = 1;
   bool cards_dealt = false;
   bool cards_created = false;
-  // Uint32 timer_start;
+  Uint32 timer_start;
+  int8_t save_turn_id;
 
   Player_t *players_array = game_state.player;
   Player_t *turn = NULL;
@@ -583,9 +584,10 @@ void run_sdl_loop(ClientState_t *client_state, SdlContext_t *sdl_context, Font_t
                                     sdl_context, font) != RECV_SUCCESS) {
         running = false;
       } else {
-        // timer_start = 0;
+        timer_start = SDL_GetTicks();
         cards_dealt = false;
         starting_turn = &game_state.player[game_state.turn_id];
+        save_turn_id = game_state.turn_id;
         memset(client_state, 0, sizeof *client_state);
         client_state->selected_amount = atoi(amount[0]);
         memset(status_msg, 0, sizeof status_msg);
@@ -596,6 +598,11 @@ void run_sdl_loop(ClientState_t *client_state, SdlContext_t *sdl_context, Font_t
       // SDL_GetTicks();
 
       turn = &game_state.player[game_state.turn_id];
+      if (game_state.turn_id != save_turn_id) {
+        save_turn_id = game_state.turn_id;
+        timer_start = SDL_GetTicks();
+      }
+
       // printf("turn id: %d\n", turn->id);
 
       if (strcmp(client_state->server_status_str, status_msg[15]) != 0) {
@@ -794,6 +801,15 @@ void run_sdl_loop(ClientState_t *client_state, SdlContext_t *sdl_context, Font_t
         // printf("%d\n", __LINE__);
 
       } else {
+        char elapsed_str[8] = {0};
+        int32_t elapsed = (timer_start + game_state.action_time_out_ms - SDL_GetTicks()) / 1000;
+        if (elapsed > 0) {
+          snprintf(elapsed_str, sizeof(elapsed_str), "%d", elapsed);
+          render_text_plain(
+              sdl_context->renderer, font->fonts[OTHER], elapsed_str, get_color(COLOR_WHITE),
+              &(SDL_Rect){sdl_context->window_width - 60, sdl_context->window_height - 60, 0, 0});
+        }
+
         if (client_state->do_discard_draw) {
           for (int i = 0; i < HAND_SIZE; i++)
             if (turn->hand.card[i].face_val == DH_CARD_ACE) {
@@ -822,13 +838,6 @@ void run_sdl_loop(ClientState_t *client_state, SdlContext_t *sdl_context, Font_t
           for (int i = 0; i < n_amounts; i++)
             render_button(&amount_button[i]);
         } else {
-
-          // Uint32 now = SDL_GetTicks();
-          // char elapsed[8] = {0};
-          // snprintf(elapsed, sizeof(elapsed), "%d", (timer_start + game_state->action_time_out_ms
-          // - now) / 1000); render_text_plain(sdl_context->renderer, font->fonts[OTHER], elapsed,
-          // get_color(COLOR_WHITE), &(SDL_Rect){sdl_context->window_width - 60,
-          // sdl_context->window_height - 60, 0, 0});
         }
       }
       // printf("%d\n", __LINE__);

@@ -495,7 +495,7 @@ static const ProtobufCFieldDescriptor game_state__field_descriptors[10] =
     "action_time_out_ms",
     8,
     PROTOBUF_C_LABEL_NONE,
-    PROTOBUF_C_TYPE_INT32,
+    PROTOBUF_C_TYPE_UINT32,
     0,   /* quantifier_offset */
     offsetof(GameState, action_time_out_ms),
     NULL,
@@ -507,7 +507,7 @@ static const ProtobufCFieldDescriptor game_state__field_descriptors[10] =
     "end_of_round_time_out_ms",
     9,
     PROTOBUF_C_LABEL_NONE,
-    PROTOBUF_C_TYPE_INT32,
+    PROTOBUF_C_TYPE_UINT32,
     0,   /* quantifier_offset */
     offsetof(GameState, end_of_round_time_out_ms),
     NULL,

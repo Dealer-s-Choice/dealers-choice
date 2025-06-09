@@ -90,6 +90,7 @@ uint8_t *serialize_game_state(const GameState_t *src, size_t *size_out) {
   msg.total_bets_plus_raises = src->total_bets_plus_raises;
   msg.player_count = src->player_count;
   msg.winner_declared = src->winner_declared;
+  msg.action_time_out_ms = src->action_time_out_ms;
   msg.end_of_round_time_out_ms = src->end_of_round_time_out_ms;
 
   // player

@@ -77,10 +77,10 @@ Config_t get_config(Path_t *path) {
       snprintf(config.bind_address, sizeof(config.bind_address), "%s", cfg_node->value);
       break;
     case END_OF_ROUND_TIMEOUT_MS:
-      config.end_of_round_time_out_ms = atoi(cfg_node->value);
+      config.end_of_round_time_out_ms = (uint32_t)strtol(cfg_node->value, NULL, 0);
       break;
     case ACTION_TIMEOUT_MS:
-      config.action_time_out_ms = atoi(cfg_node->value);
+      config.action_time_out_ms = (uint32_t)strtol(cfg_node->value, NULL, 0);
       break;
     default:
       break;
