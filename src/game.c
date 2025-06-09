@@ -244,10 +244,9 @@ static int menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet s
                       "Connected players:", get_color(COLOR_BLACK), &text_connected);
     offset_x += 10;
 
-    for (int i = 0; i < MAX_PLAYERS; i++) {
-      Player_t *client = &game_state->player[i];
-      if (client->id == -1)
-        continue;
+    Player_t *client = &game_state->player[my_id];
+    Player_t *start = client;
+    do {
       // fprintf(stderr, "%d\n", __LINE__);
       offset_y += 40;
       char tmp[sizeof(client->nick) + 20] = {0};
@@ -256,7 +255,7 @@ static int menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet s
       SDL_Rect text_pos = {offset_x, offset_y, 0, 0};
       render_text_plain(sdl_context->renderer, font->fonts[OTHER], tmp, get_color(COLOR_WHITE),
                         &text_pos);
-    }
+    } while ((client = get_next_connected_client(game_state->player, client->id)) != start);
     // fprintf(stderr, "%d\n", __LINE__);
 
     render_project_link(sdl_context->renderer, font->fonts[LINK], &link_rect, link_hovered);

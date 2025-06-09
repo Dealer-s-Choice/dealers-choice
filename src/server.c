@@ -232,23 +232,23 @@ int send_status_message(TCPsocket sock, const char *msg) {
 }
 
 static void broadcast_status_message(const ArgsBroadcastGameState_t *args, const char *msg) {
-  int8_t id = args->game_state->turn_id;
-  Player_t *recipient = &args->game_state->player[id];
+  int8_t idx = args->game_state->turn_id;
+  Player_t *recipient = &args->game_state->player[idx];
   if (recipient->id == -1)
-    recipient = get_next_connected_client(args->game_state->player, id);
+    recipient = get_next_connected_client(args->game_state->player, idx);
   Player_t *start = recipient;
 
   do {
-    id = recipient->id;
+    idx = recipient->id;
     puts(msg);
-    TCPsocket sock = (*args->clients)[id];
+    TCPsocket sock = (*args->clients)[idx];
     if (!sock)
       continue;
 
     if (send_status_message(sock, msg) < 0) {
-      fprintf(stderr, "[broadcast_status_message] Failed to send to client %d\n", id);
+      fprintf(stderr, "[broadcast_status_message] Failed to send to client %d\n", idx);
     }
-  } while ((recipient = get_next_connected_client(args->game_state->player, id)) != start);
+  } while ((recipient = get_next_connected_client(args->game_state->player, idx)) != start);
 }
 
 static int8_t recv_game_select(TCPsocket sock, uint8_t *out_game_type) {
@@ -861,8 +861,7 @@ static EReturnCode_t receive_game_type_and_run_game(ArgsBroadcastGameState_t *ar
 
   broadcast_game_state(args);
 
-  // Uint32 wait_ms = args->game_state->end_of_round_time_out_ms;
-  Uint32 wait_ms = 5000;
+  Uint32 wait_ms = args->game_state->end_of_round_time_out_ms;
   Uint32 start = SDL_GetTicks();
   while (SDL_GetTicks() - start < wait_ms)
     ;
@@ -964,7 +963,6 @@ int run_server(const char *bind_address, Path_t *path, const bool test_mode) {
       } else if (handle_disconnections(clients, socket_set, slot_taken, &game_state))
         broadcast_game_state(&args_broadcast_game_state);
     }
-    // broadcast_game_state(&args_broadcast_game_state);
 
     TCPsocket new_client = SDLNet_TCP_Accept(server);
     if (new_client) {
@@ -1070,16 +1068,7 @@ int run_server(const char *bind_address, Path_t *path, const bool test_mode) {
 
       if (*dealer_id == -1)
         continue; // No valid dealer
-
-      // if (SDLNet_SocketReady(clients[*dealer_id])) {
-      // if (receive_game_type_and_run_game(&args_broadcast_game_state, &deck) == RC_ERR)
-      // continue;
-      //}
     }
-    // if (SDLNet_CheckSockets(socket_set, 0) > 0)
-    // if (!SDLNet_SocketReady(clients[*dealer_id]))
-    // if (handle_disconnections(clients, socket_set, slot_taken, &game_state))
-    // broadcast_game_state(&args_broadcast_game_state);
     SDL_Delay(50);
   }
 
