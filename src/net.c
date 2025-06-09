@@ -285,10 +285,8 @@ ERecvStatus_t recv_game_state(TCPsocket client_socket, SDLNet_SocketSet socket_s
 
   case MSG_STATUS_MESSAGE: {
     size_t msg_len = size - 2;
-    if (msg_len > 100)
-      msg_len = 100;
-    memcpy(client_state->server_status_str, &buffer[2], msg_len);
-    client_state->server_status_str[msg_len] = '\0';
+    snprintf(client_state->server_status_str, sizeof(client_state->server_status_str), "%.*s",
+             (int)msg_len, (char *)&buffer[2]);
     fprintf(stderr, "[Status Message] %s\n", client_state->server_status_str);
   } break;
   case MSG_NEW_HAND: {
