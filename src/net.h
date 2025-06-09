@@ -70,6 +70,7 @@ typedef struct {
   bool has_ace;
   uint8_t n_cards_selected;
   int selected_amount;
+  int8_t save_starting_turn_id;
   char server_status_str[LEN_STATUS_STR];
 } ClientState_t;
 

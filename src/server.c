@@ -232,17 +232,23 @@ int send_status_message(TCPsocket sock, const char *msg) {
 }
 
 static void broadcast_status_message(const ArgsBroadcastGameState_t *args, const char *msg) {
-  uint8_t active_clients = count_active_clients(*args->slot_taken);
-  for (int i = 0; i < active_clients; ++i) {
+  int8_t id = args->game_state->turn_id;
+  Player_t *recipient = &args->game_state->player[id];
+  if (recipient->id == -1)
+    recipient = get_next_connected_client(args->game_state->player, id);
+  Player_t *start = recipient;
+
+  do {
+    id = recipient->id;
     puts(msg);
-    TCPsocket sock = (*args->clients)[i];
+    TCPsocket sock = (*args->clients)[id];
     if (!sock)
       continue;
 
     if (send_status_message(sock, msg) < 0) {
-      fprintf(stderr, "[broadcast_status_message] Failed to send to client %d\n", i);
+      fprintf(stderr, "[broadcast_status_message] Failed to send to client %d\n", id);
     }
-  }
+  } while ((recipient = get_next_connected_client(args->game_state->player, id)) != start);
 }
 
 static int8_t recv_game_select(TCPsocket sock, uint8_t *out_game_type) {
@@ -471,7 +477,7 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args) {
     // will still be needed for the status message that reports their disconnect
     char nick[sizeof(turn->nick)] = {0};
     strcpy(nick, turn->nick);
-    int8_t id = turn->id;
+    int8_t save_id = turn->id;
 
     while (SDL_GetTicks() - start < wait_ms) {
       // fprintf(stderr, "Waiting for action from %d\n", args->game_state->turn_id);
@@ -529,7 +535,7 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args) {
     char status_str[LEN_STATUS_STR] = {0};
     // The id will be -1 if the player disconnected when it was their turn to
     // send an action
-    if (args->game_state->player[id].id != -1) {
+    if (turn->id != -1) {
       if (action.action == 0) {
         if (!has_paid_all_bets(args->game_state, turn)) {
           action.action = handle_fold(args, turn, &action);
@@ -547,7 +553,8 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args) {
 
     broadcast_status_message(args, status_str);
 
-    turn = get_next_player(players_array, id);
+    // use previously saved id here, in case the client disconnected
+    turn = get_next_player(players_array, save_id);
 
     // fprintf(stderr, "player %d / total paid: %d\n", turn->id,
     // args->game_state->player[turn->id].total_paid);

@@ -51,7 +51,7 @@ Player_t *get_next_player(Player_t *players_array, int cur) {
       return &players_array[cur];
   } while (cur != start);
 
-  return NULL; // No other active player found
+  return &players_array[start];
 }
 
 Player_t *get_next_connected_client(Player_t *players_array, int cur) {
@@ -62,7 +62,7 @@ Player_t *get_next_connected_client(Player_t *players_array, int cur) {
       return &players_array[cur];
   } while (cur != start);
 
-  return NULL; // No other active player found
+  return &players_array[start]; // No other active player found
 }
 
 int8_t send_game_select(TCPsocket sock, uint8_t game_type) {
@@ -594,6 +594,7 @@ void run_sdl_loop(ClientState_t *client_state, SdlContext_t *sdl_context, Font_t
         cards_dealt = false;
         starting_turn = &game_state.player[game_state.turn_id];
         save_turn_id = game_state.turn_id;
+        client_state->save_starting_turn_id = starting_turn->id;
         memset(client_state, 0, sizeof *client_state);
         client_state->selected_amount = atoi(amount[0]);
         memset(status_msg, 0, sizeof status_msg);
@@ -602,6 +603,10 @@ void run_sdl_loop(ClientState_t *client_state, SdlContext_t *sdl_context, Font_t
     } else {
       // if (timer_start == 0 && game_state->turn_id == my_id)
       // SDL_GetTicks();
+
+      // For cases when the client who was designated as starting_turn disconnects
+      if (starting_turn->id == -1)
+        starting_turn = get_next_player(players_array, client_state->save_starting_turn_id);
 
       turn = &game_state.player[game_state.turn_id];
       if (game_state.turn_id != save_turn_id) {
