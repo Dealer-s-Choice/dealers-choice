@@ -778,9 +778,9 @@ void run_sdl_loop(ClientState_t *client_state, SdlContext_t *sdl_context, Font_t
 
       clear_screen(sdl_context->renderer);
 
-      if (game_state.pot > coins * 100 && coins < MAX_POT_COINS) {
-        coin_coords[coins].x = sdl_context->win_center.x + pcg32_boundedrand_r(&rng, 300) - 150;
-        coin_coords[coins].y = sdl_context->win_center.y + pcg32_boundedrand_r(&rng, 300) - 150;
+      if (game_state.pot > coins * 250 && coins < MAX_POT_COINS) {
+        coin_coords[coins].x = sdl_context->win_center.x + pcg32_boundedrand_r(&rng, 250) - 150;
+        coin_coords[coins].y = sdl_context->win_center.y + pcg32_boundedrand_r(&rng, 250) - 150;
         coins++;
       }
 
