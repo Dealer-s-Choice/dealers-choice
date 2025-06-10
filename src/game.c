@@ -847,10 +847,15 @@ void run_sdl_loop(ClientState_t *client_state, SdlContext_t *sdl_context, Font_t
         // printf("%d\n", __LINE__);
 
       } else {
-        char elapsed_str[8] = {0};
-        int32_t elapsed = (timer_start + game_state.action_time_out_ms - SDL_GetTicks()) / 1000;
-        if (elapsed > 0) {
+        Uint32 now = SDL_GetTicks();
+        int32_t remaining_ms =
+            (int32_t)(timer_start + game_state.action_time_out_ms) - (int32_t)now;
+
+        if (remaining_ms > 0) {
+          int elapsed = remaining_ms / 1000;
+          char elapsed_str[8] = {0};
           snprintf(elapsed_str, sizeof(elapsed_str), "%d", elapsed);
+
           render_text_plain(
               sdl_context->renderer, font->fonts[OTHER], elapsed_str, get_color(COLOR_WHITE),
               &(SDL_Rect){sdl_context->window_width - 60, sdl_context->window_height - 60, 0, 0});
