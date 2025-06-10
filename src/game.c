@@ -27,8 +27,10 @@
 */
 
 #include <math.h>
+#include <pcg_basic.h>
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
 
 #include "game.h"
@@ -42,6 +44,8 @@
 #define SIZEOF_CARD_TEXT 20
 
 #define CARD_DEAL_DELAY 50
+
+#define MAX_POT_COINS 30
 
 typedef struct {
   uint8_t w, h;
@@ -442,6 +446,13 @@ static void create_card_context(CardContext_t card_context[MAX_PLAYERS][HAND_SIZ
   } while ((turn = get_next_connected_client(players_array, turn->id)) != starting_turn);
 }
 
+static pcg32_random_t rng;
+static void pcg_srand_auto(void) {
+  uint64_t initstate = time(NULL) ^ (intptr_t)&printf;
+  uint64_t initseq = (intptr_t)&pcg_srand_auto;
+  pcg32_srandom_r(&rng, initstate, initseq);
+}
+
 void run_sdl_loop(ClientState_t *client_state, SdlContext_t *sdl_context, Font_t *font,
                   TCPsocket client_socket, SDLNet_SocketSet socket_set, const uint8_t my_id,
                   Path_t *path) {
@@ -577,6 +588,10 @@ void run_sdl_loop(ClientState_t *client_state, SdlContext_t *sdl_context, Font_t
   SDL_Texture *coin_texture = load_texture(sdl_context->renderer, coin_location);
   free(coin_location);
 
+  SDL_Point coin_coords[MAX_POT_COINS] = {0};
+  uint8_t coins;
+  pcg_srand_auto();
+
   while (running) {
     recv_status = recv_game_state(client_socket, socket_set, &game_state, client_state, my_id);
     // printf("%d\n", __LINE__);
@@ -600,6 +615,8 @@ void run_sdl_loop(ClientState_t *client_state, SdlContext_t *sdl_context, Font_t
         memset(client_state, 0, sizeof *client_state);
         client_state->selected_amount = atoi(amount[0]);
         memset(status_msg, 0, sizeof status_msg);
+        memset(coin_coords, 0, sizeof(coin_coords));
+        coins = 0;
         continue;
       }
     } else {
@@ -758,6 +775,23 @@ void run_sdl_loop(ClientState_t *client_state, SdlContext_t *sdl_context, Font_t
       }
 
       clear_screen(sdl_context->renderer);
+
+      if (game_state.pot > coins * 100 && coins < MAX_POT_COINS) {
+        coin_coords[coins].x = sdl_context->win_center.x + pcg32_boundedrand_r(&rng, 300) - 150;
+        coin_coords[coins].y = sdl_context->win_center.y + pcg32_boundedrand_r(&rng, 300) - 150;
+        coins++;
+      }
+
+      for (int i = 0; i < coins; i++) {
+        SDL_Rect coin_rect = {
+            .x = coin_coords[i].x,
+            .y = coin_coords[i].y,
+            .w = 48,
+            .h = 48,
+        };
+        SDL_RenderCopy(sdl_context->renderer, coin_texture, NULL, &coin_rect);
+      }
+
       // for (size_t i = 0; i < sizeof(status_msg) / sizeof(status_msg[0][0]); i++) {
       for (int i = 0; i < 16; i++) {
         char tmp[sizeof(status_msg[0])];
