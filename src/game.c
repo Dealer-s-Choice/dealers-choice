@@ -45,7 +45,7 @@
 
 #define CARD_DEAL_DELAY 50
 
-#define MAX_POT_COINS 30
+#define MAX_POT_COINS 50
 
 const SDL_Rect card_area = {0, 0, 80, 50};
 
