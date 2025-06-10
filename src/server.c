@@ -52,11 +52,9 @@ typedef struct {
   uint8_t discard_indices[MAX_DISCARDS];
 } DrawRequestMsg_t;
 
-static void remove_disconnected_player(TCPsocket *clients, SDLNet_SocketSet socket_set,
-                                       bool *slot_taken, Player_t *p);
+static void remove_disconnected_player(ArgsBroadcastGameState_t *args, const int8_t pl_index);
 
-static bool handle_disconnections(TCPsocket *clients, SDLNet_SocketSet socket_set, bool *slot_taken,
-                                  GameState_t *game_state);
+static bool handle_disconnections(ArgsBroadcastGameState_t *args);
 
 static void init_new_round(GameState_t *game_state);
 
@@ -203,8 +201,7 @@ static void broadcast_game_state(ArgsBroadcastGameState_t *args) {
     if (send_with_retries((*args->clients)[i], &size_net, sizeof(size_net)) == -1 ||
         send_with_retries((*args->clients)[i], data, size) == -1) {
       fprintf(stderr, "Failed to send game state to client %d after retries\n", i);
-      if (handle_disconnections(*args->clients, *args->socket_set, *args->slot_taken,
-                                args->game_state)) {
+      if (handle_disconnections(args)) {
         broadcast_game_state(args);
       }
     }
@@ -232,23 +229,22 @@ int send_status_message(TCPsocket sock, const char *msg) {
 }
 
 static void broadcast_status_message(const ArgsBroadcastGameState_t *args, const char *msg) {
-  int8_t idx = args->game_state->turn_id;
-  Player_t *recipient = &args->game_state->player[idx];
+  int8_t pl_idx = args->game_state->turn_id;
+  Player_t *recipient = &args->game_state->player[pl_idx];
   if (recipient->id == -1)
-    recipient = get_next_connected_client(args->game_state->player, idx);
+    recipient = get_next_connected_client(args->game_state->player, pl_idx);
   Player_t *start = recipient;
 
   do {
-    idx = recipient->id;
-    puts(msg);
-    TCPsocket sock = (*args->clients)[idx];
+    pl_idx = recipient->id;
+    TCPsocket sock = (*args->clients)[pl_idx];
     if (!sock)
       continue;
 
     if (send_status_message(sock, msg) < 0) {
-      fprintf(stderr, "[broadcast_status_message] Failed to send to client %d\n", idx);
+      fprintf(stderr, "[broadcast_status_message] Failed to send to client %d\n", pl_idx);
     }
-  } while ((recipient = get_next_connected_client(args->game_state->player, idx)) != start);
+  } while ((recipient = get_next_connected_client(args->game_state->player, pl_idx)) != start);
 }
 
 static int8_t recv_game_select(TCPsocket sock, uint8_t *out_game_type) {
@@ -382,7 +378,6 @@ static void handle_draw(ArgsBroadcastGameState_t *args, TCPsocket sock, const in
 
 static EPlayerAction_t handle_check(Player_t *turn, PlayerActionMsg_t *action) {
   turn->has_checked = true;
-  puts("player checks");
   action->str = "checks";
   return ACTION_CHECK;
 }
@@ -481,53 +476,64 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args) {
 
     while (SDL_GetTicks() - start < wait_ms) {
       // fprintf(stderr, "Waiting for action from %d\n", args->game_state->turn_id);
-      SDLNet_CheckSockets(*args->socket_set, 100); // wait up to 100ms
-      if (SDLNet_SocketReady((*args->clients)[turn->id])) {
-        // puts("socket ready");
-        // char tmp[sizeof args->game_state->status_str];
-        if (recv_player_action((*args->clients)[turn->id], &action) > 0) {
-          if (args->game_state->total_bets_plus_raises == 0) {
-            switch (action.action) {
-            case ACTION_CHECK:
-              handle_check(turn, &action);
-              break;
-            case ACTION_BET:
-              server_handle_bet(args->game_state, turn->id, action.amount);
-              action.str = "bets ";
-              break;
-            case ACTION_FOLD:
-              handle_fold(args, turn, &action);
-              break;
-            default:
-              fprintf(stderr, "Invalid Action received\n");
-              exit(EXIT_FAILURE);
+      int n_ready = SDLNet_CheckSockets(*args->socket_set, 100); // wait up to 100ms
+      if (n_ready > 0) {
+        // If this socket is ready (the player who's turn it is), they either
+        // disconnected, or have sent an action.
+        if (SDLNet_SocketReady((*args->clients)[turn->id])) {
+          // puts("socket ready");
+          // char tmp[sizeof args->game_state->status_str];
+          if (recv_player_action((*args->clients)[turn->id], &action) > 0) {
+            if (args->game_state->total_bets_plus_raises == 0) {
+              switch (action.action) {
+              case ACTION_CHECK:
+                handle_check(turn, &action);
+                break;
+              case ACTION_BET:
+                server_handle_bet(args->game_state, turn->id, action.amount);
+                action.str = "bets ";
+                break;
+              case ACTION_FOLD:
+                handle_fold(args, turn, &action);
+                break;
+              default:
+                fprintf(stderr, "Invalid Action received\n");
+                exit(EXIT_FAILURE);
+              }
+            } else {
+              switch (action.action) {
+              case ACTION_CALL:
+                server_handle_call(args->game_state, turn->id);
+                action.str = "calls";
+                break;
+              case ACTION_RAISE:
+                server_handle_raise(args->game_state, turn->id, action.amount);
+                action.str = "raises ";
+                break;
+              case ACTION_FOLD:
+                handle_fold(args, turn, &action);
+                break;
+              default:
+                fprintf(stderr, "Invalid Action received\nThe client is writing checks their body "
+                                "can't cash.\n");
+                exit(EXIT_FAILURE);
+              }
             }
           } else {
-            switch (action.action) {
-            case ACTION_CALL:
-              server_handle_call(args->game_state, turn->id);
-              action.str = "calls";
-              break;
-            case ACTION_RAISE:
-              server_handle_raise(args->game_state, turn->id, action.amount);
-              action.str = "raises ";
-              break;
-            case ACTION_FOLD:
-              handle_fold(args, turn, &action);
-              break;
-            default:
-              fprintf(
-                  stderr,
-                  "Invalid Action received\nThe client is writing checks their body can't cash.\n");
-              exit(EXIT_FAILURE);
-            }
+            remove_disconnected_player(args, args->game_state->turn_id);
+            args->game_state->player_count--;
+            broadcast_game_state(args);
+            SDL_Delay(10);
           }
+          break;
         } else {
-          remove_disconnected_player(*args->clients, *args->socket_set, *args->slot_taken, turn);
-          args->game_state->player_count--;
-          SDL_Delay(10);
+          // There is data to be read, but not from the player whos turn it is, so probably
+          // a disconnect by another client.
+          if (handle_disconnections(args)) {
+            args->game_state->player_count--;
+            broadcast_game_state(args);
+          }
         }
-        break;
       }
       SDL_Delay(50); // avoid busy-waiting
     }
@@ -552,6 +558,7 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args) {
       snprintf(status_str, sizeof status_str, "%s disconnected\n", nick);
 
     broadcast_status_message(args, status_str);
+    puts(status_str);
 
     // use previously saved id here, in case the client disconnected
     turn = get_next_player(players_array, save_id);
@@ -618,18 +625,18 @@ static void init_new_round(GameState_t *game_state) {
   }
 }
 
-static void remove_disconnected_player(TCPsocket *clients, SDLNet_SocketSet socket_set,
-                                       bool *slot_taken, Player_t *p) {
+static void remove_disconnected_player(ArgsBroadcastGameState_t *args, const int8_t pl_index) {
+  Player_t *p = &args->game_state->player[pl_index];
   const int id = p->id;
-  if (SDLNet_TCP_DelSocket(socket_set, clients[id]) == -1) {
+  if (SDLNet_TCP_DelSocket(*args->socket_set, (*args->clients)[id]) == -1) {
     fputs(SDLNet_GetError(), stderr);
     return;
   }
 
   printf("Client %d disconnected\n", id);
-  SDLNet_TCP_Close(clients[id]);
-  clients[id] = NULL;
-  slot_taken[id] = false;
+  SDLNet_TCP_Close((*args->clients)[id]);
+  (*args->clients)[id] = NULL;
+  (*args->slot_taken)[id] = false;
 
   // Reset player info
   memset(p->nick, 0, sizeof(p->nick));
@@ -641,18 +648,17 @@ static void remove_disconnected_player(TCPsocket *clients, SDLNet_SocketSet sock
   p->id = -1;
 }
 
-static bool handle_disconnections(TCPsocket *clients, SDLNet_SocketSet socket_set, bool *slot_taken,
-                                  GameState_t *game_state) {
+static bool handle_disconnections(ArgsBroadcastGameState_t *args) {
   bool someone_disconnected = false;
   for (int i = 0; i < MAX_CLIENTS; i++) {
-    if (!slot_taken[i])
+    if (!(*args->slot_taken)[i])
       continue;
 
-    if (SDLNet_SocketReady(clients[i])) {
+    if (SDLNet_SocketReady((*args->clients)[i])) {
       char tmp;
-      int result = SDLNet_TCP_Recv(clients[i], &tmp, 1);
+      int result = SDLNet_TCP_Recv((*args->clients)[i], &tmp, 1);
       if (result <= 0) {
-        remove_disconnected_player(clients, socket_set, slot_taken, &game_state->player[i]);
+        remove_disconnected_player(args, i);
         someone_disconnected = true;
         // Clear more fields if your struct includes game progress, bet, etc.
       } else {
@@ -847,8 +853,7 @@ static EReturnCode_t receive_game_type_and_run_game(ArgsBroadcastGameState_t *ar
     fprintf(stderr, "Client chose game type: 0x%02x\n", game_type);
   } else {
     fprintf(stderr, "Dealer failed to send valid game type or disconnected.\n");
-    remove_disconnected_player(*args->clients, *args->socket_set, *args->slot_taken,
-                               &args->game_state->player[*dealer_id]);
+    remove_disconnected_player(args, *dealer_id);
     broadcast_game_state(args);
     SDL_Delay(10);
     return RC_ERR;
@@ -960,7 +965,7 @@ int run_server(const char *bind_address, Path_t *path, const bool test_mode) {
           game_state.player[*dealer_id].id != -1) {
         if (receive_game_type_and_run_game(&args_broadcast_game_state, &deck) == RC_ERR)
           continue;
-      } else if (handle_disconnections(clients, socket_set, slot_taken, &game_state))
+      } else if (handle_disconnections(&args_broadcast_game_state))
         broadcast_game_state(&args_broadcast_game_state);
     }
 

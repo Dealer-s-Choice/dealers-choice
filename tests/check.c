@@ -1,14 +1,14 @@
 #include "00_test.h"
 
 int main(int argc, char *argv[]) {
-#include "_setup_socket_context.c"
+  _SETUP_SOCKET_CONTEXT()
 
   sleep(n_seconds);
   fprintf(stderr, "Dealer %d selecting game\n", *dealer_id);
   assert(send_game_select(socket_context[*dealer_id].sock,
                           game_choices[FIVE_CARD_SHOWDOWN].game_type) == 0);
 
-#include "_receive_game_state.c"
+  _RECEIVE_GAME_STATE()
 
   int8_t *turn_id = &game_state[0].turn_id;
   sleep(n_seconds);
@@ -17,14 +17,14 @@ int main(int argc, char *argv[]) {
 
     assert(send_player_action(socket_context[*turn_id].sock, ACTION_CHECK, 0) == 0);
 
-#include "_receive_game_state.c"
-#include "_receive_game_state.c"
+    _RECEIVE_GAME_STATE()
+    _RECEIVE_GAME_STATE()
 
     sleep(n_seconds);
     assert(send_player_action(socket_context[*turn_id].sock, ACTION_CHECK, 0) == 0);
 
-#include "_receive_game_state.c"
-#include "_receive_game_state.c"
+    _RECEIVE_GAME_STATE()
+    _RECEIVE_GAME_STATE()
 
     sleep(n_seconds);
     for (i = 0; i < 2; i++) {
@@ -34,8 +34,8 @@ int main(int argc, char *argv[]) {
 
     assert(send_player_action(socket_context[*turn_id].sock, ACTION_CHECK, 0) == 0);
 
-#include "_receive_game_state.c"
-#include "_receive_game_state.c"
+    _RECEIVE_GAME_STATE()
+    _RECEIVE_GAME_STATE()
 
     // const int expected_bet_turn[3] = {0, 1, 0};
     // assert(expected_bet_turn[game] == *turn_id);
@@ -48,8 +48,8 @@ int main(int argc, char *argv[]) {
       fputc('\n', stderr);
     }
 
-#include "_receive_game_state.c"
-#include "_receive_game_state.c"
+    _RECEIVE_GAME_STATE()
+    _RECEIVE_GAME_STATE()
 
     // const int expected_call_turn[3] = {0, 1, 0};
     // assert(expected_call_turn[game] == *turn_id);
@@ -58,10 +58,10 @@ int main(int argc, char *argv[]) {
     sleep(n_seconds);
     assert(send_player_action(socket_context[*turn_id].sock, ACTION_CALL, 0) == 0);
 
-#include "_receive_game_state.c"
-#include "_receive_game_state.c"
+    _RECEIVE_GAME_STATE()
+    _RECEIVE_GAME_STATE()
   }
-#include "_receive_game_state.c"
+  _RECEIVE_GAME_STATE()
 
   for (i = 0; i < 2; i++) {
     debug_print_cards(&game_state[i].player[i].hand);

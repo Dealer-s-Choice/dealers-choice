@@ -1,13 +1,13 @@
 #include "00_test.h"
 
 int main(int argc, char *argv[]) {
-#include "_setup_socket_context.c"
+  _SETUP_SOCKET_CONTEXT()
   sleep(n_seconds);
   fprintf(stderr, "Dealer %d selecting game\n", *dealer_id);
   assert(send_game_select(socket_context[*dealer_id].sock,
                           game_choices[FIVE_CARD_STUD].game_type) == 0);
 
-#include "_receive_game_state.c"
+  _RECEIVE_GAME_STATE()
 
   for (int n_rounds = 0; n_rounds < game_choices[FIVE_CARD_STUD].n_betting_rounds; n_rounds++) {
     fprintf(stderr, "\n -#- game: %d -#- n_rounds: %d\n", game, n_rounds);
@@ -26,9 +26,9 @@ int main(int argc, char *argv[]) {
       fputc('\n', stderr);
     }
 
-#include "_receive_game_state.c"
-#include "_receive_game_state.c"
-#include "_receive_game_state.c"
+    _RECEIVE_GAME_STATE()
+    _RECEIVE_GAME_STATE()
+    _RECEIVE_GAME_STATE()
 
     const int expected_call_turn[3] = {0, 1, 0};
     assert(expected_call_turn[game] == *turn_id);
@@ -37,12 +37,12 @@ int main(int argc, char *argv[]) {
     fprintf(stderr, "turn_id: %d\n", *turn_id);
     assert(send_player_action(socket_context[*turn_id].sock, ACTION_CALL, 0) == 0);
 
-#include "_receive_game_state.c"
-#include "_receive_game_state.c"
-#include "_receive_game_state.c"
+    _RECEIVE_GAME_STATE()
+    _RECEIVE_GAME_STATE()
+    _RECEIVE_GAME_STATE()
   }
 
-#include "_receive_game_state.c"
+  _RECEIVE_GAME_STATE()
 
   fprintf(stderr, "%d\n", game_state[0].pot);
 

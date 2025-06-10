@@ -47,31 +47,33 @@
 
 #define MAX_POT_COINS 30
 
-typedef struct {
-  uint8_t w, h;
-} CardArea_t;
-const CardArea_t card_area = {80, 50};
+const SDL_Rect card_area = {0, 0, 80, 50};
 
-Player_t *get_next_player(Player_t *players_array, int cur) {
+static Player_t *get_next_player_real(Player_t *players_array, int cur, bool want_all_clients) {
+  if (cur < 0) {
+    fprintf(stderr, "%s: 'cur' may not be a negative value.", __func__);
+    exit(EXIT_FAILURE);
+  }
+
   int start = cur;
   do {
     cur = (cur + 1) % MAX_PLAYERS;
-    if (players_array[cur].id != -1 && players_array[cur].in != false)
+    if (players_array[cur].id != -1 &&
+        ((!want_all_clients && players_array[cur].in != false) || want_all_clients))
       return &players_array[cur];
   } while (cur != start);
 
   return &players_array[start];
 }
 
-Player_t *get_next_connected_client(Player_t *players_array, int cur) {
-  int start = cur;
-  do {
-    cur = (cur + 1) % MAX_PLAYERS;
-    if (players_array[cur].id != -1)
-      return &players_array[cur];
-  } while (cur != start);
+Player_t *get_next_player(Player_t *players_array, int cur) {
+  const bool want_all_clients = false;
+  return get_next_player_real(players_array, cur, want_all_clients);
+}
 
-  return &players_array[start]; // No other active player found
+Player_t *get_next_connected_client(Player_t *players_array, int cur) {
+  const bool want_all_clients = true;
+  return get_next_player_real(players_array, cur, want_all_clients);
 }
 
 int8_t send_game_select(TCPsocket sock, uint8_t game_type) {

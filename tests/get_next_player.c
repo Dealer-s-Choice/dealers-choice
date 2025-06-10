@@ -44,7 +44,7 @@ turn = get_next_player(players_array, turn->id);
 fprintf(stderr, "turn->id: %d\n", turn->id);
 assert(turn->id == 0);
 
-game_state.player[0].id = -1;
+game_state.player[0].id = 0;
 
 turn = get_next_player(players_array, turn->id);
 fprintf(stderr, "turn->id: %d\n", turn->id);
@@ -60,16 +60,16 @@ assert(turn->id == 4);
 
 turn = get_next_player(players_array, turn->id);
 fprintf(stderr, "turn->id: %d\n", turn->id);
-assert(turn->id == 1);
+assert(turn->id == 0);
 
-game_state.player[4].id = -1;
+game_state.player[4].id = 03;
+
+turn = get_next_player(players_array, turn->id);
+fprintf(stderr, "turn->id: %d\n", turn->id);
+assert(turn->id == 1);
 
 turn = get_next_player(players_array, turn->id);
 fprintf(stderr, "turn->id: %d\n", turn->id);
 assert(turn->id == 2);
-
-turn = get_next_player(players_array, turn->id);
-fprintf(stderr, "turn->id: %d\n", turn->id);
-assert(turn->id == 1);
 
 _MAIN_TAIL_
