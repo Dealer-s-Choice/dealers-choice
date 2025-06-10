@@ -523,7 +523,7 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args) {
             remove_disconnected_player(args, args->game_state->turn_id);
             args->game_state->player_count--;
             broadcast_game_state(args);
-            SDL_Delay(10);
+            break;
           }
           break;
         } else {
@@ -532,6 +532,8 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args) {
           if (handle_disconnections(args)) {
             args->game_state->player_count--;
             broadcast_game_state(args);
+            if (args->game_state->player_count == 1)
+              break;
           }
         }
       }
@@ -539,35 +541,36 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args) {
     }
 
     char status_str[LEN_STATUS_STR] = {0};
-    // The id will be -1 if the player disconnected when it was their turn to
-    // send an action
-    if (turn->id != -1) {
-      if (action.action == 0) {
-        if (!has_paid_all_bets(args->game_state, turn)) {
-          action.action = handle_fold(args, turn, &action);
-        } else if (args->game_state->total_bets_plus_raises == 0) {
-          action.action = handle_check(turn, &action);
+    if (args->game_state->player_count != 1) {
+      // The id will be -1 if the player disconnected when it was their turn to
+      // send an action
+      if (turn->id != -1) {
+        if (action.action == 0) {
+          if (!has_paid_all_bets(args->game_state, turn)) {
+            action.action = handle_fold(args, turn, &action);
+          } else if (args->game_state->total_bets_plus_raises == 0) {
+            action.action = handle_check(turn, &action);
+          }
         }
-      }
 
-      if (action.amount > 0)
-        snprintf(status_str, sizeof status_str, "%s %s%d\n", nick, action.str, action.amount);
-      else
-        snprintf(status_str, sizeof status_str, "%s %s\n", nick, action.str);
-    } else
-      snprintf(status_str, sizeof status_str, "%s disconnected\n", nick);
+        if (action.amount > 0)
+          snprintf(status_str, sizeof status_str, "%s %s%d\n", nick, action.str, action.amount);
+        else
+          snprintf(status_str, sizeof status_str, "%s %s\n", nick, action.str);
+      } else
+        snprintf(status_str, sizeof status_str, "%s disconnected\n", nick);
 
-    broadcast_status_message(args, status_str);
-    puts(status_str);
+      broadcast_status_message(args, status_str);
+      puts(status_str);
 
-    // use previously saved id here, in case the client disconnected
-    turn = get_next_player(players_array, save_id);
+      // use previously saved id here, in case the client disconnected
+      turn = get_next_player(players_array, save_id);
 
-    // fprintf(stderr, "player %d / total paid: %d\n", turn->id,
-    // args->game_state->player[turn->id].total_paid);
+      // fprintf(stderr, "player %d / total paid: %d\n", turn->id,
+      // args->game_state->player[turn->id].total_paid);
+    }
     // fprintf(stderr, "total_bets_plus_raises: %d\n", args->game_state->total_bets_plus_raises);
-
-    if (args->game_state->player_count == 1) { // All other players folded
+    if (args->game_state->player_count == 1) { // All other players folded or disconnected
       // broadcast_game_state(args);
       turn = starting_player;
       do {
