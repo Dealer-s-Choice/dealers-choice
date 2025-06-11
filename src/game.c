@@ -144,38 +144,38 @@ const GameChoice_t *find_game_choice_by_type(const uint8_t type) {
   return NULL; // Not found
 }
 
-void render_project_link(SDL_Renderer *renderer, TTF_Font *font, SDL_Rect *rect,
-                         const bool hovered) {
-  SDL_Color text_color = (hovered) ? get_color(COLOR_YELLOW) : get_color(COLOR_BLACK);
-  TTF_SetFontStyle(font, TTF_STYLE_UNDERLINE);
+void render_link(Link_t *link) {
+  link->rect.w *= strlen(link->url);
+  SDL_Color text_color = (link->hovered) ? get_color(COLOR_YELLOW) : get_color(COLOR_BLACK);
+  TTF_SetFontStyle(link->font, TTF_STYLE_UNDERLINE);
 
-  const char *ptr = &DEALERSCHOICE_URL[sizeof("https://") - 1];
-  SDL_Surface *surface = TTF_RenderText_Solid(font, ptr, text_color);
+  const char *ptr = &link->url[sizeof("https://") - 1];
+  SDL_Surface *surface = TTF_RenderText_Solid(link->font, ptr, text_color);
   if (!surface) {
     SDL_Log("Failed to render text surface: %s", TTF_GetError());
     return;
   }
 
-  SDL_Texture *texture = SDL_CreateTextureFromSurface(renderer, surface);
+  SDL_Texture *texture = SDL_CreateTextureFromSurface(link->renderer, surface);
   if (!texture) {
     SDL_Log("Failed to create texture from surface: %s", SDL_GetError());
     SDL_FreeSurface(surface);
     return;
   }
 
-  rect->w = surface->w;
-  rect->h = surface->h;
+  link->rect.w = surface->w;
+  link->rect.h = surface->h;
 
   SDL_FreeSurface(surface);
 
-  if (!hovered)
-    SDL_SetRenderDrawColor(renderer, 255, 255, 0, 255);
+  if (!link->hovered)
+    SDL_SetRenderDrawColor(link->renderer, 255, 255, 0, 255);
   else
-    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+    SDL_SetRenderDrawColor(link->renderer, 0, 0, 0, 255);
 
-  SDL_RenderFillRect(renderer, rect);
+  SDL_RenderFillRect(link->renderer, &link->rect);
 
-  SDL_RenderCopy(renderer, texture, NULL, rect);
+  SDL_RenderCopy(link->renderer, texture, NULL, &link->rect);
   SDL_DestroyTexture(texture);
 }
 
@@ -197,8 +197,13 @@ static int menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet s
     y_offset += button_height * 1.1;
   }
 
-  bool link_hovered;
   bool running = true;
+  // const char *link[] = { DEALERSCHOICE_URL, "https://matrix.to/#/#dealers-choice:matrix.org" };
+  Link_t link[] = {
+      {DEALERSCHOICE_URL, font->fonts[LINK], sdl_context->renderer,
+       (SDL_Rect){sdl_context->win_center.x + 50, sdl_context->window_height - 40, 8, 30}, false},
+      {"https://matrix.to/#/#dealers-choice:matrix.org", font->fonts[LINK], sdl_context->renderer,
+       (SDL_Rect){20, sdl_context->window_height - 40, 8, 30}, false}};
 
   while (running && game_state->at_menu) {
     ERecvStatus_t recv_status =
@@ -207,10 +212,6 @@ static int menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet s
       return RECV_ERROR;
     // else if (recv_status == RECV_NOTHING)
     // fprintf(stderr, "%s: Received nothing\n", __func__);
-
-    SDL_Rect link_rect = {sdl_context->win_center.x + 50, sdl_context->window_height - 40,
-                          sizeof(DEALERSCHOICE_URL) * 8, 30};
-
     SDL_Event e;
     while (SDL_PollEvent(&e)) {
       SDL_Point mouse_pos = {e.button.x, e.button.y};
@@ -218,7 +219,8 @@ static int menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet s
         game_choice_button[i].enabled = (game_state->dealer_id == my_id);
         game_choice_button[i].hovered = SDL_PointInRect(&mouse_pos, &game_choice_button[i].rect);
       }
-      link_hovered = SDL_PointInRect(&mouse_pos, &link_rect);
+      link[0].hovered = SDL_PointInRect(&mouse_pos, &link[0].rect);
+      link[1].hovered = SDL_PointInRect(&mouse_pos, &link[1].rect);
       if (e.type == SDL_QUIT) {
         return -1;
       } else if (e.type == SDL_MOUSEBUTTONDOWN) {
@@ -233,9 +235,11 @@ static int menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet s
             }
           }
         }
-        if (link_hovered && e.button.button == SDL_BUTTON_LEFT)
-          if (SDL_OpenURL(DEALERSCHOICE_URL) == -1)
-            fputs(SDL_GetError(), stderr);
+        for (size_t i = 0; i < sizeof link / sizeof link[0]; i++) {
+          if (link[i].hovered && e.button.button == SDL_BUTTON_LEFT)
+            if (SDL_OpenURL(link[i].url) == -1)
+              fputs(SDL_GetError(), stderr);
+        }
       }
     }
 
@@ -269,7 +273,8 @@ static int menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet s
     } while ((client = get_next_connected_client(game_state->player, client->id)) != start);
     // fprintf(stderr, "%d\n", __LINE__);
 
-    render_project_link(sdl_context->renderer, font->fonts[LINK], &link_rect, link_hovered);
+    render_link(&link[0]);
+    render_link(&link[1]);
 
     SDL_RenderPresent(sdl_context->renderer);
     SDL_Delay(16);
@@ -699,7 +704,7 @@ void run_sdl_loop(ClientState_t *client_state, SdlContext_t *sdl_context, Font_t
         }
         if (event.type == SDL_QUIT) {
           running = false;
-        } else if (event.type == SDL_MOUSEBUTTONDOWN) {
+        } else if (event.type == SDL_MOUSEBUTTONDOWN || event.type == SDL_KEYDOWN) {
           for (int i = 0; i < n_amounts; i++) {
             if (SDL_PointInRect(&mouse_pos, &amount_button[i].rect)) {
               // Deselect all buttons
@@ -714,7 +719,8 @@ void run_sdl_loop(ClientState_t *client_state, SdlContext_t *sdl_context, Font_t
           if (game_state.turn_id == my_id && !client_state->do_discard_draw) {
             if ((game_state.total_bets_plus_raises == 0 && !turn->has_checked) ||
                 game_state.player[my_id].total_paid != game_state.total_bets_plus_raises) {
-              if (SDL_PointInRect(&mouse_pos, &action_button[FOLD].rect)) {
+              if (SDL_PointInRect(&mouse_pos, &action_button[FOLD].rect) ||
+                  event.key.keysym.sym == SDLK_f) {
                 puts("folding");
                 if (send_player_action(client_socket, ACTION_FOLD, 0) != 0)
                   fprintf(stderr, "Failed to fold\n");
@@ -722,30 +728,35 @@ void run_sdl_loop(ClientState_t *client_state, SdlContext_t *sdl_context, Font_t
             }
             if (game_state.total_bets_plus_raises == 0 && !turn->has_checked) {
               // TODO: use existing array (or modify it) to loop through each action
-              if (SDL_PointInRect(&mouse_pos, &action_button[BET].rect)) {
+              if (SDL_PointInRect(&mouse_pos, &action_button[BET].rect) ||
+                  event.key.keysym.sym == SDLK_b) {
                 puts("sending bet");
                 if (send_player_action(client_socket, ACTION_BET, client_state->selected_amount) !=
                     0)
                   fprintf(stderr, "Failed to send bet\n");
-              } else if (SDL_PointInRect(&mouse_pos, &action_button[CHECK].rect)) {
+              } else if (SDL_PointInRect(&mouse_pos, &action_button[CHECK].rect) ||
+                         event.key.keysym.sym == SDLK_c) {
                 puts("checking");
                 if (send_player_action(client_socket, ACTION_CHECK, 0) != 0)
                   fprintf(stderr, "Failed to check\n");
               }
             } else if (game_state.player[my_id].total_paid != game_state.total_bets_plus_raises) {
-              if (SDL_PointInRect(&mouse_pos, &action_button[RAISE].rect)) {
+              if (SDL_PointInRect(&mouse_pos, &action_button[RAISE].rect) ||
+                  event.key.keysym.sym == SDLK_r) {
                 puts("raising");
                 if (send_player_action(client_socket, ACTION_RAISE,
                                        client_state->selected_amount) != 0)
                   fprintf(stderr, "Failed to raise\n");
-              } else if (SDL_PointInRect(&mouse_pos, &action_button[CALL].rect)) {
+              } else if (SDL_PointInRect(&mouse_pos, &action_button[CALL].rect) ||
+                         event.key.keysym.sym == SDLK_c) {
                 puts("calling");
                 if (send_player_action(client_socket, ACTION_CALL, 0) != 0)
                   fprintf(stderr, "Failed to call\n");
               }
             }
           } else if (action_button[DISCARD].enabled &&
-                     SDL_PointInRect(&mouse_pos, &action_button[DISCARD].rect)) {
+                     (SDL_PointInRect(&mouse_pos, &action_button[DISCARD].rect) ||
+                      event.key.keysym.sym == SDLK_d)) {
             puts("discarding");
             // Although the maximum allowed discards for 5 card draw can never
             // exceed 4, we need an array size of HAND_SIZE in case they select
