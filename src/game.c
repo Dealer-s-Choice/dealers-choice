@@ -146,7 +146,7 @@ const GameChoice_t *find_game_choice_by_type(const uint8_t type) {
 
 void render_link(Link_t *link) {
   link->rect.w *= strlen(link->url);
-  SDL_Color text_color = (link->hovered) ? get_color(COLOR_YELLOW) : get_color(COLOR_BLACK);
+  SDL_Color text_color = (link->hovered) ? get_color(COLOR_BLUE) : get_color(COLOR_BLACK);
   TTF_SetFontStyle(link->font, TTF_STYLE_UNDERLINE);
 
   const char *ptr = &link->url[sizeof("https://") - 1];
@@ -168,10 +168,10 @@ void render_link(Link_t *link) {
 
   SDL_FreeSurface(surface);
 
-  if (!link->hovered)
-    SDL_SetRenderDrawColor(link->renderer, 255, 255, 0, 255);
+  if (link->hovered)
+    SDL_SetRenderDrawColor(link->renderer, 255, 255, 255, 255);
   else
-    SDL_SetRenderDrawColor(link->renderer, 0, 0, 0, 255);
+    SDL_SetRenderDrawColor(link->renderer, 230, 245, 230, 255);
 
   SDL_RenderFillRect(link->renderer, &link->rect);
 
