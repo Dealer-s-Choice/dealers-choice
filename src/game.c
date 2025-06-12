@@ -49,21 +49,34 @@
 
 const SDL_Rect card_area = {0, 0, 80, 50};
 
+static bool is_valid_player(const Player_t *p, bool want_all_clients) {
+  return p->id != -1 && (want_all_clients || p->in);
+}
+
 static Player_t *get_next_player_real(Player_t *players_array, int cur, bool want_all_clients) {
   if (cur < 0) {
-    fprintf(stderr, "%s: 'cur' may not be a negative value.", __func__);
+    fprintf(stderr, "%s: 'cur' may not be a negative value.\n", __func__);
     exit(EXIT_FAILURE);
   }
 
-  int start = cur;
-  do {
-    cur = (cur + 1) % MAX_PLAYERS;
-    if (players_array[cur].id != -1 &&
-        ((!want_all_clients && players_array[cur].in != false) || want_all_clients))
-      return &players_array[cur];
-  } while (cur != start);
+  int i = (cur + 1) % MAX_PLAYERS;
 
-  return &players_array[start];
+  while (i != cur) {
+    // fprintf(stderr, "i: %d\n", i);
+    if (is_valid_player(&players_array[i], want_all_clients)) {
+      return &players_array[i];
+    }
+    i = (i + 1) % MAX_PLAYERS;
+  }
+
+  // fprintf(stderr, "i: %d\n", i);
+  // Final fallback: check starting index
+  if (is_valid_player(&players_array[cur], want_all_clients)) {
+    return &players_array[cur];
+  }
+
+  fputs("No valid players found\n", stderr);
+  exit(EXIT_FAILURE);
 }
 
 Player_t *get_next_player(Player_t *players_array, int cur) {

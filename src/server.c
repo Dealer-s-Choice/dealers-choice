@@ -470,8 +470,8 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args) {
 
     // If the player disconnects, their nick will be erased from the players array, however, it
     // will still be needed for the status message that reports their disconnect
-    char nick[sizeof(turn->nick)] = {0};
-    strcpy(nick, turn->nick);
+    char saved_nick[sizeof(turn->nick)] = {0};
+    strcpy(saved_nick, turn->nick);
     int8_t save_id = turn->id;
 
     while (SDL_GetTicks() - start < wait_ms) {
@@ -541,7 +541,7 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args) {
     }
 
     char status_str[LEN_STATUS_STR] = {0};
-    if (args->game_state->player_count != 1) {
+    if (args->game_state->player_count > 1) {
       // The id will be -1 if the player disconnected when it was their turn to
       // send an action
       if (turn->id != -1) {
@@ -554,49 +554,43 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args) {
         }
 
         if (action.amount > 0)
-          snprintf(status_str, sizeof status_str, "%s %s%d\n", nick, action.str, action.amount);
+          snprintf(status_str, sizeof status_str, "%s %s%d\n", turn->nick, action.str,
+                   action.amount);
         else
-          snprintf(status_str, sizeof status_str, "%s %s\n", nick, action.str);
+          snprintf(status_str, sizeof status_str, "%s %s\n", turn->nick, action.str);
       } else
-        snprintf(status_str, sizeof status_str, "%s disconnected\n", nick);
+        snprintf(status_str, sizeof status_str, "%s disconnected\n", saved_nick);
 
       broadcast_status_message(args, status_str);
       puts(status_str);
 
-      // use previously saved id here, in case the client disconnected
       turn = get_next_player(players_array, save_id);
-
-      // fprintf(stderr, "player %d / total paid: %d\n", turn->id,
-      // args->game_state->player[turn->id].total_paid);
-    }
-    // fprintf(stderr, "total_bets_plus_raises: %d\n", args->game_state->total_bets_plus_raises);
-    if (args->game_state->player_count == 1) { // All other players folded or disconnected
-      // broadcast_game_state(args);
-      turn = starting_player;
-      do {
-        if (turn->in) {
-          turn->winner = true;
-          snprintf(status_str, sizeof(status_str), "%s wins\n", nick);
-          broadcast_status_message(args, status_str);
-
-          args->game_state->winner_declared = true;
-          results.n_winners = 1;
-          fprintf(stderr, "winner id from fold: %d\n", turn->id);
-          results.id[0] = turn->id;
-          turn->coins += args->game_state->pot;
-          args->game_state->pot = 0;
+      if (args->game_state->total_bets_plus_raises == 0) {
+        if (turn == starting_player || starting_player->id == -1)
           break;
-        }
-      } while ((turn = get_next_player(players_array, turn->id)) != starting_player);
+      } else if (has_paid_all_bets(args->game_state, turn)) {
+        break; // Everyone either checked or paid all bets and raises
+      }
 
-    } else if (args->game_state->total_bets_plus_raises == 0) {
-      if (turn == starting_player)
+      if (results.n_winners > 0) {
         break;
-    } else if (has_paid_all_bets(args->game_state, turn)) {
-      break; // Everyone either checked or paid all bets and raises
-    }
+      }
+    } else {
+      if (turn->id == -1 || !turn->in) {
+        // fprintf(stderr, "turn->id: %d | %d\n", turn->id, __LINE__);
+        turn = get_next_player(players_array, 0);
+      }
+      // fprintf(stderr, "turn->id: %d | %d\n", turn->id, __LINE__);
+      turn->winner = true;
+      snprintf(status_str, sizeof(status_str), "%s wins\n", turn->nick);
+      broadcast_status_message(args, status_str);
 
-    if (results.n_winners > 0) {
+      args->game_state->winner_declared = true;
+      results.n_winners = 1;
+      fprintf(stderr, "winner id from fold: %d\n", turn->id);
+      results.id[0] = turn->id;
+      turn->coins += args->game_state->pot;
+      args->game_state->pot = 0;
       break;
     }
   } while (true);
@@ -869,7 +863,8 @@ static EReturnCode_t receive_game_type_and_run_game(ArgsBroadcastGameState_t *ar
 
   broadcast_game_state(args);
 
-  Uint32 wait_ms = args->game_state->end_of_round_time_out_ms;
+  // Uint32 wait_ms = args->game_state->end_of_round_time_out_ms;
+  Uint32 wait_ms = 2000;
   Uint32 start = SDL_GetTicks();
   while (SDL_GetTicks() - start < wait_ms)
     ;
