@@ -75,8 +75,8 @@ struct  GameState
   uint32_t player_count;
   uint32_t total_bets_plus_raises;
   protobuf_c_boolean winner_declared;
-  uint32_t action_time_out_ms;
-  uint32_t end_of_round_time_out_ms;
+  uint32_t action_timeout_ms;
+  uint32_t end_of_game_timeout_ms;
   size_t n_player;
   Player **player;
 };

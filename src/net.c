@@ -90,8 +90,8 @@ uint8_t *serialize_game_state(const GameState_t *src, size_t *size_out) {
   msg.total_bets_plus_raises = src->total_bets_plus_raises;
   msg.player_count = src->player_count;
   msg.winner_declared = src->winner_declared;
-  msg.action_time_out_ms = src->action_time_out_ms;
-  msg.end_of_round_time_out_ms = src->end_of_round_time_out_ms;
+  msg.action_timeout_ms = src->action_timeout_ms;
+  msg.end_of_game_timeout_ms = src->end_of_game_timeout_ms;
 
   // player
   Player *player_msgs[MAX_PLAYERS];
@@ -133,8 +133,8 @@ GameState_t deserialize_game_state(const uint8_t *data, size_t size) {
   result.total_bets_plus_raises = msg->total_bets_plus_raises;
   result.player_count = msg->player_count;
   result.winner_declared = msg->winner_declared;
-  result.action_time_out_ms = msg->action_time_out_ms;
-  result.end_of_round_time_out_ms = msg->end_of_round_time_out_ms;
+  result.action_timeout_ms = msg->action_timeout_ms;
+  result.end_of_game_timeout_ms = msg->end_of_game_timeout_ms;
 
   size_t n = msg->n_player < MAX_PLAYERS ? msg->n_player : MAX_PLAYERS;
   for (size_t i = 0; i < n; ++i) {

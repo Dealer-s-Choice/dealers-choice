@@ -93,8 +93,8 @@ Config_t init_game_state(GameState_t *game_state, Path_t *path, const bool test_
   game_state->player_count = 0;
   game_state->total_bets_plus_raises = 0;
   game_state->winner_declared = false;
-  game_state->action_time_out_ms = config.action_time_out_ms;
-  game_state->end_of_round_time_out_ms = (test_mode) ? 500 : config.end_of_round_time_out_ms;
+  game_state->action_timeout_ms = config.action_timeout_ms;
+  game_state->end_of_game_timeout_ms = (test_mode) ? 500 : config.end_of_game_timeout_ms;
   return config;
 }
 
@@ -464,7 +464,7 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args) {
     args->game_state->turn_id = turn->id;
     broadcast_game_state(args);
 
-    Uint32 wait_ms = args->game_state->action_time_out_ms;
+    Uint32 wait_ms = args->game_state->action_timeout_ms;
     Uint32 start = SDL_GetTicks();
     PlayerActionMsg_t action = {0};
 
@@ -863,7 +863,7 @@ static EReturnCode_t receive_game_type_and_run_game(ArgsBroadcastGameState_t *ar
 
   broadcast_game_state(args);
 
-  Uint32 wait_ms = args->game_state->end_of_round_time_out_ms;
+  Uint32 wait_ms = args->game_state->end_of_game_timeout_ms;
   // Uint32 wait_ms = 2000;
   Uint32 start = SDL_GetTicks();
   while (SDL_GetTicks() - start < wait_ms)

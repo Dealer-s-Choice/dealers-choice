@@ -872,8 +872,7 @@ void run_sdl_loop(ClientState_t *client_state, SdlContext_t *sdl_context, Font_t
 
       } else {
         Uint32 now = SDL_GetTicks();
-        int32_t remaining_ms =
-            (int32_t)(timer_start + game_state.action_time_out_ms) - (int32_t)now;
+        int32_t remaining_ms = (int32_t)(timer_start + game_state.action_timeout_ms) - (int32_t)now;
 
         if (remaining_ms > 0) {
           int elapsed = remaining_ms / 1000;

@@ -492,24 +492,24 @@ static const ProtobufCFieldDescriptor game_state__field_descriptors[10] =
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
   {
-    "action_time_out_ms",
+    "action_timeout_ms",
     8,
     PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_UINT32,
     0,   /* quantifier_offset */
-    offsetof(GameState, action_time_out_ms),
+    offsetof(GameState, action_timeout_ms),
     NULL,
     NULL,
     0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
   {
-    "end_of_round_time_out_ms",
+    "end_of_game_timeout_ms",
     9,
     PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_UINT32,
     0,   /* quantifier_offset */
-    offsetof(GameState, end_of_round_time_out_ms),
+    offsetof(GameState, end_of_game_timeout_ms),
     NULL,
     NULL,
     0,             /* flags */
@@ -529,10 +529,10 @@ static const ProtobufCFieldDescriptor game_state__field_descriptors[10] =
   },
 };
 static const unsigned game_state__field_indices_by_name[] = {
-  7,   /* field[7] = action_time_out_ms */
+  7,   /* field[7] = action_timeout_ms */
   3,   /* field[3] = at_menu */
   1,   /* field[1] = dealer_id */
-  8,   /* field[8] = end_of_round_time_out_ms */
+  8,   /* field[8] = end_of_game_timeout_ms */
   9,   /* field[9] = player */
   4,   /* field[4] = player_count */
   0,   /* field[0] = pot */
