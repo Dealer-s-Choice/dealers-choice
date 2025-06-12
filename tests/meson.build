@@ -33,7 +33,7 @@ foreach test : game_logic
     args: ['test_' + test],
     env: environment(env_dict),
     is_parallel: false,
-    timeout: 150,
+    timeout: 180,
     depends: [_lib, exe_target],
   )
 endforeach

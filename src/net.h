@@ -56,6 +56,7 @@
 #define MSG_DRAW_PROMPT 0x0008
 #define MSG_STATUS_MESSAGE 0x0009
 #define MSG_NEW_HAND 0x0010
+#define MSG_START_ACTION_TIMER 0x0011
 
 #define DEFAULT_PORT "22777"
 
@@ -71,6 +72,7 @@ typedef struct {
   uint8_t n_cards_selected;
   int selected_amount;
   int8_t save_starting_turn_id;
+  uint32_t timer_start;
   char server_status_str[LEN_STATUS_STR];
 } ClientState_t;
 

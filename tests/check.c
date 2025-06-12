@@ -19,10 +19,12 @@ int main(int argc, char *argv[]) {
 
     _RECEIVE_GAME_STATE()
     _RECEIVE_GAME_STATE()
+    _RECEIVE_GAME_STATE()
 
     sleep(n_seconds);
     assert(send_player_action(socket_context[*turn_id].sock, ACTION_CHECK, 0) == 0);
 
+    _RECEIVE_GAME_STATE()
     _RECEIVE_GAME_STATE()
     _RECEIVE_GAME_STATE()
 
@@ -34,6 +36,7 @@ int main(int argc, char *argv[]) {
 
     assert(send_player_action(socket_context[*turn_id].sock, ACTION_CHECK, 0) == 0);
 
+    _RECEIVE_GAME_STATE()
     _RECEIVE_GAME_STATE()
     _RECEIVE_GAME_STATE()
 
@@ -50,6 +53,7 @@ int main(int argc, char *argv[]) {
 
     _RECEIVE_GAME_STATE()
     _RECEIVE_GAME_STATE()
+    _RECEIVE_GAME_STATE()
 
     // const int expected_call_turn[3] = {0, 1, 0};
     // assert(expected_call_turn[game] == *turn_id);
@@ -58,6 +62,7 @@ int main(int argc, char *argv[]) {
     sleep(n_seconds);
     assert(send_player_action(socket_context[*turn_id].sock, ACTION_CALL, 0) == 0);
 
+    _RECEIVE_GAME_STATE()
     _RECEIVE_GAME_STATE()
     _RECEIVE_GAME_STATE()
   }

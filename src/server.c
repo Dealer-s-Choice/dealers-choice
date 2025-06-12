@@ -60,6 +60,8 @@ static void init_new_round(GameState_t *game_state);
 
 static uint8_t count_active_clients(const bool *slot_taken);
 
+static void broadcast_start_action_timer_msg(const ArgsBroadcastGameState_t *args);
+
 static void print_ipaddress(const IPaddress *ip) {
   char ipaddr[INET6_ADDRSTRLEN];
   Uint32 host = SDL_SwapBE32(ip->host);
@@ -201,9 +203,7 @@ static void broadcast_game_state(ArgsBroadcastGameState_t *args) {
     if (send_with_retries((*args->clients)[i], &size_net, sizeof(size_net)) == -1 ||
         send_with_retries((*args->clients)[i], data, size) == -1) {
       fprintf(stderr, "Failed to send game state to client %d after retries\n", i);
-      if (handle_disconnections(args)) {
-        broadcast_game_state(args);
-      }
+      handle_disconnections(args);
     }
     free(data);
   }
@@ -283,7 +283,7 @@ static int recv_player_action(TCPsocket sock, PlayerActionMsg_t *out_action) {
   return n_bytes;
 }
 
-int send_draw_prompt(TCPsocket sock) {
+static int send_draw_prompt(TCPsocket sock) {
   uint8_t buffer[6]; // 4 bytes size + 2 bytes opcode
 
   uint32_t size = htonl(2); // payload is 2 bytes
@@ -297,25 +297,38 @@ int send_draw_prompt(TCPsocket sock) {
   return sent;
 }
 
-static int recv_discards_send_new_cards(TCPsocket sock, DrawRequestMsg_t *out_req) {
-  uint8_t buffer[7];
+static int send_start_action_timeout_msg(TCPsocket sock) {
+  uint8_t buffer[6]; // 4 bytes size + 2 bytes opcode
 
-  int n_bytes = recv_all_tcp(sock, buffer, sizeof(buffer));
-  if (n_bytes <= 0)
-    return n_bytes;
+  uint32_t size = htonl(2); // payload is 2 bytes
+  memcpy(buffer, &size, 4);
 
-  uint16_t opcode = (buffer[0] << 8) | buffer[1];
-  if (opcode != MSG_DRAW_REQUEST)
-    return -1;
+  buffer[4] = (MSG_START_ACTION_TIMER >> 8) & 0xFF;
+  buffer[5] = MSG_START_ACTION_TIMER & 0xFF;
 
-  uint8_t count = buffer[2];
-  if (count > MAX_DISCARDS)
-    return -1;
+  int sent = send_all_tcp(sock, buffer, sizeof(buffer));
+  printf("Sent draw prompt: %d bytes\n", sent);
+  return sent;
+}
 
-  out_req->discard_count = count;
-  memcpy(out_req->discard_indices, &buffer[3], MAX_DISCARDS); // copy all 4
+static void broadcast_start_action_timer_msg(const ArgsBroadcastGameState_t *args) {
+  int8_t pl_idx = args->game_state->turn_id;
+  Player_t *recipient = &args->game_state->player[pl_idx];
+  if (recipient->id == -1)
+    recipient = get_next_connected_client(args->game_state->player, pl_idx);
+  Player_t *start = recipient;
 
-  return sizeof(buffer); // 7 bytes
+  do {
+    pl_idx = recipient->id;
+    TCPsocket sock = (*args->clients)[pl_idx];
+    if (!sock)
+      continue;
+
+    if (send_start_action_timeout_msg(sock) < 0) {
+      fprintf(stderr, "[broadcast_start_action_timer_message] Failed to send to client %d\n",
+              pl_idx);
+    }
+  } while ((recipient = get_next_connected_client(args->game_state->player, pl_idx)) != start);
 }
 
 static void server_handle_call(GameState_t *game_state, const uint8_t turn_id) {
@@ -352,28 +365,72 @@ static void server_handle_raise(GameState_t *game_state, const uint8_t turn_id,
   server_handle_bet(game_state, turn_id, amount);
 }
 
-static void handle_draw(ArgsBroadcastGameState_t *args, TCPsocket sock, const int id,
-                        DH_Deck *deck) {
+static int handle_draw(ArgsBroadcastGameState_t *args, TCPsocket sock, const int id,
+                       DH_Deck *deck) {
   puts("sending draw prompt");
-  send_draw_prompt(sock);
+  if (send_draw_prompt(sock) != 0) {
+    fputs("Failed to send draw prompt\n", stderr);
+    return -1;
+  }
+  broadcast_start_action_timer_msg(args);
 
   DrawRequestMsg_t req;
-  if (recv_discards_send_new_cards(sock, &req) <= 0) {
-    fprintf(stderr, "Failed to receive draw request.\n");
-    // handle disconnect or protocol error
-  } else {
-    printf("Player wants to discard %u cards: ", req.discard_count);
-    for (int i = 0; i < req.discard_count; ++i) {
-      printf("%u ", req.discard_indices[i]);
-      args->real_hand->player[id].card[req.discard_indices[i]] = DH_deal_top_card(deck);
+  uint8_t buffer[7] = {0};
+
+  uint32_t wait_ms = args->game_state->action_timeout_ms;
+  uint32_t start = SDL_GetTicks();
+  int n_bytes = 0;
+  while (SDL_GetTicks() - start < wait_ms) {
+    int num_ready = SDLNet_CheckSockets(*args->socket_set, 0);
+    if (num_ready == -1) {
+      fprintf(stderr, "SDLNet_CheckSockets: %s\n", SDLNet_GetError());
+      return -1;
     }
+    if (num_ready > 0) {
+      if (SDLNet_SocketReady(sock)) {
+        n_bytes = recv_all_tcp(sock, buffer, sizeof(buffer));
+        if (n_bytes > 0)
+          break;
+        else {
+          remove_disconnected_player(args, id);
+          printf("Player disconnected: %d\n", id);
+          return -1;
+          break;
+        }
+      } else {
+        handle_disconnections(args);
+      }
+    }
+  }
+
+  if (*buffer != 0) {
+    uint16_t opcode = (buffer[0] << 8) | buffer[1];
+    if (opcode != MSG_DRAW_REQUEST)
+      return -1;
+  }
+
+  uint8_t count = buffer[2];
+  if (count > MAX_DISCARDS)
+    return -1;
+
+  req.discard_count = count;
+  memcpy(req.discard_indices, &buffer[3], MAX_DISCARDS); // copy all 4
+
+  printf("Player wants to discard %u cards: ", req.discard_count);
+  for (int i = 0; i < req.discard_count; ++i) {
+    printf("%u ", req.discard_indices[i]);
+    args->real_hand->player[id].card[req.discard_indices[i]] = DH_deal_top_card(deck);
+
     puts("");
   }
+
   char status_str[LEN_STATUS_STR] = {0};
   snprintf(status_str, sizeof status_str, "%s drew %d", args->game_state->player[id].nick,
            req.discard_count);
   send_new_hand(sock, &args->real_hand->player[id], HAND_SIZE);
   broadcast_status_message(args, status_str);
+
+  return 0;
 }
 
 static EPlayerAction_t handle_check(Player_t *turn, PlayerActionMsg_t *action) {
@@ -382,10 +439,10 @@ static EPlayerAction_t handle_check(Player_t *turn, PlayerActionMsg_t *action) {
   return ACTION_CHECK;
 }
 
-static EPlayerAction_t handle_fold(ArgsBroadcastGameState_t *args, Player_t *turn,
+static EPlayerAction_t handle_fold(GameState_t *game_state, Player_t *turn,
                                    PlayerActionMsg_t *action) {
   turn->in = false;
-  args->game_state->player_count--;
+  game_state->player_count--;
   action->str = "folds";
   return ACTION_FOLD;
 }
@@ -449,6 +506,26 @@ static void determine_winner(ArgsBroadcastGameState_t *args, RoundResults *resul
   broadcast_game_state(args);
 }
 
+static void award_last_player_in_game(ArgsBroadcastGameState_t *args, Player_t *turn,
+                                      RoundResults *results) {
+  if (turn->id == -1 || !turn->in) {
+    // fprintf(stderr, "turn->id: %d | %d\n", turn->id, __LINE__);
+    turn = get_next_player(args->game_state->player, 0);
+  }
+  turn->winner = true;
+  char status_str[LEN_STATUS_STR] = {0};
+  snprintf(status_str, sizeof(status_str), "%s wins\n", turn->nick);
+  broadcast_status_message(args, status_str);
+
+  args->game_state->winner_declared = true;
+  results->n_winners = 1;
+  fprintf(stderr, "winner id from fold: %d\n", turn->id);
+  results->id[0] = turn->id;
+  turn->coins += args->game_state->pot;
+  args->game_state->pot = 0;
+  return;
+}
+
 static RoundResults handle_round_real(ArgsBroadcastGameState_t *args) {
   // Points to the address of the array of all the players
   Player_t *players_array = args->game_state->player;
@@ -463,15 +540,12 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args) {
   do {
     args->game_state->turn_id = turn->id;
     broadcast_game_state(args);
+    broadcast_start_action_timer_msg(args);
 
-    Uint32 wait_ms = args->game_state->action_timeout_ms;
-    Uint32 start = SDL_GetTicks();
+    uint32_t wait_ms = args->game_state->action_timeout_ms;
+    uint32_t start = SDL_GetTicks();
     PlayerActionMsg_t action = {0};
 
-    // If the player disconnects, their nick will be erased from the players array, however, it
-    // will still be needed for the status message that reports their disconnect
-    char saved_nick[sizeof(turn->nick)] = {0};
-    strcpy(saved_nick, turn->nick);
     int8_t save_id = turn->id;
 
     while (SDL_GetTicks() - start < wait_ms) {
@@ -494,7 +568,7 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args) {
                 action.str = "bets ";
                 break;
               case ACTION_FOLD:
-                handle_fold(args, turn, &action);
+                handle_fold(args->game_state, turn, &action);
                 break;
               default:
                 fprintf(stderr, "Invalid Action received\n");
@@ -511,7 +585,7 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args) {
                 action.str = "raises ";
                 break;
               case ACTION_FOLD:
-                handle_fold(args, turn, &action);
+                handle_fold(args->game_state, turn, &action);
                 break;
               default:
                 fprintf(stderr, "Invalid Action received\nThe client is writing checks their body "
@@ -521,33 +595,28 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args) {
             }
           } else {
             remove_disconnected_player(args, args->game_state->turn_id);
-            args->game_state->player_count--;
-            broadcast_game_state(args);
             break;
           }
           break;
         } else {
           // There is data to be read, but not from the player whos turn it is, so probably
           // a disconnect by another client.
-          if (handle_disconnections(args)) {
-            args->game_state->player_count--;
-            broadcast_game_state(args);
-            if (args->game_state->player_count == 1)
-              break;
-          }
+          handle_disconnections(args);
+          if (args->game_state->player_count == 1)
+            break;
         }
       }
       SDL_Delay(50); // avoid busy-waiting
     }
 
-    char status_str[LEN_STATUS_STR] = {0};
     if (args->game_state->player_count > 1) {
+      char status_str[LEN_STATUS_STR] = {0};
       // The id will be -1 if the player disconnected when it was their turn to
       // send an action
       if (turn->id != -1) {
         if (action.action == 0) {
           if (!has_paid_all_bets(args->game_state, turn)) {
-            action.action = handle_fold(args, turn, &action);
+            action.action = handle_fold(args->game_state, turn, &action);
           } else if (args->game_state->total_bets_plus_raises == 0) {
             action.action = handle_check(turn, &action);
           }
@@ -558,8 +627,7 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args) {
                    action.amount);
         else
           snprintf(status_str, sizeof status_str, "%s %s\n", turn->nick, action.str);
-      } else
-        snprintf(status_str, sizeof status_str, "%s disconnected\n", saved_nick);
+      }
 
       broadcast_status_message(args, status_str);
       puts(status_str);
@@ -576,21 +644,8 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args) {
         break;
       }
     } else {
-      if (turn->id == -1 || !turn->in) {
-        // fprintf(stderr, "turn->id: %d | %d\n", turn->id, __LINE__);
-        turn = get_next_player(players_array, 0);
-      }
       // fprintf(stderr, "turn->id: %d | %d\n", turn->id, __LINE__);
-      turn->winner = true;
-      snprintf(status_str, sizeof(status_str), "%s wins\n", turn->nick);
-      broadcast_status_message(args, status_str);
-
-      args->game_state->winner_declared = true;
-      results.n_winners = 1;
-      fprintf(stderr, "winner id from fold: %d\n", turn->id);
-      results.id[0] = turn->id;
-      turn->coins += args->game_state->pot;
-      args->game_state->pot = 0;
+      award_last_player_in_game(args, turn, &results);
       break;
     }
   } while (true);
@@ -636,13 +691,23 @@ static void remove_disconnected_player(ArgsBroadcastGameState_t *args, const int
   (*args->slot_taken)[id] = false;
 
   // Reset player info
-  memset(p->nick, 0, sizeof(p->nick));
   p->coins = STARTING_N_COINS;
   p->total_paid = 0;
   p->winner = false;
   p->has_checked = false;
   p->in = false;
   p->id = -1;
+
+  // If the disconnect happened during a game, not at the menu
+  if (args->game_state->player_count > 0) {
+    args->game_state->player_count--;
+    char status_str[LEN_STATUS_STR] = {0};
+    snprintf(status_str, sizeof status_str, "%s disconnected\n", p->nick);
+    broadcast_status_message(args, status_str);
+  }
+
+  memset(p->nick, 0, sizeof(p->nick));
+  broadcast_game_state(args);
 }
 
 static bool handle_disconnections(ArgsBroadcastGameState_t *args) {
@@ -714,8 +779,10 @@ void game_five_card_draw(GAME_ARGS) {
       break;
 
     turn = starting_player;
+    int8_t save_id;
     do {
       args->game_state->turn_id = turn->id;
+      save_id = turn->id;
 
       // The player's new cards are sent to them in handle_draw(), but
       // the clients use game_state.turn_id to decide which buttons to display.
@@ -724,9 +791,18 @@ void game_five_card_draw(GAME_ARGS) {
       // at this point is turn_id).
       broadcast_game_state(args);
 
-      handle_draw(args, (*args->clients)[turn->id], turn->id, deck);
-    } while ((turn = get_next_player(players_array, turn->id)) != starting_player);
+      if (handle_draw(args, (*args->clients)[turn->id], turn->id, deck) != 0) {
+        printf("Failed to receive cards or player disconnected: %d\n", turn->id);
+        if (args->game_state->player_count == 1) {
+          award_last_player_in_game(args, turn, &results);
+          break;
+        }
+      }
+
+    } while ((turn = get_next_player(players_array, save_id)) != starting_player);
     broadcast_game_state(args);
+    if (results.n_winners > 0)
+      break;
   }
   determine_winner(args, &results);
 }
@@ -963,8 +1039,9 @@ int run_server(const char *bind_address, Path_t *path, const bool test_mode) {
           game_state.player[*dealer_id].id != -1) {
         if (receive_game_type_and_run_game(&args_broadcast_game_state, &deck) == RC_ERR)
           continue;
-      } else if (handle_disconnections(&args_broadcast_game_state))
-        broadcast_game_state(&args_broadcast_game_state);
+      } else {
+        handle_disconnections(&args_broadcast_game_state);
+      }
     }
 
     TCPsocket new_client = SDLNet_TCP_Accept(server);
