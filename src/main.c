@@ -84,7 +84,6 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str,
       }
     }
 
-    // Clear screen
     clear_screen(renderer);
 
     render_button(&button_connect);

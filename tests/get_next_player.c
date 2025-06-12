@@ -44,7 +44,7 @@ turn = get_next_player(players_array, turn->id);
 fprintf(stderr, "turn->id: %d\n", turn->id);
 assert(turn->id == 0);
 
-game_state.player[0].id = -1;
+game_state.player[0].id = 0;
 
 turn = get_next_player(players_array, turn->id);
 fprintf(stderr, "turn->id: %d\n", turn->id);
@@ -60,16 +60,47 @@ assert(turn->id == 4);
 
 turn = get_next_player(players_array, turn->id);
 fprintf(stderr, "turn->id: %d\n", turn->id);
-assert(turn->id == 1);
+assert(turn->id == 0);
 
-game_state.player[4].id = -1;
-
-turn = get_next_player(players_array, turn->id);
-fprintf(stderr, "turn->id: %d\n", turn->id);
-assert(turn->id == 2);
+game_state.player[4].id = 4;
 
 turn = get_next_player(players_array, turn->id);
 fprintf(stderr, "turn->id: %d\n", turn->id);
 assert(turn->id == 1);
+
+game_state.player[2].id = 2;
+game_state.player[2].in = false;
+
+game_state.player[3].id = 3;
+game_state.player[3].in = true;
+
+turn = get_next_player(players_array, turn->id);
+fprintf(stderr, "turn->id: %d\n", turn->id);
+assert(turn->id == 3);
+
+turn = get_next_player(players_array, 2);
+fprintf(stderr, "turn->id: %d\n", turn->id);
+assert(turn->id == 3);
+
+game_state.player[3].id = -1;
+
+turn = get_next_player(players_array, 2);
+fprintf(stderr, "turn->id: %d\n", turn->id);
+assert(turn->id == 4);
+
+for (int i = 1; i < MAX_PLAYERS; i++) {
+  game_state.player[i].id = i;
+  game_state.player[i].in = false;
+}
+game_state.player[0].id = 0;
+game_state.player[0].in = true;
+
+turn = get_next_player(players_array, 0);
+fprintf(stderr, "turn->id: %d\n", turn->id);
+assert(turn->id == 0);
+
+// turn = get_next_player(players_array, turn->id);
+// fprintf(stderr, "turn->id: %d\n", turn->id);
+// assert(turn->id == 3);
 
 _MAIN_TAIL_
