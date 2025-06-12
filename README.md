@@ -7,11 +7,10 @@
 
 ## Player actions
 
-| Key          | Action   |
-|--------------|----------|
-| c            | call     |
-| c            | check    |
-| r            | raise    |
-| f            | fold     |
-| d            | discard  |
-| b            | bet      |
+| Key  |   Action   |
+|------|------------|
+| c    | call/check |
+| r    | raise      |
+| f    | fold       |
+| d    | discard    |
+| b    | bet        |
