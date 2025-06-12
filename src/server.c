@@ -863,8 +863,8 @@ static EReturnCode_t receive_game_type_and_run_game(ArgsBroadcastGameState_t *ar
 
   broadcast_game_state(args);
 
-  // Uint32 wait_ms = args->game_state->end_of_round_time_out_ms;
-  Uint32 wait_ms = 2000;
+  Uint32 wait_ms = args->game_state->end_of_round_time_out_ms;
+  // Uint32 wait_ms = 2000;
   Uint32 start = SDL_GetTicks();
   while (SDL_GetTicks() - start < wait_ms)
     ;
