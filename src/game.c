@@ -444,11 +444,13 @@ static void create_card_context(CardContext_t card_context[MAX_PLAYERS][HAND_SIZ
 
       SDL_Color textColor = {0, 0, 0, 0};
       context.textColor = textColor;
-      if (!turn->in)
+
+      context.is_null = is_dh_card_null(*card);
+      if (!turn->in && !context.is_null)
         memcpy(card, &DH_card_back, sizeof(DH_card_back));
 
       context.is_back = is_dh_card_back(*card);
-      context.is_null = is_dh_card_null(*card);
+
       if (!context.is_back && !context.is_null) {
         const char *face = DH_get_card_face_str(card->face_val);
         const char *suit = DH_get_card_unicode_suit(*card);
