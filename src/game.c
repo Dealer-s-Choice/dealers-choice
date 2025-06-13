@@ -594,8 +594,6 @@ void run_sdl_loop(ClientState_t *client_state, SdlContext_t *sdl_context, Font_t
   int running = 1;
   bool cards_dealt = false;
   bool cards_created = false;
-  Uint32 timer_start;
-  int8_t save_turn_id;
 
   Player_t *players_array = game_state.player;
   Player_t *turn = NULL;
@@ -629,10 +627,9 @@ void run_sdl_loop(ClientState_t *client_state, SdlContext_t *sdl_context, Font_t
                                     sdl_context, font) != RECV_SUCCESS) {
         running = false;
       } else {
-        timer_start = SDL_GetTicks();
+        client_state->timer_start = SDL_GetTicks();
         cards_dealt = false;
         starting_turn = &game_state.player[game_state.turn_id];
-        save_turn_id = game_state.turn_id;
         client_state->save_starting_turn_id = starting_turn->id;
         memset(client_state, 0, sizeof *client_state);
         client_state->selected_amount = atoi(amount[0]);
@@ -647,10 +644,6 @@ void run_sdl_loop(ClientState_t *client_state, SdlContext_t *sdl_context, Font_t
         starting_turn = get_next_player(players_array, client_state->save_starting_turn_id);
 
       turn = &game_state.player[game_state.turn_id];
-      if (game_state.turn_id != save_turn_id) {
-        save_turn_id = game_state.turn_id;
-        timer_start = SDL_GetTicks();
-      }
 
       // printf("turn id: %d\n", turn->id);
 
@@ -789,18 +782,16 @@ void run_sdl_loop(ClientState_t *client_state, SdlContext_t *sdl_context, Font_t
             // Reset the flag that's used to indicate to the client it's their turn to draw
             client_state->do_discard_draw = false;
 
-            // The server normally sets this, and the client receives it, during game broadcast
-            // game_state->turn_id = -1;
-
             if (send_discards_request_new_cards(client_socket, discard_indices, discard_count) != 0)
               fprintf(stderr, "Failed to send discards\n");
             else {
               puts("Discards sent");
               client_state->n_cards_selected = 0;
             }
+            continue;
           }
         }
-      }
+      } // End Poll event
 
       clear_screen(sdl_context->renderer);
 
@@ -874,7 +865,8 @@ void run_sdl_loop(ClientState_t *client_state, SdlContext_t *sdl_context, Font_t
 
       } else {
         Uint32 now = SDL_GetTicks();
-        int32_t remaining_ms = (int32_t)(timer_start + game_state.action_timeout_ms) - (int32_t)now;
+        int32_t remaining_ms =
+            (int32_t)(client_state->timer_start + game_state.action_timeout_ms) - (int32_t)now;
 
         if (remaining_ms > 0) {
           int elapsed = remaining_ms / 1000;
@@ -887,6 +879,13 @@ void run_sdl_loop(ClientState_t *client_state, SdlContext_t *sdl_context, Font_t
         }
 
         if (client_state->do_discard_draw) {
+          // If this condition is true, that means they didn't discard before
+          // the timer ran out and the server changed the turn id
+          if (game_state.turn_id != my_id) {
+            client_state->do_discard_draw = false;
+            continue;
+          }
+
           for (int i = 0; i < HAND_SIZE; i++)
             if (turn->hand.card[i].face_val == DH_CARD_ACE) {
               client_state->has_ace = true;
