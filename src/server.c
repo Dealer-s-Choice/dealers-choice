@@ -519,7 +519,7 @@ static void award_last_player_in_game(ArgsBroadcastGameState_t *args, Player_t *
 
   args->game_state->winner_declared = true;
   results->n_winners = 1;
-  fprintf(stderr, "winner id from fold: %d", turn->id);
+  fprintf(stderr, "winner id from fold: %d\n", turn->id);
   results->id[0] = turn->id;
   turn->coins += args->game_state->pot;
   args->game_state->pot = 0;
