@@ -39,6 +39,35 @@ typedef struct {
   int8_t id;
 } SocketContext_t;
 
+typedef struct {
+  char *url;
+  TTF_Font *font;
+  // SDL_Color textColor;
+  SDL_Renderer *renderer;
+  // SDL_Color bg_color;
+  // SDL_Color fg_color;
+  SDL_Rect rect;
+  bool hovered;
+} Link_t;
+
+bool is_dh_card_back(DH_Card a);
+
+bool is_dh_card_null(DH_Card a);
+
+extern const GameChoice_t game_choices[];
+
 SocketContext_t get_socket_context_and_run_client(PlayerConfig_t *player_config,
                                                   const char *host_str, SdlContext_t *sdl_context,
                                                   Font_t *font, Path_t *path, const bool test_mode);
+
+void render_link(Link_t *link);
+
+void run_sdl_loop(ClientState_t *client_state, SdlContext_t *sdl_context, Font_t *font,
+                  TCPsocket client_socket, SDLNet_SocketSet socket_set, const uint8_t my_id,
+                  Path_t *path);
+
+int8_t send_game_select(TCPsocket sock, uint8_t game_type);
+
+int8_t send_player_action(TCPsocket sock, uint8_t action, uint32_t amount);
+
+void do_sdl_cleanup(SdlContext_t *sdl_context);

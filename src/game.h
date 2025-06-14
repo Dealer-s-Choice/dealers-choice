@@ -67,31 +67,4 @@ Player_t *get_next_player(Player_t *players_array, int cur);
 
 Player_t *get_next_connected_client(Player_t *players_array, int cur);
 
-bool is_dh_card_back(DH_Card a);
-
-bool is_dh_card_null(DH_Card a);
-
-typedef struct {
-  char *url;
-  TTF_Font *font;
-  // SDL_Color textColor;
-  SDL_Renderer *renderer;
-  // SDL_Color bg_color;
-  // SDL_Color fg_color;
-  SDL_Rect rect;
-  bool hovered;
-} Link_t;
-
-void render_link(Link_t *link);
-
-void run_sdl_loop(ClientState_t *client_state, SdlContext_t *sdl_context, Font_t *font,
-                  TCPsocket client_socket, SDLNet_SocketSet socket_set, const uint8_t my_id,
-                  Path_t *path);
-
-int8_t send_game_select(TCPsocket sock, uint8_t game_type);
-
-int8_t send_player_action(TCPsocket sock, uint8_t action, uint32_t amount);
-
-extern const GameChoice_t game_choices[];
-
 #endif

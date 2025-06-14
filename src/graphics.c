@@ -311,12 +311,6 @@ void render_button(Button_t *button) {
   SDL_DestroyTexture(textTexture);
 }
 
-void do_sdl_cleanup(SdlContext_t *sdl_context) {
-  SDL_DestroyRenderer(sdl_context->renderer);
-  SDL_DestroyWindow(sdl_context->window);
-  SDL_Quit();
-}
-
 SDL_Texture *load_texture(SDL_Renderer *renderer, const char *path) {
   if (!(IMG_Init(IMG_INIT_PNG) & IMG_INIT_PNG)) {
     SDL_Log("IMG_Init failed: %s", IMG_GetError());

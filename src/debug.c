@@ -29,8 +29,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "client.h"
 #include "debug.h"
-#include "game.h"
 
 DebugPrintCards_t debug_print_cards(struct pokeval_hand_t *hand) {
   DebugPrintCards_t str = {0};
