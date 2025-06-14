@@ -510,6 +510,22 @@ static void pcg_srand_auto(void) {
   pcg32_srandom_r(&rng, initstate, initseq);
 }
 
+typedef struct {
+  const char *filename;
+} Coin_t;
+
+SDL_Texture *load_coin_texture(SDL_Renderer *renderer, const char *base_path, const Coin_t *coin) {
+  const char *subdir = "/images/";
+  size_t len = strlen(base_path) + strlen(subdir) + strlen(coin->filename) + 1;
+
+  char *full_path = calloc_wrap(len, 1);
+  snprintf(full_path, len, "%s%s%s", base_path, subdir, coin->filename);
+
+  SDL_Texture *tex = load_texture(renderer, full_path);
+  free(full_path);
+  return tex;
+}
+
 static bool run_game_loop(GameState_t *game_state, ClientState_t *client_state,
                           SdlContext_t *sdl_context, Font_t *font, TCPsocket client_socket,
                           SDLNet_SocketSet socket_set, const uint8_t my_id, Path_t *path) {
@@ -612,14 +628,14 @@ static bool run_game_loop(GameState_t *game_state, ClientState_t *client_state,
   Player_t *turn = NULL;
   Player_t *starting_turn = NULL;
 
-  const char *coin_path = "48x48_1907_Saint_Gaudens_gold_coin.png";
-  const char *subdir = "/images/";
+  Coin_t coin[] = {
+      {"48x48_1907_Saint_Gaudens_gold_coin.png"},
+      {"48x48_Gaius-Julius-Caesar-denarius-44-BC-RRC-480-3.png"},
+  };
+  size_t num_coins = ARRAY_SIZE(coin);
 
-  size_t req_len = strlen(path->data) + strlen(subdir) + strlen(coin_path) + 1;
-  char *coin_location = calloc_wrap(req_len, 1);
-  snprintf(coin_location, req_len, "%s%s%s", path->data, subdir, coin_path);
-  SDL_Texture *coin_texture = load_texture(sdl_context->renderer, coin_location);
-  free(coin_location);
+  SDL_Texture *coin_tex = load_coin_texture(sdl_context->renderer, path->data,
+                                            &coin[pcg32_boundedrand_r(&rng, num_coins)]);
 
   SDL_Point coin_coords[MAX_POT_COINS] = {0};
   uint8_t coins;
@@ -813,7 +829,7 @@ static bool run_game_loop(GameState_t *game_state, ClientState_t *client_state,
           .w = 48,
           .h = 48,
       };
-      SDL_RenderCopy(sdl_context->renderer, coin_texture, NULL, &coin_rect);
+      SDL_RenderCopy(sdl_context->renderer, coin_tex, NULL, &coin_rect);
     }
 
     // for (size_t i = 0; i < sizeof(status_msg) / sizeof(status_msg[0][0]); i++) {
@@ -935,7 +951,7 @@ static bool run_game_loop(GameState_t *game_state, ClientState_t *client_state,
       int id = player_ptr->id;
       SDL_Rect coin_rect = {
           .x = player_pos[id].x + card_area.w, .y = player_pos[id].y - card_area.h, 48, 48};
-      SDL_RenderCopy(sdl_context->renderer, coin_texture, NULL, &coin_rect);
+      SDL_RenderCopy(sdl_context->renderer, coin_tex, NULL, &coin_rect);
       char coins_text[24] = {0};
       snprintf(coins_text, sizeof coins_text, "%d", player_ptr->coins);
       SDL_Rect dest = {coin_rect.x + coin_rect.w * 1.2, coin_rect.y + coin_rect.h / 4, 0, 0};
@@ -956,7 +972,7 @@ static bool run_game_loop(GameState_t *game_state, ClientState_t *client_state,
     SDL_RenderPresent(sdl_context->renderer);
     SDL_Delay(16);
   }
-  SDL_DestroyTexture(coin_texture);
+  SDL_DestroyTexture(coin_tex);
   return running;
   // Mix_FreeChunk(card_sound);
   // Mix_CloseAudio();

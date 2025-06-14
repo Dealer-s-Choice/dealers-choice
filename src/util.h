@@ -29,6 +29,8 @@
 #ifndef __UTIL_H
 #define __UTIL_H
 
+#define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
+
 typedef struct {
   char data[2048];
   char config[2048];
