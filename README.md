@@ -9,7 +9,12 @@ Multiplayer Stud and Draw Poker
 
 ## Current state
 
-Playable but you're likely to encounter bugs.
+The game is playable but you're likely to encounter bugs. There are no releases
+yet, but one is planned soon.
+
+## AI
+
+There are no bots or computer opponents implemented yet.
 
 ## Server
 
@@ -23,7 +28,8 @@ implementation is planned). If you wish to daemonize the server, you can use
 
 ## Client
 
-To run the client, simply run the binary without any arguments.
+To run the client, simply run the binary without any arguments. A game can not
+be started until there is more than one player connected.
 
 ## Config
 
