@@ -50,10 +50,6 @@ typedef struct {
   bool hovered;
 } Link_t;
 
-bool is_dh_card_back(DH_Card a);
-
-bool is_dh_card_null(DH_Card a);
-
 extern const GameChoice_t game_choices[];
 
 SocketContext_t get_socket_context_and_run_client(PlayerConfig_t *player_config,

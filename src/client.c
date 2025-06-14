@@ -397,14 +397,6 @@ static int8_t send_discards_request_new_cards(TCPsocket sock, const uint8_t *dis
   return send_all_tcp(sock, buffer, sizeof(buffer));
 }
 
-bool is_dh_card_back(DH_Card a) {
-  return a.face_val == DH_card_back.face_val && a.suit == DH_card_back.suit;
-}
-
-bool is_dh_card_null(DH_Card a) {
-  return a.face_val == DH_card_null.face_val && a.suit == DH_card_null.suit;
-}
-
 typedef struct {
   char text[SIZEOF_CARD_TEXT];
   SDL_Color textColor;
@@ -488,11 +480,11 @@ static void create_card_context(CardContext_t card_context[MAX_PLAYERS][HAND_SIZ
       SDL_Color textColor = {0, 0, 0, 0};
       context.textColor = textColor;
 
-      context.is_null = is_dh_card_null(*card);
+      context.is_null = DH_is_card_null(*card);
       if (!turn->in && !context.is_null)
         memcpy(card, &DH_card_back, sizeof(DH_card_back));
 
-      context.is_back = is_dh_card_back(*card);
+      context.is_back = DH_is_card_back(*card);
 
       if (!context.is_back && !context.is_null) {
         const char *face = DH_get_card_face_str(card->face_val);
@@ -690,7 +682,7 @@ static bool run_game_loop(GameState_t *game_state, ClientState_t *client_state,
       SDL_Point mouse_pos = {event.button.x, event.button.y};
       for (int card_n = 0; card_n < HAND_SIZE; card_n++) {
         DH_Card *card = &turn->hand.card[card_n];
-        if (!is_dh_card_null(*card) || !is_dh_card_null(*card)) {
+        if (!DH_is_card_null(*card) || !DH_is_card_null(*card)) {
           card_context[my_id][card_n].hovered =
               SDL_PointInRect(&mouse_pos, &card_context[my_id][card_n].rect);
           if (card_context[my_id][card_n].hovered && event.type == SDL_MOUSEBUTTONDOWN &&

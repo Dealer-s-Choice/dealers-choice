@@ -36,11 +36,11 @@ DebugPrintCards_t debug_print_cards(struct pokeval_hand_t *hand) {
   DebugPrintCards_t str = {0};
   char *ptr = str.str;
   for (int i = 0; i < HAND_SIZE; i++) {
-    if (is_dh_card_back(hand->card[i])) {
+    if (DH_is_card_back(hand->card[i])) {
       fprintf(stderr, "-BACK-");
       continue;
     }
-    if (is_dh_card_null(hand->card[i])) {
+    if (DH_is_card_null(hand->card[i])) {
       fprintf(stderr, "-BACK-");
       continue;
     }
