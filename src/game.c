@@ -37,7 +37,7 @@ const GameChoice_t game_choices[] = {
     {FIVE_CARD_DRAW, "5-card draw", 0x01, game_five_card_draw, 2, 1},
     {FIVE_CARD_DOUBLE_DRAW, "5-card double draw", 0x02, game_five_card_draw, 3, 2},
     {FIVE_CARD_STUD, "5-card stud", 0x03, game_five_card_stud, 4, 3},
-    {FIVE_CARD_SHOWDOWN, "5-Card Showdown", 0x04, game_five_card_draw, 1, 0}};
+    {FIVE_CARD_SHOWDOWN, "5-card showdown", 0x04, game_five_card_draw, 1, 0}};
 
 const GameChoice_t *find_game_choice_by_type(const uint8_t type) {
   for (size_t i = 0; i < sizeof(game_choices) / sizeof(game_choices[0]); ++i) {
