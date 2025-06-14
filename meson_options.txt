@@ -1,2 +1,5 @@
 option('gen_protobuf', type : 'boolean', value : false,
        description : 'Generate protobuf c source')
+
+option('docdir', type : 'string', value : 'share/doc/dealers-choice',
+       description : 'directory where the documentation should be installed to')

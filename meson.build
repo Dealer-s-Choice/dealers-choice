@@ -89,7 +89,22 @@ exe_target = executable(
   meson.project_name(),
   ['src/main.c'],
   dependencies: game_dep,
-  install: false,
+  install: true,
 )
+
+install_subdir(
+  'data',
+  install_dir : join_paths(get_option('datadir'), meson.project_name()),
+  strip_directory : true
+  )
+
+# Check the Dockerfile when updating this
+install_data(
+  files(
+    'README.md',
+    'LICENSE',
+    ),
+  install_dir : get_option('docdir')
+  )
 
 subdir('tests')

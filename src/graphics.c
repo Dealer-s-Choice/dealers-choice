@@ -57,13 +57,6 @@ const char *get_color_name(EColorName_t name) {
   return color_names[name];
 }
 
-const FontArgs_t font_args[] = {
-    [CARD] = {.file = "../src/LiberationMono-Regular.ttf", .ptsize = 38},
-    [OTHER] = {.file = "../src/LiberationSerif-Bold.ttf", .ptsize = 30},
-    [STATUS_MSG] = {.file = "../src/LiberationSerif-Bold.ttf", .ptsize = 24},
-    [LINK] = {.file = "../src/LiberationSerif-Bold.ttf", .ptsize = 22},
-};
-
 void clear_screen(SDL_Renderer *renderer) {
   SDL_SetRenderDrawColor(renderer, get_color(COLOR_GREEN_ONE).r, get_color(COLOR_GREEN_ONE).g,
                          get_color(COLOR_GREEN_ONE).b, get_color(COLOR_GREEN_ONE).a);

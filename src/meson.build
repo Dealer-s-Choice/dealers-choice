@@ -29,7 +29,7 @@ conf.set_quoted(
 )
 conf.set_quoted(
   'DEALERSCHOICE_DATADIR',
-  join_paths(get_option('prefix'), get_option('datadir'), 'games', meson.project_name()),
+  join_paths(get_option('prefix'), get_option('datadir'), meson.project_name()),
 )
 
 configure_file(output: 'config.h', configuration: conf)
