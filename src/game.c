@@ -920,7 +920,7 @@ void run_sdl_loop(ClientState_t *client_state, SdlContext_t *sdl_context, Font_t
 
       cards_dealt = true;
       char buffer[128];
-      snprintf(buffer, sizeof(buffer), "pot: %d", game_state.pot);
+      snprintf(buffer, sizeof(buffer), "%d", game_state.pot);
       SDL_Color black = {0, 0, 0, 255};
       render_text_centered(sdl_context->renderer, font->fonts[FONT_BOLD], buffer, black,
                            sdl_context->win_center);
