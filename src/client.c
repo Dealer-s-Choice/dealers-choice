@@ -454,10 +454,10 @@ static void render_card(CardContext_t *context, TTF_Font *font) {
   SDL_DestroyTexture(textTexture);
 }
 
-static void create_card_context(CardContext_t card_context[MAX_PLAYERS][HAND_SIZE],
+static void create_card_context(CardContext_t card_context[MAX_PLAYERS][POKEVAL_HAND_SIZE],
                                 const int start_i, Player_t *players_array,
                                 const SDL_Point *player_pos, SDL_Renderer *renderer) {
-  memset(card_context, 0, sizeof(CardContext_t) * MAX_PLAYERS * HAND_SIZE);
+  memset(card_context, 0, sizeof(CardContext_t) * MAX_PLAYERS * POKEVAL_HAND_SIZE);
   Player_t *turn = &players_array[start_i];
   Player_t *starting_turn = turn;
   do {
@@ -466,7 +466,7 @@ static void create_card_context(CardContext_t card_context[MAX_PLAYERS][HAND_SIZ
         .hovered = false,
         .selected = false,
     };
-    for (int card_n = 0; card_n < HAND_SIZE; card_n++) {
+    for (int card_n = 0; card_n < POKEVAL_HAND_SIZE; card_n++) {
       // printf("%d\n", __LINE__);
       const int id = turn->id;
       DH_Card *card = &(turn->hand.card)[card_n];
@@ -602,7 +602,7 @@ static bool run_game_loop(GameState_t *game_state, ClientState_t *client_state,
   }
   amount_button[0].selected = true;
 
-  CardContext_t card_context[MAX_PLAYERS][HAND_SIZE];
+  CardContext_t card_context[MAX_PLAYERS][POKEVAL_HAND_SIZE];
 
   int running = 1;
   bool cards_dealt = false;
@@ -680,7 +680,7 @@ static bool run_game_loop(GameState_t *game_state, ClientState_t *client_state,
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
       SDL_Point mouse_pos = {event.button.x, event.button.y};
-      for (int card_n = 0; card_n < HAND_SIZE; card_n++) {
+      for (int card_n = 0; card_n < POKEVAL_HAND_SIZE; card_n++) {
         DH_Card *card = &turn->hand.card[card_n];
         if (!DH_is_card_null(*card) || !DH_is_card_null(*card)) {
           card_context[my_id][card_n].hovered =
@@ -772,13 +772,13 @@ static bool run_game_loop(GameState_t *game_state, ClientState_t *client_state,
                     event.key.keysym.sym == SDLK_d)) {
           puts("discarding");
           // Although the maximum allowed discards for 5 card draw can never
-          // exceed 4, we need an array size of HAND_SIZE in case they select
-          // all 5. However, the player will be required to have < HAND_SIZE selected
+          // exceed 4, we need an array size of POKEVAL_HAND_SIZE in case they select
+          // all 5. However, the player will be required to have < POKEVAL_HAND_SIZE selected
           // to actually perform the discard.
-          uint8_t discard_indices[HAND_SIZE] = {0};
+          uint8_t discard_indices[POKEVAL_HAND_SIZE] = {0};
           uint8_t discard_count = 0;
 
-          for (int i = 0; i < HAND_SIZE; i++) {
+          for (int i = 0; i < POKEVAL_HAND_SIZE; i++) {
             if (!card_context[my_id][i].selected)
               continue;
             discard_indices[discard_count++] = i;
@@ -828,7 +828,7 @@ static bool run_game_loop(GameState_t *game_state, ClientState_t *client_state,
     }
 
     Player_t *player_ptr = starting_turn;
-    for (int card_n = 0; card_n < HAND_SIZE; ++card_n) {
+    for (int card_n = 0; card_n < POKEVAL_HAND_SIZE; ++card_n) {
       do {
         // printf("%d\n", __LINE__);
         render_card(&card_context[player_ptr->id][card_n], font->fonts[FONT_CARD]);
@@ -891,7 +891,7 @@ static bool run_game_loop(GameState_t *game_state, ClientState_t *client_state,
           continue;
         }
 
-        for (int i = 0; i < HAND_SIZE; i++)
+        for (int i = 0; i < POKEVAL_HAND_SIZE; i++)
           if (turn->hand.card[i].face_val == DH_CARD_ACE) {
             client_state->has_ace = true;
             break;

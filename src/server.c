@@ -102,8 +102,8 @@ Config_t init_game_state(GameState_t *game_state, Path_t *path, const bool test_
 
 // In the future, hands will be sent using functions like this, rather than how it's
 // presently done in broadcast_game_state()
-static int send_new_hand(TCPsocket sock, const struct pokeval_hand_t *hand, uint8_t hand_size) {
-  if (hand_size == 0 || hand_size > HAND_SIZE)
+static int send_new_hand(TCPsocket sock, const POKEVAL_Hand *hand, uint8_t hand_size) {
+  if (hand_size == 0 || hand_size > POKEVAL_HAND_SIZE)
     return -1;
 
   // TODO: Can this be simplified via protobuf-c (already being used to serialize game_state)?
@@ -138,12 +138,12 @@ RealHand_t deal_cards_to_players(GameState_t *game_state, DH_Deck *deck, const u
 
   do {
     if (game_type != game_choices[FIVE_CARD_STUD].game_type) {
-      for (int i = 0; i < HAND_SIZE; ++i) {
+      for (int i = 0; i < POKEVAL_HAND_SIZE; ++i) {
         turn->hand.card[i] = DH_card_back;
         real_hand.player[turn->id].card[i] = DH_deal_top_card(deck);
       }
     } else {
-      struct pokeval_hand_t *hand = &turn->hand;
+      POKEVAL_Hand *hand = &turn->hand;
       // First card face down
       hand->card[0] = DH_card_back;
       real_hand.player[turn->id].card[0] = DH_deal_top_card(deck);
@@ -152,7 +152,7 @@ RealHand_t deal_cards_to_players(GameState_t *game_state, DH_Deck *deck, const u
       hand->card[1] = DH_deal_top_card(deck);
       real_hand.player[turn->id].card[1] = hand->card[1];
 
-      for (int i = 2; i < HAND_SIZE; i++) {
+      for (int i = 2; i < POKEVAL_HAND_SIZE; i++) {
         hand->card[i] = DH_card_null;
         real_hand.player[turn->id].card[i] = hand->card[i];
       }
@@ -178,15 +178,13 @@ static void broadcast_game_state(ArgsBroadcastGameState_t *args) {
       continue;
     }
 
-    struct pokeval_hand_t hand_tmp = {0};
+    POKEVAL_Hand hand_tmp = {0};
     if (args->game_state->winner_declared && args->game_state->player_count != 1) {
-      memcpy(&args->game_state->player[i].hand, &args->real_hand->player[i],
-             sizeof(struct pokeval_hand_t));
+      memcpy(&args->game_state->player[i].hand, &args->real_hand->player[i], sizeof(POKEVAL_Hand));
 
     } else {
-      memcpy(&hand_tmp, &args->game_state->player[i].hand, sizeof(struct pokeval_hand_t));
-      memcpy(&args->game_state->player[i].hand, &args->real_hand->player[i],
-             sizeof(struct pokeval_hand_t));
+      memcpy(&hand_tmp, &args->game_state->player[i].hand, sizeof(POKEVAL_Hand));
+      memcpy(&args->game_state->player[i].hand, &args->real_hand->player[i], sizeof(POKEVAL_Hand));
     }
 
     size_t size = 0;
@@ -195,7 +193,7 @@ static void broadcast_game_state(ArgsBroadcastGameState_t *args) {
       return;
 
     if (!args->game_state->winner_declared || args->game_state->player_count == 1)
-      memcpy(&args->game_state->player[i].hand, &hand_tmp, sizeof(struct pokeval_hand_t));
+      memcpy(&args->game_state->player[i].hand, &hand_tmp, sizeof(POKEVAL_Hand));
 
     uint32_t size_net = htonl(size);
 
@@ -427,7 +425,7 @@ static int handle_draw(ArgsBroadcastGameState_t *args, TCPsocket sock, const int
   char status_str[LEN_STATUS_STR] = {0};
   snprintf(status_str, sizeof status_str, "%s drew %d", args->game_state->player[id].nick,
            req.discard_count);
-  send_new_hand(sock, &args->real_hand->player[id], HAND_SIZE);
+  send_new_hand(sock, &args->real_hand->player[id], POKEVAL_HAND_SIZE);
   broadcast_status_message(args, status_str);
 
   return 0;
@@ -469,20 +467,19 @@ static void determine_winner(ArgsBroadcastGameState_t *args, RoundResults *resul
   // value 0
   // ../subprojects/pokeval/pokeval.c:298:11: runtime error: variable length array bound evaluates
   // to non-positive value 0
-  struct pokeval_need_comparing_t need_comparing[pl_count];
+  POKEVAL_NeedComparing need_comparing[pl_count];
   Player_t *ptr = starting_player;
   for (uint8_t i = 0; i < pl_count; i++) {
     need_comparing[i].won = false;
     need_comparing[i].id = ptr->id;
-    memcpy(&need_comparing[i].hand, &args->real_hand->player[ptr->id],
-           sizeof(struct pokeval_hand_t));
+    memcpy(&need_comparing[i].hand, &args->real_hand->player[ptr->id], sizeof(POKEVAL_Hand));
     ptr = get_next_player(players_array, ptr->id);
   }
 
-  results->n_winners = pokeval_compare_hands(need_comparing, pl_count);
+  results->n_winners = POKEVAL_compare_hands(need_comparing, pl_count);
   uint8_t winners = 0;
 
-  // Ties are not fully implemented yet. pokeval_compare_hands() handles them, but
+  // Ties are not fully implemented yet. POKEVAL_compare_hands() handles them, but
   // the tests need to be reviewed and perhaps added to in the pokeval library. The code
   // here to report ties and distribute the pot to tied players isn't complete.
   for (int i = 0; i < pl_count; i++) {
@@ -497,7 +494,7 @@ static void determine_winner(ArgsBroadcastGameState_t *args, RoundResults *resul
              // When broadcast is called, it will reveal the cards if winner has been declared. We
              // don't need to call that yet, so using the values from "real_hand" for now
              "%s wins with %s", winner->nick,
-             pokeval_ranks[pokeval_evaluate_hand(args->real_hand->player[winner->id])]);
+             POKEVAL_rank[POKEVAL_evaluate_hand(args->real_hand->player[winner->id])]);
     broadcast_status_message(args, status_str);
     uint32_t share = args->game_state->pot / results->n_winners;
     args->game_state->pot = args->game_state->pot % results->n_winners;
@@ -820,7 +817,7 @@ void game_five_card_stud(GAME_ARGS) {
     printf("round: %d\n", i);
     do {
       int id = turn->id;
-      struct pokeval_hand_t *hand = &turn->hand;
+      POKEVAL_Hand *hand = &turn->hand;
       uint8_t n = i + 2;
       hand->card[n] = DH_deal_top_card(deck);
       args->real_hand->player[id].card[n] = hand->card[n];

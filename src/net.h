@@ -80,8 +80,8 @@ struct player_message_builder_t {
   // These types come from the generated protobuf header file
   Player msg;
   Hand hand;
-  Card cards[HAND_SIZE];
-  Card *card_ptrs[HAND_SIZE];
+  Card cards[POKEVAL_HAND_SIZE];
+  Card *card_ptrs[POKEVAL_HAND_SIZE];
 };
 
 uint8_t *serialize_game_state(const GameState_t *src, size_t *size_out);

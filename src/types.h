@@ -54,7 +54,7 @@ typedef enum {
 typedef struct {
   char nick[SIZEOF_NICK];
   int8_t id;
-  struct pokeval_hand_t hand;
+  POKEVAL_Hand hand;
   int32_t coins;
   bool in; // Used for spectators or when someone has folded
   uint32_t total_paid;
@@ -76,7 +76,7 @@ typedef struct {
 } GameState_t;
 
 typedef struct {
-  struct pokeval_hand_t player[MAX_PLAYERS];
+  POKEVAL_Hand player[MAX_PLAYERS];
 } RealHand_t;
 
 typedef struct {
