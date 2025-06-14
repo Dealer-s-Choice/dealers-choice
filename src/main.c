@@ -178,6 +178,7 @@ int main(int argc, char *argv[]) {
   const FontArgs_t font_args[] = {
       [FONT_CARD] = {.file = "LiberationSans-Bold.ttf", .ptsize = 38},
       [FONT_DEFAULT] = {.file = "LiberationSans-Regular.ttf", .ptsize = 32},
+      [FONT_DEFAULT_BOLD] = {.file = "LiberationSans-Bold.ttf", .ptsize = 32},
       [FONT_BOLD] = {.file = "LiberationSans-Bold.ttf", .ptsize = 26},
       [FONT_LINK] = {.file = "LiberationSans-Regular.ttf", .ptsize = 22},
       [FONT_STATUS_MSG] = {.file = "LiberationSans-Regular.ttf", .ptsize = 24},

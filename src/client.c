@@ -633,7 +633,6 @@ static bool run_game_loop(GameState_t *game_state, ClientState_t *client_state,
       {"48x48_Gaius-Julius-Caesar-denarius-44-BC-RRC-480-3.png"},
   };
   size_t num_coins = ARRAY_SIZE(coin);
-
   SDL_Texture *coin_tex = load_coin_texture(sdl_context->renderer, path->data,
                                             &coin[pcg32_boundedrand_r(&rng, num_coins)]);
 
@@ -942,7 +941,7 @@ static bool run_game_loop(GameState_t *game_state, ClientState_t *client_state,
     char buffer[128];
     snprintf(buffer, sizeof(buffer), "%d", game_state->pot);
     SDL_Color black = {0, 0, 0, 255};
-    render_text_centered(sdl_context->renderer, font->fonts[FONT_BOLD], buffer, black,
+    render_text_centered(sdl_context->renderer, font->fonts[FONT_DEFAULT_BOLD], buffer, black,
                          sdl_context->win_center);
 
     player_ptr = starting_turn;

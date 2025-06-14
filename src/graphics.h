@@ -75,6 +75,7 @@ typedef struct {
 enum {
   FONT_CARD,
   FONT_DEFAULT,
+  FONT_DEFAULT_BOLD,
   FONT_BOLD,
   FONT_LINK,
   FONT_STATUS_MSG,
