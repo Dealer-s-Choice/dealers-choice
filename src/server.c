@@ -496,7 +496,7 @@ static void determine_winner(ArgsBroadcastGameState_t *args, RoundResults *resul
     snprintf(status_str, sizeof(status_str),
              // When broadcast is called, it will reveal the cards if winner has been declared. We
              // don't need to call that yet, so using the values from "real_hand" for now
-             "%s wins with %s\n", winner->nick,
+             "%s wins with %s", winner->nick,
              pokeval_ranks[pokeval_evaluate_hand(args->real_hand->player[winner->id])]);
     broadcast_status_message(args, status_str);
     uint32_t share = args->game_state->pot / results->n_winners;
@@ -514,12 +514,12 @@ static void award_last_player_in_game(ArgsBroadcastGameState_t *args, Player_t *
   }
   turn->winner = true;
   char status_str[LEN_STATUS_STR] = {0};
-  snprintf(status_str, sizeof(status_str), "%s wins\n", turn->nick);
+  snprintf(status_str, sizeof(status_str), "%s wins", turn->nick);
   broadcast_status_message(args, status_str);
 
   args->game_state->winner_declared = true;
   results->n_winners = 1;
-  fprintf(stderr, "winner id from fold: %d\n", turn->id);
+  fprintf(stderr, "winner id from fold: %d", turn->id);
   results->id[0] = turn->id;
   turn->coins += args->game_state->pot;
   args->game_state->pot = 0;
@@ -623,10 +623,9 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args) {
         }
 
         if (action.amount > 0)
-          snprintf(status_str, sizeof status_str, "%s %s%d\n", turn->nick, action.str,
-                   action.amount);
+          snprintf(status_str, sizeof status_str, "%s %s%d", turn->nick, action.str, action.amount);
         else
-          snprintf(status_str, sizeof status_str, "%s %s\n", turn->nick, action.str);
+          snprintf(status_str, sizeof status_str, "%s %s", turn->nick, action.str);
       }
 
       broadcast_status_message(args, status_str);
@@ -702,7 +701,7 @@ static void remove_disconnected_player(ArgsBroadcastGameState_t *args, const int
   if (args->game_state->player_count > 0) {
     args->game_state->player_count--;
     char status_str[LEN_STATUS_STR] = {0};
-    snprintf(status_str, sizeof status_str, "%s disconnected\n", p->nick);
+    snprintf(status_str, sizeof status_str, "%s disconnected", p->nick);
     broadcast_status_message(args, status_str);
   }
 

@@ -72,9 +72,18 @@ typedef struct {
   const int ptsize;
 } FontArgs_t;
 
-enum { CARD, OTHER, STATUS_MSG, LINK, NUM_FONTS };
+enum {
+  FONT_CARD,
+  FONT_DEFAULT,
+  FONT_BOLD,
+  FONT_LINK,
+  FONT_STATUS_MSG,
+  FONT_TITLE,
+  FONT_VERSION,
+  NUM_FONTS
+};
 
-extern const FontArgs_t font_args[NUM_FONTS];
+// extern const FontArgs_t font_args[NUM_FONTS];
 
 typedef struct {
   TTF_Font *fonts[NUM_FONTS];

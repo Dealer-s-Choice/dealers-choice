@@ -135,6 +135,7 @@ PlayerConfig_t get_player_config(void) {
   snprintf(cfg_pathname, sizeof(cfg_pathname), "%s/player.conf", cfgdir);
   free(cfgdir);
 
+  printf("Reading config: %s\n", cfg_pathname);
   struct Canfigger *cfg_node = canfigger_parse_file(cfg_pathname, ',');
   if (!cfg_node) {
     if (check_pathname_state(cfg_pathname) == PATH_NOT_FOUND) {

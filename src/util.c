@@ -60,8 +60,18 @@ void get_data_dir(Path_t *path) {
     return;
   }
   // This will be changed before the first release. We'll look here and
-  strcpy(path->data, "../data");
-  return;
+  if (check_pathname_state("../data") == PATH_EXISTS) {
+    strcpy(path->data, "../data");
+    return;
+  }
+
+  if (check_pathname_state(DEALERSCHOICE_DATADIR) == PATH_EXISTS) {
+    snprintf(path->data, sizeof(path->data), "%s", DEALERSCHOICE_DATADIR);
+    return;
+  }
+
+  fputs("Unable to find data.\n", stderr);
+  exit(EXIT_FAILURE);
 }
 
 char *get_config_dir(void) {

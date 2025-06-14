@@ -190,6 +190,7 @@ void render_link(Link_t *link) {
 
   SDL_RenderCopy(link->renderer, texture, NULL, &link->rect);
   SDL_DestroyTexture(texture);
+  TTF_SetFontStyle(link->font, TTF_STYLE_NORMAL);
 }
 
 static int menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet socket_set,
@@ -206,17 +207,17 @@ static int menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet s
     SDL_Rect rect = {100, y_offset, strlen(game_choices[i].str) * 18, button_height};
 
     game_choice_button[i] = create_game_choice_button(game_choices[i].str, sdl_context->renderer,
-                                                      rect, font->fonts[OTHER]);
+                                                      rect, font->fonts[FONT_BOLD]);
     y_offset += button_height * 1.1;
   }
 
   bool running = true;
   // const char *link[] = { DEALERSCHOICE_URL, "https://matrix.to/#/#dealers-choice:matrix.org" };
   Link_t link[] = {
-      {DEALERSCHOICE_URL, font->fonts[LINK], sdl_context->renderer,
+      {DEALERSCHOICE_URL, font->fonts[FONT_LINK], sdl_context->renderer,
        (SDL_Rect){sdl_context->win_center.x + 50, sdl_context->window_height - 40, 8, 30}, false},
-      {"https://matrix.to/#/#dealers-choice:matrix.org", font->fonts[LINK], sdl_context->renderer,
-       (SDL_Rect){20, sdl_context->window_height - 40, 8, 30}, false}};
+      {"https://matrix.to/#/#dealers-choice:matrix.org", font->fonts[FONT_LINK],
+       sdl_context->renderer, (SDL_Rect){20, sdl_context->window_height - 40, 8, 30}, false}};
 
   while (running && game_state->at_menu) {
     ERecvStatus_t recv_status =
@@ -268,7 +269,7 @@ static int menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet s
     int offset_x = status_pos.x, offset_y = status_pos.y;
 
     SDL_Rect text_connected = {offset_x, offset_y, 0, 0};
-    render_text_plain(sdl_context->renderer, font->fonts[OTHER],
+    render_text_plain(sdl_context->renderer, font->fonts[FONT_BOLD],
                       "Connected players:", get_color(COLOR_BLACK), &text_connected);
     offset_x += 10;
 
@@ -281,7 +282,7 @@ static int menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet s
       snprintf(tmp, sizeof tmp, "%s%s", client->nick,
                game_state->dealer_id == client->id ? " (Dealer)" : "");
       SDL_Rect text_pos = {offset_x, offset_y, 0, 0};
-      render_text_plain(sdl_context->renderer, font->fonts[OTHER], tmp, get_color(COLOR_WHITE),
+      render_text_plain(sdl_context->renderer, font->fonts[FONT_BOLD], tmp, get_color(COLOR_WHITE),
                         &text_pos);
     } while ((client = get_next_connected_client(game_state->player, client->id)) != start);
     // fprintf(stderr, "%d\n", __LINE__);
@@ -565,7 +566,7 @@ void run_sdl_loop(ClientState_t *client_state, SdlContext_t *sdl_context, Font_t
     else if (i == DISCARD)
       butt_pos = (SDL_Point){action_button[BET].rect.x, action_button[BET].rect.y};
     action_button[i] =
-        create_button(action[i], sdl_context->renderer, &butt_pos, font->fonts[OTHER]);
+        create_button(action[i], sdl_context->renderer, &butt_pos, font->fonts[FONT_BOLD]);
   }
 
   x_offset = start_x_offset + 150;
@@ -581,7 +582,7 @@ void run_sdl_loop(ClientState_t *client_state, SdlContext_t *sdl_context, Font_t
         get_color(COLOR_WHITE),
         get_color(COLOR_BROWN),
         (SDL_Rect){x_offset + (i * (w + space)), action_button_y + 80, w, 40},
-        font->fonts[OTHER],
+        font->fonts[FONT_BOLD],
         false,
         true,
         false,
@@ -817,7 +818,7 @@ void run_sdl_loop(ClientState_t *client_state, SdlContext_t *sdl_context, Font_t
         snprintf(tmp, sizeof tmp, "%s", status_msg[i]);
         // TODO: The x & y offsets need to be scaled somehow, not hard-coded
         SDL_Rect text_pos = {sdl_context->win_center.x + 100, 20 * i + 5, 0, 0};
-        render_text_plain(sdl_context->renderer, font->fonts[STATUS_MSG], tmp,
+        render_text_plain(sdl_context->renderer, font->fonts[FONT_STATUS_MSG], tmp,
                           get_color(COLOR_BLACK), &text_pos);
         // printf("status_msg[%zd]: %s\n", i, status_msg[i]);
       }
@@ -826,7 +827,7 @@ void run_sdl_loop(ClientState_t *client_state, SdlContext_t *sdl_context, Font_t
       for (int card_n = 0; card_n < HAND_SIZE; ++card_n) {
         do {
           // printf("%d\n", __LINE__);
-          render_card(&card_context[player_ptr->id][card_n], font->fonts[CARD]);
+          render_card(&card_context[player_ptr->id][card_n], font->fonts[FONT_CARD]);
 
           if (!cards_dealt) {
             Uint32 start = SDL_GetTicks();
@@ -874,7 +875,7 @@ void run_sdl_loop(ClientState_t *client_state, SdlContext_t *sdl_context, Font_t
           snprintf(elapsed_str, sizeof(elapsed_str), "%d", elapsed);
 
           render_text_plain(
-              sdl_context->renderer, font->fonts[OTHER], elapsed_str, get_color(COLOR_WHITE),
+              sdl_context->renderer, font->fonts[FONT_BOLD], elapsed_str, get_color(COLOR_WHITE),
               &(SDL_Rect){sdl_context->window_width - 60, sdl_context->window_height - 60, 0, 0});
         }
 
@@ -896,7 +897,7 @@ void run_sdl_loop(ClientState_t *client_state, SdlContext_t *sdl_context, Font_t
           if (!action_button[DISCARD].enabled) {
             char tmp[50] = {0};
             snprintf(tmp, sizeof(tmp), "You may only discard a maximum of %d cards", max_allowed);
-            render_text_plain(sdl_context->renderer, font->fonts[OTHER], tmp,
+            render_text_plain(sdl_context->renderer, font->fonts[FONT_BOLD], tmp,
                               get_color(COLOR_WHITE),
                               &(SDL_Rect){action_button->rect.x, action_button->rect.y + 50, 0, 0});
           }
@@ -921,7 +922,7 @@ void run_sdl_loop(ClientState_t *client_state, SdlContext_t *sdl_context, Font_t
       char buffer[128];
       snprintf(buffer, sizeof(buffer), "pot: %d", game_state.pot);
       SDL_Color black = {0, 0, 0, 255};
-      render_text_centered(sdl_context->renderer, font->fonts[OTHER], buffer, black,
+      render_text_centered(sdl_context->renderer, font->fonts[FONT_BOLD], buffer, black,
                            sdl_context->win_center);
 
       player_ptr = starting_turn;
@@ -934,7 +935,7 @@ void run_sdl_loop(ClientState_t *client_state, SdlContext_t *sdl_context, Font_t
         char coins_text[24] = {0};
         snprintf(coins_text, sizeof coins_text, "%d", player_ptr->coins);
         SDL_Rect dest = {coin_rect.x + coin_rect.w * 1.2, coin_rect.y + coin_rect.h / 4, 0, 0};
-        render_text_plain(sdl_context->renderer, font->fonts[OTHER], coins_text,
+        render_text_plain(sdl_context->renderer, font->fonts[FONT_BOLD], coins_text,
                           get_color(COLOR_BLACK), &dest);
 
         char name_text[sizeof(player_ptr->nick)] = {0};
@@ -943,8 +944,8 @@ void run_sdl_loop(ClientState_t *client_state, SdlContext_t *sdl_context, Font_t
                               20};
 
         bool blink = id == turn->id && !game_state.winner_declared;
-        render_nick(sdl_context->renderer, font->fonts[OTHER], name_text, get_color(COLOR_BLACK),
-                    &dest_name, blink);
+        render_nick(sdl_context->renderer, font->fonts[FONT_BOLD], name_text,
+                    get_color(COLOR_BLACK), &dest_name, blink);
 
       } while ((player_ptr = get_next_connected_client(players_array, player_ptr->id)) !=
                starting_turn);

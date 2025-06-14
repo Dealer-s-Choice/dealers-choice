@@ -30,6 +30,7 @@
 #include <string.h>
 
 #include "client.h"
+#include "config.h"
 #include "graphics.h"
 #include "main.h"
 #include "server.h"
@@ -37,14 +38,14 @@
 enum { RUN_CLIENT = 20 };
 
 static int menu_display_connect(PlayerConfig_t *player_config, char *host_str,
-                                SDL_Renderer *renderer, Font_t *font) {
+                                SdlContext_t *sdl_context, Font_t *font) {
   Button_t button_connect = {
       .text = "Connect",
-      .renderer = renderer,
+      .renderer = sdl_context->renderer,
       .bg_color = get_color(COLOR_BLACK),
       .fg_color = get_color(COLOR_YELLOW),
       .rect = {100, 160, 120, 40},
-      .font = font->fonts[OTHER],
+      .font = font->fonts[FONT_BOLD],
       .enabled = true,
   };
 
@@ -84,20 +85,33 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str,
       }
     }
 
-    clear_screen(renderer);
+    clear_screen(sdl_context->renderer);
 
     render_button(&button_connect);
 
-    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-    SDL_RenderDrawRect(renderer, &input_box);
+    SDL_SetRenderDrawColor(sdl_context->renderer, 255, 255, 255, 255);
+    SDL_RenderDrawRect(sdl_context->renderer, &input_box);
     SDL_Rect input_text_pos = {input_box.x, input_box.y, 0, 0};
-    render_text(renderer, font->fonts[OTHER], host_str, get_color(COLOR_WHITE), &input_text_pos);
+    // TTF_SetFontSize
+    // TTF_SetFontStyle(font->fonts[FONT_BOLD], TTF_STYLE_BOLD);
+    render_text(sdl_context->renderer, font->fonts[FONT_DEFAULT], host_str, get_color(COLOR_WHITE),
+                &input_text_pos);
 
     SDL_Rect input_nick_pos = {input_nick.x, input_nick.y, 0, 0};
-    render_text_plain(renderer, font->fonts[OTHER], player_config->nick, get_color(COLOR_BLACK),
-                      &input_nick_pos);
+    render_text_plain(sdl_context->renderer, font->fonts[FONT_DEFAULT], player_config->nick,
+                      get_color(COLOR_BLACK), &input_nick_pos);
 
-    SDL_RenderPresent(renderer);
+    SDL_Rect title_rect = {sdl_context->win_center.x / 1.5, 60, 0, 0};
+    render_text_plain(sdl_context->renderer, font->fonts[FONT_TITLE], DEALERSCHOICE_FORMAL_NAME,
+                      get_color(COLOR_BLACK), &title_rect);
+
+    char version[64] = {0};
+    snprintf(version, sizeof(version), "Version " DEALERSCHOICE_VERSION);
+    render_text_plain(sdl_context->renderer, font->fonts[FONT_VERSION], version,
+                      get_color(COLOR_WHITE),
+                      &(SDL_Rect){title_rect.x + 40, title_rect.y + 80, 0, 0});
+
+    SDL_RenderPresent(sdl_context->renderer);
     SDL_Delay(16);
   }
 
@@ -160,22 +174,35 @@ int main(int argc, char *argv[]) {
   init_sdl_window(&sdl_context, "Dealer's Choice");
 
   Font_t font;
+
+  const FontArgs_t font_args[] = {
+      [FONT_CARD] = {.file = "LiberationSans-Bold.ttf", .ptsize = 38},
+      [FONT_DEFAULT] = {.file = "LiberationSans-Regular.ttf", .ptsize = 32},
+      [FONT_BOLD] = {.file = "LiberationSans-Bold.ttf", .ptsize = 26},
+      [FONT_LINK] = {.file = "LiberationSans-Regular.ttf", .ptsize = 22},
+      [FONT_STATUS_MSG] = {.file = "LiberationSans-Regular.ttf", .ptsize = 24},
+      [FONT_TITLE] = {.file = "LiberationSerif-BoldItalic.ttf", .ptsize = 72},
+      [FONT_VERSION] = {.file = "LiberationSans-Regular.ttf", .ptsize = 22},
+  };
+
   for (int i = 0; i < NUM_FONTS; ++i) {
-    font.fonts[i] = open_font(&font_args[i]);
+    char font_path[4096] = {0};
+    snprintf(font_path, sizeof(font_path), "%s/%s", path.data, font_args[i].file);
+    font.fonts[i] = open_font(&(FontArgs_t){font_path, font_args[i].ptsize});
     if (!font.fonts[i])
       return -1;
   }
 
   PlayerConfig_t player_config = get_player_config();
   if (!player_config.loaded) {
-    fprintf(stderr, "Unabled to load config\n");
+    fprintf(stderr, "Unable to load config\n");
     exit(EXIT_FAILURE);
   }
 
   char host_str[MAX_INPUT_LENGTH] = {0};
   snprintf(host_str, sizeof(host_str), "%s", (host) ? host : player_config.host);
 
-  if (menu_display_connect(&player_config, host_str, sdl_context.renderer, &font) == RUN_CLIENT) {
+  if (menu_display_connect(&player_config, host_str, &sdl_context, &font) == RUN_CLIENT) {
     printf("Attempting to connect to: %s\n", host_str);
     get_socket_context_and_run_client(&player_config, host_str, &sdl_context, &font, &path,
                                       test_mode);
