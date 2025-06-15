@@ -37,6 +37,13 @@
 #include "game.h"
 #include "graphics.h"
 
+static pcg32_random_t rng;
+static void pcg_srand_auto(void) {
+  uint64_t initstate = time(NULL) ^ (intptr_t)&printf;
+  uint64_t initseq = (intptr_t)&pcg_srand_auto;
+  pcg32_srandom_r(&rng, initstate, initseq);
+}
+
 static bool menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet socket_set,
                                       const int8_t my_id, GameState_t *game_state,
                                       ClientState_t *client_state, SdlContext_t *sdl_context,
@@ -112,6 +119,7 @@ SocketContext_t get_socket_context_and_run_client(PlayerConfig_t *player_config,
     if (recv_status != RECV_SUCCESS)
       exit(EXIT_FAILURE);
 
+    pcg_srand_auto();
     bool running = true;
     do {
       running =
@@ -334,11 +342,15 @@ static bool menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet 
     // fprintf(stderr, "%d\n", __LINE__);
 
     if (n_clients == 1)
-      render_text_plain(sdl_context->renderer, font->fonts[FONT_DEFAULT], "Waiting for more players...", get_color(COLOR_WHITE),
-                        &(SDL_Rect){sdl_context->win_center.x, sdl_context->window_height - 200, 0, 0});
+      render_text_plain(
+          sdl_context->renderer, font->fonts[FONT_DEFAULT], "Waiting for more players...",
+          get_color(COLOR_WHITE),
+          &(SDL_Rect){sdl_context->win_center.x, sdl_context->window_height - 200, 0, 0});
     if (game_state->dealer_id != my_id)
-      render_text_plain(sdl_context->renderer, font->fonts[FONT_DEFAULT], "Waiting for dealer to select game...", get_color(COLOR_WHITE),
-                        &(SDL_Rect){sdl_context->win_center.x, sdl_context->window_height - 200, 0, 0});
+      render_text_plain(
+          sdl_context->renderer, font->fonts[FONT_DEFAULT], "Waiting for dealer to select game...",
+          get_color(COLOR_WHITE),
+          &(SDL_Rect){sdl_context->win_center.x, sdl_context->window_height - 200, 0, 0});
 
     render_link(&link[0]);
     render_link(&link[1]);
@@ -514,13 +526,6 @@ static void create_card_context(CardContext_t card_context[MAX_PLAYERS][POKEVAL_
   } while ((turn = get_next_connected_client(players_array, turn->id)) != starting_turn);
 }
 
-static pcg32_random_t rng;
-static void pcg_srand_auto(void) {
-  uint64_t initstate = time(NULL) ^ (intptr_t)&printf;
-  uint64_t initseq = (intptr_t)&pcg_srand_auto;
-  pcg32_srandom_r(&rng, initstate, initseq);
-}
-
 typedef struct {
   const char *filename;
 } Coin_t;
@@ -649,7 +654,6 @@ static bool run_game_loop(GameState_t *game_state, ClientState_t *client_state,
 
   SDL_Point coin_coords[MAX_POT_COINS] = {0};
   uint8_t coins;
-  pcg_srand_auto();
 
   client_state->timer_start = SDL_GetTicks();
   cards_dealt = false;
