@@ -814,6 +814,8 @@ void game_five_card_stud(GAME_ARGS) {
 
   Player_t *starting_player = get_next_player(players_array, args->game_state->dealer_id);
   Player_t *turn = starting_player;
+  server_handle_ante(args->game_state, 250);
+
   RoundResults results = {0};
   for (int i = 0; i < n_betting_rounds; i++) {
     results = handle_round();
