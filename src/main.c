@@ -37,6 +37,8 @@
 
 enum { RUN_CLIENT = 20 };
 
+#include <SDL.h>
+
 static int menu_display_connect(PlayerConfig_t *player_config, char *host_str,
                                 SdlContext_t *sdl_context, Font_t *font) {
   Button_t button_connect = {
@@ -78,6 +80,8 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str,
       } else if (e.type == SDL_KEYDOWN) {
         if (e.key.keysym.sym == SDLK_BACKSPACE && strlen(host_str) > 0) {
           host_str[strlen(host_str) - 1] = '\0';
+        } else if (e.key.keysym.sym == SDLK_RETURN && e.key.keysym.mod & KMOD_ALT) {
+          toggle_fullscreen(sdl_context->window);
         } else if (e.key.keysym.sym == SDLK_RETURN) {
           run_client = true;
           running = false;

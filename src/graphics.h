@@ -124,4 +124,6 @@ void render_nick(SDL_Renderer *renderer, TTF_Font *font, const char *text, SDL_C
 
 SDL_Texture *load_texture(SDL_Renderer *renderer, const char *path);
 
+void toggle_fullscreen(SDL_Window *window);
+
 #endif
