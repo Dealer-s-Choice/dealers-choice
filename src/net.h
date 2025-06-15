@@ -41,6 +41,9 @@
 #include "netpoker.pb-c.h"
 #include "types.h"
 
+#define GAME_PROTOCOL_MAGIC "DCPROTO"
+#define GAME_PROTOCOL_VERSION 1
+
 // On Windows, this is defined in <ws2tcpip.h>. Rather than include the file
 // let's just do this...
 #ifndef INET6_ADDRSTRLEN
