@@ -606,8 +606,8 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args) {
       SDL_Delay(50); // avoid busy-waiting
     }
 
+    char status_str[LEN_STATUS_STR] = {0};
     if (args->game_state->player_count > 1) {
-      char status_str[LEN_STATUS_STR] = {0};
       // The id will be -1 if the player disconnected when it was their turn to
       // send an action
       if (turn->id != -1) {
@@ -646,7 +646,8 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args) {
         break;
       }
     } else {
-      // fprintf(stderr, "turn->id: %d | %d\n", turn->id, __LINE__);
+      snprintf(status_str, sizeof status_str, "%s %s", turn->nick, action.str);
+      broadcast_status_message(args, status_str);
       award_last_player_in_game(args, turn, &results);
       break;
     }
