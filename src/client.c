@@ -239,6 +239,7 @@ static bool menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet 
                                       const int8_t my_id, GameState_t *game_state,
                                       ClientState_t *client_state, SdlContext_t *sdl_context,
                                       Font_t *font) {
+  uint8_t n_clients = 0;
   int button_height = 40;
   int y_offset = 160;
   Button_t game_choice_button[MAX_CHOICES];
@@ -272,7 +273,7 @@ static bool menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet 
     while (SDL_PollEvent(&e)) {
       SDL_Point mouse_pos = {e.button.x, e.button.y};
       for (int i = 0; i < MAX_CHOICES; i++) {
-        game_choice_button[i].enabled = (game_state->dealer_id == my_id);
+        game_choice_button[i].enabled = (game_state->dealer_id == my_id && n_clients > 1);
         game_choice_button[i].hovered = SDL_PointInRect(&mouse_pos, &game_choice_button[i].rect);
       }
       link[0].hovered = SDL_PointInRect(&mouse_pos, &link[0].rect);
@@ -317,6 +318,8 @@ static bool menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet 
 
     Player_t *client = &game_state->player[my_id];
     Player_t *start = client;
+
+    n_clients = 0;
     do {
       // fprintf(stderr, "%d\n", __LINE__);
       offset_y += 40;
@@ -326,6 +329,7 @@ static bool menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet 
       SDL_Rect text_pos = {offset_x, offset_y, 0, 0};
       render_text_plain(sdl_context->renderer, font->fonts[FONT_BOLD], tmp, get_color(COLOR_WHITE),
                         &text_pos);
+      n_clients++;
     } while ((client = get_next_connected_client(game_state->player, client->id)) != start);
     // fprintf(stderr, "%d\n", __LINE__);
 
