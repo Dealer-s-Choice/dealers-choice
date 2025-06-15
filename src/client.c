@@ -333,6 +333,13 @@ static bool menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet 
     } while ((client = get_next_connected_client(game_state->player, client->id)) != start);
     // fprintf(stderr, "%d\n", __LINE__);
 
+    if (n_clients == 1)
+      render_text_plain(sdl_context->renderer, font->fonts[FONT_DEFAULT], "Waiting for more players...", get_color(COLOR_WHITE),
+                        &(SDL_Rect){sdl_context->win_center.x, sdl_context->window_height - 200, 0, 0});
+    if (game_state->dealer_id != my_id)
+      render_text_plain(sdl_context->renderer, font->fonts[FONT_DEFAULT], "Waiting for dealer to select game...", get_color(COLOR_WHITE),
+                        &(SDL_Rect){sdl_context->win_center.x, sdl_context->window_height - 200, 0, 0});
+
     render_link(&link[0]);
     render_link(&link[1]);
 
