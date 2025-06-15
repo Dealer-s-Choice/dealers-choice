@@ -628,6 +628,12 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args) {
       broadcast_status_message(args, status_str);
       puts(status_str);
 
+      // player_count might be 1 now, if a player folded due to an action timeout
+      if (args->game_state->player_count == 1) {
+        award_last_player_in_game(args, turn, &results);
+        break;
+      }
+
       turn = get_next_player(players_array, save_id);
       if (args->game_state->total_bets_plus_raises == 0) {
         if (turn == starting_player || starting_player->id == -1)
