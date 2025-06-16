@@ -776,11 +776,17 @@ void game_five_card_draw(GAME_ARGS) {
 
   Player_t *turn = starting_player;
   RoundResults results = {0};
+  int8_t save_starting_player_id = starting_player->id;
+
   for (int i = 0; i < n_betting_rounds; i++) {
     results = handle_round();
     if (results.n_winners > 0 || i == draws)
       break;
 
+    if (!starting_player->in) {
+      starting_player = get_next_player(players_array, save_starting_player_id);
+      save_starting_player_id = starting_player->id;
+    }
     turn = starting_player;
     int8_t save_id;
     do {
@@ -815,6 +821,7 @@ void game_five_card_stud(GAME_ARGS) {
   Player_t *starting_player = get_next_player(players_array, args->game_state->dealer_id);
   Player_t *turn = starting_player;
   server_handle_ante(args->game_state, 250);
+  int8_t save_starting_player_id = starting_player->id;
 
   RoundResults results = {0};
   for (int i = 0; i < n_betting_rounds; i++) {
@@ -822,6 +829,11 @@ void game_five_card_stud(GAME_ARGS) {
 
     if (results.n_winners > 0 || i == draws)
       break;
+
+    if (!starting_player->in) {
+      starting_player = get_next_player(players_array, save_starting_player_id);
+      save_starting_player_id = starting_player->id;
+    }
 
     printf("round: %d\n", i);
     do {
