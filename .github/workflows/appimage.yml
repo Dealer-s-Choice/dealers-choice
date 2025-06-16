@@ -1,0 +1,78 @@
+name: Build AppImage
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'version number'
+        required: false
+        type: string
+  push:
+    branches: trunk
+  pull_request:
+    branches: trunk
+
+jobs:
+  build-appimage:
+    runs-on: ${{ matrix.os }}
+    env:
+      VERSION: ${{ inputs.version }}
+    strategy:
+      matrix:
+        os:
+          - ubuntu-24.04-arm
+          - ubuntu-24.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set version
+        run: |
+          if [ -z "$VERSION" ]; then
+            echo "VERSION=snapshot" >> $GITHUB_ENV
+          fi
+
+      - name: Build AppImage
+        run: |
+          export HOSTUID=$(id -u) HOSTGID=$(id -g)
+          docker compose -f packaging/appimage/docker-compose.yml run --rm build
+
+      - name: Create sha256sum
+        run: |
+          ARCH=$(uname -m)
+          echo "ARCH=${ARCH}" >> $GITHUB_ENV
+          cd out
+          OUT_APPIMAGE=dealers_choice-$VERSION-$ARCH.AppImage
+          mv "Dealers_Choice-$VERSION-$ARCH.AppImage" $OUT_APPIMAGE
+          for file in *.AppImage; do
+            sha256sum "$file" > "$file.sha256sum";
+          done
+
+      - name: Artifact Filename
+        run: echo "ARTIFACT_NAME=AppImages-${ARCH//\//-}" >> $GITHUB_ENV
+
+      - if: ${{ github.ref != 'refs/heads/trunk' }}
+        name: Upload AppImage
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          path: ./out/*AppImage*
+          if-no-files-found: error
+
+      - if: ${{ github.ref == 'refs/heads/trunk' }}
+        name: 'Prerelease'
+        uses: ncipollo/release-action@v1
+        with:
+          artifacts: "./out/*AppImage*"
+          body: "Dealer's Choice Snapshot Release"
+          allowUpdates: true
+          prerelease: true
+          removeArtifacts: false
+          replacesArtifacts: true
+          omitBodyDuringUpdate: true
+          omitNameDuringUpdate: true
+          tag: snapshot

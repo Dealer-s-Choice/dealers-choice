@@ -1,0 +1,12 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Dealers Choice
+GenericName=Multiplayer Stud and Draw Poker
+Comment=Multiplayer poker game
+Exec=dealers-choice
+Icon=dealers-choice
+Terminal=true
+Categories=Game;CardGame;
+Keywords=poker;multiplayer;card;network;game;
+MimeType=application/octet-stream;
