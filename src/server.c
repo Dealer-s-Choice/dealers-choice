@@ -305,7 +305,6 @@ static int send_start_action_timeout_msg(TCPsocket sock) {
   buffer[5] = MSG_START_ACTION_TIMER & 0xFF;
 
   int sent = send_all_tcp(sock, buffer, sizeof(buffer));
-  printf("Sent draw prompt: %d bytes\n", sent);
   return sent;
 }
 
