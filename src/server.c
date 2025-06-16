@@ -776,11 +776,17 @@ void game_five_card_draw(GAME_ARGS) {
 
   Player_t *turn = starting_player;
   RoundResults results = {0};
+  int8_t save_starting_player_id = starting_player->id;
+
   for (int i = 0; i < n_betting_rounds; i++) {
     results = handle_round();
     if (results.n_winners > 0 || i == draws)
       break;
 
+    if (!starting_player->in) {
+      starting_player = get_next_player(players_array, save_starting_player_id);
+      save_starting_player_id = starting_player->id;
+    }
     turn = starting_player;
     int8_t save_id;
     do {
