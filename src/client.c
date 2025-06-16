@@ -37,6 +37,8 @@
 #include "game.h"
 #include "graphics.h"
 
+#define POT_BOUNDARY 250
+
 static pcg32_random_t rng;
 static void pcg_srand_auto(void) {
   uint64_t initstate = time(NULL) ^ (intptr_t)&printf;
@@ -288,6 +290,9 @@ static bool menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet 
       link[1].hovered = SDL_PointInRect(&mouse_pos, &link[1].rect);
       if (e.type == SDL_QUIT) {
         return false;
+      } else if (e.type == SDL_KEYDOWN &&
+                 (e.key.keysym.sym == SDLK_RETURN && e.key.keysym.mod & KMOD_ALT)) {
+        toggle_fullscreen(sdl_context->window);
       } else if (e.type == SDL_MOUSEBUTTONDOWN) {
         for (int i = 0; i < MAX_CHOICES; i++) {
           if (SDL_PointInRect(&mouse_pos, &game_choice_button[i].rect) &&
@@ -547,19 +552,16 @@ static bool run_game_loop(GameState_t *game_state, ClientState_t *client_state,
                           SDLNet_SocketSet socket_set, const uint8_t my_id, Path_t *path) {
   const SDL_Point player_pos[MAX_PLAYERS] = {
       // P0: bottom center
-      {.x = sdl_context->window_width / 3, .y = sdl_context->window_height * 0.8},
+      {.x = 20, .y = card_area.h},
 
       // P1: left, 1/3 down
-      {.x = 20, .y = sdl_context->window_height / 3},
+      {.x = 20, .y = card_area.h * 4},
 
-      // P2: top-left
-      {.x = 20, .y = card_area.h * 3},
+      {.x = sdl_context->win_center.x, .y = card_area.h},
 
-      // P3: top-right
-      {.x = sdl_context->window_width / 2 + 20, .y = 35},
+      {.x = sdl_context->win_center.x, .y = card_area.h * 4},
 
-      // P4: right, 1/3 down
-      {.x = sdl_context->window_width / 2 + 20, .y = sdl_context->window_height / 3 + 15},
+      {.x = sdl_context->win_center.x, .y = card_area.h * 7},
   };
 
   // This offers only a little extra protection if changes are made.
@@ -582,7 +584,8 @@ static bool run_game_loop(GameState_t *game_state, ClientState_t *client_state,
   // Mix_Resume(-1);
   //}
 
-  char status_msg[16][LEN_STATUS_STR] = {0};
+#define SIZEOF_STATUS_MSGS 16
+  char status_msgs[SIZEOF_STATUS_MSGS][LEN_STATUS_STR] = {0};
 
   enum {
     CHECK,
@@ -597,12 +600,11 @@ static bool run_game_loop(GameState_t *game_state, ClientState_t *client_state,
   const char *action[] = {[CHECK] = "Check", [BET] = "Bet",     [FOLD] = "Fold",
                           [CALL] = "Call",   [RAISE] = "Raise", [DISCARD] = "Discard"};
 
-  const int start_x_offset = 100;
-  int x_offset = start_x_offset;
-  const int action_button_y = sdl_context->win_center.y;
+  int x_offset = player_pos[4].x - (card_area.w * 3);
+  const int action_button_y = sdl_context->window_height - (card_area.h * 4);
   Button_t action_button[MAX_ACTIONS];
   for (int i = 0; i < MAX_ACTIONS; i++) {
-    SDL_Point butt_pos = {x_offset += 130, action_button_y + 20};
+    SDL_Point butt_pos = {x_offset, action_button_y + 20};
     if (i == RAISE)
       butt_pos = (SDL_Point){action_button[BET].rect.x, action_button[BET].rect.y};
     else if (i == CALL)
@@ -611,9 +613,10 @@ static bool run_game_loop(GameState_t *game_state, ClientState_t *client_state,
       butt_pos = (SDL_Point){action_button[BET].rect.x, action_button[BET].rect.y};
     action_button[i] =
         create_button(action[i], sdl_context->renderer, &butt_pos, font->fonts[FONT_BOLD]);
+    x_offset += 130;
   }
 
-  x_offset = start_x_offset + 150;
+  x_offset = action_button[0].rect.x + 10;
   const uint8_t n_amounts = 3;
   Button_t amount_button[n_amounts];
   const char *amount[] = {"100", "250", "500"};
@@ -683,12 +686,12 @@ static bool run_game_loop(GameState_t *game_state, ClientState_t *client_state,
 
     // printf("turn id: %d\n", turn->id);
 
-    if (strcmp(client_state->server_status_str, status_msg[15]) != 0) {
-      // Shift messages up by one slot: [1]..[15] → [0]..[14]
-      memmove(status_msg, status_msg + 1, sizeof(status_msg[0]) * 15);
+    if (strcmp(client_state->server_status_str, status_msgs[SIZEOF_STATUS_MSGS - 1]) != 0) {
+      // Shift messages up by one slot: [1]..[7] → [0]..[6]
+      memmove(status_msgs, status_msgs + 1, sizeof(status_msgs[0]) * (SIZEOF_STATUS_MSGS - 1));
 
       // Copy new message to the bottom
-      snprintf(status_msg[15], sizeof(client_state->server_status_str), "%s",
+      snprintf(status_msgs[SIZEOF_STATUS_MSGS - 1], sizeof(client_state->server_status_str), "%s",
                client_state->server_status_str);
     }
 
@@ -748,6 +751,9 @@ static bool run_game_loop(GameState_t *game_state, ClientState_t *client_state,
       }
       if (event.type == SDL_QUIT) {
         running = false;
+      } else if (event.type == SDL_KEYDOWN &&
+                 (event.key.keysym.sym == SDLK_RETURN && event.key.keysym.mod & KMOD_ALT)) {
+        toggle_fullscreen(sdl_context->window);
       } else if (event.type == SDL_MOUSEBUTTONDOWN || event.type == SDL_KEYDOWN) {
         for (int i = 0; i < n_amounts; i++) {
           if (SDL_PointInRect(&mouse_pos, &amount_button[i].rect)) {
@@ -830,9 +836,11 @@ static bool run_game_loop(GameState_t *game_state, ClientState_t *client_state,
 
     clear_screen(sdl_context->renderer);
 
+    SDL_Point pot_pos = {player_pos[4].x - POT_BOUNDARY + card_area.h,
+                         sdl_context->win_center.y + card_area.h};
     if (game_state->pot > coins * 250 && coins < MAX_POT_COINS) {
-      coin_coords[coins].x = sdl_context->win_center.x + pcg32_boundedrand_r(&rng, 250) - 150;
-      coin_coords[coins].y = sdl_context->win_center.y + pcg32_boundedrand_r(&rng, 250) - 150;
+      coin_coords[coins].x = pot_pos.x + pcg32_boundedrand_r(&rng, POT_BOUNDARY) - 150;
+      coin_coords[coins].y = pot_pos.y + pcg32_boundedrand_r(&rng, POT_BOUNDARY) - 150;
       coins++;
     }
 
@@ -846,15 +854,12 @@ static bool run_game_loop(GameState_t *game_state, ClientState_t *client_state,
       SDL_RenderCopy(sdl_context->renderer, coin_tex, NULL, &coin_rect);
     }
 
-    // for (size_t i = 0; i < sizeof(status_msg) / sizeof(status_msg[0][0]); i++) {
-    for (int i = 0; i < 16; i++) {
-      char tmp[sizeof(status_msg[0])];
-      snprintf(tmp, sizeof tmp, "%s", status_msg[i]);
-      // TODO: The x & y offsets need to be scaled somehow, not hard-coded
-      SDL_Rect text_pos = {sdl_context->win_center.x + 100, 20 * i + 5, 0, 0};
+    for (int i = 0; i < SIZEOF_STATUS_MSGS; i++) {
+      char tmp[sizeof(status_msgs[0])];
+      snprintf(tmp, sizeof tmp, "%s", status_msgs[i]);
+      SDL_Rect text_pos = {40, (sdl_context->win_center.y) + (20 * i) + 5, 0, 0};
       render_text_plain(sdl_context->renderer, font->fonts[FONT_STATUS_MSG], tmp,
                         get_color(COLOR_BLACK), &text_pos);
-      // printf("status_msg[%zd]: %s\n", i, status_msg[i]);
     }
 
     Player_t *player_ptr = starting_turn;
@@ -957,28 +962,31 @@ static bool run_game_loop(GameState_t *game_state, ClientState_t *client_state,
     snprintf(buffer, sizeof(buffer), "%d", game_state->pot);
     SDL_Color black = {0, 0, 0, 255};
     render_text_centered(sdl_context->renderer, font->fonts[FONT_DEFAULT_BOLD], buffer, black,
-                         sdl_context->win_center);
+                         pot_pos);
 
     player_ptr = starting_turn;
     do {
       // printf("%d\n", __LINE__);
       int id = player_ptr->id;
-      SDL_Rect coin_rect = {
-          .x = player_pos[id].x + card_area.w, .y = player_pos[id].y - card_area.h, 48, 48};
-      SDL_RenderCopy(sdl_context->renderer, coin_tex, NULL, &coin_rect);
-      char coins_text[24] = {0};
-      snprintf(coins_text, sizeof coins_text, "%d", player_ptr->coins);
-      SDL_Rect dest = {coin_rect.x + coin_rect.w * 1.2, coin_rect.y + coin_rect.h / 4, 0, 0};
-      render_text_plain(sdl_context->renderer, font->fonts[FONT_BOLD], coins_text,
-                        get_color(COLOR_BLACK), &dest);
-
       char name_text[sizeof(player_ptr->nick)] = {0};
       snprintf(name_text, sizeof name_text, "%s", player_ptr->nick);
-      SDL_Rect dest_name = {player_pos[id].x + 30, player_pos[id].y + (card_area.h * 1.2), 40, 20};
+      SDL_Rect dest_name = {player_pos[id].x + card_area.w / 2,
+                            player_pos[id].y + (card_area.h * 1.2), 40, 20};
 
       bool blink = id == turn->id && !game_state->winner_declared;
       render_nick(sdl_context->renderer, font->fonts[FONT_BOLD], name_text, get_color(COLOR_BLACK),
                   &dest_name, blink);
+
+      int width, height;
+      if (TTF_SizeUTF8(font->fonts[FONT_BOLD], name_text, &width, &height) != 0)
+        fprintf(stderr, "TTF_SizeUTF8 error: %s\n", TTF_GetError());
+      SDL_Rect coin_rect = {.x = dest_name.x + width + 10, .y = dest_name.y, 48, 48};
+      SDL_RenderCopy(sdl_context->renderer, coin_tex, NULL, &coin_rect);
+      char coins_text[24] = {0};
+      snprintf(coins_text, sizeof coins_text, "%d", player_ptr->coins);
+      SDL_Rect dest = {coin_rect.x + coin_rect.w * 1.2, dest_name.y, 0, 0};
+      render_text_plain(sdl_context->renderer, font->fonts[FONT_BOLD], coins_text,
+                        get_color(COLOR_BLACK), &dest);
 
     } while ((player_ptr = get_next_connected_client(players_array, player_ptr->id)) !=
              starting_turn);
