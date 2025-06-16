@@ -834,6 +834,7 @@ void game_five_card_stud(GAME_ARGS) {
       starting_player = get_next_player(players_array, save_starting_player_id);
       save_starting_player_id = starting_player->id;
     }
+    turn = starting_player;
 
     printf("round: %d\n", i);
     do {
