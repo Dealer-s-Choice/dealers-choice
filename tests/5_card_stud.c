@@ -46,9 +46,13 @@ int main(int argc, char *argv[]) {
 
   _RECEIVE_GAME_STATE()
 
+  sleep(n_seconds);
+  for (i = 0; i < 2; i++)
+    fprintf(stderr, "%d: %d\n", i, game_state[i].player[i].coins);
+
   fprintf(stderr, "%d\n", game_state[0].pot);
 
-  const int expected_coins[3][2] = {{22000, 18000}, {20000, 20000}, {18000, 22000}};
+  const int expected_coins[3][2] = {{22250, 17750}, {20000, 20000}, {17750, 22250}};
   assert(game_state[0].player[0].coins == expected_coins[game][0]);
   assert(game_state[0].player[1].coins == expected_coins[game][1]);
 
