@@ -1,0 +1,9 @@
+services:
+  dealers-choice-server:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.alpine
+    command: ["dealers-choice", "--server"]
+    ports:
+      - "22777:22777"
+    restart: unless-stopped
