@@ -1,12 +1,12 @@
 project(
   'dealers-choice',
   'c',
-  version: '0.0.1',
+  version: '0.0.1.555',
   meson_version: '>= 0.56.0',
   default_options: [
     'warning_level=3',
-    #    'b_sanitize=address,undefined',
-    #    'b_lundef=false',
+    'b_sanitize=address,undefined',
+    'b_lundef=false',
     'c_std=c11',
   ],
 )
