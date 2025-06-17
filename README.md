@@ -9,8 +9,7 @@ Multiplayer Stud and Draw Poker
 
 ## Current state
 
-The game is playable but you're likely to encounter bugs. There are no releases
-yet, but one is planned soon.
+The game is playable but you're likely to encounter bugs.
 
 ### Games available
 
@@ -18,7 +17,7 @@ yet, but one is planned soon.
 * 5-card showdown (Similar to 5-card draw, but with no discard/draw round)
 * [5-card stud](https://en.wikipedia.org/wiki/Five-card_stud) (not all the rules have been implemented yet, such as the bring-in bet)
 
-## AI
+## Computer Opponents
 
 There are no bots or computer opponents implemented yet.
 
