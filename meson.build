@@ -1,12 +1,12 @@
 project(
   'dealers-choice',
   'c',
-  version: '0.0.1.555',
+  version: '0.0.1',
   meson_version: '>= 0.56.0',
   default_options: [
     'warning_level=3',
-    'b_sanitize=address,undefined',
-    'b_lundef=false',
+    #    'b_sanitize=address,undefined',
+    #    'b_lundef=false',
     'c_std=c11',
   ],
 )
@@ -54,7 +54,13 @@ pokeval_dep = dependency('pokeval', default_options: 'default_library=static')
 
 protobuf_dep = dependency('libprotobuf-c')
 
-shared_dep = [canfigger_dep, deckhandler_dep, pokeval_dep, win_deps, cc.find_library('m')]
+shared_dep = [
+  canfigger_dep,
+  deckhandler_dep,
+  pokeval_dep,
+  win_deps,
+  cc.find_library('m'),
+]
 dep_names = [
   'libprotobuf-c',
   'SDL2',
@@ -94,17 +100,31 @@ exe_target = executable(
 
 install_subdir(
   'data',
-  install_dir : join_paths(get_option('datadir'), meson.project_name()),
-  strip_directory : true
-  )
+  install_dir: join_paths(get_option('datadir'), meson.project_name()),
+  strip_directory: true,
+)
 
 # Check the Dockerfile when updating this
 install_data(
-  files(
-    'README.md',
-    'LICENSE',
-    ),
-  install_dir : get_option('docdir')
-  )
+  files('LICENSE', 'README.md', 'ReleaseNotes'),
+  install_dir: get_option('docdir'),
+)
+
+install_data(
+  'packaging/dealers-choice.desktop',
+  install_dir: join_paths(get_option('datadir'), 'applications'),
+)
+
+install_data(
+  'packaging/dealers-choice_icon_32x32.png',
+  rename: 'dealers-choice.png',
+  install_dir: join_paths(
+    get_option('datadir'),
+    'icons',
+    'hicolor',
+    '32x32',
+    'apps',
+  ),
+)
 
 subdir('tests')
