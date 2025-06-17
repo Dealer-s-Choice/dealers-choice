@@ -927,7 +927,7 @@ static void ensure_unique_nick(GameState_t *game_state, Player_t *player, const 
     }
 
     if (unique) {
-      strncpy(player->nick, candidate, sizeof(player->nick));
+      strncpy(player->nick, candidate, sizeof(player->nick) - 1);
       player->nick[sizeof(player->nick) - 1] = '\0';
       return;
     }
@@ -939,7 +939,7 @@ static void ensure_unique_nick(GameState_t *game_state, Player_t *player, const 
 }
 
 static EReturnCode_t receive_game_type_and_run_game(ArgsBroadcastGameState_t *args, DH_Deck *deck) {
-  uint8_t game_type;
+  uint8_t game_type = 0;
   int8_t *dealer_id = &args->game_state->dealer_id;
   if (recv_game_select((*args->clients)[*dealer_id], &game_type) == SIZE_MESSAGE_GAME_SELECT) {
     fprintf(stderr, "Client chose game type: 0x%02x\n", game_type);
