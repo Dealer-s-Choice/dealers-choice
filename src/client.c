@@ -55,6 +55,14 @@ static bool run_game_loop(GameState_t *game_state, ClientState_t *client_state,
                           SdlContext_t *sdl_context, Font_t *font, TCPsocket client_socket,
                           SDLNet_SocketSet socket_set, const uint8_t my_id, Path_t *path);
 
+static int send_protocol_header(TCPsocket sock) {
+  GameProtocolHeader_t hdr = {0};
+  snprintf(hdr.magic, sizeof(hdr.magic), "%s", GAME_PROTOCOL_MAGIC);
+  hdr.version = htonl(GAME_PROTOCOL_VERSION);
+
+  return send_all_tcp(sock, &hdr, sizeof(hdr));
+}
+
 SocketContext_t get_socket_context_and_run_client(PlayerConfig_t *player_config,
                                                   const char *host_str, SdlContext_t *sdl_context,
                                                   Font_t *font, Path_t *path,
@@ -81,6 +89,11 @@ SocketContext_t get_socket_context_and_run_client(PlayerConfig_t *player_config,
 
   if (SDLNet_TCP_AddSocket(socket_context.set, socket_context.sock) == -1)
     fputs("Socket set full\n", stderr);
+
+  if (send_protocol_header(socket_context.sock) != 0) {
+    fputs("Failed to send protocol\n", stderr);
+    goto cleanup;
+  }
 
   int32_t net_player_id;
   if (recv_all_tcp(socket_context.sock, &net_player_id, sizeof(int32_t)) > 0) {

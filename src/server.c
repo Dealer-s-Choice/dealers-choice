@@ -227,6 +227,8 @@ int send_status_message(TCPsocket sock, const char *msg) {
 }
 
 static void broadcast_status_message(const ArgsBroadcastGameState_t *args, const char *msg) {
+  if (count_active_clients(*args->slot_taken) == 0)
+    return;
   int8_t pl_idx = args->game_state->turn_id;
   Player_t *recipient = &args->game_state->player[pl_idx];
   if (recipient->id == -1)
@@ -961,6 +963,8 @@ static EReturnCode_t receive_game_type_and_run_game(ArgsBroadcastGameState_t *ar
   Uint32 start = SDL_GetTicks();
   while (SDL_GetTicks() - start < wait_ms)
     ;
+
+  args->game_state->player_count = 0;
   args->game_state->at_menu = true;
 
   reset_players(args->game_state);
@@ -977,6 +981,38 @@ static EReturnCode_t receive_game_type_and_run_game(ArgsBroadcastGameState_t *ar
   }
   // broadcast_game_state(args);
   return RC_OK;
+}
+
+static int recv_and_validate_protocol_header(TCPsocket sock) {
+  GameProtocolHeader_t hdr = {0};
+  if (recv_all_tcp(sock, &hdr, sizeof(hdr)) <= 0) {
+    fprintf(stderr, "Failed to receive protocol header\n");
+    return -1;
+  }
+
+  if (memcmp(hdr.magic, GAME_PROTOCOL_MAGIC, sizeof(hdr.magic)) != 0) {
+    fprintf(stderr, "Protocol magic mismatch: got '%.8s'\n", hdr.magic);
+    return -1;
+  }
+
+  uint32_t version = ntohl(hdr.version);
+  if (version != GAME_PROTOCOL_VERSION) {
+    fprintf(stderr, "Unsupported protocol version: %u\n", version);
+    return -1;
+  }
+
+  return 0; // success
+}
+
+static void do_socket_cleanup(TCPsocket sock, SDLNet_SocketSet socket_set,
+                              bool (*slot_taken)[MAX_CLIENTS], const bool slot, Player_t *p) {
+  SDLNet_TCP_DelSocket(socket_set, sock);
+  SDLNet_TCP_Close(sock);
+  (*slot_taken)[slot] = false;
+  if (p) {
+    p->id = -1;
+    p->in = false;
+  }
 }
 
 int run_server(const char *bind_address, Path_t *path, const bool test_mode) {
@@ -1088,6 +1124,11 @@ int run_server(const char *bind_address, Path_t *path, const bool test_mode) {
         slot_id->id = slot;
         slot_id->in = true;
 
+        if (recv_and_validate_protocol_header(new_client) != 0) {
+          do_socket_cleanup(new_client, socket_set, &slot_taken, slot, NULL);
+          continue;
+        }
+
         int32_t net_player_id = htonl(slot);
         send_all_tcp(new_client, &net_player_id, sizeof(int32_t));
 
@@ -1099,11 +1140,8 @@ int run_server(const char *bind_address, Path_t *path, const bool test_mode) {
           if (recv_all_tcp(new_client, &net_len, sizeof(int32_t)) <= 0) {
             // Handle error: client disconnected or invalid
             fprintf(stderr, "Failed to receive nickname length.\n");
-            SDLNet_TCP_Close(new_client);
-            player->id = -1;
-            player->in = false;
-            slot_taken[slot] = false;
-            break;
+            do_socket_cleanup(new_client, socket_set, &slot_taken, slot, player);
+            continue;
           }
 
           // Step 2: Now convert
@@ -1112,22 +1150,16 @@ int run_server(const char *bind_address, Path_t *path, const bool test_mode) {
           // Step 3: Validate length
           if (len == 0 || len >= sizeof(player->nick)) {
             fprintf(stderr, "Invalid nickname length: %zu\n", len);
-            SDLNet_TCP_Close(new_client);
-            player->id = -1;
-            player->in = false;
-            slot_taken[slot] = false;
-            break;
+            do_socket_cleanup(new_client, socket_set, &slot_taken, slot, player);
+            continue;
           }
 
           // Step 4: Read nickname
           memset(player->nick, 0, sizeof(player->nick));
           if (recv_all_tcp(new_client, player->nick, len) != (ssize_t)len) {
             fprintf(stderr, "Failed to receive nickname.\n");
-            SDLNet_TCP_Close(new_client);
-            player->id = -1;
-            player->in = false;
-            slot_taken[slot] = false;
-            break;
+            do_socket_cleanup(new_client, socket_set, &slot_taken, slot, player);
+            continue;
           }
 
           // Step 5: Null terminate
