@@ -12,8 +12,12 @@ on:
         type: string
   push:
     branches: trunk
+
   pull_request:
     branches: trunk
+    paths:
+    - 'packaging/appimage/**'
+    - '**/appimage.yml'
 
 jobs:
   build-appimage:
