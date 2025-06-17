@@ -53,7 +53,7 @@ jobs:
           echo "ARCH=${ARCH}" >> $GITHUB_ENV
           cd out
           OUT_APPIMAGE=dealers_choice-$VERSION-$ARCH.AppImage
-          mv "Dealers_Choice-$VERSION-$ARCH.AppImage" $OUT_APPIMAGE
+          mv "Dealer's_Choice-$VERSION-$ARCH.AppImage" $OUT_APPIMAGE
           for file in *.AppImage; do
             sha256sum "$file" > "$file.sha256sum";
           done
