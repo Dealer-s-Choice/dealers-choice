@@ -44,6 +44,24 @@
 #define GAME_PROTOCOL_MAGIC "DCPROTO"
 #define GAME_PROTOCOL_VERSION 1
 
+#ifdef _MSC_VER
+#pragma pack(push, 1)
+#endif
+
+typedef struct {
+  char magic[8];    // "DCPROTO\0"
+  uint32_t version; // Network byte order
+}
+#ifdef _MSC_VER
+GameProtocolHeader_t;
+#pragma pack(pop)
+#else
+__attribute__((packed)) GameProtocolHeader_t;
+#endif
+
+#define GAME_PROTOCOL_MAGIC "DCPROTO"
+#define GAME_PROTOCOL_VERSION 1
+
 // On Windows, this is defined in <ws2tcpip.h>. Rather than include the file
 // let's just do this...
 #ifndef INET6_ADDRSTRLEN
