@@ -1,5 +1,6 @@
 services:
-  dealers-choice-server:
+  docker-dealers-choice-server:
+    image: ghcr.io/dealer-s-choice/dealers_choice:latest
     build:
       context: ..
       dockerfile: docker/Dockerfile.alpine
