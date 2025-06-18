@@ -12,10 +12,12 @@ env:
   GHCR_REGISTRY_IMAGE: ghcr.io/dealer-s-choice/dealers_choice
   VERSION: latest
 
+permissions:
+  contents: read
+  packages: write
+
 jobs:
   build:
-    permissions:
-      write:packages
     runs-on: ${{ matrix.os }}
     name: ${{ matrix.codename }}-${{ matrix.os }}-image
     strategy:
@@ -75,8 +77,6 @@ jobs:
           retention-days: 1
 
   merge:
-    permissions:
-      write:packages
     runs-on: ubuntu-latest
     needs:
       - build
