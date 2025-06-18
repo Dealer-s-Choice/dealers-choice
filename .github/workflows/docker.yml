@@ -14,6 +14,8 @@ env:
 
 jobs:
   build:
+    permissions:
+      contents: write
     runs-on: ${{ matrix.os }}
     name: ${{ matrix.codename }}-${{ matrix.os }}-image
     strategy:
@@ -73,6 +75,8 @@ jobs:
           retention-days: 1
 
   merge:
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
     needs:
       - build
