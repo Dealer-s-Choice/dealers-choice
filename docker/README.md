@@ -1,4 +1,4 @@
-To start a Dealer's Choice server using docker, in this directory, enter:
+To start a *Dealer's Choice* server using docker, in this directory, enter:
 
     docker-compose up -d
 

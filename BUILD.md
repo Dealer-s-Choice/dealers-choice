@@ -2,7 +2,8 @@
 
 You can see how it's built and which dependencies are needed by looking at
 [the
-workflows](https://github.com/Dealer-s-Choice/dealers_choice/tree/trunk/.github/workflows).
+workflows](https://github.com/Dealer-s-Choice/dealers_choice/tree/trunk/.github/workflows)
+or the [Dockerfile] that builds on Alpine Linux.
 
 [Meson](https://mesonbuild.com/) is used for the build system.
 

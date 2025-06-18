@@ -5,17 +5,32 @@
 
 # Dealer's Choice
 
-Multiplayer Stud and Draw Poker
+Online Multiplayer Stud and Draw Poker, where the deal rotates and each new
+game allows a different player to select the variant.
 
 ## Current state
 
 The game is playable but you're likely to encounter bugs.
+
+*Dealer's Choice* builds on Windows in an MSYS2 environment but [there is not an installer
+available yet](https://github.com/Dealer-s-Choice/dealers_choice/issues/68).
 
 ### Games available
 
 * [5-card single and double draw](https://en.wikipedia.org/wiki/Draw_poker)
 * 5-card showdown (Similar to 5-card draw, but with no discard/draw round)
 * [5-card stud](https://en.wikipedia.org/wiki/Five-card_stud) (not all the rules have been implemented yet, such as the bring-in bet)
+
+## Game play
+
+### Player action timeouts
+
+If there has been no bet, the default action is "check".
+
+If there has been a bet, the default actions is "fold".
+
+The duration of the timeouts are defined in
+[server.conf](https://github.com/Dealer-s-Choice/dealers_choice/blob/trunk/data/server.conf).
 
 ## Computer Opponents
 
