@@ -52,7 +52,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: ./docker/Dockerfile
+          file: ./docker/Dockerfile.alpine
           labels: ${{ steps.meta.outputs.labels }}
           outputs: type=image,"name=${{ env.GHCR_REGISTRY_IMAGE }}",push-by-digest=true,name-canonical=true,push=true
           cache-from: type=registry,ref=${{ env.GHCR_REGISTRY_IMAGE }}:alpine-${{ env.PLATFORM_PAIR }}-${{ env.VERSION }}-buildcache
