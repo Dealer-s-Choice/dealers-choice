@@ -31,6 +31,7 @@
 
 #include "client.h"
 #include "config.h"
+#include "getlongopt.h"
 #include "graphics.h"
 #include "main.h"
 #include "server.h"
@@ -123,6 +124,12 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str,
   return run_client == true ? RUN_CLIENT : 0;
 }
 
+static void print_version(void) {
+  fputs(DEALERSCHOICE_FORMAL_NAME " v" DEALERSCHOICE_VERSION "\n", stdout);
+  fputs(DEALERSCHOICE_URL "\n", stdout);
+  putchar('\n');
+}
+
 int main(int argc, char *argv[]) {
   const char *bind_address = NULL; // Defaults to "0.0.0.0" if NULL
   const char *host = NULL;
@@ -131,32 +138,50 @@ int main(int argc, char *argv[]) {
   Path_t path = {0};
   get_data_dir(&path);
 
-  for (int i = 1; i < argc; ++i) {
-    if (strcmp(argv[i], "--server") == 0) {
+  enum {
+    OPT_SERVER = 1,
+    OPT_TEST,
+    OPT_BIND,
+    OPT_HOST,
+    OPT_VERSION,
+  };
+
+  static const glopt_option_t options[] = {
+      {"server", GLOPT_NO_ARG, OPT_SERVER},           {"-test", GLOPT_NO_ARG, OPT_TEST},
+      {"bind-address", GLOPT_REQUIRED_ARG, OPT_BIND}, {"host", GLOPT_REQUIRED_ARG, OPT_HOST},
+      {"version", GLOPT_NO_ARG, OPT_VERSION},         {NULL, 0, 0}};
+
+  glopt_parser_t parser;
+  glopt_init(&parser, options);
+
+  int opt;
+  while ((opt = glopt_next(&parser, argc, argv)) != -1) {
+    switch (opt) {
+    case OPT_SERVER:
       run_server_flag = true;
-    } else if (strcmp(argv[i], "---test") == 0) {
+      break;
+    case OPT_TEST:
       test_mode = true;
-    } else if (strcmp(argv[i], "--bind-address") == 0) {
-      if (i + 1 >= argc) {
-        fprintf(stderr, "Error: --bind-address requires an argument\n");
-        exit(EXIT_FAILURE);
-      }
-      bind_address = argv[++i];
-    } else if (strcmp(argv[i], "--host") == 0) {
-      if (i + 1 >= argc) {
-        fprintf(stderr, "Error: --host requires an argument\n");
-        exit(EXIT_FAILURE);
-      }
-      host = argv[++i];
-    } else {
-      // Unrecognized argument
-      fprintf(stderr,
-              "Usage:\n"
-              "  %s [--test]\n"
-              "  %s --server [--bind-address IP]\n"
-              "  %s --host IP (for clients to connect to)\n",
-              argv[0], argv[0], argv[0]);
-      exit(EXIT_FAILURE);
+      break;
+    case OPT_BIND:
+      bind_address = parser.optarg;
+      break;
+    case OPT_HOST:
+      host = parser.optarg;
+      break;
+    case OPT_VERSION:
+      print_version();
+      exit(EXIT_SUCCESS);
+      break;
+    case '?':
+    default:
+      print_version();
+      fputs("Usage:\n"
+            "  --server [--bind-address IP]\n"
+            "  --host IP\n"
+            "  --version\n",
+            stderr);
+      return EXIT_FAILURE;
     }
   }
 
@@ -175,7 +200,7 @@ int main(int argc, char *argv[]) {
   }
 
   SdlContext_t sdl_context;
-  init_sdl_window(&sdl_context, "Dealer's Choice");
+  init_sdl_window(&sdl_context, DEALERSCHOICE_FORMAL_NAME);
 
   Font_t font;
 
