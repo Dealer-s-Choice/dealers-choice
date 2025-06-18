@@ -191,7 +191,7 @@ int8_t send_game_select(TCPsocket sock, uint8_t game_type) {
 // they'll be merged, and some of the values, such as the colors, will be passed
 // as arguments.
 static Button_t create_button(const char *text, SDL_Renderer *renderer, SDL_Point *pos,
-                              TTF_Font *font) {
+                              TTF_Font *font, SDL_Keycode hotkey) {
   Button_t button = {
       .text = text,
       .renderer = renderer,
@@ -202,12 +202,13 @@ static Button_t create_button(const char *text, SDL_Renderer *renderer, SDL_Poin
       .hovered = false,
       .enabled = true,
       .selected = false,
+      .hotkey = hotkey,
   };
   return button;
 }
 
 static Button_t create_game_choice_button(const char *text, SDL_Renderer *renderer, SDL_Rect rect,
-                                          TTF_Font *font) {
+                                          TTF_Font *font, SDL_Keycode hotkey) {
   Button_t button = {
       .text = text,
       .renderer = renderer,
@@ -218,6 +219,7 @@ static Button_t create_game_choice_button(const char *text, SDL_Renderer *render
       .hovered = false,
       .enabled = false,
       .selected = false,
+      .hotkey = hotkey,
   };
   return button;
 }
@@ -273,7 +275,7 @@ static bool menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet 
     SDL_Rect rect = {100, y_offset, strlen(game_choices[i].str) * 18, button_height};
 
     game_choice_button[i] = create_game_choice_button(game_choices[i].str, sdl_context->renderer,
-                                                      rect, font->fonts[FONT_BOLD]);
+                                                      rect, font->fonts[FONT_BOLD], (SDL_KeyCode)0);
     y_offset += button_height * 1.1;
   }
 
@@ -624,20 +626,24 @@ static bool run_game_loop(GameState_t *game_state, ClientState_t *client_state,
       butt_pos = (SDL_Point){action_button[CHECK].rect.x, action_button[CHECK].rect.y};
     else if (i == DISCARD)
       butt_pos = (SDL_Point){action_button[BET].rect.x, action_button[BET].rect.y};
-    action_button[i] =
-        create_button(action[i], sdl_context->renderer, &butt_pos, font->fonts[FONT_BOLD]);
+    action_button[i] = create_button(action[i], sdl_context->renderer, &butt_pos,
+                                     font->fonts[FONT_BOLD], (SDL_KeyCode)0);
     x_offset += 130;
   }
 
   x_offset = action_button[0].rect.x + 10;
   const uint8_t n_amounts = 3;
   Button_t amount_button[n_amounts];
-  const char *amount[] = {"100", "250", "500"};
+  struct Amount_t {
+    const char *n_str;
+    const SDL_Keycode hotkey;
+    // TODO: Make a struct type like this (containing the hotkeys) for the action buttons
+  } amount[] = {{"100", SDLK_1}, {"250", SDLK_2}, {"500", SDLK_3}};
   for (int i = 0; i < n_amounts; i++) {
     const uint8_t w = 60;
     const uint8_t space = 5;
     amount_button[i] = (Button_t){
-        amount[i],
+        amount[i].n_str,
         sdl_context->renderer,
         get_color(COLOR_WHITE),
         get_color(COLOR_BROWN),
@@ -646,6 +652,7 @@ static bool run_game_loop(GameState_t *game_state, ClientState_t *client_state,
         false,
         true,
         false,
+        amount[i].hotkey,
     };
   }
   amount_button[0].selected = true;
@@ -676,7 +683,7 @@ static bool run_game_loop(GameState_t *game_state, ClientState_t *client_state,
   starting_turn = &game_state->player[game_state->turn_id];
   client_state->save_starting_turn_id = starting_turn->id;
   memset(client_state, 0, sizeof *client_state);
-  client_state->selected_amount = atoi(amount[0]);
+  client_state->selected_amount = atoi(amount[0].n_str);
   coins = 0;
 
   while (running) {
@@ -756,7 +763,8 @@ static bool run_game_loop(GameState_t *game_state, ClientState_t *client_state,
       }
       for (int i = 0; i < n_amounts; i++) {
         amount_button[i].hovered = SDL_PointInRect(&mouse_pos, &amount_button[i].rect);
-        if (amount_button[i].hovered && event.type == SDL_MOUSEBUTTONDOWN) {
+        if ((amount_button[i].hovered && event.type == SDL_MOUSEBUTTONDOWN) ||
+            event.key.keysym.sym == amount_button[i].hotkey) {
           amount_button[i].selected = true;
           client_state->selected_amount = atoi(amount_button[i].text);
           break;
@@ -769,7 +777,8 @@ static bool run_game_loop(GameState_t *game_state, ClientState_t *client_state,
         toggle_fullscreen(sdl_context->window);
       } else if (event.type == SDL_MOUSEBUTTONDOWN || event.type == SDL_KEYDOWN) {
         for (int i = 0; i < n_amounts; i++) {
-          if (SDL_PointInRect(&mouse_pos, &amount_button[i].rect)) {
+          if (SDL_PointInRect(&mouse_pos, &amount_button[i].rect) ||
+              event.key.keysym.sym == amount_button[i].hotkey) {
             // Deselect all buttons
             for (int j = 0; j < n_amounts; j++) {
               amount_button[j].selected = false;

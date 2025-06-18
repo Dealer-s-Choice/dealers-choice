@@ -107,6 +107,7 @@ typedef struct {
   SDL_Rect rect;
   TTF_Font *font;
   bool hovered, enabled, selected;
+  SDL_Keycode hotkey;
 } Button_t;
 
 void mark_selected(SDL_Renderer *renderer, SDL_Rect *rect);
