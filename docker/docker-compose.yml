@@ -3,7 +3,7 @@ services:
     image: ghcr.io/dealer-s-choice/dealers_choice:latest
     build:
       context: ..
-      dockerfile: docker/Dockerfile.alpine
+      dockerfile: docker/Dockerfile
     command: ["dealers-choice", "--server"]
     ports:
       - "22777:22777"
