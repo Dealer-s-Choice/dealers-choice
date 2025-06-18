@@ -225,12 +225,13 @@ static Button_t create_game_choice_button(const char *text, SDL_Renderer *render
 }
 
 void render_link(Link_t *link) {
-  link->rect.w *= strlen(link->url);
-  SDL_Color text_color = (link->hovered) ? get_color(COLOR_BLUE) : get_color(COLOR_BLACK);
   TTF_SetFontStyle(link->font, TTF_STYLE_UNDERLINE);
+  if (TTF_SizeUTF8(link->font, link->url, &link->rect.w, &link->rect.h) != 0)
+    fprintf(stderr, "TTF_SizeUTF8 error: %s\n", TTF_GetError());
 
-  const char *ptr = &link->url[sizeof("https://") - 1];
-  SDL_Surface *surface = TTF_RenderText_Solid(link->font, ptr, text_color);
+  SDL_Color text_color = (link->hovered) ? get_color(COLOR_BLUE) : get_color(COLOR_BLACK);
+
+  SDL_Surface *surface = TTF_RenderText_Solid(link->font, link->url, text_color);
   if (!surface) {
     SDL_Log("Failed to render text surface: %s", TTF_GetError());
     return;
@@ -265,27 +266,30 @@ static bool menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet 
                                       ClientState_t *client_state, SdlContext_t *sdl_context,
                                       Font_t *font) {
   uint8_t n_clients = 0;
-  int button_height = 40;
+
   int y_offset = 160;
   Button_t game_choice_button[MAX_CHOICES];
   for (int i = 0; i < MAX_CHOICES; i++) {
-    // TODO: Center
-    // Using the strlen will expand the background to accomodate the text string (foreground)
-    // but the buttons are not centered
-    SDL_Rect rect = {100, y_offset, strlen(game_choices[i].str) * 18, button_height};
-
+    // TODO: Figure out alignment/justification
+    SDL_Rect rect = {100, y_offset, 0, 0};
+    if (TTF_SizeUTF8(font->fonts[FONT_BOLD], game_choices[i].str, &rect.w, &rect.h) != 0)
+      fprintf(stderr, "TTF_SizeUTF8 error: %s\n", TTF_GetError());
+    rect.w += 30;
+    rect.h += rect.h * 0.1;
     game_choice_button[i] = create_game_choice_button(game_choices[i].str, sdl_context->renderer,
-                                                      rect, font->fonts[FONT_BOLD], (SDL_KeyCode)0);
-    y_offset += button_height * 1.1;
+                                                      rect, font->fonts[FONT_BOLD], (SDL_Keycode)0);
+
+    int button_height = rect.h + (rect.h * 0.2);
+    y_offset += button_height;
   }
 
   bool running = true;
   // const char *link[] = { DEALERSCHOICE_URL, "https://matrix.to/#/#dealers-choice:matrix.org" };
   Link_t link[] = {
       {DEALERSCHOICE_URL, font->fonts[FONT_LINK], sdl_context->renderer,
-       (SDL_Rect){sdl_context->win_center.x + 50, sdl_context->window_height - 40, 8, 30}, false},
+       (SDL_Rect){sdl_context->win_center.x + 50, sdl_context->window_height - 40, 0, 0}, false},
       {"https://matrix.to/#/#dealers-choice:matrix.org", font->fonts[FONT_LINK],
-       sdl_context->renderer, (SDL_Rect){20, sdl_context->window_height - 40, 8, 30}, false}};
+       sdl_context->renderer, (SDL_Rect){20, sdl_context->window_height - 40, 0, 0}, false}};
 
   while (running && game_state->at_menu) {
     ERecvStatus_t recv_status =
@@ -992,23 +996,22 @@ static bool run_game_loop(GameState_t *game_state, ClientState_t *client_state,
       int id = player_ptr->id;
       char name_text[sizeof(player_ptr->nick)] = {0};
       snprintf(name_text, sizeof name_text, "%s", player_ptr->nick);
-      SDL_Rect dest_name = {player_pos[id].x + card_area.w / 2,
-                            player_pos[id].y + (card_area.h * 1.2), 40, 20};
+      SDL_Rect name_rect = {player_pos[id].x + card_area.w / 2,
+                            player_pos[id].y + (card_area.h * 1.2), 0, 0};
 
       bool blink = id == turn->id && !game_state->winner_declared;
       render_nick(sdl_context->renderer, font->fonts[FONT_BOLD], name_text, get_color(COLOR_BLACK),
-                  &dest_name, blink);
+                  &name_rect, blink);
 
-      int width, height;
-      if (TTF_SizeUTF8(font->fonts[FONT_BOLD], name_text, &width, &height) != 0)
+      if (TTF_SizeUTF8(font->fonts[FONT_BOLD], name_text, &name_rect.w, &name_rect.h) != 0)
         fprintf(stderr, "TTF_SizeUTF8 error: %s\n", TTF_GetError());
-      SDL_Rect coin_rect = {.x = dest_name.x + width + 10, .y = dest_name.y, 48, 48};
+      SDL_Rect coin_rect = {.x = name_rect.x + name_rect.w + 10, .y = name_rect.y, 48, 48};
       SDL_RenderCopy(sdl_context->renderer, coin_tex, NULL, &coin_rect);
       char coins_text[24] = {0};
       snprintf(coins_text, sizeof coins_text, "%d", player_ptr->coins);
-      SDL_Rect dest = {coin_rect.x + coin_rect.w * 1.2, dest_name.y, 0, 0};
+      SDL_Rect coin_text_rect = {coin_rect.x + coin_rect.w * 1.2, name_rect.y, 0, 0};
       render_text_plain(sdl_context->renderer, font->fonts[FONT_BOLD], coins_text,
-                        get_color(COLOR_BLACK), &dest);
+                        get_color(COLOR_BLACK), &coin_text_rect);
 
     } while ((player_ptr = get_next_connected_client(players_array, player_ptr->id)) !=
              starting_turn);
