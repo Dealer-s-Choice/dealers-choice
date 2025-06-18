@@ -32,7 +32,24 @@ If there has been a bet, the default actions is "fold".
 The duration of the timeouts are defined in
 [server.conf](https://github.com/Dealer-s-Choice/dealers_choice/blob/trunk/data/server.conf).
 
-## Computer Opponents
+### Hotkeys
+
+| Key  |   Action   |
+|------|------------|
+| c    | call/check |
+| r    | raise      |
+| f    | fold       |
+| d    | discard    |
+| b    | bet        |
+
+|      |   Amount   |
+|------|------------|
+| 1    |    100     |
+| 2    |    250     |
+| 3    |    500     |
+
+
+### Computer Opponents
 
 There are no bots or computer opponents implemented yet.
 
@@ -56,24 +73,6 @@ be started until there is more than one player connected.
 When you run the client, you'll see the path to your config file. You will
 need to manually edit the file, as there is not yet a way to make changes from
 the gui.
-
-## Hotkeys
-
-### Player actions
-
-| Key  |   Action   |
-|------|------------|
-| c    | call/check |
-| r    | raise      |
-| f    | fold       |
-| d    | discard    |
-| b    | bet        |
-|      |------------|
-|      |   Amount   |
-|------|------------|
-| 1    |    100     |
-| 2    |    250     |
-| 3    |    500     |
 
 ## Building
 
