@@ -861,10 +861,14 @@ static void play_game(const char game_type, ArgsBroadcastGameState_t *args, DH_D
   fprintf(stderr, "player count: %d\n", args->game_state->player_count);
   args->game_state->total_bets_plus_raises = 0;
   args->game_state->winner_declared = false;
+  broadcast_game_state(args);
 
-  // Using function pointers...
   const GameChoice_t *choice = find_game_choice_by_type(game_type);
+  char tmp[LEN_STATUS_STR] = {0};
+  snprintf(tmp, sizeof(tmp), "Game: %s", choice->str);
+  broadcast_status_message(args, tmp);
   if (choice && choice->func) {
+    // Using function pointers...
     choice->func(args, players_array, deck, choice->n_betting_rounds, choice->draws);
   }
 }

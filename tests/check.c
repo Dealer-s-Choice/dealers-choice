@@ -9,6 +9,8 @@ int main(int argc, char *argv[]) {
                           game_choices[FIVE_CARD_SHOWDOWN].game_type) == 0);
 
   _RECEIVE_GAME_STATE()
+  _RECEIVE_GAME_STATE()
+  _RECEIVE_GAME_STATE()
 
   int8_t *turn_id = &game_state[0].turn_id;
   sleep(n_seconds);

@@ -8,6 +8,8 @@ int main(int argc, char *argv[]) {
                           game_choices[FIVE_CARD_STUD].game_type) == 0);
 
   _RECEIVE_GAME_STATE()
+  _RECEIVE_GAME_STATE()
+  _RECEIVE_GAME_STATE()
 
   for (int n_rounds = 0; n_rounds < game_choices[FIVE_CARD_STUD].n_betting_rounds; n_rounds++) {
     fprintf(stderr, "\n -#- game: %d -#- n_rounds: %d\n", game, n_rounds);
