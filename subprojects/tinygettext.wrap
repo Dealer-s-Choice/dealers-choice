@@ -1,0 +1,7 @@
+[wrap-git]
+directory = tinygettext
+url = https://github.com/tinygettext/tinygettext.git
+revision = master
+depth = 1
+clone-recursive = true
+method = cmake

@@ -631,7 +631,7 @@ static bool run_game_loop(GameState_t *game_state, ClientState_t *client_state,
     MAX_ACTIONS,
   };
 
-  const char *action[] = {[CHECK] = "Check", [BET] = "Bet",     [FOLD] = "Fold",
+  const char *action[] = {[CHECK] = _("Check"), [BET] = "Bet",     [FOLD] = "Fold",
                           [CALL] = "Call",   [RAISE] = "Raise", [DISCARD] = "Discard"};
 
   int x_offset = player_pos[4].x - (card_area.w * 3);

@@ -1,6 +1,6 @@
 project(
   'dealers-choice',
-  'c',
+  ['c', 'cpp'],
   version: '0.0.2.555',
   meson_version: '>= 0.56.0',
   default_options: [
@@ -54,12 +54,26 @@ pokeval_dep = dependency('pokeval', default_options: 'default_library=static')
 
 protobuf_dep = dependency('libprotobuf-c')
 
+tinygettext_proj = subproject('tinygettext')
+tinygettext_dep = tinygettext_proj.get_variable('tinygettext_dep')
+
+cmake = import('cmake')
+opt_tinygettext = cmake.subproject_options()
+# opt_tinygettext.add_cmake_defines(
+#     {
+#         'CMAKE_INSTALL_LIBDIR': get_option('libdir'),
+#     },
+# )
+tinygettext_proj = cmake.subproject('tinygettext', options: opt_tinygettext)
+tinygettext_dep = tinygettext_proj.dependency('tinygettext') 
+
 shared_dep = [
   canfigger_dep,
   deckhandler_dep,
   pokeval_dep,
   win_deps,
   cc.find_library('m'),
+  tinygettext_dep,
 ]
 dep_names = [
   'libprotobuf-c',

@@ -434,7 +434,7 @@ static int handle_draw(ArgsBroadcastGameState_t *args, TCPsocket sock, const int
 
 static EPlayerAction_t handle_check(Player_t *turn, PlayerActionMsg_t *action) {
   turn->has_checked = true;
-  action->str = "checks";
+  action->str = _("checks");
   return ACTION_CHECK;
 }
 
@@ -442,7 +442,7 @@ static EPlayerAction_t handle_fold(GameState_t *game_state, Player_t *turn,
                                    PlayerActionMsg_t *action) {
   turn->in = false;
   game_state->player_count--;
-  action->str = "folds";
+  action->str = _("folds");
   return ACTION_FOLD;
 }
 

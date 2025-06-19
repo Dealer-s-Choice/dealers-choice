@@ -31,6 +31,7 @@
 
 #include "client.h"
 #include "config.h"
+#include "game.h"
 #include "getlongopt.h"
 #include "graphics.h"
 #include "main.h"
@@ -43,7 +44,7 @@ enum { RUN_CLIENT = 20 };
 static int menu_display_connect(PlayerConfig_t *player_config, char *host_str,
                                 SdlContext_t *sdl_context, Font_t *font) {
   Button_t button_connect = {
-      .text = "Connect",
+      .text = _("Connect"),
       .renderer = sdl_context->renderer,
       .bg_color = get_color(COLOR_BLACK),
       .fg_color = get_color(COLOR_YELLOW),
@@ -131,6 +132,8 @@ static void print_version(void) {
 }
 
 int main(int argc, char *argv[]) {
+  init_translation("en_GB", "/home/jamess/git_repos/dealers_choice/locales");
+
   const char *bind_address = NULL; // Defaults to "0.0.0.0" if NULL
   const char *host = NULL;
   bool test_mode = false;
