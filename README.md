@@ -61,6 +61,8 @@ The server uses port 22777 by default. To run it:
 
 There is not a native option to run the server as a daemon (future
 implementation is planned). If you wish to daemonize the server, you can use
+the [docker-compose
+file](https://github.com/Dealer-s-Choice/dealers_choice/tree/trunk/docker) or
 [tmux](https://coderwall.com/p/purqma/use-tmux-for-a-poor-man-s-daemon).
 
 ## Client
@@ -77,3 +79,9 @@ the gui.
 ## Building
 
 See [BUILD.md](https://github.com/Dealer-s-Choice/dealers_choice/blob/trunk/BUILD.md)
+
+## Note on AppImages
+
+If you're a Linux user, you can download the AppImage from the [Releases
+page](https://github.com/Dealer-s-Choice/dealers_choice/releases), or install
+it with [AppMan](https://portable-linux-apps.github.io/).
