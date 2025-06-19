@@ -89,6 +89,8 @@ jobs:
 
   merge:
     runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ inputs.version }}
     needs:
       - build
     steps:
