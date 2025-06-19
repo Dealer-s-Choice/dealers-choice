@@ -29,6 +29,8 @@
 #include "graphics.h"
 #include "game.h"
 
+UiScale_t ui_scale = {0};
+
 static const SDL_Color color_table[COLOR_COUNT] = {
     [COLOR_WHITE] = {255, 255, 255, 255}, [COLOR_LIGHTGRAY] = {200, 200, 200, 255},
     [COLOR_GRAY] = {128, 128, 128, 255},  [COLOR_DARKGRAY] = {64, 64, 64, 255},
@@ -92,7 +94,8 @@ void init_sdl_window(SdlContext_t *sdl_context, const char *title) {
   sdl_context->window_width = w;
   sdl_context->window_height = h;
 
-  // SDL_RenderSetLogicalSize(sdl_context->renderer, 1920 * factor, 1080 * factor);
+  ui_scale.scale_x = (float)bounds.w / 1920.0f;
+  ui_scale.scale_y = (float)bounds.h / 1080.0f;
 
   return;
 }

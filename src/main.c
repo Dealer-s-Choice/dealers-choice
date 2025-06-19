@@ -106,7 +106,7 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str,
     render_text_plain(sdl_context->renderer, font->fonts[FONT_DEFAULT], player_config->nick,
                       get_color(COLOR_BLACK), &input_nick_pos);
 
-    SDL_Rect title_rect = {sdl_context->win_center.x / 1.5, 60, 0, 0};
+    SDL_Rect title_rect = {sdl_context->win_center.x / 1.5, SCALE_Y(60), 0, 0};
     render_text_plain(sdl_context->renderer, font->fonts[FONT_TITLE], DEALERSCHOICE_FORMAL_NAME,
                       get_color(COLOR_BLACK), &title_rect);
 
@@ -114,7 +114,7 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str,
     snprintf(version, sizeof(version), "Version " DEALERSCHOICE_VERSION);
     render_text_plain(sdl_context->renderer, font->fonts[FONT_VERSION], version,
                       get_color(COLOR_WHITE),
-                      &(SDL_Rect){title_rect.x + 40, title_rect.y + 80, 0, 0});
+                      &(SDL_Rect){title_rect.x + SCALE_X(40), title_rect.y + SCALE_Y(80), 0, 0});
 
     SDL_RenderPresent(sdl_context->renderer);
     SDL_Delay(16);
@@ -218,7 +218,7 @@ int main(int argc, char *argv[]) {
   for (int i = 0; i < NUM_FONTS; ++i) {
     char font_path[4096] = {0};
     snprintf(font_path, sizeof(font_path), "%s/%s", path.data, font_args[i].file);
-    font.fonts[i] = open_font(&(FontArgs_t){font_path, font_args[i].ptsize});
+    font.fonts[i] = open_font(&(FontArgs_t){font_path, SCALE_Y(font_args[i].ptsize)});
     if (!font.fonts[i])
       return -1;
   }

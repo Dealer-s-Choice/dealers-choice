@@ -36,6 +36,9 @@
 #include "net.h"
 #include "types.h"
 
+#define SCALE_X(val) ((int)((val) * ui_scale.scale_x))
+#define SCALE_Y(val) ((int)((val) * ui_scale.scale_y))
+
 typedef enum {
   COLOR_WHITE,
   COLOR_LIGHTGRAY,
@@ -66,6 +69,11 @@ typedef struct {
   SDL_Point win_center;
   int window_width, window_height;
 } SdlContext_t;
+
+typedef struct {
+  float scale_x, scale_y;
+} UiScale_t;
+extern UiScale_t ui_scale;
 
 typedef struct {
   const char *file;

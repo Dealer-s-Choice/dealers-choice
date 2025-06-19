@@ -37,7 +37,7 @@
 #include "game.h"
 #include "graphics.h"
 
-#define POT_BOUNDARY 250
+#define POT_BOUNDARY SCALE_Y(250)
 
 static pcg32_random_t rng;
 static void pcg_srand_auto(void) {
@@ -167,7 +167,7 @@ cleanup:
 
 #define MAX_POT_COINS 50
 
-const SDL_Rect card_area = {0, 0, 80, 50};
+SDL_Rect card_area = {0};
 
 int8_t send_game_select(TCPsocket sock, uint8_t game_type) {
   uint8_t buffer[3];
@@ -197,7 +197,7 @@ static Button_t create_button(const char *text, SDL_Renderer *renderer, SDL_Poin
       .renderer = renderer,
       .bg_color = get_color(COLOR_BLACK),
       .fg_color = get_color(COLOR_YELLOW),
-      .rect = {pos->x, pos->y, 120, 40},
+      .rect = {pos->x, pos->y, SCALE_X(120), SCALE_Y(40)},
       .font = font,
       .hovered = false,
       .enabled = true,
@@ -283,7 +283,7 @@ static bool menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet 
 
   bool running = true;
 
-  const int link_column = sdl_context->win_center.x + 50;
+  const int link_column = sdl_context->win_center.x + card_area.h;
   Link_t link[] = {
       {" Discord Channel (on Lazarus Project Server) ",
        "https://discord.com/channels/1295630985429516299/1385298664192217138",
@@ -296,7 +296,8 @@ static bool menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet 
   for (size_t i = 0; i < ARRAY_SIZE(link); i++) {
     if (TTF_SizeUTF8(link[i].font, link[i].text, &link[i].rect.w, &link[i].rect.h) != 0)
       fprintf(stderr, "TTF_SizeUTF8 error: %s\n", TTF_GetError());
-    link[i].rect.y = (sdl_context->window_height - 40) - (i * link[i].rect.h) - (i * 10);
+    link[i].rect.y = (sdl_context->window_height - (link[i].rect.h * 2)) - (i * link[i].rect.h) -
+                     (i * (link[i].rect.h * 0.2));
   }
 
   while (running && game_state->at_menu) {
@@ -503,8 +504,9 @@ static void render_card(CardContext_t *context, TTF_Font *font) {
     exit(EXIT_FAILURE);
   }
 
-  SDL_Rect textRect = {context->rect.x + (80 - textSurface->w) / 2,
-                       context->rect.y + (50 - textSurface->h) / 2, textSurface->w, textSurface->h};
+  SDL_Rect textRect = {context->rect.x + (card_area.w - textSurface->w) / 2,
+                       context->rect.y + (card_area.h - textSurface->h) / 2, textSurface->w,
+                       textSurface->h};
 
   SDL_RenderCopy(context->renderer, textTexture, NULL, &textRect);
   SDL_FreeSurface(textSurface);
@@ -528,10 +530,10 @@ static void create_card_context(CardContext_t card_context[MAX_PLAYERS][POKEVAL_
       const int id = turn->id;
       DH_Card *card = &(turn->hand.card)[card_n];
       const SDL_Point card_pos = {
-          player_pos[id].x + card_n * (80 + 10),
+          player_pos[id].x + card_n * (card_area.w + SCALE_X(10)),
           player_pos[id].y,
       };
-      SDL_Rect rect = {card_pos.x, card_pos.y, 80, 50};
+      SDL_Rect rect = {card_pos.x, card_pos.y, card_area.w, card_area.h};
       context.rect = rect;
 
       SDL_Color textColor = {0, 0, 0, 0};
@@ -579,12 +581,15 @@ SDL_Texture *load_coin_texture(SDL_Renderer *renderer, const char *base_path, co
 static bool run_game_loop(GameState_t *game_state, ClientState_t *client_state,
                           SdlContext_t *sdl_context, Font_t *font, TCPsocket client_socket,
                           SDLNet_SocketSet socket_set, const uint8_t my_id, Path_t *path) {
+  card_area.w = SCALE_X(80);
+  card_area.h = SCALE_Y(50);
+
   const SDL_Point player_pos[MAX_PLAYERS] = {
       // P0: bottom center
-      {.x = 20, .y = card_area.h},
+      {.x = SCALE_X(20), .y = card_area.h},
 
       // P1: left, 1/3 down
-      {.x = 20, .y = card_area.h * 4},
+      {.x = SCALE_X(20), .y = card_area.h * 4},
 
       {.x = sdl_context->win_center.x, .y = card_area.h},
 
@@ -633,7 +638,7 @@ static bool run_game_loop(GameState_t *game_state, ClientState_t *client_state,
   const int action_button_y = sdl_context->window_height - (card_area.h * 4);
   Button_t action_button[MAX_ACTIONS];
   for (int i = 0; i < MAX_ACTIONS; i++) {
-    SDL_Point butt_pos = {x_offset, action_button_y + 20};
+    SDL_Point butt_pos = {x_offset, action_button_y + SCALE_Y(20)};
     if (i == RAISE)
       butt_pos = (SDL_Point){action_button[BET].rect.x, action_button[BET].rect.y};
     else if (i == CALL)
@@ -642,10 +647,10 @@ static bool run_game_loop(GameState_t *game_state, ClientState_t *client_state,
       butt_pos = (SDL_Point){action_button[BET].rect.x, action_button[BET].rect.y};
     action_button[i] = create_button(action[i], sdl_context->renderer, &butt_pos,
                                      font->fonts[FONT_BOLD], (SDL_KeyCode)0);
-    x_offset += 130;
+    x_offset += SCALE_X(130);
   }
 
-  x_offset = action_button[0].rect.x + 10;
+  x_offset = action_button[0].rect.x + SCALE_X(10);
   const uint8_t n_amounts = 3;
   Button_t amount_button[n_amounts];
   struct Amount_t {
@@ -654,14 +659,14 @@ static bool run_game_loop(GameState_t *game_state, ClientState_t *client_state,
     // TODO: Make a struct type like this (containing the hotkeys) for the action buttons
   } amount[] = {{"100", SDLK_1}, {"250", SDLK_2}, {"500", SDLK_3}};
   for (int i = 0; i < n_amounts; i++) {
-    const uint8_t w = 60;
-    const uint8_t space = 5;
+    const uint8_t w = SCALE_X(60);
+    const uint8_t space = SCALE_X(5);
     amount_button[i] = (Button_t){
         amount[i].n_str,
         sdl_context->renderer,
         get_color(COLOR_WHITE),
         get_color(COLOR_BROWN),
-        (SDL_Rect){x_offset + (i * (w + space)), action_button_y + 80, w, 40},
+        (SDL_Rect){x_offset + (i * (w + space)), action_button_y + card_area.w, w, SCALE_Y(40)},
         font->fonts[FONT_BOLD],
         false,
         true,
@@ -875,8 +880,8 @@ static bool run_game_loop(GameState_t *game_state, ClientState_t *client_state,
     SDL_Point pot_pos = {player_pos[4].x - POT_BOUNDARY + card_area.h,
                          sdl_context->win_center.y + card_area.h};
     if (game_state->pot > coins * 250 && coins < MAX_POT_COINS) {
-      coin_coords[coins].x = pot_pos.x + pcg32_boundedrand_r(&rng, POT_BOUNDARY) - 150;
-      coin_coords[coins].y = pot_pos.y + pcg32_boundedrand_r(&rng, POT_BOUNDARY) - 150;
+      coin_coords[coins].x = pot_pos.x + pcg32_boundedrand_r(&rng, POT_BOUNDARY) - SCALE_X(150);
+      coin_coords[coins].y = pot_pos.y + pcg32_boundedrand_r(&rng, POT_BOUNDARY) - SCALE_Y(150);
       coins++;
     }
 
@@ -884,8 +889,8 @@ static bool run_game_loop(GameState_t *game_state, ClientState_t *client_state,
       SDL_Rect coin_rect = {
           .x = coin_coords[i].x,
           .y = coin_coords[i].y,
-          .w = 48,
-          .h = 48,
+          .w = SCALE_X(48),
+          .h = SCALE_Y(48),
       };
       SDL_RenderCopy(sdl_context->renderer, coin_tex, NULL, &coin_rect);
     }
@@ -893,7 +898,8 @@ static bool run_game_loop(GameState_t *game_state, ClientState_t *client_state,
     for (int i = 0; i < SIZEOF_STATUS_MSGS; i++) {
       char tmp[sizeof(status_msgs[0])];
       snprintf(tmp, sizeof tmp, "%s", status_msgs[i]);
-      SDL_Rect text_pos = {40, (sdl_context->win_center.y) + (20 * i) + 5, 0, 0};
+      SDL_Rect text_pos = {SCALE_X(40),
+                           (sdl_context->win_center.y) + (SCALE_Y(20) * i) + SCALE_Y(5), 0, 0};
       render_text_plain(sdl_context->renderer, font->fonts[FONT_STATUS_MSG], tmp,
                         get_color(COLOR_BLACK), &text_pos);
     }
@@ -972,9 +978,9 @@ static bool run_game_loop(GameState_t *game_state, ClientState_t *client_state,
         if (!action_button[DISCARD].enabled) {
           char tmp[50] = {0};
           snprintf(tmp, sizeof(tmp), "You may only discard a maximum of %d cards", max_allowed);
-          render_text_plain(sdl_context->renderer, font->fonts[FONT_BOLD], tmp,
-                            get_color(COLOR_WHITE),
-                            &(SDL_Rect){action_button->rect.x, action_button->rect.y + 50, 0, 0});
+          render_text_plain(
+              sdl_context->renderer, font->fonts[FONT_BOLD], tmp, get_color(COLOR_WHITE),
+              &(SDL_Rect){action_button->rect.x, action_button->rect.y + card_area.h, 0, 0});
         }
         render_button(&action_button[DISCARD]);
       } else if (game_state->turn_id == my_id) {
@@ -1015,7 +1021,8 @@ static bool run_game_loop(GameState_t *game_state, ClientState_t *client_state,
 
       if (TTF_SizeUTF8(font->fonts[FONT_BOLD], name_text, &name_rect.w, &name_rect.h) != 0)
         fprintf(stderr, "TTF_SizeUTF8 error: %s\n", TTF_GetError());
-      SDL_Rect coin_rect = {.x = name_rect.x + name_rect.w + 10, .y = name_rect.y, 48, 48};
+      SDL_Rect coin_rect = {
+          .x = name_rect.x + name_rect.w + 10, .y = name_rect.y, SCALE_X(48), SCALE_Y(48)};
       SDL_RenderCopy(sdl_context->renderer, coin_tex, NULL, &coin_rect);
       char coins_text[24] = {0};
       snprintf(coins_text, sizeof coins_text, "%d", player_ptr->coins);
