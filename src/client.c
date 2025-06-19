@@ -226,12 +226,10 @@ static Button_t create_game_choice_button(const char *text, SDL_Renderer *render
 
 void render_link(Link_t *link) {
   TTF_SetFontStyle(link->font, TTF_STYLE_UNDERLINE);
-  if (TTF_SizeUTF8(link->font, link->url, &link->rect.w, &link->rect.h) != 0)
-    fprintf(stderr, "TTF_SizeUTF8 error: %s\n", TTF_GetError());
 
   SDL_Color text_color = (link->hovered) ? get_color(COLOR_BLUE) : get_color(COLOR_BLACK);
 
-  SDL_Surface *surface = TTF_RenderText_Solid(link->font, link->url, text_color);
+  SDL_Surface *surface = TTF_RenderText_Solid(link->font, link->text, text_color);
   if (!surface) {
     SDL_Log("Failed to render text surface: %s", TTF_GetError());
     return;
@@ -284,12 +282,22 @@ static bool menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet 
   }
 
   bool running = true;
-  // const char *link[] = { DEALERSCHOICE_URL, "https://matrix.to/#/#dealers-choice:matrix.org" };
+
+  const int link_column = sdl_context->win_center.x + 50;
   Link_t link[] = {
-      {DEALERSCHOICE_URL, font->fonts[FONT_LINK], sdl_context->renderer,
-       (SDL_Rect){sdl_context->win_center.x + 50, sdl_context->window_height - 40, 0, 0}, false},
-      {"https://matrix.to/#/#dealers-choice:matrix.org", font->fonts[FONT_LINK],
-       sdl_context->renderer, (SDL_Rect){20, sdl_context->window_height - 40, 0, 0}, false}};
+      {" Discord Channel (on Lazarus Project Server) ",
+       "https://discord.com/channels/1295630985429516299/1385298664192217138",
+       font->fonts[FONT_LINK], sdl_context->renderer, (SDL_Rect){link_column, 0, 0, 0}, false},
+      {" Matrix ", "https://matrix.to/#/#dealers-choice:matrix.org", font->fonts[FONT_LINK],
+       sdl_context->renderer, (SDL_Rect){link_column, 0, 0, 0}, false},
+      {" GitHub ", DEALERSCHOICE_URL, font->fonts[FONT_LINK], sdl_context->renderer,
+       (SDL_Rect){link_column, 0, 0, 0}, false}};
+
+  for (size_t i = 0; i < ARRAY_SIZE(link); i++) {
+    if (TTF_SizeUTF8(link[i].font, link[i].text, &link[i].rect.w, &link[i].rect.h) != 0)
+      fprintf(stderr, "TTF_SizeUTF8 error: %s\n", TTF_GetError());
+    link[i].rect.y = (sdl_context->window_height - 40) - (i * link[i].rect.h) - (i * 10);
+  }
 
   while (running && game_state->at_menu) {
     ERecvStatus_t recv_status =
@@ -305,8 +313,10 @@ static bool menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet 
         game_choice_button[i].enabled = (game_state->dealer_id == my_id && n_clients > 1);
         game_choice_button[i].hovered = SDL_PointInRect(&mouse_pos, &game_choice_button[i].rect);
       }
-      link[0].hovered = SDL_PointInRect(&mouse_pos, &link[0].rect);
-      link[1].hovered = SDL_PointInRect(&mouse_pos, &link[1].rect);
+      for (size_t i = 0; i < ARRAY_SIZE(link); i++) {
+        link[i].hovered = SDL_PointInRect(&mouse_pos, &link[i].rect);
+      }
+
       if (e.type == SDL_QUIT) {
         return false;
       } else if (e.type == SDL_KEYDOWN &&
@@ -376,8 +386,8 @@ static bool menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet 
           get_color(COLOR_WHITE),
           &(SDL_Rect){sdl_context->win_center.x, sdl_context->window_height - 200, 0, 0});
 
-    render_link(&link[0]);
-    render_link(&link[1]);
+    for (size_t i = 0; i < ARRAY_SIZE(link); i++)
+      render_link(&link[i]);
 
     SDL_RenderPresent(sdl_context->renderer);
     SDL_Delay(16);

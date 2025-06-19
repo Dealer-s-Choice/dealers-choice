@@ -40,7 +40,8 @@ typedef struct {
 } SocketContext_t;
 
 typedef struct {
-  char *url;
+  const char *text;
+  const char *url;
   TTF_Font *font;
   // SDL_Color textColor;
   SDL_Renderer *renderer;
