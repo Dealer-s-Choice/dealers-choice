@@ -11,8 +11,8 @@ if get_option('nls') and not platform_is_windows
         has_headers: ['libintl.h'],
         dirs: ['/usr/local/lib'],
         header_args: inc_args,
-        required: false
-        )
+        required: false,
+      )
     elif host_sys == 'netbsd'
       inc_args = ['-isystem/usr/pkg/include']
       intl_dep = cc.find_library(
@@ -20,26 +20,28 @@ if get_option('nls') and not platform_is_windows
         has_headers: ['libintl.h'],
         dirs: ['/usr/pkg/lib'],
         header_args: inc_args,
-        required: false
-        )
-    else # darwin, cygwin
+        required: false,
+      )
+    else  # darwin, cygwin
       inc_intl_dir = include_directories('/opt/homebrew/opt/gettext/include')
       intl_dep = cc.find_library(
         'intl',
         dirs: ['/opt/homebrew/opt/gettext/lib'],
         has_headers: ['libintl.h'],
         header_include_directories: inc_intl_dir,
-        )
+      )
     endif
   endif
   if intl_dep.found()
     shared_inc += inc_intl_dir
     shared_dep += intl_dep
-    add_project_arguments(inc_args, language : 'c')
+    add_project_arguments(inc_args, language: 'c')
     conf.set('ENABLE_NLS', 1)
     i18n = import('i18n')
-    i18n.gettext(meson.project_name(),
-      args: ['--directory=' + meson.project_source_root()])
+    i18n.gettext(
+      meson.project_name(),
+      args: ['--directory=' + meson.project_source_root()],
+    )
   else
     message('libintl not found. You will either need to install the appropriate')
     message('package or add "-Dnls=false" to the setup/configure options.')

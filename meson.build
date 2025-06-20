@@ -13,7 +13,11 @@ project(
 
 cc = meson.get_compiler('c')
 
-meson.add_devenv({'DEALERSCHOICE_LOCALEDIR': join_paths(meson.project_build_root(), 'po')})
+# Sets the localedir to the location of the po files in the repo after using
+# 'meson devenv' so they can be tested without installing
+meson.add_devenv(
+  {'DEALERSCHOICE_LOCALEDIR': join_paths(meson.project_build_root(), 'po')},
+)
 
 host_sys = host_machine.system()
 platform_is_windows = (host_sys == 'windows')
@@ -81,7 +85,10 @@ shared_inc = [include_directories(['src', 'src/protobuf'])]
 
 conf = configuration_data()
 subdir('po')
-conf.set_quoted('DEALERSCHOICE_LOCALEDIR', join_paths(get_option('prefix'), get_option('localedir')))
+conf.set_quoted(
+  'DEALERSCHOICE_LOCALEDIR',
+  join_paths(get_option('prefix'), get_option('localedir')),
+)
 conf.set_quoted('DEALERSCHOICE_VERSION', meson.project_version())
 conf.set_quoted('DEALERSCHOICE_FORMAL_NAME', 'Dealer\'s Choice')
 conf.set_quoted('DEALERSCHOICE_NAME', meson.project_name())
