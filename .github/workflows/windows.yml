@@ -41,6 +41,7 @@ jobs:
       shell: msys2 {0}
       run: |
         pacman --noconfirm --needed -S \
+          mingw-w64-x86_64-gettext \
           mingw-w64-x86_64-protobuf-c \
           mingw-w64-x86_64-SDL2 \
           mingw-w64-x86_64-SDL2_image \

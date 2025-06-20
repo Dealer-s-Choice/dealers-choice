@@ -1,8 +1,8 @@
 project(
   'dealers-choice',
-  'c',
+  ['c'],
   version: '0.0.2.555',
-  meson_version: '>= 0.56.0',
+  meson_version: '>= 0.61.0',
   default_options: [
     'warning_level=3',
     'b_sanitize=address,undefined',
@@ -12,6 +12,12 @@ project(
 )
 
 cc = meson.get_compiler('c')
+
+# Sets the localedir to the location of the po files in the repo after using
+# 'meson devenv' so they can be tested without installing
+meson.add_devenv(
+  {'DEALERSCHOICE_LOCALEDIR': join_paths(meson.project_build_root(), 'po')},
+)
 
 host_sys = host_machine.system()
 platform_is_windows = (host_sys == 'windows')
@@ -61,6 +67,7 @@ shared_dep = [
   win_deps,
   cc.find_library('m'),
 ]
+
 dep_names = [
   'libprotobuf-c',
   'SDL2',
@@ -74,9 +81,14 @@ foreach dep : dep_names
   shared_dep += dependency(dep)
 endforeach
 
-shared_inc = include_directories(['src', 'src/protobuf'])
+shared_inc = [include_directories(['src', 'src/protobuf'])]
 
 conf = configuration_data()
+subdir('po')
+conf.set_quoted(
+  'DEALERSCHOICE_LOCALEDIR',
+  join_paths(get_option('prefix'), get_option('localedir')),
+)
 conf.set_quoted('DEALERSCHOICE_VERSION', meson.project_version())
 conf.set_quoted('DEALERSCHOICE_FORMAL_NAME', 'Dealer\'s Choice')
 conf.set_quoted('DEALERSCHOICE_NAME', meson.project_name())
@@ -94,7 +106,6 @@ conf.set_quoted(
 )
 
 subdir('src')
-
 configure_file(output: 'config.h', configuration: conf)
 
 _lib = static_library(

@@ -31,6 +31,7 @@
 
 #include "client.h"
 #include "config.h"
+#include "game.h"
 #include "getlongopt.h"
 #include "graphics.h"
 #include "main.h"
@@ -43,14 +44,20 @@ enum { RUN_CLIENT = 20 };
 static int menu_display_connect(PlayerConfig_t *player_config, char *host_str,
                                 SdlContext_t *sdl_context, Font_t *font) {
   Button_t button_connect = {
-      .text = "Connect",
+      .text = _("Connect"),
       .renderer = sdl_context->renderer,
       .bg_color = get_color(COLOR_BLACK),
       .fg_color = get_color(COLOR_YELLOW),
-      .rect = {100, 160, 120, 40},
+      .rect = {100, 160, 0, 0},
       .font = font->fonts[FONT_BOLD],
       .enabled = true,
   };
+
+  if (TTF_SizeUTF8(button_connect.font, button_connect.text, &button_connect.rect.w,
+                   &button_connect.rect.h) != 0)
+    fprintf(stderr, "TTF_SizeUTF8 error: %s\n", TTF_GetError());
+  button_connect.rect.w += SCALE_X(20);
+  button_connect.rect.h += SCALE_Y(10);
 
   SDL_Rect input_box = (SDL_Rect){100, 220, 200, 40};
 
@@ -91,7 +98,6 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str,
     }
 
     clear_screen(sdl_context->renderer);
-
     render_button(&button_connect);
 
     SDL_SetRenderDrawColor(sdl_context->renderer, 255, 255, 255, 255);
@@ -131,6 +137,17 @@ static void print_version(void) {
 }
 
 int main(int argc, char *argv[]) {
+#ifdef ENABLE_NLS
+  static char *locale_dir;
+  locale_dir = getenv("DEALERSCHOICE_LOCALEDIR");
+  if (!locale_dir)
+    locale_dir = DEALERSCHOICE_LOCALEDIR;
+
+  setlocale(LC_ALL, "");
+  bindtextdomain(DEALERSCHOICE_NAME, locale_dir);
+  textdomain(DEALERSCHOICE_NAME);
+#endif
+
   const char *bind_address = NULL; // Defaults to "0.0.0.0" if NULL
   const char *host = NULL;
   bool test_mode = false;

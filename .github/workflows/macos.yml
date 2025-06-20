@@ -29,6 +29,7 @@ jobs:
       run: |
         brew update
         brew install \
+          gettext \
           meson \
           protobuf-c \
           sdl2 \
@@ -37,7 +38,11 @@ jobs:
           sdl2_ttf
 
     - name: Meson setup
-      run: CFLAGS="-Werror" meson setup _build
+      run: |
+        GETTEXT_PREFIX=$(brew --prefix gettext)
+        echo $GETTEXT_PREFIX
+        # PKG_CONFIG_PATH="$GETTEXT_PREFIX/lib/pkgconfig:$PKG_CONFIG_PATH"
+        CFLAGS="-Werror" meson setup _build
 
     - name: Build
       run: meson compile -C _build

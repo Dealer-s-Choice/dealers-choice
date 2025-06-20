@@ -43,6 +43,7 @@ jobs:
       run: |
         sudo apt update && sudo apt upgrade -y
         sudo apt-get install --no-install-recommends -y \
+          gettext \
           meson \
           libprotobuf-c-dev \
           libsdl2-dev \
