@@ -50,7 +50,7 @@ jobs:
     - name: Meson setup
       shell: msys2 {0}
       run: |
-        CFLAGS="-Werror" meson setup _build -Db_sanitize=none
+        CFLAGS="-Werror" meson setup _build -Db_sanitize=none -Dnls=false
 
     - name: Build
       shell: msys2 {0}

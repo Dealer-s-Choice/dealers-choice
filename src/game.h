@@ -42,7 +42,6 @@
 #include "types.h"
 #include "translate.h"
 
-#define _(String) translate(String)
 #define STARTING_N_COINS 20000
 
 typedef enum {

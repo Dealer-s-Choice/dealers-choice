@@ -1,15 +1,12 @@
 #ifndef TRANSLATE_H
 #define TRANSLATE_H
 
-#ifdef __cplusplus
-extern "C" {
+#ifdef ENABLE_NLS
+#include <locale.h>
 #endif
+#include "gettext.h"
+#define _(String) gettext (String)
+#define gettext_noop(String) String
+#define N_(String) gettext_noop (String)
 
-void init_translation(const char *lang, const char *path);
-const char *translate(const char *msgid);
-
-#ifdef __cplusplus
-}
 #endif
-
-#endif 
