@@ -84,4 +84,4 @@ See [BUILD.md](https://github.com/Dealer-s-Choice/dealers_choice/blob/trunk/BUIL
 
 If you're a Linux user, you can download the AppImage from the [Releases
 page](https://github.com/Dealer-s-Choice/dealers_choice/releases), or install
-it with [AppMan](https://portable-linux-apps.github.io/).
+it with [AppMan](https://github.com/ivan-hc/AM).
