@@ -2,4 +2,3 @@
 
 src/client.c
 src/main.c
-src/server.c
