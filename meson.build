@@ -13,6 +13,8 @@ project(
 
 cc = meson.get_compiler('c')
 
+meson.add_devenv({'DEALERSCHOICE_LOCALEDIR': join_paths(meson.project_build_root(), 'po')})
+
 host_sys = host_machine.system()
 platform_is_windows = (host_sys == 'windows')
 
@@ -75,7 +77,7 @@ foreach dep : dep_names
   shared_dep += dependency(dep)
 endforeach
 
-shared_inc = include_directories(['src', 'src/protobuf'])
+shared_inc = [include_directories(['src', 'src/protobuf'])]
 
 conf = configuration_data()
 subdir('po')
@@ -97,7 +99,6 @@ conf.set_quoted(
 )
 
 subdir('src')
-
 configure_file(output: 'config.h', configuration: conf)
 
 _lib = static_library(

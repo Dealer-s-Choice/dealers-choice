@@ -1,5 +1,6 @@
 intl_dep = []
 if get_option('nls') and not platform_is_windows
+  inc_intl_dir = []
   inc_args = []
   intl_dep = dependency('intl', required: false)
   if not intl_dep.found()
@@ -22,14 +23,17 @@ if get_option('nls') and not platform_is_windows
         required: false
         )
     else # darwin, cygwin
+      inc_intl_dir = include_directories('/opt/homebrew/opt/gettext/include')
       intl_dep = cc.find_library(
         'intl',
+        dirs: ['/opt/homebrew/opt/gettext/lib'],
         has_headers: ['libintl.h'],
-        required: false
+        header_include_directories: inc_intl_dir,
         )
     endif
   endif
   if intl_dep.found()
+    shared_inc += inc_intl_dir
     shared_dep += intl_dep
     add_project_arguments(inc_args, language : 'c')
     conf.set('ENABLE_NLS', 1)

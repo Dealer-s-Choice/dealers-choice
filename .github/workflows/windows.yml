@@ -41,6 +41,7 @@ jobs:
       shell: msys2 {0}
       run: |
         pacman --noconfirm --needed -S \
+          mingw-w64-x86_64-gettext \
           mingw-w64-x86_64-protobuf-c \
           mingw-w64-x86_64-SDL2 \
           mingw-w64-x86_64-SDL2_image \
@@ -50,7 +51,7 @@ jobs:
     - name: Meson setup
       shell: msys2 {0}
       run: |
-        CFLAGS="-Werror" meson setup _build -Db_sanitize=none -Dnls=false
+        CFLAGS="-Werror" meson setup _build -Db_sanitize=none
 
     - name: Build
       shell: msys2 {0}
