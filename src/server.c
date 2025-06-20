@@ -392,7 +392,6 @@ static int handle_draw(ArgsBroadcastGameState_t *args, TCPsocket sock, const int
           break;
         else {
           remove_disconnected_player(args, id);
-          printf("Player disconnected: %d\n", id);
           return -1;
           break;
         }
@@ -434,7 +433,7 @@ static int handle_draw(ArgsBroadcastGameState_t *args, TCPsocket sock, const int
 
 static EPlayerAction_t handle_check(Player_t *turn, PlayerActionMsg_t *action) {
   turn->has_checked = true;
-  action->str = _("checks");
+  action->str = _("checked");
   return ACTION_CHECK;
 }
 
@@ -442,7 +441,7 @@ static EPlayerAction_t handle_fold(GameState_t *game_state, Player_t *turn,
                                    PlayerActionMsg_t *action) {
   turn->in = false;
   game_state->player_count--;
-  action->str = _("folds");
+  action->str = _("folded");
   return ACTION_FOLD;
 }
 
@@ -563,7 +562,7 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args) {
                 break;
               case ACTION_BET:
                 server_handle_bet(args->game_state, turn->id, action.amount);
-                action.str = "bets ";
+                action.str = _("bet ");
                 break;
               case ACTION_FOLD:
                 handle_fold(args->game_state, turn, &action);
@@ -576,11 +575,11 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args) {
               switch (action.action) {
               case ACTION_CALL:
                 server_handle_call(args->game_state, turn->id);
-                action.str = "calls";
+                action.str = _("called");
                 break;
               case ACTION_RAISE:
                 server_handle_raise(args->game_state, turn->id, action.amount);
-                action.str = "raises ";
+                action.str = _("raised ");
                 break;
               case ACTION_FOLD:
                 handle_fold(args->game_state, turn, &action);
@@ -706,7 +705,7 @@ static void remove_disconnected_player(ArgsBroadcastGameState_t *args, const int
   if (args->game_state->player_count > 0) {
     args->game_state->player_count--;
     char status_str[LEN_STATUS_STR] = {0};
-    snprintf(status_str, sizeof status_str, "%s disconnected", p->nick);
+    snprintf(status_str, sizeof status_str, _("%s disconnected"), p->nick);
     broadcast_status_message(args, status_str);
   }
 
@@ -865,7 +864,7 @@ static void play_game(const char game_type, ArgsBroadcastGameState_t *args, DH_D
 
   const GameChoice_t *choice = find_game_choice_by_type(game_type);
   char tmp[LEN_STATUS_STR] = {0};
-  snprintf(tmp, sizeof(tmp), "Game: %s", choice->str);
+  snprintf(tmp, sizeof(tmp), _("Game: %s"), choice->str);
   broadcast_status_message(args, tmp);
   if (choice && choice->func) {
     // Using function pointers...

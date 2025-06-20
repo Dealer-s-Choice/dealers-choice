@@ -23,6 +23,8 @@ on:
 jobs:
   MacOS:
     runs-on: macos-latest
+    env:
+      PKG_CONFIG_PATH: "/opt/homebrew/opt/gettext/lib/pkgconfig:$PKG_CONFIG_PATH"
     steps:
     - uses: actions/checkout@v4
     - name: Install Dependencies

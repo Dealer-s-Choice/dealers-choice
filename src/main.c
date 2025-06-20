@@ -53,7 +53,8 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str,
       .enabled = true,
   };
 
-  if (TTF_SizeUTF8(button_connect.font, button_connect.text, &button_connect.rect.w, &button_connect.rect.h) != 0)
+  if (TTF_SizeUTF8(button_connect.font, button_connect.text, &button_connect.rect.w,
+                   &button_connect.rect.h) != 0)
     fprintf(stderr, "TTF_SizeUTF8 error: %s\n", TTF_GetError());
   button_connect.rect.w += SCALE_X(20);
   button_connect.rect.h += SCALE_Y(10);

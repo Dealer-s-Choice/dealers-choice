@@ -39,8 +39,8 @@
 #include "graphics.h"
 #include "net.h"
 #include "server.h"
-#include "types.h"
 #include "translate.h"
+#include "types.h"
 
 #define STARTING_N_COINS 20000
 

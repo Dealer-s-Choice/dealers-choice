@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: dealers-choice\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-06-19 21:54-0500\n"
+"POT-Creation-Date: 2025-06-20 12:40-0500\n"
 "PO-Revision-Date: 2025-06-19 21:52-0500\n"
 "Last-Translator: Andy <andy@prometheus.localhost.localdomain>\n"
 "Language-Team: German <translation-team-de@lists.sourceforge.net>\n"
@@ -17,18 +17,68 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: src/client.c:634
+#: src/client.c:289
+msgid " Discord Channel (on Lazarus Project Server) "
+msgstr ""
+
+#: src/client.c:359
+msgid "Connected players:"
+msgstr ""
+
+#: src/client.c:635
 msgid "Check"
+msgstr "schieben"
+
+#: src/client.c:635
+msgid "Bet"
+msgstr ""
+
+#: src/client.c:635
+msgid "Fold"
+msgstr "folden"
+
+#: src/client.c:636
+msgid "Call"
+msgstr ""
+
+#: src/client.c:636
+msgid "Raise"
+msgstr ""
+
+#: src/client.c:636
+msgid "Discard"
 msgstr ""
 
 #: src/main.c:47
 msgid "Connect"
 msgstr "verbinden"
 
-#: src/server.c:437
-msgid "checks"
+#: src/server.c:436
+msgid "checked"
 msgstr ""
 
-#: src/server.c:445
-msgid "folds"
+#: src/server.c:444
+msgid "folded"
+msgstr "foldete"
+
+#: src/server.c:565
+msgid "bet "
+msgstr ""
+
+#: src/server.c:578
+msgid "called"
+msgstr ""
+
+#: src/server.c:582
+msgid "raised "
+msgstr ""
+
+#: src/server.c:708
+#, c-format
+msgid "%s disconnected"
+msgstr ""
+
+#: src/server.c:867
+#, c-format
+msgid "Game: %s"
 msgstr ""

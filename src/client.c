@@ -285,7 +285,8 @@ static bool menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet 
 
   const int link_column = sdl_context->win_center.x + card_area.h;
   Link_t link[] = {
-      {" Discord Channel (on Lazarus Project Server) ",
+      /* TRANSLATORS: "Discord", "Lazarus Project" should not be translated */
+      {_(" Discord Channel (on Lazarus Project Server) "),
        "https://discord.com/channels/1295630985429516299/1385298664192217138",
        font->fonts[FONT_LINK], sdl_context->renderer, (SDL_Rect){link_column, 0, 0, 0}, false},
       {" Matrix ", "https://matrix.to/#/#dealers-choice:matrix.org", font->fonts[FONT_LINK],
@@ -355,8 +356,8 @@ static bool menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet 
     int offset_x = status_pos.x, offset_y = status_pos.y;
 
     SDL_Rect text_connected = {offset_x, offset_y, 0, 0};
-    render_text_plain(sdl_context->renderer, font->fonts[FONT_BOLD],
-                      "Connected players:", get_color(COLOR_BLACK), &text_connected);
+    render_text_plain(sdl_context->renderer, font->fonts[FONT_BOLD], _("Connected players:"),
+                      get_color(COLOR_BLACK), &text_connected);
     offset_x += 10;
 
     Player_t *client = &game_state->player[my_id];
@@ -631,8 +632,8 @@ static bool run_game_loop(GameState_t *game_state, ClientState_t *client_state,
     MAX_ACTIONS,
   };
 
-  const char *action[] = {[CHECK] = _("Check"), [BET] = "Bet",     [FOLD] = "Fold",
-                          [CALL] = "Call",   [RAISE] = "Raise", [DISCARD] = "Discard"};
+  const char *action[] = {[CHECK] = _("Check"), [BET] = _("Bet"),     [FOLD] = _("Fold"),
+                          [CALL] = _("Call"),   [RAISE] = _("Raise"), [DISCARD] = _("Discard")};
 
   int x_offset = player_pos[4].x - (card_area.w * 3);
   const int action_button_y = sdl_context->window_height - (card_area.h * 4);

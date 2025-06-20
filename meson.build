@@ -79,7 +79,7 @@ shared_inc = include_directories(['src', 'src/protobuf'])
 
 conf = configuration_data()
 subdir('po')
-conf.set_quoted('DEALERSCHOICE_LOCALEDIR', join_paths(meson.project_build_root(), 'po'))
+conf.set_quoted('DEALERSCHOICE_LOCALEDIR', join_paths(get_option('prefix'), get_option('localedir')))
 conf.set_quoted('DEALERSCHOICE_VERSION', meson.project_version())
 conf.set_quoted('DEALERSCHOICE_FORMAL_NAME', 'Dealer\'s Choice')
 conf.set_quoted('DEALERSCHOICE_NAME', meson.project_name())
