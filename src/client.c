@@ -197,13 +197,17 @@ static Button_t create_button(const char *text, SDL_Renderer *renderer, SDL_Poin
       .renderer = renderer,
       .bg_color = get_color(COLOR_BLACK),
       .fg_color = get_color(COLOR_YELLOW),
-      .rect = {pos->x, pos->y, SCALE_X(120), SCALE_Y(40)},
+      .rect = {pos->x, pos->y, 0, 0},
       .font = font,
       .hovered = false,
       .enabled = true,
       .selected = false,
       .hotkey = hotkey,
   };
+  if (TTF_SizeUTF8(font, text, &button.rect.w, &button.rect.h) != 0)
+    fprintf(stderr, "TTF_SizeUTF8 error: %s\n", TTF_GetError());
+  button.rect.w += SCALE_X(30);
+  button.rect.h += SCALE_Y(20);
   return button;
 }
 
@@ -648,7 +652,8 @@ static bool run_game_loop(GameState_t *game_state, ClientState_t *client_state,
       butt_pos = (SDL_Point){action_button[BET].rect.x, action_button[BET].rect.y};
     action_button[i] = create_button(action[i], sdl_context->renderer, &butt_pos,
                                      font->fonts[FONT_BOLD], (SDL_KeyCode)0);
-    x_offset += SCALE_X(130);
+
+    x_offset += action_button[i].rect.w + SCALE_X(20);
   }
 
   x_offset = action_button[0].rect.x + SCALE_X(10);
