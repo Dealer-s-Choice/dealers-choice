@@ -19,11 +19,11 @@ msgstr ""
 
 #: src/client.c:289
 msgid " Discord Channel (on Lazarus Project Server) "
-msgstr ""
+msgstr " Discord Kanal (auf dem Lazarus Project Server) "
 
 #: src/client.c:359
 msgid "Connected players:"
-msgstr ""
+msgstr "Verbundene Spieler:"
 
 #: src/client.c:635
 msgid "Check"
@@ -31,7 +31,7 @@ msgstr "schieben"
 
 #: src/client.c:635
 msgid "Bet"
-msgstr ""
+msgstr "setzen"
 
 #: src/client.c:635
 msgid "Fold"
@@ -39,19 +39,18 @@ msgstr "folden"
 
 #: src/client.c:636
 msgid "Call"
-msgstr ""
+msgstr "mitgehen"
 
 #: src/client.c:636
 msgid "Raise"
-msgstr ""
+msgstr "erhöhen"
 
 #: src/client.c:636
 msgid "Discard"
-msgstr ""
+msgstr "abwerfen"
 
 #: src/main.c:47
 msgid "Connect"
 msgstr "verbinden"
-
 #~ msgid "folded"
 #~ msgstr "foldete"
