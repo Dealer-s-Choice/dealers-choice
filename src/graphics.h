@@ -39,6 +39,8 @@
 #define SCALE_X(val) ((int)((val) * ui_scale.scale_x))
 #define SCALE_Y(val) ((int)((val) * ui_scale.scale_y))
 
+#define BUTTON_X_SPACING SCALE_X(10)
+
 typedef enum {
   COLOR_WHITE,
   COLOR_LIGHTGRAY,

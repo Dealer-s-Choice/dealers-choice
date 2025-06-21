@@ -325,6 +325,8 @@ ERecvStatus_t recv_game_state(TCPsocket client_socket, SDLNet_SocketSet socket_s
   default:
     printf("[recv_game_state] Received %u bytes, deserializing...\n", size);
     *game_state = deserialize_game_state(buffer, size);
+    if (client_state->cards_sent)
+      client_state->cards_sent = false;
     break;
   }
 

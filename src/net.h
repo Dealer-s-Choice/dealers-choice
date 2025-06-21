@@ -92,6 +92,7 @@ typedef struct {
   bool has_ace;
   uint8_t n_cards_selected;
   int selected_amount;
+  bool cards_sent;
   int8_t save_starting_turn_id;
   uint32_t timer_start;
   char server_status_str[LEN_STATUS_STR];
