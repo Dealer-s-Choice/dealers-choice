@@ -954,33 +954,31 @@ static bool run_game_loop(GameState_t *game_state, ClientState_t *client_state,
       for (int i = 0; i < MAX_ACTIONS; i++) {
         action_button[i].hovered = SDL_PointInRect(&mouse_pos, &action_button[i].rect);
       }
+      bool amount_selected = false;
       for (size_t i = 0; i < n_bet_amounts; i++) {
         amount_button[i].hovered = SDL_PointInRect(&mouse_pos, &amount_button[i].rect);
-        if ((amount_button[i].hovered && event.type == SDL_MOUSEBUTTONDOWN) ||
-            event.key.keysym.sym == amount_button[i].hotkey) {
-          amount_button[i].selected = true;
-          client_state->selected_amount = atoi(amount_button[i].text);
+        amount_selected =
+            ((amount_button[i].hovered && event.type == SDL_MOUSEBUTTONDOWN) ||
+             (event.type == SDL_KEYDOWN && event.key.keysym.sym == amount_button[i].hotkey));
+        if (amount_selected) {
+          if (!amount_button[i].selected) {
+            for (size_t j = 0; j < n_bet_amounts; j++) {
+              amount_button[j].selected = false;
+            }
+            amount_button[i].selected = true;
+            client_state->selected_amount = atoi(amount_button[i].text);
+          }
           break;
         }
       }
+      if (amount_selected)
+        break;
       if (event.type == SDL_QUIT) {
         running = false;
       } else if (event.type == SDL_KEYDOWN &&
                  (event.key.keysym.sym == SDLK_RETURN && event.key.keysym.mod & KMOD_ALT)) {
         toggle_fullscreen(sdl_context->window);
       } else if (event.type == SDL_MOUSEBUTTONDOWN || event.type == SDL_KEYDOWN) {
-        for (size_t i = 0; i < n_bet_amounts; i++) {
-          if (SDL_PointInRect(&mouse_pos, &amount_button[i].rect) ||
-              event.key.keysym.sym == amount_button[i].hotkey) {
-            // Deselect all buttons
-            for (size_t j = 0; j < n_bet_amounts; j++) {
-              amount_button[j].selected = false;
-            }
-            // Select the clicked one
-            amount_button[i].selected = true;
-            break;
-          }
-        }
         if (game_state->turn_id == my_id && !client_state->do_discard_draw) {
           if ((game_state->total_bets_plus_raises == 0 && !turn->has_checked) ||
               game_state->player[my_id].total_paid != game_state->total_bets_plus_raises) {
