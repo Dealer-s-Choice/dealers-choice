@@ -8,6 +8,12 @@
 Online Multiplayer Stud and Draw Poker, where the deal rotates and each new
 game allows a different player to select the variant.
 
+## License
+
+This project is licensed under the MIT License – see the
+[LICENSE](https://github.com/Dealer-s-Choice/dealers_choice/blob/trunk/LICENSE)
+file for details.
+
 ## Current state
 
 The game is playable but you're likely to encounter bugs.

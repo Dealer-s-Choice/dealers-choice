@@ -52,6 +52,5 @@ msgstr "Ablegen"
 #: src/main.c:47
 msgid "Connect"
 msgstr "verbinden"
-
 #~ msgid "folded"
 #~ msgstr "Hat aufgegeben"
