@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: dealers-choice\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-06-20 14:32-0500\n"
+"POT-Creation-Date: 2025-06-22 22:40-0500\n"
 "PO-Revision-Date: 2025-06-19 21:52-0500\n"
 "Last-Translator: Andy <andy@prometheus.localhost.localdomain>\n"
 "Language-Team: German <translation-team-de@lists.sourceforge.net>\n"
@@ -17,40 +17,41 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: src/client.c:289
+#: src/client.c:295
 msgid " Discord Channel (on Lazarus Project Server) "
 msgstr " Discord Channel (on Lazarus Project Server) "
 
-#: src/client.c:359
+#: src/client.c:365
 msgid "Connected players:"
 msgstr "Anwesende Spieler"
 
-#: src/client.c:635
+#: src/client.c:641
 msgid "Check"
 msgstr "Prüfen"
 
-#: src/client.c:635
+#: src/client.c:641
 msgid "Bet"
 msgstr "Setzen"
 
-#: src/client.c:635
+#: src/client.c:641
 msgid "Fold"
 msgstr "Aufgeben"
 
-#: src/client.c:636
+#: src/client.c:642
 msgid "Call"
 msgstr "Mitgehen"
 
-#: src/client.c:636
+#: src/client.c:642
 msgid "Raise"
 msgstr "Erhöhen"
 
-#: src/client.c:636
+#: src/client.c:642
 msgid "Discard"
 msgstr "Ablegen"
 
 #: src/main.c:47
 msgid "Connect"
 msgstr "verbinden"
+
 #~ msgid "folded"
 #~ msgstr "Hat aufgegeben"
