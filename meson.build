@@ -44,7 +44,13 @@ extra_flags = [
   '-Werror=strict-aliasing',
 ]
 
+# To enable PATH_MAX and friends on Alpine Linux
+definitions = [
+  '-D_XOPEN_SOURCE'
+]
+
 add_project_arguments(cc.get_supported_arguments(extra_flags), language: 'c')
+add_project_arguments(definitions, language: 'c')
 
 canfigger_dep = dependency(
   'canfigger',
@@ -57,7 +63,6 @@ deckhandler_dep = dependency(
 )
 
 pokeval_dep = dependency('pokeval', default_options: 'default_library=static')
-
 protobuf_dep = dependency('libprotobuf-c')
 
 shared_dep = [

@@ -26,9 +26,6 @@
 
 */
 
-// Required to define some macros when including limits.h on Alpine Linux
-#define _XOPEN_SOURCE
-
 #include <canfigger.h>
 #include <limits.h> // For PATH_MAX (TODO: Use pathconf() instead)
 #include <stdio.h>
