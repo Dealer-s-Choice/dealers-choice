@@ -67,7 +67,7 @@ static const ConfigEntry config_entries[] = {
 
 static const size_t config_entry_count = sizeof(config_entries) / sizeof(config_entries[0]);
 
-Config_t get_config(Path_t *path);
+Config_t get_config(Path_t *path, CliArgs_t *cli_args);
 
 PlayerConfig_t get_player_config(void);
 

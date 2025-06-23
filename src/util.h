@@ -34,7 +34,7 @@
 typedef struct {
   char data[2048];
   char config[2048];
-  char server_conf_name[2148];
+  char server_conf_name[PATH_MAX];
 } Path_t;
 
 typedef enum {

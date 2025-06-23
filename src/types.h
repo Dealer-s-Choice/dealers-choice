@@ -90,6 +90,11 @@ typedef struct {
 typedef void (*game_func_t)(ArgsBroadcastGameState_t *, Player_t *, DH_Deck *, uint8_t, uint8_t);
 
 typedef struct {
+  const char *host, *server_conf, *bind_address;
+  bool test_mode, run_server_flag;
+} CliArgs_t;
+
+typedef struct {
   const EMenuOption_t g;
   const char *str;
   const uint8_t game_type;
