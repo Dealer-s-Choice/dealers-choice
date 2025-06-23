@@ -176,3 +176,58 @@ void *calloc_wrap(const size_t n, const size_t size) {
   perror("calloc");
   exit(EXIT_FAILURE);
 }
+
+#ifdef _WIN32
+static long get_path_max(const char *path) {
+  (void)path; // unused
+  return 260; // Traditional Windows MAX_PATH
+}
+
+static long get_name_max(const char *path) {
+  (void)path; // unused
+  return 255; // Common NTFS limit
+}
+
+#else
+static long get_single_pathconf_limit(const char *path, int name, long fallback,
+                                      const char *label) {
+  if (!path) {
+    fprintf(stderr, "Error: Path is NULL.\n");
+    return -1;
+  }
+
+  errno = 0;
+  long limit = pathconf(path, name);
+  if (limit == -1) {
+    if (errno == 0)
+      return fallback; // Limit not defined
+    perror(label);
+    return -1;
+  }
+
+  return limit;
+}
+
+static long get_path_max(const char *path) {
+  return get_single_pathconf_limit(path, _PC_PATH_MAX, PATH_MAX, "PATH_MAX");
+}
+
+static long get_name_max(const char *path) {
+  return get_single_pathconf_limit(path, _PC_NAME_MAX, NAME_MAX, "NAME_MAX");
+}
+#endif
+
+int get_pathconf_limits(const char *path, PathconfLimits_t *limits) {
+  if (!limits)
+    return -1;
+
+  limits->path_max = get_path_max(path);
+  if (limits->path_max == -1)
+    return -1;
+
+  limits->name_max = get_name_max(path);
+  if (limits->name_max == -1)
+    return -1;
+
+  return 0;
+}

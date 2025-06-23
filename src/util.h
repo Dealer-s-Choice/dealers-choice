@@ -34,7 +34,7 @@
 typedef struct {
   char data[2048];
   char config[2048];
-  char server_conf_name[PATH_MAX];
+  char *server_conf_name;
 } Path_t;
 
 typedef enum {
@@ -42,6 +42,11 @@ typedef enum {
   PATH_NOT_FOUND = 2,
   PATH_ERROR = -1,
 } EPathState;
+
+typedef struct {
+  long path_max;
+  long name_max;
+} PathconfLimits_t;
 
 void get_data_dir(Path_t *path);
 
@@ -54,5 +59,7 @@ char *get_config_dir(void);
 int make_directory_recursive(const char *path);
 
 void *calloc_wrap(const size_t n, const size_t size);
+
+int get_pathconf_limits(const char *path, PathconfLimits_t *limits);
 
 #endif
