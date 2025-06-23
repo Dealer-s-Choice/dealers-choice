@@ -14,9 +14,17 @@ This project is licensed under the MIT License – see the
 [LICENSE](https://github.com/Dealer-s-Choice/dealers_choice/blob/trunk/LICENSE)
 file for details.
 
+## Project Links
+
+*[GitHub Repo](https://github.com/Dealer-s-Choice/dealers_choice)
+*[Screenshots](https://dealer-s-choice.github.io/screenshots/)
+*[Discussions](https://github.com/Dealer-s-Choice/dealers_choice/discussions)
+*[Bug Reporting](https://github.com/Dealer-s-Choice/dealers_choice/issues)
+*[Releases](https://github.com/Dealer-s-Choice/dealers_choice/releases)
+
 ## Current state
 
-The game is playable but you're likely to encounter bugs.
+The game is in alpha so you may encounter bugs.
 
 *Dealer's Choice* builds on Windows in an MSYS2 environment but [there is not an installer
 available yet](https://github.com/Dealer-s-Choice/dealers_choice/issues/68).

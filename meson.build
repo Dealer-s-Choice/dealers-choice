@@ -44,8 +44,9 @@ extra_flags = [
   '-Werror=strict-aliasing',
 ]
 
+# To enable PATH_MAX and friends on Alpine Linux
 definitions = [
-  #'-D_XOPEN_SOURCE'
+  '-D_XOPEN_SOURCE'
 ]
 
 add_project_arguments(cc.get_supported_arguments(extra_flags), language: 'c')
