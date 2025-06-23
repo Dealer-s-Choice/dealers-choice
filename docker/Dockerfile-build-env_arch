@@ -1,0 +1,15 @@
+FROM archlinux:latest
+RUN pacman -Syu --noconfirm \
+  && pacman -S --noconfirm \
+    base-devel \
+    meson \
+    sdl2 \
+    sdl2_image \
+    sdl2_ttf \
+    sdl2_net \
+    protobuf-c
+
+RUN useradd -U builder
+RUN passwd -d builder
+
+CMD ["/bin/bash","-l"]
