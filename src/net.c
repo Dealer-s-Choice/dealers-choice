@@ -280,6 +280,7 @@ ERecvStatus_t recv_game_state(TCPsocket client_socket, SDLNet_SocketSet socket_s
       break;
     }
     client_state->do_discard_draw = true;
+    client_state->n_cards_selected = 0;
     printf("[recv_game_state] Received %u bytes, server wants discards...\n", size);
     break;
 
