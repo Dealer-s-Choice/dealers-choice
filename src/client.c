@@ -1041,7 +1041,6 @@ static bool run_game_loop(GameState_t *game_state, ClientState_t *client_state,
             fprintf(stderr, "Failed to send discards\n");
           else {
             puts("Discards sent");
-            client_state->n_cards_selected = 0;
           }
         }
       }
