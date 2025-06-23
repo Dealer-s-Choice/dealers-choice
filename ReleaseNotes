@@ -1,7 +1,9 @@
-2025-06-18
+2025-06-23
 
-- dealers-choice 0.0.2:
-  + Game name now displayed in lower left with other messages
-  + Add hotkeys for amount buttons (1,2,3)
-  + Add --version command line argument
-  * Fix Alpine Linux build
+- dealers-choice 0.0.3:
+  + Add command line option to specify alternate server config file
+  * Fix player incorrectly gets message that the max is selected (double draw)
+  * Fix multiple amount button selection
+  * Fix build on Arch Linux (config.h not found when building tests)
+  + Add partial German translation (See #74 for more info)
+  * Begin implementing auto-scaling for screens with different resolutions
