@@ -2,6 +2,7 @@ FROM archlinux:latest
 RUN pacman -Syu --noconfirm \
   && pacman -S --noconfirm \
     base-devel \
+    git \
     meson \
     sdl2 \
     sdl2_image \
