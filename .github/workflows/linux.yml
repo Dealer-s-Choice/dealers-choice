@@ -24,6 +24,7 @@ jobs:
   Ubuntu:
     strategy:
       matrix:
+        name: [default]
         os:
           - ubuntu-24.04-arm
           - ubuntu-24.04
@@ -31,15 +32,22 @@ jobs:
           - gcc
           - clang
         include:
-          - os: ubuntu-22.04
+          - name: dist-test
+            os: ubuntu-22.04
             cc: gcc
+          - name: Arch Linux
+            os: ubuntu-latest
+            cc: gcc
+            container: ghcr.io/dealer-s-choice/build_env:build-env-arch
 
     runs-on: ${{ matrix.os }}
+    container: ${{ matrix.container }}
     env:
       CC: ${{ matrix.cc }}
     steps:
     - uses: actions/checkout@v4
     - name: Install Dependencies
+      if: ${{ matrix.container == null }}
       run: |
         sudo apt update && sudo apt upgrade -y
         sudo apt-get install --no-install-recommends -y \
@@ -61,7 +69,7 @@ jobs:
       run: meson test --no-stdsplit -v -C _build
 
     - name: Dist test
-      if: ${{ contains(matrix.os, '22.04') }}
+      if: ${{ contains(matrix.name, 'dist-test') }}
       run: meson dist -C _build
 
     - name: Install test
