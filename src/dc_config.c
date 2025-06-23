@@ -26,25 +26,28 @@
 
 */
 
-// Required to define some macros when including limits.h on Alpine Linux
-#define _XOPEN_SOURCE
-
 #include <canfigger.h>
-#include <limits.h> // For PATH_MAX (TODO: Use pathconf() instead)
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "dc_config.h"
+#include "util.h"
 
 Config_t get_config(Path_t *path, CliArgs_t *cli_args) {
-  if (!cli_args->server_conf)
-    snprintf(path->server_conf_name, sizeof(path->server_conf_name), "%s/%s", path->data,
-             "server.conf");
-  else
-    snprintf(path->server_conf_name, sizeof(path->server_conf_name), "%s", cli_args->server_conf);
+  PathconfLimits_t limits = {0};
+  if (!cli_args->server_conf) {
+    get_pathconf_limits(path->data, &limits);
+    path->server_conf_name = calloc_wrap(limits.path_max, 1);
+    snprintf(path->server_conf_name, limits.path_max, "%s/%s", path->data, "server.conf");
+  } else {
+    get_pathconf_limits(cli_args->server_conf, &limits);
+    path->server_conf_name = calloc_wrap(limits.path_max, 1);
+    snprintf(path->server_conf_name, limits.path_max, "%s", cli_args->server_conf);
+  }
 
   struct Canfigger *cfg_node = canfigger_parse_file(path->server_conf_name, ',');
+  free(path->server_conf_name);
   if (!cfg_node) {
     perror("canfigger");
     exit(EXIT_FAILURE);
@@ -138,8 +141,10 @@ PlayerConfig_t get_player_config(void) {
     return config;
   }
 
-  char cfg_pathname[PATH_MAX];
-  snprintf(cfg_pathname, sizeof(cfg_pathname), "%s/player.conf", cfgdir);
+  PathconfLimits_t limits = {0};
+  get_pathconf_limits(cfgdir, &limits);
+  char *cfg_pathname = calloc_wrap(limits.path_max, 1);
+  snprintf(cfg_pathname, limits.path_max, "%s/player.conf", cfgdir);
   free(cfgdir);
 
   printf("Reading config: %s\n", cfg_pathname);
@@ -156,10 +161,12 @@ PlayerConfig_t get_player_config(void) {
         fclose(fp);
       } else {
         perror("fopen");
+        free(cfg_pathname);
         exit(EXIT_FAILURE);
       }
     } else {
       fprintf(stderr, "Error accessing %s\n", cfg_pathname);
+      free(cfg_pathname);
       exit(EXIT_FAILURE);
     }
   } else {
@@ -173,6 +180,7 @@ PlayerConfig_t get_player_config(void) {
       canfigger_free_current_key_node_advance(&cfg_node);
     }
   }
+  free(cfg_pathname);
 
   config.loaded = true;
   return config;
