@@ -118,7 +118,7 @@ _lib = static_library(
 game_dep = declare_dependency(
   link_with: _lib,
   dependencies: shared_dep,
-  include_directories: shared_inc,
+  include_directories: [shared_inc, include_directories('.')],
 )
 
 exe_target = executable(

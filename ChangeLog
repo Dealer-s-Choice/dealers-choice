@@ -1,4 +1,5 @@
   * Fix multiple amount button selection
+  * Fix build on Arch Linux (config.h not found when building tests)
 
 2025-06-18
 
