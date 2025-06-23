@@ -16,11 +16,11 @@ file for details.
 
 ## Project Links
 
-*[GitHub Repo](https://github.com/Dealer-s-Choice/dealers_choice)
-*[Screenshots](https://dealer-s-choice.github.io/screenshots/)
-*[Discussions](https://github.com/Dealer-s-Choice/dealers_choice/discussions)
-*[Bug Reporting](https://github.com/Dealer-s-Choice/dealers_choice/issues)
-*[Releases](https://github.com/Dealer-s-Choice/dealers_choice/releases)
+* [GitHub Repo](https://github.com/Dealer-s-Choice/dealers_choice)
+* [Screenshots](https://dealer-s-choice.github.io/screenshots/)
+* [Discussions](https://github.com/Dealer-s-Choice/dealers_choice/discussions)
+* [Bug Reporting](https://github.com/Dealer-s-Choice/dealers_choice/issues)
+* [Releases](https://github.com/Dealer-s-Choice/dealers_choice/releases)
 
 ## Current state
 
