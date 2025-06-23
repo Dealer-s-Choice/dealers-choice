@@ -37,10 +37,13 @@
 
 #include "dc_config.h"
 
-Config_t get_config(Path_t *path) {
+Config_t get_config(Path_t *path, CliArgs_t *cli_args) {
+  if (!cli_args->server_conf)
+    snprintf(path->server_conf_name, sizeof(path->server_conf_name), "%s/%s", path->data,
+             "server.conf");
+  else
+    snprintf(path->server_conf_name, sizeof(path->server_conf_name), "%s", cli_args->server_conf);
 
-  snprintf(path->server_conf_name, sizeof(path->server_conf_name), "%s/%s", path->data,
-           "server.conf");
   struct Canfigger *cfg_node = canfigger_parse_file(path->server_conf_name, ',');
   if (!cfg_node) {
     perror("canfigger");

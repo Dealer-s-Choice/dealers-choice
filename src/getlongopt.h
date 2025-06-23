@@ -14,6 +14,7 @@ typedef struct {
 
 #define GLOPT_NO_ARG 0
 #define GLOPT_REQUIRED_ARG 1
+#define GLOPT_OPTIONAL_ARG 2
 
 typedef struct {
   const glopt_option_t *options;
@@ -48,9 +49,17 @@ static int glopt_next(glopt_parser_t *p, int argc, char **argv) {
     for (int i = 0; p->options[i].name; ++i) {
       if (strcmp(p->current, p->options[i].name) == 0) {
         if (p->options[i].has_arg == GLOPT_REQUIRED_ARG) {
-          if (p->optind >= argc)
-            return '?'; // missing argument
+          if (p->optind >= argc || argv[p->optind][0] == '-') {
+            // Next item is missing or looks like another option
+            return '?';
+          }
           p->optarg = argv[p->optind++];
+        } else if (p->options[i].has_arg == GLOPT_OPTIONAL_ARG) {
+          if (p->optind < argc && argv[p->optind][0] != '-') {
+            p->optarg = argv[p->optind++];
+          } else {
+            p->optarg = NULL;
+          }
         }
         p->current = NULL;
         return p->options[i].val;

@@ -1,3 +1,4 @@
+  + Add command line option to specify alternate server config file
   * Fix multiple amount button selection
   * Fix build on Arch Linux (config.h not found when building tests)
 

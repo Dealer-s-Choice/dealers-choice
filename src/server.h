@@ -37,7 +37,7 @@
   ArgsBroadcastGameState_t *args, Player_t *players_array, DH_Deck *deck,                          \
       const uint8_t n_betting_rounds, const uint8_t draws
 
-Config_t init_game_state(GameState_t *game_state, Path_t *path, const bool test_mode);
+Config_t init_game_state(GameState_t *game_state, Path_t *path, CliArgs_t *cli_args);
 
 RealHand_t deal_cards_to_players(GameState_t *game_state, DH_Deck *deck, const uint8_t game_type);
 
@@ -45,6 +45,6 @@ void game_five_card_draw(GAME_ARGS);
 
 void game_five_card_stud(GAME_ARGS);
 
-int run_server(const char *bind_address, Path_t *path, const bool test_mode);
+int run_server(CliArgs_t *cli_args, Path_t *path);
 
 #endif

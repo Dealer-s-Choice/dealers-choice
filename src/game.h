@@ -68,4 +68,6 @@ Player_t *get_next_player(Player_t *players_array, int cur);
 
 Player_t *get_next_connected_client(Player_t *players_array, int cur);
 
+CliArgs_t init_cli_args(void);
+
 #endif

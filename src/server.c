@@ -76,8 +76,8 @@ static void print_ipaddress(const IPaddress *ip) {
   printf("%s:%u\n", ipaddr, SDL_SwapBE16(ip->port));
 }
 
-Config_t init_game_state(GameState_t *game_state, Path_t *path, const bool test_mode) {
-  Config_t config = get_config(path);
+Config_t init_game_state(GameState_t *game_state, Path_t *path, CliArgs_t *cli_args) {
+  Config_t config = get_config(path, cli_args);
   for (int i = 0; i < MAX_PLAYERS; i++) {
     game_state->player[i] = (Player_t){
         .id = -1,
@@ -96,7 +96,7 @@ Config_t init_game_state(GameState_t *game_state, Path_t *path, const bool test_
   game_state->total_bets_plus_raises = 0;
   game_state->winner_declared = false;
   game_state->action_timeout_ms = config.action_timeout_ms;
-  game_state->end_of_game_timeout_ms = (test_mode) ? 500 : config.end_of_game_timeout_ms;
+  game_state->end_of_game_timeout_ms = (cli_args->test_mode) ? 500 : config.end_of_game_timeout_ms;
   return config;
 }
 
@@ -1018,9 +1018,9 @@ static void do_socket_cleanup(TCPsocket sock, SDLNet_SocketSet socket_set,
   }
 }
 
-int run_server(const char *bind_address, Path_t *path, const bool test_mode) {
+int run_server(CliArgs_t *cli_args, Path_t *path) {
   GameState_t game_state = {0};
-  Config_t config = init_game_state(&game_state, path, test_mode);
+  Config_t config = init_game_state(&game_state, path, cli_args);
   game_state.pot = 0;
 
   if (SDL_Init(0) == -1 || SDLNet_Init() == -1) {
@@ -1030,14 +1030,14 @@ int run_server(const char *bind_address, Path_t *path, const bool test_mode) {
 
   IPaddress ip;
   char *host = config.bind_address;
-  if (!bind_address) {
+  if (!cli_args->bind_address) {
     // ip.host = SDL_SwapBE32(INADDR_LOOPBACK);  // 127.0.0.1
     // ip.port = SDL_SwapBE16(default_port);
     host = config.bind_address;
     if (strcmp(config.bind_address, "NULL") == 0)
       host = NULL;
   } else
-    host = (char *)bind_address;
+    host = (char *)cli_args->bind_address;
   fprintf(stderr, "Resolving host: %s\n", (host) ? host : "NULL");
   if (SDLNet_ResolveHost(&ip, host, atoi(DEFAULT_PORT)) == -1) {
     fprintf(stderr, "SDLNet_ResolveHost: %s\n", SDLNet_GetError());
@@ -1069,7 +1069,7 @@ int run_server(const char *bind_address, Path_t *path, const bool test_mode) {
 
   DH_Deck deck = DH_get_new_deck();
 
-  if (!test_mode)
+  if (!cli_args->test_mode)
     DH_pcg_srand_auto();
   else
     DH_pcg_srand(1, 1);
@@ -1135,7 +1135,7 @@ int run_server(const char *bind_address, Path_t *path, const bool test_mode) {
         int32_t net_player_id = htonl(slot);
         send_all_tcp(new_client, &net_player_id, sizeof(int32_t));
 
-        if (!test_mode) {
+        if (!cli_args->test_mode) {
           Player_t *player = &game_state.player[slot];
           int32_t net_len;
 

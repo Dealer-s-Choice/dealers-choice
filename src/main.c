@@ -148,25 +148,26 @@ int main(int argc, char *argv[]) {
   textdomain(DEALERSCHOICE_NAME);
 #endif
 
-  const char *bind_address = NULL; // Defaults to "0.0.0.0" if NULL
-  const char *host = NULL;
-  bool test_mode = false;
-  bool run_server_flag = false;
+  CliArgs_t cli_args = init_cli_args();
   Path_t path = {0};
   get_data_dir(&path);
 
   enum {
     OPT_SERVER = 1,
+    OPT_SERVER_CONF,
     OPT_TEST,
     OPT_BIND,
     OPT_HOST,
     OPT_VERSION,
   };
 
-  static const glopt_option_t options[] = {
-      {"server", GLOPT_NO_ARG, OPT_SERVER},           {"-test", GLOPT_NO_ARG, OPT_TEST},
-      {"bind-address", GLOPT_REQUIRED_ARG, OPT_BIND}, {"host", GLOPT_REQUIRED_ARG, OPT_HOST},
-      {"version", GLOPT_NO_ARG, OPT_VERSION},         {NULL, 0, 0}};
+  static const glopt_option_t options[] = {{"server", GLOPT_NO_ARG, OPT_SERVER},
+                                           {"server-conf", GLOPT_REQUIRED_ARG, OPT_SERVER_CONF},
+                                           {"-test", GLOPT_NO_ARG, OPT_TEST},
+                                           {"bind-address", GLOPT_REQUIRED_ARG, OPT_BIND},
+                                           {"host", GLOPT_REQUIRED_ARG, OPT_HOST},
+                                           {"version", GLOPT_NO_ARG, OPT_VERSION},
+                                           {NULL, 0, 0}};
 
   glopt_parser_t parser;
   glopt_init(&parser, options);
@@ -175,16 +176,19 @@ int main(int argc, char *argv[]) {
   while ((opt = glopt_next(&parser, argc, argv)) != -1) {
     switch (opt) {
     case OPT_SERVER:
-      run_server_flag = true;
+      cli_args.run_server_flag = true;
+      break;
+    case OPT_SERVER_CONF:
+      cli_args.server_conf = parser.optarg;
       break;
     case OPT_TEST:
-      test_mode = true;
+      cli_args.test_mode = true;
       break;
     case OPT_BIND:
-      bind_address = parser.optarg;
+      cli_args.bind_address = parser.optarg;
       break;
     case OPT_HOST:
-      host = parser.optarg;
+      cli_args.host = parser.optarg;
       break;
     case OPT_VERSION:
       print_version();
@@ -195,6 +199,7 @@ int main(int argc, char *argv[]) {
       print_version();
       fputs("Usage:\n"
             "  --server [--bind-address IP]\n"
+            "  --server-conf [Path to alternate server config file]\n"
             "  --host IP\n"
             "  --version\n",
             stderr);
@@ -202,8 +207,8 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  if (run_server_flag) {
-    return run_server(bind_address, &path, test_mode);
+  if (cli_args.run_server_flag) {
+    return run_server(&cli_args, &path);
   }
 
   if (SDL_Init(SDL_INIT_VIDEO) == -1 || SDLNet_Init() == -1) {
@@ -247,12 +252,12 @@ int main(int argc, char *argv[]) {
   }
 
   char host_str[MAX_INPUT_LENGTH] = {0};
-  snprintf(host_str, sizeof(host_str), "%s", (host) ? host : player_config.host);
+  snprintf(host_str, sizeof(host_str), "%s", (cli_args.host) ? cli_args.host : player_config.host);
 
   if (menu_display_connect(&player_config, host_str, &sdl_context, &font) == RUN_CLIENT) {
     printf("Attempting to connect to: %s\n", host_str);
     get_socket_context_and_run_client(&player_config, host_str, &sdl_context, &font, &path,
-                                      test_mode);
+                                      cli_args.test_mode);
   }
 
   for (int i = 0; i < NUM_FONTS; ++i)

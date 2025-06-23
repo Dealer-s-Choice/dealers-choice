@@ -87,3 +87,14 @@ Player_t *get_next_connected_client(Player_t *players_array, int cur) {
   const bool want_all_clients = true;
   return get_next_player_real(players_array, cur, want_all_clients);
 }
+
+CliArgs_t init_cli_args(void) {
+  CliArgs_t cli_args = {
+      .host = NULL,
+      .server_conf = NULL,
+      .bind_address = NULL,
+      .test_mode = false,
+      .run_server_flag = false,
+  };
+  return cli_args;
+}
