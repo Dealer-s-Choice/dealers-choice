@@ -364,7 +364,7 @@ static bool menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet 
     SDL_Rect text_connected = {offset_x, offset_y, 0, 0};
     render_text_plain(sdl_context->renderer, font->fonts[FONT_BOLD], _("Connected players:"),
                       get_color(COLOR_BLACK), &text_connected);
-    offset_x += 10;
+    offset_x += SCALE_X(10);
 
     Player_t *client = &game_state->player[my_id];
     Player_t *start = client;
@@ -372,7 +372,7 @@ static bool menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet 
     n_clients = 0;
     do {
       // fprintf(stderr, "%d\n", __LINE__);
-      offset_y += 40;
+      offset_y += SCALE_Y(40);
       char tmp[sizeof(client->nick) + 20] = {0};
       snprintf(tmp, sizeof tmp, "%s%s", client->nick,
                game_state->dealer_id == client->id ? " (Dealer)" : "");
