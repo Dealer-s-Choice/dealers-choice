@@ -12,10 +12,19 @@ on:
         type: string
   push:
     branches: trunk
+    paths:
+    - '**'
+    - '!**.md'
+    - '!**.yml'
+    - 'packaging/appimage/**'
+    - '**/appimage.yml'
 
   pull_request:
     branches: trunk
     paths:
+    - '**'
+    - '!**.md'
+    - '!**.yml'
     - 'packaging/appimage/**'
     - '**/appimage.yml'
 

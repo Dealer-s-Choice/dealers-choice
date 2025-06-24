@@ -12,6 +12,11 @@ on:
         type: string
   push:
     branches: trunk
+    paths:
+    - '**'
+    - '!**.md'
+    - '!**.yml'
+    - '**/docker.yml'
 
 env:
   GHCR_REGISTRY_IMAGE: ghcr.io/dealer-s-choice/dealers_choice
