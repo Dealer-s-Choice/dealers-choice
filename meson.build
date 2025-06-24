@@ -150,16 +150,32 @@ install_data(
   install_dir: join_paths(get_option('datadir'), 'applications'),
 )
 
+icon_sizes = ['128', '64', '32', '16']
+
+foreach size : icon_sizes
+  install_data(
+    'packaging/icons/dealers-choice_@0@x@0@.png'.format(size),
+    rename: 'dealers-choice.png',
+    install_dir: join_paths(
+      get_option('datadir'),
+      'icons',
+      'hicolor',
+      '@0@x@0@'.format(size),
+      'apps'
+    ),
+  )
+endforeach
+
 install_data(
-  'packaging/dealers-choice_icon_32x32.png',
-  rename: 'dealers-choice.png',
+  'packaging/icons/dealers-choice.svg',
   install_dir: join_paths(
     get_option('datadir'),
     'icons',
     'hicolor',
-    '32x32',
-    'apps',
+    'scalable',
+    'apps'
   ),
 )
+
 
 subdir('tests')
