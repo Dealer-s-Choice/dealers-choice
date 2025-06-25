@@ -94,14 +94,15 @@ typedef struct {
   TCPsocket *server_sock;
 } ArgsBroadcastGameState_t;
 
-typedef void (*game_func_t)(ArgsBroadcastGameState_t *, Player_t *, DH_Deck *, uint8_t, uint8_t);
+typedef void (*game_func_t)(ArgsBroadcastGameState_t *, Player_t *, DH_Deck *, uint8_t, uint8_t,
+                            uint8_t);
 
 typedef struct {
   const EMenuOption_t g;
   const char *str;
   const uint8_t game_type;
   game_func_t func;
-  uint8_t n_betting_rounds, draws;
+  uint8_t n_betting_rounds, n_draws, n_stud_new_cards;
 } GameChoice_t;
 
 extern const GameChoice_t game_choices[];

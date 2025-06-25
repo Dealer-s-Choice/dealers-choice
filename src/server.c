@@ -774,7 +774,7 @@ static int get_next_dealer(int current, const bool *slot_taken) {
 }
 
 void game_five_card_draw(GAME_ARGS) {
-
+  (void)n_stud_new_cards;
   uint8_t dealer_id = args->game_state->dealer_id;
   Player_t *starting_player = get_next_player(players_array, dealer_id);
   server_handle_ante(args->game_state, 250);
@@ -785,7 +785,7 @@ void game_five_card_draw(GAME_ARGS) {
 
   for (int i = 0; i < n_betting_rounds; i++) {
     results = handle_round();
-    if (results.n_winners > 0 || i == draws)
+    if (results.n_winners > 0 || i == n_draws)
       break;
 
     if (!starting_player->in) {
@@ -822,7 +822,7 @@ void game_five_card_draw(GAME_ARGS) {
 }
 
 void game_five_card_stud(GAME_ARGS) {
-
+  (void)n_draws;
   Player_t *starting_player = get_next_player(players_array, args->game_state->dealer_id);
   Player_t *turn = starting_player;
   server_handle_ante(args->game_state, 250);
@@ -832,7 +832,7 @@ void game_five_card_stud(GAME_ARGS) {
   for (int i = 0; i < n_betting_rounds; i++) {
     results = handle_round();
 
-    if (results.n_winners > 0 || i == draws)
+    if (results.n_winners > 0 || i == n_stud_new_cards)
       break;
 
     if (!starting_player->in) {
@@ -874,7 +874,8 @@ static void play_game(const char game_type, ArgsBroadcastGameState_t *args, DH_D
   broadcast_status_message(args, tmp);
   if (choice && choice->func) {
     // Using function pointers...
-    choice->func(args, players_array, deck, choice->n_betting_rounds, choice->draws);
+    choice->func(args, players_array, deck, choice->n_betting_rounds, choice->n_draws,
+                 choice->n_stud_new_cards);
   }
 }
 
