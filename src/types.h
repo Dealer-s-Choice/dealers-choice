@@ -80,19 +80,21 @@ typedef struct {
 } RealHand_t;
 
 typedef struct {
-  TCPsocket (*clients)[MAX_CLIENTS];
-  SDLNet_SocketSet *socket_set;
-  GameState_t *game_state;
-  RealHand_t *real_hand;
-  bool (*slot_taken)[MAX_CLIENTS];
-} ArgsBroadcastGameState_t;
-
-typedef void (*game_func_t)(ArgsBroadcastGameState_t *, Player_t *, DH_Deck *, uint8_t, uint8_t);
-
-typedef struct {
   const char *host, *server_conf, *bind_address;
   bool test_mode, run_server_flag;
 } CliArgs_t;
+
+typedef struct {
+  TCPsocket *clients;
+  SDLNet_SocketSet socket_set;
+  GameState_t *game_state;
+  RealHand_t *real_hand;
+  bool *slot_taken;
+  CliArgs_t *cli_args;
+  TCPsocket *server_sock;
+} ArgsBroadcastGameState_t;
+
+typedef void (*game_func_t)(ArgsBroadcastGameState_t *, Player_t *, DH_Deck *, uint8_t, uint8_t);
 
 typedef struct {
   const EMenuOption_t g;
