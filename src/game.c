@@ -29,6 +29,7 @@
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
 
 #include "game.h"
@@ -97,4 +98,11 @@ CliArgs_t init_cli_args(void) {
       .run_server_flag = false,
   };
   return cli_args;
+}
+
+pcg32_random_t rng;
+void pcg_srand_auto(void) {
+  uint64_t initstate = time(NULL) ^ (intptr_t)&printf;
+  uint64_t initseq = (intptr_t)&pcg_srand_auto;
+  pcg32_srandom_r(&rng, initstate, initseq);
 }

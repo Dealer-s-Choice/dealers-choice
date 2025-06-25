@@ -857,6 +857,8 @@ void game_five_card_stud(GAME_ARGS) {
 
 static void play_game(const char game_type, ArgsBroadcastGameState_t *args, DH_Deck *deck) {
   DH_shuffle_deck(deck);
+  int cut_point = 16 + pcg32_boundedrand_r(&rng, 21);
+  DH_cut_deck(deck, cut_point);
 
   Player_t *players_array = args->game_state->player;
   *args->real_hand = deal_cards_to_players(args->game_state, deck, game_type);

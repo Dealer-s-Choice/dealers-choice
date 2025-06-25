@@ -207,6 +207,8 @@ int main(int argc, char *argv[]) {
     }
   }
 
+  pcg_srand_auto();
+
   if (cli_args.run_server_flag) {
     return run_server(&cli_args, &path);
   }

@@ -27,7 +27,6 @@
 */
 
 #include <deckhandler.h>
-#include <pcg_basic.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -40,13 +39,6 @@
 #define POT_BOUNDARY SCALE_Y(250)
 
 #define x_begin_action_button SCALE_X(500);
-
-static pcg32_random_t rng;
-static void pcg_srand_auto(void) {
-  uint64_t initstate = time(NULL) ^ (intptr_t)&printf;
-  uint64_t initseq = (intptr_t)&pcg_srand_auto;
-  pcg32_srandom_r(&rng, initstate, initseq);
-}
 
 static bool menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet socket_set,
                                       const int8_t my_id, GameState_t *game_state,
@@ -137,7 +129,6 @@ SocketContext_t get_socket_context_and_run_client(PlayerConfig_t *player_config,
     if (recv_status != RECV_SUCCESS)
       exit(EXIT_FAILURE);
 
-    pcg_srand_auto();
     bool running = true;
     do {
       running =
