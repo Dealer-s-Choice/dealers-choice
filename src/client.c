@@ -297,7 +297,7 @@ static bool menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet 
        font->fonts[FONT_LINK], sdl_context->renderer, (SDL_Rect){link_column, 0, 0, 0}, false},
       {" Matrix ", "https://matrix.to/#/#dealers-choice:matrix.org", font->fonts[FONT_LINK],
        sdl_context->renderer, (SDL_Rect){link_column, 0, 0, 0}, false},
-      {" GitHub ", DEALERSCHOICE_URL, font->fonts[FONT_LINK], sdl_context->renderer,
+      {" Website ", DEALERSCHOICE_URL, font->fonts[FONT_LINK], sdl_context->renderer,
        (SDL_Rect){link_column, 0, 0, 0}, false}};
 
   for (size_t i = 0; i < ARRAY_SIZE(link); i++) {

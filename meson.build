@@ -99,7 +99,7 @@ conf.set_quoted('DEALERSCHOICE_FORMAL_NAME', 'Dealer\'s Choice')
 conf.set_quoted('DEALERSCHOICE_NAME', meson.project_name())
 conf.set_quoted(
   'DEALERSCHOICE_URL',
-  'https://github.com/Dealer-s-Choice/dealers_choice',
+  'https://dealer-s-choice.github.io/',
 )
 conf.set_quoted(
   'DEALERSCHOICE_BUGREPORT',
