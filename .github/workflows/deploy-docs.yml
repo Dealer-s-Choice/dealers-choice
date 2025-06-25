@@ -32,3 +32,4 @@ jobs:
           publish_branch: trunk
           publish_dir: ./deploy
           keep_files: true
+          enable_jekyll: true
