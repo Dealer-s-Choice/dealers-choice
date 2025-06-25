@@ -58,6 +58,7 @@ static bool run_game_loop(GameState_t *game_state, ClientState_t *client_state,
                           SDLNet_SocketSet socket_set, const uint8_t my_id, Path_t *path);
 
 static int send_protocol_header(TCPsocket sock) {
+  puts("Exchanging protocol information...");
   GameProtocolHeader_t hdr = {0};
   snprintf(hdr.magic, sizeof(hdr.magic), "%s", GAME_PROTOCOL_MAGIC);
   hdr.version = htonl(GAME_PROTOCOL_VERSION);

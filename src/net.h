@@ -49,7 +49,7 @@
 #endif
 
 typedef struct {
-  char magic[8];    // "DCPROTO\0"
+  char magic[sizeof(GAME_PROTOCOL_MAGIC)];
   uint32_t version; // Network byte order
 }
 #ifdef _MSC_VER
@@ -58,9 +58,6 @@ GameProtocolHeader_t;
 #else
 __attribute__((packed)) GameProtocolHeader_t;
 #endif
-
-#define GAME_PROTOCOL_MAGIC "DCPROTO"
-#define GAME_PROTOCOL_VERSION 1
 
 // On Windows, this is defined in <ws2tcpip.h>. Rather than include the file
 // let's just do this...

@@ -996,6 +996,7 @@ static EReturnCode_t receive_game_type_and_run_game(ArgsBroadcastGameState_t *ar
 }
 
 static int recv_and_validate_protocol_header(TCPsocket sock) {
+  puts("Exchanging protocol information...");
   GameProtocolHeader_t hdr = {0};
   if (recv_all_tcp(sock, &hdr, sizeof(hdr)) <= 0) {
     fprintf(stderr, "Failed to receive protocol header\n");
