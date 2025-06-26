@@ -39,15 +39,7 @@ jobs:
         fetch-depth: 2
         submodules: false
     - name: Install Dependencies
-      run: |
-        sudo apt update && sudo apt upgrade -y
-        sudo apt-get install --no-install-recommends -y \
-          meson \
-          libprotobuf-c-dev \
-          libsdl2-dev \
-          libsdl2-image-dev \
-          libsdl2-net-dev \
-          libsdl2-ttf-dev
+      run: .github/scripts/install_ubuntu_deps.sh
 
     # Initializes the CodeQL tools for scanning.
     - name: Initialize CodeQL
