@@ -256,14 +256,11 @@ int main(int argc, char *argv[]) {
   char host_str[MAX_INPUT_LENGTH] = {0};
   snprintf(host_str, sizeof(host_str), "%s", (cli_args.host) ? cli_args.host : player_config.host);
 
-  do {
-    if (menu_display_connect(&player_config, host_str, &sdl_context, &font) == RUN_CLIENT) {
-      printf("Attempting to connect to: %s\n", host_str);
-      get_socket_context_and_run_client(&player_config, host_str, &sdl_context, &font, &path,
-                                        cli_args.test_mode);
-    } else
-      break;
-  } while (true);
+  if (menu_display_connect(&player_config, host_str, &sdl_context, &font) == RUN_CLIENT) {
+    printf("Attempting to connect to: %s\n", host_str);
+    get_socket_context_and_run_client(&player_config, host_str, &sdl_context, &font, &path,
+                                      cli_args.test_mode);
+  }
 
   for (int i = 0; i < NUM_FONTS; ++i)
     TTF_CloseFont(font.fonts[i]);
