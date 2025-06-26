@@ -47,7 +47,7 @@ static bool menu_display_game_choices(const Path_t *path, const PlayerConfig_t *
                                       ClientState_t *client_state, SdlContext_t *sdl_context,
                                       Font_t *font);
 
-static bool run_game_loop(GameState_t *game_state, ClientState_t *client_state,
+static bool run_game_loop(const PlayerConfig_t *player, GameState_t *game_state, ClientState_t *client_state,
                           SdlContext_t *sdl_context, Font_t *font, TCPsocket client_socket,
                           SDLNet_SocketSet socket_set, const uint8_t my_id, Path_t *path);
 
@@ -139,7 +139,7 @@ SocketContext_t get_socket_context_and_run_client(PlayerConfig_t *player_config,
       if (!running)
         break;
 
-      running = run_game_loop(&game_state, &client_state, sdl_context, font, socket_context.sock,
+      running = run_game_loop(player_config, &game_state, &client_state, sdl_context, font, socket_context.sock,
                               socket_context.set, socket_context.id, path);
     } while (running);
   } else
@@ -159,7 +159,7 @@ cleanup:
 // What's the max this needs to be to support the unicode suit symbol?
 #define SIZEOF_CARD_TEXT 20
 
-#define CARD_DEAL_DELAY 50
+#define CARD_DEAL_DELAY 100
 
 #define MAX_POT_COINS 50
 
@@ -315,6 +315,9 @@ static bool menu_display_game_choices(const Path_t *path, const PlayerConfig_t *
   size_t sound_path_len = strlen(path->data) + strlen(sound) + 2;
   char sound_location[sound_path_len];
   snprintf(sound_location, sound_path_len, "%s/%s", path->data, sound);
+  ma_sound join_sound;
+  if (ma_sound_init_from_file(&engine, sound_location, 0, NULL, NULL, &join_sound) != MA_SUCCESS)
+    fprintf(stderr, "Failed to init server join sound\n");
 
   while (running && game_state->at_menu) {
     ERecvStatus_t recv_status =
@@ -335,6 +338,7 @@ static bool menu_display_game_choices(const Path_t *path, const PlayerConfig_t *
       }
 
       if (e.type == SDL_QUIT) {
+        ma_sound_uninit(&join_sound);
         ma_engine_uninit(&engine);
         return false;
       } else if (e.type == SDL_KEYDOWN &&
@@ -348,6 +352,7 @@ static bool menu_display_game_choices(const Path_t *path, const PlayerConfig_t *
               running = false;
               break;
             } else {
+              ma_sound_uninit(&join_sound);
               ma_engine_uninit(&engine);
               return false;
             }
@@ -393,8 +398,8 @@ static bool menu_display_game_choices(const Path_t *path, const PlayerConfig_t *
       n_clients++;
     } while ((client = get_next_connected_client(game_state->player, client->id)) != start);
     if (player_config->enable_sound && saved_n_clients < n_clients) {
-      ma_engine_set_volume(&engine, player_config->volume); // Set master volume to 50%
-      ma_engine_play_sound(&engine, sound_location, NULL);
+      ma_engine_set_volume(&engine, player_config->volume);
+      ma_sound_start(&join_sound);
     }
     saved_n_clients = n_clients;
     // fprintf(stderr, "%d\n", __LINE__);
@@ -416,6 +421,7 @@ static bool menu_display_game_choices(const Path_t *path, const PlayerConfig_t *
     SDL_RenderPresent(sdl_context->renderer);
     SDL_Delay(16);
   }
+  ma_sound_uninit(&join_sound);
   ma_engine_uninit(&engine);
 
   return true;
@@ -612,7 +618,7 @@ enum {
   MAX_ACTIONS,
 };
 
-static bool run_game_loop(GameState_t *game_state, ClientState_t *client_state,
+static bool run_game_loop(const PlayerConfig_t *player_config, GameState_t *game_state, ClientState_t *client_state,
                           SdlContext_t *sdl_context, Font_t *font, TCPsocket client_socket,
                           SDLNet_SocketSet socket_set, const uint8_t my_id, Path_t *path) {
   card_area.w = SCALE_X(80);
@@ -636,21 +642,29 @@ static bool run_game_loop(GameState_t *game_state, ClientState_t *client_state,
   _Static_assert(sizeof(player_pos) / sizeof(player_pos[0]) == 5,
                  "player_pos has wrong number of elements");
 
-  // if (Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048) < 0) {
-  // fprintf(stderr, "SDL_mixer could not initialize! SDL_mixer Error: %s\n", Mix_GetError());
-  //// handle error
-  //}
+  const char *sound = "sounds/card_dealt.wav";
+  size_t sound_path_len = strlen(path->data) + strlen(sound) + 2;
+  char sound_location[sound_path_len];
+  snprintf(sound_location, sound_path_len, "%s/%s", path->data, sound);
 
-  // Mix_Chunk *card_sound = Mix_LoadWAV("../card_dealt_stereo.wav");
-  // if (!card_sound) {
-  // fprintf(stderr, "Failed to load card sound! SDL_mixer Error: %s\n", Mix_GetError());
-  //// handle error
-  //}
-  // Mix_VolumeChunk(card_sound, MIX_MAX_VOLUME / 2);
+  const char *sound_table_hit = "sounds/coins_hitting_table.wav";
+  sound_path_len = strlen(path->data) + strlen(sound_table_hit) + 2;
+  char sound_table_hit_location[sound_path_len];
+  snprintf(sound_table_hit_location, sound_path_len, "%s/%s", path->data, sound_table_hit);
 
-  // if (Mix_Paused(-1)) {
-  // Mix_Resume(-1);
-  //}
+  ma_result result;
+  ma_engine engine;
+
+  result = ma_engine_init(NULL, &engine);
+  if (result != MA_SUCCESS) {
+    return -1;
+  }
+  ma_sound card_dealt_sound, coin_hit;
+  if (ma_sound_init_from_file(&engine, sound_location, 0, NULL, NULL, &card_dealt_sound) != MA_SUCCESS)
+    fprintf(stderr, "Failed to init server join sound\n");
+
+  if (ma_sound_init_from_file(&engine, sound_table_hit_location, 0, NULL, NULL, &coin_hit) != MA_SUCCESS)
+    fprintf(stderr, "Failed to init server join sound\n");
 
 #define SIZEOF_STATUS_MSGS 16
   char status_msgs[SIZEOF_STATUS_MSGS][LEN_STATUS_STR] = {0};
@@ -802,6 +816,8 @@ static bool run_game_loop(GameState_t *game_state, ClientState_t *client_state,
 
         if (!cards_dealt) {
           Uint32 start = SDL_GetTicks();
+          if (player_config->enable_sound)
+            ma_sound_start(&card_dealt_sound);
           while (SDL_GetTicks() - start < CARD_DEAL_DELAY) {
             SDL_Event e;
             while (SDL_PollEvent(&e)) {
@@ -1010,6 +1026,8 @@ static bool run_game_loop(GameState_t *game_state, ClientState_t *client_state,
             // TODO: use existing array (or modify it) to loop through each action
             if (SDL_PointInRect(&mouse_pos, &action_button[BET].rect) ||
                 event.key.keysym.sym == SDLK_b) {
+              if (player_config->enable_sound)
+                ma_sound_start(&coin_hit);
               puts("sending bet");
               if (send_player_action(client_socket, ACTION_BET, client_state->selected_amount) != 0)
                 fprintf(stderr, "Failed to send bet\n");
@@ -1022,12 +1040,16 @@ static bool run_game_loop(GameState_t *game_state, ClientState_t *client_state,
           } else if (game_state->player[my_id].total_paid != game_state->total_bets_plus_raises) {
             if (SDL_PointInRect(&mouse_pos, &action_button[RAISE].rect) ||
                 event.key.keysym.sym == SDLK_r) {
+              if (player_config->enable_sound)
+                ma_sound_start(&coin_hit);
               puts("raising");
               if (send_player_action(client_socket, ACTION_RAISE, client_state->selected_amount) !=
                   0)
                 fprintf(stderr, "Failed to raise\n");
             } else if (SDL_PointInRect(&mouse_pos, &action_button[CALL].rect) ||
                        event.key.keysym.sym == SDLK_c) {
+              if (player_config->enable_sound)
+                ma_sound_start(&coin_hit);
               puts("calling");
               if (send_player_action(client_socket, ACTION_CALL, 0) != 0)
                 fprintf(stderr, "Failed to call\n");
@@ -1063,10 +1085,11 @@ static bool run_game_loop(GameState_t *game_state, ClientState_t *client_state,
       }
     } // End Poll event
   }
+  ma_sound_uninit(&card_dealt_sound);
+  ma_sound_uninit(&coin_hit);
+  ma_engine_uninit(&engine);
   SDL_DestroyTexture(coin_tex);
   return running;
-  // Mix_FreeChunk(card_sound);
-  // Mix_CloseAudio();
 }
 
 void do_sdl_cleanup(SdlContext_t *sdl_context) {
