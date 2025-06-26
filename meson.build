@@ -62,12 +62,18 @@ deckhandler_dep = dependency(
   default_options: 'default_library=static',
 )
 
+miniaudio_dep = dependency(
+  'miniaudio',
+  default_options: 'default_library=static',
+)
+
 pokeval_dep = dependency('pokeval', default_options: 'default_library=static')
 protobuf_dep = dependency('libprotobuf-c')
 
 shared_dep = [
   canfigger_dep,
   deckhandler_dep,
+  miniaudio_dep,
   pokeval_dep,
   win_deps,
   cc.find_library('m'),

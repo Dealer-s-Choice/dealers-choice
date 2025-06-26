@@ -27,6 +27,7 @@
 */
 
 #include <deckhandler.h>
+#include <miniaudio.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -40,7 +41,8 @@
 
 #define x_begin_action_button SCALE_X(500);
 
-static bool menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet socket_set,
+static bool menu_display_game_choices(const Path_t *path, const PlayerConfig_t *player_config,
+                                      TCPsocket client_socket, SDLNet_SocketSet socket_set,
                                       const int8_t my_id, GameState_t *game_state,
                                       ClientState_t *client_state, SdlContext_t *sdl_context,
                                       Font_t *font);
@@ -131,9 +133,9 @@ SocketContext_t get_socket_context_and_run_client(PlayerConfig_t *player_config,
 
     bool running = true;
     do {
-      running =
-          menu_display_game_choices(socket_context.sock, socket_context.set, socket_context.id,
-                                    &game_state, &client_state, sdl_context, font);
+      running = menu_display_game_choices(path, player_config, socket_context.sock,
+                                          socket_context.set, socket_context.id, &game_state,
+                                          &client_state, sdl_context, font);
       if (!running)
         break;
 
@@ -257,10 +259,19 @@ void render_link(Link_t *link) {
   TTF_SetFontStyle(link->font, TTF_STYLE_NORMAL);
 }
 
-static bool menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet socket_set,
+static bool menu_display_game_choices(const Path_t *path, const PlayerConfig_t *player_config,
+                                      TCPsocket client_socket, SDLNet_SocketSet socket_set,
                                       const int8_t my_id, GameState_t *game_state,
                                       ClientState_t *client_state, SdlContext_t *sdl_context,
                                       Font_t *font) {
+  ma_result result;
+  ma_engine engine;
+
+  result = ma_engine_init(NULL, &engine);
+  if (result != MA_SUCCESS) {
+    return -1;
+  }
+
   uint8_t n_clients = 0;
 
   int y_offset = 160;
@@ -299,6 +310,12 @@ static bool menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet 
                      (i * (link[i].rect.h * 0.2));
   }
 
+  int saved_n_clients = 1;
+  const char *sound = "sounds/server_join.wav";
+  size_t sound_path_len = strlen(path->data) + strlen(sound) + 2;
+  char sound_location[sound_path_len];
+  snprintf(sound_location, sound_path_len, "%s/%s", path->data, sound);
+
   while (running && game_state->at_menu) {
     ERecvStatus_t recv_status =
         recv_game_state(client_socket, socket_set, game_state, client_state, my_id);
@@ -318,6 +335,7 @@ static bool menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet 
       }
 
       if (e.type == SDL_QUIT) {
+        ma_engine_uninit(&engine);
         return false;
       } else if (e.type == SDL_KEYDOWN &&
                  (e.key.keysym.sym == SDLK_RETURN && e.key.keysym.mod & KMOD_ALT)) {
@@ -330,6 +348,7 @@ static bool menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet 
               running = false;
               break;
             } else {
+              ma_engine_uninit(&engine);
               return false;
             }
           }
@@ -373,6 +392,11 @@ static bool menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet 
                         &text_pos);
       n_clients++;
     } while ((client = get_next_connected_client(game_state->player, client->id)) != start);
+    if (player_config->enable_sound && saved_n_clients < n_clients) {
+      ma_engine_set_volume(&engine, player_config->volume); // Set master volume to 50%
+      ma_engine_play_sound(&engine, sound_location, NULL);
+    }
+    saved_n_clients = n_clients;
     // fprintf(stderr, "%d\n", __LINE__);
 
     if (n_clients == 1)
@@ -392,6 +416,7 @@ static bool menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet 
     SDL_RenderPresent(sdl_context->renderer);
     SDL_Delay(16);
   }
+  ma_engine_uninit(&engine);
 
   return true;
 }

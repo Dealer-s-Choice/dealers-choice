@@ -1,0 +1,13 @@
+[wrap-file]
+directory = miniaudio-0.11.22
+source_url = https://github.com/mackron/miniaudio/archive/refs/tags/0.11.22.tar.gz
+source_filename = miniaudio-0.11.22.tar.gz
+source_hash = bcb07bfb27e6fa94d34da73ba2d5642d4940b208ec2a660dbf4e52e6b7cd492f
+patch_filename = miniaudio_0.11.22-2_patch.zip
+patch_url = https://wrapdb.mesonbuild.com/v2/miniaudio_0.11.22-2/get_patch
+patch_hash = 345bc40914588b9901aff3d95213e25fdd678c24e976588a63442ad2c5171c77
+source_fallback_url = https://github.com/mesonbuild/wrapdb/releases/download/miniaudio_0.11.22-2/miniaudio-0.11.22.tar.gz
+wrapdb_version = 0.11.22-2
+
+[provide]
+dependency_names = miniaudio
