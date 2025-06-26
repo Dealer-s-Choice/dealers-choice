@@ -26,7 +26,6 @@
 
 */
 
-#include <SDL2/SDL_mixer.h>
 #include <deckhandler.h>
 #include <miniaudio.h>
 #include <stdio.h>
@@ -265,13 +264,13 @@ static bool menu_display_game_choices(const Path_t *path, const PlayerConfig_t *
                                       const int8_t my_id, GameState_t *game_state,
                                       ClientState_t *client_state, SdlContext_t *sdl_context,
                                       Font_t *font) {
-  // ma_result result;
-  // ma_engine engine;
+  ma_result result;
+  ma_engine engine;
 
-  // result = ma_engine_init(NULL, &engine);
-  // if (result != MA_SUCCESS) {
-  // return -1;
-  //}
+  result = ma_engine_init(NULL, &engine);
+  if (result != MA_SUCCESS) {
+    return -1;
+  }
 
   uint8_t n_clients = 0;
 
@@ -317,37 +316,6 @@ static bool menu_display_game_choices(const Path_t *path, const PlayerConfig_t *
   char sound_location[sound_path_len];
   snprintf(sound_location, sound_path_len, "%s/%s", path->data, sound);
 
-  static const char *audio_drivers[] = {"pipewire", "pulse", "alsa", "dummy"};
-
-  // fprintf(stderr, "All audio driver attempts failed. SDL_mixer error: %s\n", Mix_GetError());
-
-  if (Mix_Init(MIX_INIT_OGG | MIX_INIT_MP3) == 0) {
-    fprintf(stderr, "Mix_Init failed: %s\n", Mix_GetError());
-  }
-  // if (Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 1, 512) < 0) {
-  // fprintf(stderr, "SDL_mixer could not initialize! SDL_mixer Error: %s\n", Mix_GetError());
-  //// handle error
-  //}
-
-  for (size_t i = 0; i < sizeof(audio_drivers) / sizeof(audio_drivers[0]); ++i) {
-    SDL_setenv("SDL_AUDIODRIVER", audio_drivers[i], 1);
-    if (Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048) == 0) {
-      printf("Audio initialized with driver: %s\n", audio_drivers[i]);
-      break;
-    }
-  }
-
-  Mix_Chunk *server_join = Mix_LoadWAV(sound_location);
-  if (!server_join) {
-    fprintf(stderr, "Failed to load card sound! SDL_mixer Error: %s\n", Mix_GetError());
-    // handle error
-  }
-  Mix_VolumeChunk(server_join, player_config->volume);
-
-  if (Mix_Paused(-1)) {
-    Mix_Resume(-1);
-  }
-
   while (running && game_state->at_menu) {
     ERecvStatus_t recv_status =
         recv_game_state(client_socket, socket_set, game_state, client_state, my_id);
@@ -367,7 +335,7 @@ static bool menu_display_game_choices(const Path_t *path, const PlayerConfig_t *
       }
 
       if (e.type == SDL_QUIT) {
-        // ma_engine_uninit(&engine);
+        ma_engine_uninit(&engine);
         return false;
       } else if (e.type == SDL_KEYDOWN &&
                  (e.key.keysym.sym == SDLK_RETURN && e.key.keysym.mod & KMOD_ALT)) {
@@ -380,7 +348,7 @@ static bool menu_display_game_choices(const Path_t *path, const PlayerConfig_t *
               running = false;
               break;
             } else {
-              // ma_engine_uninit(&engine);
+              ma_engine_uninit(&engine);
               return false;
             }
           }
@@ -425,11 +393,8 @@ static bool menu_display_game_choices(const Path_t *path, const PlayerConfig_t *
       n_clients++;
     } while ((client = get_next_connected_client(game_state->player, client->id)) != start);
     if (player_config->enable_sound && saved_n_clients < n_clients) {
-      if (Mix_PlayChannel(-1, server_join, 0) == -1) {
-        fprintf(stderr, "Failed to play sound: %s\n", Mix_GetError());
-      }
-      // ma_engine_set_volume(&engine, player_config->volume); // Set master volume to 50%
-      // ma_engine_play_sound(&engine, sound_location, NULL);
+      ma_engine_set_volume(&engine, player_config->volume); // Set master volume to 50%
+      ma_engine_play_sound(&engine, sound_location, NULL);
     }
     saved_n_clients = n_clients;
     // fprintf(stderr, "%d\n", __LINE__);
@@ -451,10 +416,7 @@ static bool menu_display_game_choices(const Path_t *path, const PlayerConfig_t *
     SDL_RenderPresent(sdl_context->renderer);
     SDL_Delay(16);
   }
-  // ma_engine_uninit(&engine);
-
-  Mix_FreeChunk(server_join);
-  Mix_CloseAudio();
+  ma_engine_uninit(&engine);
 
   return true;
 }
