@@ -85,7 +85,7 @@ dep_names = [
   'SDL2_ttf',
   'SDL2_net',
   'SDL2_image',
-  # 'SDL2_mixer',
+  'SDL2_mixer',
 ]
 
 foreach dep : dep_names
