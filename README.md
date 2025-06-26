@@ -90,6 +90,10 @@ When you run the client, you'll see the path to your config file. You will
 need to manually edit the file, as there is not yet a way to make changes from
 the gui.
 
+## Dedicated Servers
+
+There are no dedicated public servers yet.
+
 ## Building
 
 See [BUILD.md](https://github.com/Dealer-s-Choice/dealers_choice/blob/trunk/BUILD.md)
