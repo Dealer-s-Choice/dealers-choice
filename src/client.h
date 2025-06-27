@@ -27,6 +27,7 @@
 */
 
 #include <deckhandler.h>
+#include <miniaudio.h>
 
 #include "dc_config.h"
 #include "graphics.h"
@@ -50,6 +51,25 @@ typedef struct {
   SDL_Rect rect;
   bool hovered;
 } Link_t;
+
+typedef enum {
+  SND_SERVER_JOIN,
+  SND_CARD_DEALT,
+  SND_COIN_HIT,
+} ESndIdx_t;
+
+typedef struct {
+  ESndIdx_t idx;
+  char *filename;
+  ma_sound sound;
+} Sound_t;
+
+typedef struct {
+  ma_result result;
+  ma_engine engine;
+  ma_engine_config engineConfig;
+  Sound_t *sounds;
+} SoundContext_t;
 
 extern const GameChoice_t game_choices[];
 

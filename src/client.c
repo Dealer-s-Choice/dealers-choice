@@ -27,7 +27,6 @@
 */
 
 #include <deckhandler.h>
-#include <miniaudio.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -36,20 +35,22 @@
 #include "client.h"
 #include "game.h"
 #include "graphics.h"
+#include "util.h"
 
 #define POT_BOUNDARY SCALE_Y(250)
 
 #define x_begin_action_button SCALE_X(500);
 
-static bool menu_display_game_choices(const Path_t *path, const PlayerConfig_t *player_config,
-                                      TCPsocket client_socket, SDLNet_SocketSet socket_set,
-                                      const int8_t my_id, GameState_t *game_state,
-                                      ClientState_t *client_state, SdlContext_t *sdl_context,
-                                      Font_t *font);
+static bool menu_display_game_choices(const PlayerConfig_t *player_config, TCPsocket client_socket,
+                                      SDLNet_SocketSet socket_set, const int8_t my_id,
+                                      GameState_t *game_state, ClientState_t *client_state,
+                                      SdlContext_t *sdl_context, Font_t *font,
+                                      const SoundContext_t *sound_context);
 
-static bool run_game_loop(const PlayerConfig_t *player, GameState_t *game_state, ClientState_t *client_state,
-                          SdlContext_t *sdl_context, Font_t *font, TCPsocket client_socket,
-                          SDLNet_SocketSet socket_set, const uint8_t my_id, Path_t *path);
+static bool run_game_loop(const PlayerConfig_t *player, GameState_t *game_state,
+                          ClientState_t *client_state, SdlContext_t *sdl_context, Font_t *font,
+                          TCPsocket client_socket, SDLNet_SocketSet socket_set, const uint8_t my_id,
+                          Path_t *path, const SoundContext_t *sound_context);
 
 static int send_protocol_header(TCPsocket sock) {
   puts("Exchanging protocol information...");
@@ -131,17 +132,53 @@ SocketContext_t get_socket_context_and_run_client(PlayerConfig_t *player_config,
     if (recv_status != RECV_SUCCESS)
       exit(EXIT_FAILURE);
 
+    SoundContext_t sound_context = {0};
+    if (!player_config->enable_sound) {
+      ma_engine_config_init();
+      sound_context.engineConfig.noDevice = MA_TRUE;
+      sound_context.engineConfig.channels = 2;       // Must be set when not using a device.
+      sound_context.engineConfig.sampleRate = 48000; // Must be set when not using a device.
+    }
+    sound_context.result = ma_engine_init(&sound_context.engineConfig, &sound_context.engine);
+    if (sound_context.result != MA_SUCCESS) {
+      fprintf(stderr, "Failed to initialize miniaudio engine.\n");
+      exit(EXIT_FAILURE);
+    }
+
+    ma_engine_set_volume(&sound_context.engine, player_config->volume);
+
+    ma_sound tmp = {0};
+    Sound_t sounds[] = {{SND_SERVER_JOIN, "server_join.wav", tmp},
+                        {SND_CARD_DEALT, "card_dealt.wav", tmp},
+                        {SND_COIN_HIT, "coins_hitting_table.wav", tmp}};
+    sound_context.sounds = sounds;
+
+    PathconfLimits_t limits;
+    get_pathconf_limits(path->data, &limits);
+    size_t i;
+    for (i = 0; i < ARRAY_SIZE(sounds); i++) {
+      char *snd_path = join_paths(limits.path_max, path->data, "sounds", sounds[i].filename);
+      if (ma_sound_init_from_file(&sound_context.engine, snd_path, 0, NULL, NULL,
+                                  &sounds[i].sound) != MA_SUCCESS)
+        fprintf(stderr, "Failed to init server join sound\n");
+      free(snd_path);
+    }
+
     bool running = true;
     do {
-      running = menu_display_game_choices(path, player_config, socket_context.sock,
-                                          socket_context.set, socket_context.id, &game_state,
-                                          &client_state, sdl_context, font);
+      running = menu_display_game_choices(player_config, socket_context.sock, socket_context.set,
+                                          socket_context.id, &game_state, &client_state,
+                                          sdl_context, font, &sound_context);
       if (!running)
         break;
 
-      running = run_game_loop(player_config, &game_state, &client_state, sdl_context, font, socket_context.sock,
-                              socket_context.set, socket_context.id, path);
+      running = run_game_loop(player_config, &game_state, &client_state, sdl_context, font,
+                              socket_context.sock, socket_context.set, socket_context.id, path,
+                              &sound_context);
     } while (running);
+    for (i = 0; i < ARRAY_SIZE(sounds); i++)
+      ma_sound_uninit(&sounds[i].sound);
+    ma_engine_uninit(&sound_context.engine);
   } else
     return socket_context;
 
@@ -259,18 +296,13 @@ void render_link(Link_t *link) {
   TTF_SetFontStyle(link->font, TTF_STYLE_NORMAL);
 }
 
-static bool menu_display_game_choices(const Path_t *path, const PlayerConfig_t *player_config,
-                                      TCPsocket client_socket, SDLNet_SocketSet socket_set,
-                                      const int8_t my_id, GameState_t *game_state,
-                                      ClientState_t *client_state, SdlContext_t *sdl_context,
-                                      Font_t *font) {
-  ma_result result;
-  ma_engine engine;
-
-  result = ma_engine_init(NULL, &engine);
-  if (result != MA_SUCCESS) {
-    return -1;
-  }
+static bool menu_display_game_choices(const PlayerConfig_t *player_config, TCPsocket client_socket,
+                                      SDLNet_SocketSet socket_set, const int8_t my_id,
+                                      GameState_t *game_state, ClientState_t *client_state,
+                                      SdlContext_t *sdl_context, Font_t *font,
+                                      const SoundContext_t *sound_context) {
+  // This will likely get used later. For now, suppress the warning about "unused parameter"
+  (void)player_config;
 
   uint8_t n_clients = 0;
 
@@ -311,13 +343,6 @@ static bool menu_display_game_choices(const Path_t *path, const PlayerConfig_t *
   }
 
   int saved_n_clients = 1;
-  const char *sound = "sounds/server_join.wav";
-  size_t sound_path_len = strlen(path->data) + strlen(sound) + 2;
-  char sound_location[sound_path_len];
-  snprintf(sound_location, sound_path_len, "%s/%s", path->data, sound);
-  ma_sound join_sound;
-  if (ma_sound_init_from_file(&engine, sound_location, 0, NULL, NULL, &join_sound) != MA_SUCCESS)
-    fprintf(stderr, "Failed to init server join sound\n");
 
   while (running && game_state->at_menu) {
     ERecvStatus_t recv_status =
@@ -338,8 +363,6 @@ static bool menu_display_game_choices(const Path_t *path, const PlayerConfig_t *
       }
 
       if (e.type == SDL_QUIT) {
-        ma_sound_uninit(&join_sound);
-        ma_engine_uninit(&engine);
         return false;
       } else if (e.type == SDL_KEYDOWN &&
                  (e.key.keysym.sym == SDLK_RETURN && e.key.keysym.mod & KMOD_ALT)) {
@@ -352,8 +375,6 @@ static bool menu_display_game_choices(const Path_t *path, const PlayerConfig_t *
               running = false;
               break;
             } else {
-              ma_sound_uninit(&join_sound);
-              ma_engine_uninit(&engine);
               return false;
             }
           }
@@ -397,9 +418,8 @@ static bool menu_display_game_choices(const Path_t *path, const PlayerConfig_t *
                         &text_pos);
       n_clients++;
     } while ((client = get_next_connected_client(game_state->player, client->id)) != start);
-    if (player_config->enable_sound && saved_n_clients < n_clients) {
-      ma_engine_set_volume(&engine, player_config->volume);
-      ma_sound_start(&join_sound);
+    if (saved_n_clients < n_clients) {
+      ma_sound_start(&sound_context->sounds[SND_SERVER_JOIN].sound);
     }
     saved_n_clients = n_clients;
     // fprintf(stderr, "%d\n", __LINE__);
@@ -421,9 +441,6 @@ static bool menu_display_game_choices(const Path_t *path, const PlayerConfig_t *
     SDL_RenderPresent(sdl_context->renderer);
     SDL_Delay(16);
   }
-  ma_sound_uninit(&join_sound);
-  ma_engine_uninit(&engine);
-
   return true;
 }
 
@@ -618,9 +635,13 @@ enum {
   MAX_ACTIONS,
 };
 
-static bool run_game_loop(const PlayerConfig_t *player_config, GameState_t *game_state, ClientState_t *client_state,
-                          SdlContext_t *sdl_context, Font_t *font, TCPsocket client_socket,
-                          SDLNet_SocketSet socket_set, const uint8_t my_id, Path_t *path) {
+static bool run_game_loop(const PlayerConfig_t *player_config, GameState_t *game_state,
+                          ClientState_t *client_state, SdlContext_t *sdl_context, Font_t *font,
+                          TCPsocket client_socket, SDLNet_SocketSet socket_set, const uint8_t my_id,
+                          Path_t *path, const SoundContext_t *sound_context) {
+  // This will likely get used later. For now, suppress the warning about "unused parameter"
+  (void)player_config;
+
   card_area.w = SCALE_X(80);
   card_area.h = SCALE_Y(50);
 
@@ -642,29 +663,12 @@ static bool run_game_loop(const PlayerConfig_t *player_config, GameState_t *game
   _Static_assert(sizeof(player_pos) / sizeof(player_pos[0]) == 5,
                  "player_pos has wrong number of elements");
 
-  const char *sound = "sounds/card_dealt.wav";
-  size_t sound_path_len = strlen(path->data) + strlen(sound) + 2;
-  char sound_location[sound_path_len];
-  snprintf(sound_location, sound_path_len, "%s/%s", path->data, sound);
+  // ma_sound card_dealt_sound, coin_hit;
+  // if (ma_sound_init_from_file(&engine, sound_location, 0, NULL, NULL, &card_dealt_sound) !=
+  // MA_SUCCESS) fprintf(stderr, "Failed to init server join sound\n");
 
-  const char *sound_table_hit = "sounds/coins_hitting_table.wav";
-  sound_path_len = strlen(path->data) + strlen(sound_table_hit) + 2;
-  char sound_table_hit_location[sound_path_len];
-  snprintf(sound_table_hit_location, sound_path_len, "%s/%s", path->data, sound_table_hit);
-
-  ma_result result;
-  ma_engine engine;
-
-  result = ma_engine_init(NULL, &engine);
-  if (result != MA_SUCCESS) {
-    return -1;
-  }
-  ma_sound card_dealt_sound, coin_hit;
-  if (ma_sound_init_from_file(&engine, sound_location, 0, NULL, NULL, &card_dealt_sound) != MA_SUCCESS)
-    fprintf(stderr, "Failed to init server join sound\n");
-
-  if (ma_sound_init_from_file(&engine, sound_table_hit_location, 0, NULL, NULL, &coin_hit) != MA_SUCCESS)
-    fprintf(stderr, "Failed to init server join sound\n");
+  // if (ma_sound_init_from_file(&engine, sound_table_hit_location, 0, NULL, NULL, &coin_hit) !=
+  // MA_SUCCESS) fprintf(stderr, "Failed to init server join sound\n");
 
 #define SIZEOF_STATUS_MSGS 16
   char status_msgs[SIZEOF_STATUS_MSGS][LEN_STATUS_STR] = {0};
@@ -816,8 +820,7 @@ static bool run_game_loop(const PlayerConfig_t *player_config, GameState_t *game
 
         if (!cards_dealt) {
           Uint32 start = SDL_GetTicks();
-          if (player_config->enable_sound)
-            ma_sound_start(&card_dealt_sound);
+          ma_sound_start(&sound_context->sounds[SND_CARD_DEALT].sound);
           while (SDL_GetTicks() - start < CARD_DEAL_DELAY) {
             SDL_Event e;
             while (SDL_PollEvent(&e)) {
@@ -1026,8 +1029,6 @@ static bool run_game_loop(const PlayerConfig_t *player_config, GameState_t *game
             // TODO: use existing array (or modify it) to loop through each action
             if (SDL_PointInRect(&mouse_pos, &action_button[BET].rect) ||
                 event.key.keysym.sym == SDLK_b) {
-              if (player_config->enable_sound)
-                ma_sound_start(&coin_hit);
               puts("sending bet");
               if (send_player_action(client_socket, ACTION_BET, client_state->selected_amount) != 0)
                 fprintf(stderr, "Failed to send bet\n");
@@ -1040,16 +1041,12 @@ static bool run_game_loop(const PlayerConfig_t *player_config, GameState_t *game
           } else if (game_state->player[my_id].total_paid != game_state->total_bets_plus_raises) {
             if (SDL_PointInRect(&mouse_pos, &action_button[RAISE].rect) ||
                 event.key.keysym.sym == SDLK_r) {
-              if (player_config->enable_sound)
-                ma_sound_start(&coin_hit);
               puts("raising");
               if (send_player_action(client_socket, ACTION_RAISE, client_state->selected_amount) !=
                   0)
                 fprintf(stderr, "Failed to raise\n");
             } else if (SDL_PointInRect(&mouse_pos, &action_button[CALL].rect) ||
                        event.key.keysym.sym == SDLK_c) {
-              if (player_config->enable_sound)
-                ma_sound_start(&coin_hit);
               puts("calling");
               if (send_player_action(client_socket, ACTION_CALL, 0) != 0)
                 fprintf(stderr, "Failed to call\n");
@@ -1085,9 +1082,6 @@ static bool run_game_loop(const PlayerConfig_t *player_config, GameState_t *game
       }
     } // End Poll event
   }
-  ma_sound_uninit(&card_dealt_sound);
-  ma_sound_uninit(&coin_hit);
-  ma_engine_uninit(&engine);
   SDL_DestroyTexture(coin_tex);
   return running;
 }
