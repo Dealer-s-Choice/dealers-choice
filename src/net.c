@@ -298,6 +298,10 @@ ERecvStatus_t recv_game_state(TCPsocket client_socket, SDLNet_SocketSet socket_s
     snprintf(client_state->server_status_str, sizeof(client_state->server_status_str), "%.*s",
              (int)msg_len, (char *)&buffer[2]);
     fprintf(stderr, "[Status Message] %s\n", client_state->server_status_str);
+    if (strstr(client_state->server_status_str, "bet") ||
+        strstr(client_state->server_status_str, "call") ||
+        strstr(client_state->server_status_str, "raise"))
+      client_state->play_coin_sound = true;
   } break;
   case MSG_NEW_HAND: {
     if (size < 3) {

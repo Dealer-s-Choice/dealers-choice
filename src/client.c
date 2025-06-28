@@ -150,15 +150,16 @@ SocketContext_t get_socket_context_and_run_client(PlayerConfig_t *player_config,
     // Using {0} or {{0}} for the The ma_sound field initializer doesn't work so
     // using 'tmp' instead
     ma_sound tmp = {0};
-    Sound_t sounds[] = {{SND_SERVER_JOIN, "server_join.wav", tmp},
-                        {SND_CARD_DEALT, "card_dealt.wav", tmp},
-                        {SND_COIN_HIT, "coins_hitting_table.wav", tmp}};
+    Sound_t sounds[] = {[SND_SERVER_JOIN] = {"server_join.wav", tmp},
+                        [SND_CARD_DEALT] = {"card_dealt.wav", tmp},
+                        [SND_YOUR_TURN] = {"your_turn.wav", tmp},
+                        [SND_COIN_HIT] = {"coins_hitting_table.wav", tmp}};
     sound_context.sounds = sounds;
 
     PathconfLimits_t limits;
     get_pathconf_limits(path->data, &limits);
     size_t i;
-    for (i = 0; i < ARRAY_SIZE(sounds); i++) {
+    for (i = 0; i < SND_NUM_SOUNDS; i++) {
       char *snd_path = join_paths(limits.path_max, path->data, "sounds", sounds[i].filename);
       if (ma_sound_init_from_file(&sound_context.engine, snd_path, 0, NULL, NULL,
                                   &sounds[i].sound) != MA_SUCCESS)
@@ -178,7 +179,7 @@ SocketContext_t get_socket_context_and_run_client(PlayerConfig_t *player_config,
                               socket_context.sock, socket_context.set, socket_context.id, path,
                               &sound_context);
     } while (running);
-    for (i = 0; i < ARRAY_SIZE(sounds); i++)
+    for (i = 0; i < SND_NUM_SOUNDS; i++)
       ma_sound_uninit(&sounds[i].sound);
     ma_engine_uninit(&sound_context.engine);
   } else
@@ -642,8 +643,6 @@ static bool run_game_loop(const PlayerConfig_t *player_config, GameState_t *game
                           TCPsocket client_socket, SDLNet_SocketSet socket_set, const uint8_t my_id,
                           Path_t *path, const SoundContext_t *sound_context) {
   // This will likely get used later. For now, suppress the warning about "unused parameter"
-  (void)player_config;
-
   card_area.w = SCALE_X(80);
   card_area.h = SCALE_Y(50);
 
@@ -718,6 +717,7 @@ static bool run_game_loop(const PlayerConfig_t *player_config, GameState_t *game
   bool cards_dealt = false;
   bool cards_created = false;
   client_state->cards_sent = false;
+  client_state->play_coin_sound = false;
 
   Player_t *players_array = game_state->player;
   Player_t *turn = NULL;
@@ -732,7 +732,9 @@ static bool run_game_loop(const PlayerConfig_t *player_config, GameState_t *game
                                             &coin[pcg32_boundedrand_r(&rng, num_coins)]);
 
   SDL_Point coin_coords[MAX_POT_COINS] = {0};
-  uint8_t coins;
+  uint8_t coins = 0;
+
+  bool turn_switch = false;
 
   client_state->timer_start = SDL_GetTicks();
   cards_dealt = false;
@@ -740,7 +742,6 @@ static bool run_game_loop(const PlayerConfig_t *player_config, GameState_t *game
   client_state->save_starting_turn_id = starting_turn->id;
   memset(client_state, 0, sizeof *client_state);
   client_state->selected_amount = atoi(amount[0].n_str);
-  coins = 0;
 
   while (running) {
     ERecvStatus_t recv_status =
@@ -836,6 +837,20 @@ static bool run_game_loop(const PlayerConfig_t *player_config, GameState_t *game
         }
       } while ((player_ptr = get_next_connected_client(players_array, player_ptr->id)) !=
                starting_turn);
+    }
+
+    if (client_state->play_coin_sound) {
+      ma_sound_start(&sound_context->sounds[SND_COIN_HIT].sound);
+      client_state->play_coin_sound = false;
+    }
+
+    bool my_turn = game_state->turn_id == my_id;
+    if (!my_turn)
+      turn_switch = false;
+    if (my_turn && !turn_switch) {
+      if (player_config->turn_notify)
+        ma_sound_start(&sound_context->sounds[SND_YOUR_TURN].sound);
+      turn_switch = true;
     }
 
     //// printf("%d\n", __LINE__);

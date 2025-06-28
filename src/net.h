@@ -93,6 +93,7 @@ typedef struct {
   int8_t save_starting_turn_id;
   uint32_t timer_start;
   char server_status_str[LEN_STATUS_STR];
+  bool play_coin_sound;
 } ClientState_t;
 
 struct player_message_builder_t {

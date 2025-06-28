@@ -55,12 +55,13 @@ typedef struct {
 typedef enum {
   SND_SERVER_JOIN,
   SND_CARD_DEALT,
+  SND_YOUR_TURN,
   SND_COIN_HIT,
+  SND_NUM_SOUNDS,
 } ESndIdx_t;
 
 typedef struct {
-  ESndIdx_t idx;
-  char *filename;
+  const char *filename;
   ma_sound sound;
 } Sound_t;
 
