@@ -35,19 +35,22 @@
 #include "client.h"
 #include "game.h"
 #include "graphics.h"
+#include "util.h"
 
 #define POT_BOUNDARY SCALE_Y(250)
 
 #define x_begin_action_button SCALE_X(500);
 
-static bool menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet socket_set,
-                                      const int8_t my_id, GameState_t *game_state,
-                                      ClientState_t *client_state, SdlContext_t *sdl_context,
-                                      Font_t *font);
+static bool menu_display_game_choices(const PlayerConfig_t *player_config, TCPsocket client_socket,
+                                      SDLNet_SocketSet socket_set, const int8_t my_id,
+                                      GameState_t *game_state, ClientState_t *client_state,
+                                      SdlContext_t *sdl_context, Font_t *font,
+                                      const SoundContext_t *sound_context);
 
-static bool run_game_loop(GameState_t *game_state, ClientState_t *client_state,
-                          SdlContext_t *sdl_context, Font_t *font, TCPsocket client_socket,
-                          SDLNet_SocketSet socket_set, const uint8_t my_id, Path_t *path);
+static bool run_game_loop(const PlayerConfig_t *player, GameState_t *game_state,
+                          ClientState_t *client_state, SdlContext_t *sdl_context,
+                          const Font_t *font, TCPsocket client_socket, SDLNet_SocketSet socket_set,
+                          const uint8_t my_id, Path_t *path, const SoundContext_t *sound_context);
 
 static int send_protocol_header(TCPsocket sock) {
   puts("Exchanging protocol information...");
@@ -129,17 +132,80 @@ SocketContext_t get_socket_context_and_run_client(PlayerConfig_t *player_config,
     if (recv_status != RECV_SUCCESS)
       exit(EXIT_FAILURE);
 
+    SoundContext_t sound_context = {0};
+    if (player_config->volume == 0) {
+      ma_engine_config_init();
+      sound_context.engineConfig.noDevice = MA_TRUE;
+      sound_context.engineConfig.channels = 2;       // Must be set when not using a device.
+      sound_context.engineConfig.sampleRate = 48000; // Must be set when not using a device.
+    }
+    sound_context.result = ma_engine_init(&sound_context.engineConfig, &sound_context.engine);
+    if (sound_context.result != MA_SUCCESS) {
+      fprintf(stderr, "Failed to initialize miniaudio engine.\n");
+      exit(EXIT_FAILURE);
+    }
+
+    ma_engine_set_volume(&sound_context.engine, player_config->volume * .1f);
+
+    // Using {0} or {{0}} for the The ma_sound field initializer doesn't work so
+    // using 'ma_tmp' instead
+    ma_sound ma_tmp = {0};
+    Sound_t sounds[] = {[SND_SERVER_JOIN] = {"server_join.wav", ma_tmp},
+                        [SND_CARD_DEALT] = {"card_dealt.wav", ma_tmp},
+                        [SND_MY_TURN] = {"my_turn.wav", ma_tmp}};
+
+    Sound_t coin_hit_sounds[] = {
+        {"coin_hit_001.wav", ma_tmp}, {"coin_hit_002.wav", ma_tmp}, {"coin_hit_003.wav", ma_tmp},
+        {"coin_hit_004.wav", ma_tmp}, {"coin_hit_005.wav", ma_tmp}, {"coin_hit_006.wav", ma_tmp},
+        {"coin_hit_007.wav", ma_tmp},
+    };
+
+    sound_context.coin_array_size = ARRAY_SIZE(coin_hit_sounds);
+
+    sound_context.sounds = sounds;
+    sound_context.coin_hit_sounds = coin_hit_sounds;
+
+    PathconfLimits_t limits;
+    get_pathconf_limits(path->data, &limits);
+    size_t i;
+    for (i = 0; i < SND_NUM_SOUNDS; i++) {
+      char *snd_path = join_paths(limits.path_max, path->data, "sounds", sounds[i].filename);
+      if (ma_sound_init_from_file(&sound_context.engine, snd_path, 0, NULL, NULL,
+                                  &sounds[i].sound) != MA_SUCCESS) {
+        fprintf(stderr, "Failed to init sound %zd\n", i);
+        exit(EXIT_FAILURE);
+      }
+      free(snd_path);
+    }
+
+    for (i = 0; i < ARRAY_SIZE(coin_hit_sounds); i++) {
+      char *snd_path =
+          join_paths(limits.path_max, path->data, "sounds/coin", coin_hit_sounds[i].filename);
+      if (ma_sound_init_from_file(&sound_context.engine, snd_path, 0, NULL, NULL,
+                                  &coin_hit_sounds[i].sound) != MA_SUCCESS) {
+        fprintf(stderr, "Failed to init sound %zd\n", i);
+        exit(EXIT_FAILURE);
+      }
+      free(snd_path);
+    }
+
     bool running = true;
     do {
-      running =
-          menu_display_game_choices(socket_context.sock, socket_context.set, socket_context.id,
-                                    &game_state, &client_state, sdl_context, font);
+      running = menu_display_game_choices(player_config, socket_context.sock, socket_context.set,
+                                          socket_context.id, &game_state, &client_state,
+                                          sdl_context, font, &sound_context);
       if (!running)
         break;
 
-      running = run_game_loop(&game_state, &client_state, sdl_context, font, socket_context.sock,
-                              socket_context.set, socket_context.id, path);
+      running = run_game_loop(player_config, &game_state, &client_state, sdl_context, font,
+                              socket_context.sock, socket_context.set, socket_context.id, path,
+                              &sound_context);
     } while (running);
+    for (i = 0; i < SND_NUM_SOUNDS; i++)
+      ma_sound_uninit(&sounds[i].sound);
+    for (i = 0; i < ARRAY_SIZE(coin_hit_sounds); i++)
+      ma_sound_uninit(&coin_hit_sounds[i].sound);
+    ma_engine_uninit(&sound_context.engine);
   } else
     return socket_context;
 
@@ -157,7 +223,7 @@ cleanup:
 // What's the max this needs to be to support the unicode suit symbol?
 #define SIZEOF_CARD_TEXT 20
 
-#define CARD_DEAL_DELAY 50
+#define CARD_DEAL_DELAY 100
 
 #define MAX_POT_COINS 50
 
@@ -257,10 +323,14 @@ void render_link(Link_t *link) {
   TTF_SetFontStyle(link->font, TTF_STYLE_NORMAL);
 }
 
-static bool menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet socket_set,
-                                      const int8_t my_id, GameState_t *game_state,
-                                      ClientState_t *client_state, SdlContext_t *sdl_context,
-                                      Font_t *font) {
+static bool menu_display_game_choices(const PlayerConfig_t *player_config, TCPsocket client_socket,
+                                      SDLNet_SocketSet socket_set, const int8_t my_id,
+                                      GameState_t *game_state, ClientState_t *client_state,
+                                      SdlContext_t *sdl_context, Font_t *font,
+                                      const SoundContext_t *sound_context) {
+  // This will likely get used later. For now, suppress the warning about "unused parameter"
+  (void)player_config;
+
   uint8_t n_clients = 0;
 
   int y_offset = 160;
@@ -298,6 +368,8 @@ static bool menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet 
     link[i].rect.y = (sdl_context->window_height - (link[i].rect.h * 2)) - (i * link[i].rect.h) -
                      (i * (link[i].rect.h * 0.2));
   }
+
+  static uint8_t saved_n_clients = 0;
 
   while (running && game_state->at_menu) {
     ERecvStatus_t recv_status =
@@ -373,6 +445,10 @@ static bool menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet 
                         &text_pos);
       n_clients++;
     } while ((client = get_next_connected_client(game_state->player, client->id)) != start);
+    if (saved_n_clients < n_clients && saved_n_clients != 0) {
+      ma_sound_start(&sound_context->sounds[SND_SERVER_JOIN].sound);
+    }
+    saved_n_clients = n_clients;
     // fprintf(stderr, "%d\n", __LINE__);
 
     if (n_clients == 1)
@@ -392,7 +468,6 @@ static bool menu_display_game_choices(TCPsocket client_socket, SDLNet_SocketSet 
     SDL_RenderPresent(sdl_context->renderer);
     SDL_Delay(16);
   }
-
   return true;
 }
 
@@ -587,9 +662,11 @@ enum {
   MAX_ACTIONS,
 };
 
-static bool run_game_loop(GameState_t *game_state, ClientState_t *client_state,
-                          SdlContext_t *sdl_context, Font_t *font, TCPsocket client_socket,
-                          SDLNet_SocketSet socket_set, const uint8_t my_id, Path_t *path) {
+static bool run_game_loop(const PlayerConfig_t *player_config, GameState_t *game_state,
+                          ClientState_t *client_state, SdlContext_t *sdl_context,
+                          const Font_t *font, TCPsocket client_socket, SDLNet_SocketSet socket_set,
+                          const uint8_t my_id, Path_t *path, const SoundContext_t *sound_context) {
+  // This will likely get used later. For now, suppress the warning about "unused parameter"
   card_area.w = SCALE_X(80);
   card_area.h = SCALE_Y(50);
 
@@ -611,21 +688,12 @@ static bool run_game_loop(GameState_t *game_state, ClientState_t *client_state,
   _Static_assert(sizeof(player_pos) / sizeof(player_pos[0]) == 5,
                  "player_pos has wrong number of elements");
 
-  // if (Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048) < 0) {
-  // fprintf(stderr, "SDL_mixer could not initialize! SDL_mixer Error: %s\n", Mix_GetError());
-  //// handle error
-  //}
+  // ma_sound card_dealt_sound, coin_hit;
+  // if (ma_sound_init_from_file(&engine, sound_location, 0, NULL, NULL, &card_dealt_sound) !=
+  // MA_SUCCESS) fprintf(stderr, "Failed to init server join sound\n");
 
-  // Mix_Chunk *card_sound = Mix_LoadWAV("../card_dealt_stereo.wav");
-  // if (!card_sound) {
-  // fprintf(stderr, "Failed to load card sound! SDL_mixer Error: %s\n", Mix_GetError());
-  //// handle error
-  //}
-  // Mix_VolumeChunk(card_sound, MIX_MAX_VOLUME / 2);
-
-  // if (Mix_Paused(-1)) {
-  // Mix_Resume(-1);
-  //}
+  // if (ma_sound_init_from_file(&engine, sound_table_hit_location, 0, NULL, NULL, &coin_hit) !=
+  // MA_SUCCESS) fprintf(stderr, "Failed to init server join sound\n");
 
 #define SIZEOF_STATUS_MSGS 16
   char status_msgs[SIZEOF_STATUS_MSGS][LEN_STATUS_STR] = {0};
@@ -673,6 +741,7 @@ static bool run_game_loop(GameState_t *game_state, ClientState_t *client_state,
   bool cards_dealt = false;
   bool cards_created = false;
   client_state->cards_sent = false;
+  client_state->play_coin_sound = false;
 
   Player_t *players_array = game_state->player;
   Player_t *turn = NULL;
@@ -687,7 +756,9 @@ static bool run_game_loop(GameState_t *game_state, ClientState_t *client_state,
                                             &coin[pcg32_boundedrand_r(&rng, num_coins)]);
 
   SDL_Point coin_coords[MAX_POT_COINS] = {0};
-  uint8_t coins;
+  uint8_t coins = 0;
+
+  bool turn_switch = false;
 
   client_state->timer_start = SDL_GetTicks();
   cards_dealt = false;
@@ -695,7 +766,6 @@ static bool run_game_loop(GameState_t *game_state, ClientState_t *client_state,
   client_state->save_starting_turn_id = starting_turn->id;
   memset(client_state, 0, sizeof *client_state);
   client_state->selected_amount = atoi(amount[0].n_str);
-  coins = 0;
 
   while (running) {
     ERecvStatus_t recv_status =
@@ -777,6 +847,7 @@ static bool run_game_loop(GameState_t *game_state, ClientState_t *client_state,
 
         if (!cards_dealt) {
           Uint32 start = SDL_GetTicks();
+          ma_sound_start(&sound_context->sounds[SND_CARD_DEALT].sound);
           while (SDL_GetTicks() - start < CARD_DEAL_DELAY) {
             SDL_Event e;
             while (SDL_PollEvent(&e)) {
@@ -790,6 +861,22 @@ static bool run_game_loop(GameState_t *game_state, ClientState_t *client_state,
         }
       } while ((player_ptr = get_next_connected_client(players_array, player_ptr->id)) !=
                starting_turn);
+    }
+
+    if (client_state->play_coin_sound) {
+      ma_sound_start(
+          &sound_context->coin_hit_sounds[pcg32_boundedrand_r(&rng, sound_context->coin_array_size)]
+               .sound);
+      client_state->play_coin_sound = false;
+    }
+
+    bool my_turn = game_state->turn_id == my_id;
+    if (!my_turn)
+      turn_switch = false;
+    if (my_turn && !turn_switch) {
+      if (player_config->turn_notify)
+        ma_sound_start(&sound_context->sounds[SND_MY_TURN].sound);
+      turn_switch = true;
     }
 
     //// printf("%d\n", __LINE__);
@@ -1040,8 +1127,6 @@ static bool run_game_loop(GameState_t *game_state, ClientState_t *client_state,
   }
   SDL_DestroyTexture(coin_tex);
   return running;
-  // Mix_FreeChunk(card_sound);
-  // Mix_CloseAudio();
 }
 
 void do_sdl_cleanup(SdlContext_t *sdl_context) {

@@ -232,3 +232,41 @@ int get_pathconf_limits(const char *path, PathconfLimits_t *limits) {
 
   return 0;
 }
+
+char *real_join_paths(long path_max, const char *first, ...) {
+  char *path = calloc(1, path_max);
+  if (!path) {
+    perror("calloc");
+    exit(EXIT_FAILURE);
+  }
+
+  va_list ap;
+  va_start(ap, first);
+  const char *segment = first;
+
+  size_t len = 0;
+
+  while (segment != NULL) {
+    size_t seg_len = strlen(segment);
+
+    // Ensure enough room: +1 for possible '/', +1 for '\0'
+    if (len + seg_len + 2 > (size_t)path_max) {
+      fprintf(stderr, "Path length exceeds maximum allowed (%ld)\n", path_max);
+      free(path);
+      exit(EXIT_FAILURE);
+    }
+
+    // Add separator if needed
+    if (len > 0 && path[len - 1] != '/' && segment[0] != '/') {
+      path[len++] = '/';
+    }
+
+    strcpy(path + len, segment);
+    len += seg_len;
+
+    segment = va_arg(ap, const char *);
+  }
+
+  va_end(ap);
+  return path;
+}

@@ -46,9 +46,11 @@ typedef struct {
   char nick[SIZEOF_NICK];
   char host[MAX_INPUT_LENGTH];
   int port;
+  int volume;
+  bool turn_notify;
 } PlayerConfig_t;
 
-typedef enum { CFG_TYPE_STRING, CFG_TYPE_INT } ConfigType;
+typedef enum { CFG_TYPE_STRING, CFG_TYPE_INT, CFG_TYPE_BOOL } ConfigType;
 
 typedef struct {
   const char *key;
@@ -63,7 +65,10 @@ static const ConfigEntry config_entries[] = {
      sizeof(((PlayerConfig_t *)0)->nick)},
     {"host", CFG_TYPE_STRING, "127.0.0.1", offsetof(PlayerConfig_t, host),
      sizeof(((PlayerConfig_t *)0)->host)},
-    {"port", CFG_TYPE_INT, DEFAULT_PORT, offsetof(PlayerConfig_t, port), sizeof(int)}};
+    {"port", CFG_TYPE_INT, DEFAULT_PORT, offsetof(PlayerConfig_t, port), sizeof(int)},
+    {"sound.volume", CFG_TYPE_INT, "5", offsetof(PlayerConfig_t, volume), sizeof(int)},
+    {"sound.notify.turn", CFG_TYPE_BOOL, "yes", offsetof(PlayerConfig_t, turn_notify),
+     sizeof(bool)}};
 
 static const size_t config_entry_count = sizeof(config_entries) / sizeof(config_entries[0]);
 

@@ -10,17 +10,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Install Dependencies
-      run: |
-        sudo apt update
-        sudo apt remove -y firefox # save a little time during upgrade
-        sudo apt upgrade -y
-        sudo apt-get install --no-install-recommends -y \
-          meson \
-          libprotobuf-c-dev \
-          libsdl2-dev \
-          libsdl2-image-dev \
-          libsdl2-net-dev \
-          libsdl2-ttf-dev
+      run: .github/scripts/install_ubuntu_deps.sh
 
     - name: Meson setup
       run: CFLAGS="-Werror" meson setup _build

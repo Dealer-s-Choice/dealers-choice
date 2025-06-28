@@ -65,9 +65,16 @@ deckhandler_dep = dependency(
 pokeval_dep = dependency('pokeval', default_options: 'default_library=static')
 protobuf_dep = dependency('libprotobuf-c')
 
+cmake = import('cmake')
+sub_proj = cmake.subproject('miniaudio')
+
+# Fetch the dependency object
+miniaudio_dep = sub_proj.dependency('miniaudio')
+
 shared_dep = [
   canfigger_dep,
   deckhandler_dep,
+  miniaudio_dep,
   pokeval_dep,
   win_deps,
   cc.find_library('m'),
@@ -79,7 +86,6 @@ dep_names = [
   'SDL2_ttf',
   'SDL2_net',
   'SDL2_image',
-  # 'SDL2_mixer',
 ]
 
 foreach dep : dep_names

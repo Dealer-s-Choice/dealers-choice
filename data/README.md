@@ -24,3 +24,23 @@ Classical Numismatic Group, Inc. http://www.cngcoins.com, CC BY-SA 2.5 <https://
 [ttf-liberation](https://github.com/liberationfonts/liberation-fonts)
 
 License: See [ttf-liberation-LICENSE](https://github.com/Dealer-s-Choice/dealers_choice/blob/trunk/data/ttf-liberation-LICENSE).
+
+## Sounds
+
+Coin sounds adapted from:
+
+[Moneda - Coin by Danielardot](https://freesound.org/s/608260/) -- License: Attribution 4.0
+
+[_Coins Hitting Table.wav by Thy-SFX](https://freesound.org/s/613264/) -- License: Attribution 4.0
+
+[OBJCoin_handle_some_coins_clink_Olympus_LS-P4.wav by DBS_Sounds](https://freesound.org/s/613168/) -- License: Creative Commons 0
+
+[Coins Movement_Dropping.wav by MellowAudio](https://freesound.org/s/591484/) -- License: Attribution 4.0
+
+### Created by Dealer's Choice contributors
+
+* my_turn.wav
+* server_join.wav
+
+[CC0 license](https://creativecommons.org/publicdomain/zero/1.0/).
+CC0 1.0 Universal  https://creativecommons.org/publicdomain/zero/1.0/

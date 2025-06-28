@@ -111,6 +111,13 @@ static void config_set_from_string(PlayerConfig_t *cfg, const ConfigEntry *entry
   case CFG_TYPE_INT:
     *(int *)field = atoi(val);
     break;
+  case CFG_TYPE_BOOL:
+    if (strcasecmp(val, "yes") == 0 || strcasecmp(val, "true") == 0 || strcmp(val, "1") == 0) {
+      *(bool *)field = true;
+    } else {
+      *(bool *)field = false;
+    }
+    break;
   }
 }
 
@@ -170,16 +177,36 @@ PlayerConfig_t get_player_config(void) {
       exit(EXIT_FAILURE);
     }
   } else {
+    // Track which keys were found
+    bool found_keys[config_entry_count];
+    memset(found_keys, 0, sizeof(found_keys));
+
     while (cfg_node) {
       for (size_t i = 0; i < config_entry_count; i++) {
         if (strcasecmp(cfg_node->key, config_entries[i].key) == 0) {
           config_set_from_string(&config, &config_entries[i], cfg_node->value);
+          found_keys[i] = true;
           break;
         }
       }
       canfigger_free_current_key_node_advance(&cfg_node);
     }
+
+    // Append missing keys with default values
+    FILE *fp = fopen(cfg_pathname, "a");
+    if (!fp) {
+      perror("fopen (appending missing keys)");
+    } else {
+      for (size_t i = 0; i < config_entry_count; i++) {
+        if (!found_keys[i]) {
+          fprintf(fp, "%s = %s\n", config_entries[i].key, config_entries[i].default_value);
+          config_set_default(&config, &config_entries[i]);
+        }
+      }
+      fclose(fp);
+    }
   }
+
   free(cfg_pathname);
 
   config.loaded = true;
