@@ -69,7 +69,8 @@ static const ConfigEntry config_entries[] = {
     {"port", CFG_TYPE_INT, DEFAULT_PORT, offsetof(PlayerConfig_t, port), sizeof(int)},
     {"sound.volume", CFG_TYPE_FLT, "0.5", offsetof(PlayerConfig_t, volume), sizeof(float)},
     {"sound.enable", CFG_TYPE_BOOL, "yes", offsetof(PlayerConfig_t, enable_sound), sizeof(bool)},
-    {"sound.notify.turn", CFG_TYPE_BOOL, "yes", offsetof(PlayerConfig_t, turn_notify), sizeof(bool)}};
+    {"sound.notify.turn", CFG_TYPE_BOOL, "yes", offsetof(PlayerConfig_t, turn_notify),
+     sizeof(bool)}};
 
 static const size_t config_entry_count = sizeof(config_entries) / sizeof(config_entries[0]);
 

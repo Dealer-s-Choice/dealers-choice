@@ -147,6 +147,8 @@ SocketContext_t get_socket_context_and_run_client(PlayerConfig_t *player_config,
 
     ma_engine_set_volume(&sound_context.engine, player_config->volume);
 
+    // Using {0} or {{0}} for the The ma_sound field initializer doesn't work so
+    // using 'tmp' instead
     ma_sound tmp = {0};
     Sound_t sounds[] = {{SND_SERVER_JOIN, "server_join.wav", tmp},
                         {SND_CARD_DEALT, "card_dealt.wav", tmp},
