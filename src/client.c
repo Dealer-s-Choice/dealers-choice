@@ -48,9 +48,9 @@ static bool menu_display_game_choices(const PlayerConfig_t *player_config, TCPso
                                       const SoundContext_t *sound_context);
 
 static bool run_game_loop(const PlayerConfig_t *player, GameState_t *game_state,
-                          ClientState_t *client_state, SdlContext_t *sdl_context, Font_t *font,
-                          TCPsocket client_socket, SDLNet_SocketSet socket_set, const uint8_t my_id,
-                          Path_t *path, const SoundContext_t *sound_context);
+                          ClientState_t *client_state, SdlContext_t *sdl_context,
+                          const Font_t *font, TCPsocket client_socket, SDLNet_SocketSet socket_set,
+                          const uint8_t my_id, Path_t *path, const SoundContext_t *sound_context);
 
 static int send_protocol_header(TCPsocket sock) {
   puts("Exchanging protocol information...");
@@ -148,13 +148,22 @@ SocketContext_t get_socket_context_and_run_client(PlayerConfig_t *player_config,
     ma_engine_set_volume(&sound_context.engine, player_config->volume);
 
     // Using {0} or {{0}} for the The ma_sound field initializer doesn't work so
-    // using 'tmp' instead
-    ma_sound tmp = {0};
-    Sound_t sounds[] = {[SND_SERVER_JOIN] = {"server_join.wav", tmp},
-                        [SND_CARD_DEALT] = {"card_dealt.wav", tmp},
-                        [SND_YOUR_TURN] = {"your_turn.wav", tmp},
-                        [SND_COIN_HIT] = {"coins_hitting_table.wav", tmp}};
+    // using 'ma_tmp' instead
+    ma_sound ma_tmp = {0};
+    Sound_t sounds[] = {[SND_SERVER_JOIN] = {"server_join.wav", ma_tmp},
+                        [SND_CARD_DEALT] = {"card_dealt.wav", ma_tmp},
+                        [SND_MY_TURN] = {"my_turn.wav", ma_tmp}};
+
+    Sound_t coin_hit_sounds[] = {
+        {"coin_hit_001.wav", ma_tmp}, {"coin_hit_002.wav", ma_tmp}, {"coin_hit_003.wav", ma_tmp},
+        {"coin_hit_004.wav", ma_tmp}, {"coin_hit_005.wav", ma_tmp}, {"coin_hit_006.wav", ma_tmp},
+        {"coin_hit_007.wav", ma_tmp},
+    };
+
+    sound_context.coin_array_size = ARRAY_SIZE(coin_hit_sounds);
+
     sound_context.sounds = sounds;
+    sound_context.coin_hit_sounds = coin_hit_sounds;
 
     PathconfLimits_t limits;
     get_pathconf_limits(path->data, &limits);
@@ -162,8 +171,21 @@ SocketContext_t get_socket_context_and_run_client(PlayerConfig_t *player_config,
     for (i = 0; i < SND_NUM_SOUNDS; i++) {
       char *snd_path = join_paths(limits.path_max, path->data, "sounds", sounds[i].filename);
       if (ma_sound_init_from_file(&sound_context.engine, snd_path, 0, NULL, NULL,
-                                  &sounds[i].sound) != MA_SUCCESS)
-        fprintf(stderr, "Failed to init server join sound\n");
+                                  &sounds[i].sound) != MA_SUCCESS) {
+        fprintf(stderr, "Failed to init sound %zd\n", i);
+        exit(EXIT_FAILURE);
+      }
+      free(snd_path);
+    }
+
+    for (i = 0; i < ARRAY_SIZE(coin_hit_sounds); i++) {
+      char *snd_path =
+          join_paths(limits.path_max, path->data, "sounds/coin", coin_hit_sounds[i].filename);
+      if (ma_sound_init_from_file(&sound_context.engine, snd_path, 0, NULL, NULL,
+                                  &coin_hit_sounds[i].sound) != MA_SUCCESS) {
+        fprintf(stderr, "Failed to init sound %zd\n", i);
+        exit(EXIT_FAILURE);
+      }
       free(snd_path);
     }
 
@@ -181,6 +203,8 @@ SocketContext_t get_socket_context_and_run_client(PlayerConfig_t *player_config,
     } while (running);
     for (i = 0; i < SND_NUM_SOUNDS; i++)
       ma_sound_uninit(&sounds[i].sound);
+    for (i = 0; i < ARRAY_SIZE(coin_hit_sounds); i++)
+      ma_sound_uninit(&coin_hit_sounds[i].sound);
     ma_engine_uninit(&sound_context.engine);
   } else
     return socket_context;
@@ -345,7 +369,7 @@ static bool menu_display_game_choices(const PlayerConfig_t *player_config, TCPso
                      (i * (link[i].rect.h * 0.2));
   }
 
-  int saved_n_clients = 1;
+  static uint8_t saved_n_clients = 0;
 
   while (running && game_state->at_menu) {
     ERecvStatus_t recv_status =
@@ -421,7 +445,7 @@ static bool menu_display_game_choices(const PlayerConfig_t *player_config, TCPso
                         &text_pos);
       n_clients++;
     } while ((client = get_next_connected_client(game_state->player, client->id)) != start);
-    if (saved_n_clients < n_clients) {
+    if (saved_n_clients < n_clients && saved_n_clients != 0) {
       ma_sound_start(&sound_context->sounds[SND_SERVER_JOIN].sound);
     }
     saved_n_clients = n_clients;
@@ -639,9 +663,9 @@ enum {
 };
 
 static bool run_game_loop(const PlayerConfig_t *player_config, GameState_t *game_state,
-                          ClientState_t *client_state, SdlContext_t *sdl_context, Font_t *font,
-                          TCPsocket client_socket, SDLNet_SocketSet socket_set, const uint8_t my_id,
-                          Path_t *path, const SoundContext_t *sound_context) {
+                          ClientState_t *client_state, SdlContext_t *sdl_context,
+                          const Font_t *font, TCPsocket client_socket, SDLNet_SocketSet socket_set,
+                          const uint8_t my_id, Path_t *path, const SoundContext_t *sound_context) {
   // This will likely get used later. For now, suppress the warning about "unused parameter"
   card_area.w = SCALE_X(80);
   card_area.h = SCALE_Y(50);
@@ -840,7 +864,9 @@ static bool run_game_loop(const PlayerConfig_t *player_config, GameState_t *game
     }
 
     if (client_state->play_coin_sound) {
-      ma_sound_start(&sound_context->sounds[SND_COIN_HIT].sound);
+      ma_sound_start(
+          &sound_context->coin_hit_sounds[pcg32_boundedrand_r(&rng, sound_context->coin_array_size)]
+               .sound);
       client_state->play_coin_sound = false;
     }
 
@@ -849,7 +875,7 @@ static bool run_game_loop(const PlayerConfig_t *player_config, GameState_t *game
       turn_switch = false;
     if (my_turn && !turn_switch) {
       if (player_config->turn_notify)
-        ma_sound_start(&sound_context->sounds[SND_YOUR_TURN].sound);
+        ma_sound_start(&sound_context->sounds[SND_MY_TURN].sound);
       turn_switch = true;
     }
 

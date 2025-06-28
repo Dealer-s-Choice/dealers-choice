@@ -55,8 +55,7 @@ typedef struct {
 typedef enum {
   SND_SERVER_JOIN,
   SND_CARD_DEALT,
-  SND_YOUR_TURN,
-  SND_COIN_HIT,
+  SND_MY_TURN,
   SND_NUM_SOUNDS,
 } ESndIdx_t;
 
@@ -70,6 +69,8 @@ typedef struct {
   ma_engine engine;
   ma_engine_config engineConfig;
   Sound_t *sounds;
+  Sound_t *coin_hit_sounds;
+  size_t coin_array_size;
 } SoundContext_t;
 
 extern const GameChoice_t game_choices[];

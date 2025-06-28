@@ -24,3 +24,12 @@ Classical Numismatic Group, Inc. http://www.cngcoins.com, CC BY-SA 2.5 <https://
 [ttf-liberation](https://github.com/liberationfonts/liberation-fonts)
 
 License: See [ttf-liberation-LICENSE](https://github.com/Dealer-s-Choice/dealers_choice/blob/trunk/data/ttf-liberation-LICENSE).
+
+
+# Created by Dealer's Choice contributors
+
+* my_turn.wav
+* server_join.wav
+
+[CC0 license](https://creativecommons.org/publicdomain/zero/1.0/).
+CC0 1.0 Universal  https://creativecommons.org/publicdomain/zero/1.0/
