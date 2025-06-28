@@ -86,5 +86,21 @@ linuxdeploy \
   -d $SOURCE_ROOT/packaging/dealers-choice.desktop \
   --icon-file=$SOURCE_ROOT/packaging/icons/dealers-choice_32x32.png \
   --icon-filename=dealers-choice \
-  --executable=$APPDIR/usr/bin/dealers-choice \
-  -o appimage
+  --executable=$APPDIR/usr/bin/dealers-choice
+
+if [ "$VERSION" = "snapshot" ]; then
+  TAG="snapshot"
+else
+  TAG="latest"
+fi
+
+ARCH=$(uname -m)
+OUT_APPIMAGE="dealers_choice-$VERSION-$ARCH.AppImage"
+UPINFO="gh-releases-zsync|dealer-s-choice|dealers_choice|$TAG|*$ARCH.AppImage.zsync"
+
+appimagetool --comp zstd \
+  --mksquashfs-opt \
+  -Xcompression-level \
+  --mksquashfs-opt 20 \
+  -u "$UPINFO" \
+  "$APPDIR" "$OUT_APPIMAGE"

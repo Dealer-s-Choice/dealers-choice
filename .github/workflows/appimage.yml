@@ -61,11 +61,8 @@ jobs:
           ARCH=$(uname -m)
           echo "ARCH=${ARCH}" >> $GITHUB_ENV
           cd out
-          OUT_APPIMAGE=dealers_choice-$VERSION-$ARCH.AppImage
-          mv "Dealer's_Choice-$VERSION-$ARCH.AppImage" $OUT_APPIMAGE
-          for file in *.AppImage; do
-            sha256sum "$file" > "$file.sha256sum";
-          done
+          file=$(ls *.AppImage)
+          sha256sum "$file" > "$file.sha256sum";
 
       - name: Artifact Filename
         run: echo "ARTIFACT_NAME=AppImages-${ARCH//\//-}" >> $GITHUB_ENV
