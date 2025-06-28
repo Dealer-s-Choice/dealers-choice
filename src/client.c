@@ -133,7 +133,7 @@ SocketContext_t get_socket_context_and_run_client(PlayerConfig_t *player_config,
       exit(EXIT_FAILURE);
 
     SoundContext_t sound_context = {0};
-    if (!player_config->enable_sound) {
+    if (player_config->volume == 0) {
       ma_engine_config_init();
       sound_context.engineConfig.noDevice = MA_TRUE;
       sound_context.engineConfig.channels = 2;       // Must be set when not using a device.
@@ -145,7 +145,7 @@ SocketContext_t get_socket_context_and_run_client(PlayerConfig_t *player_config,
       exit(EXIT_FAILURE);
     }
 
-    ma_engine_set_volume(&sound_context.engine, player_config->volume);
+    ma_engine_set_volume(&sound_context.engine, player_config->volume * .1f);
 
     // Using {0} or {{0}} for the The ma_sound field initializer doesn't work so
     // using 'ma_tmp' instead

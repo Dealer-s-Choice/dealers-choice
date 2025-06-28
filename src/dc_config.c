@@ -111,9 +111,6 @@ static void config_set_from_string(PlayerConfig_t *cfg, const ConfigEntry *entry
   case CFG_TYPE_INT:
     *(int *)field = atoi(val);
     break;
-  case CFG_TYPE_FLT:
-    *(float *)field = strtof(val, NULL);
-    break;
   case CFG_TYPE_BOOL:
     if (strcasecmp(val, "yes") == 0 || strcasecmp(val, "true") == 0 || strcmp(val, "1") == 0) {
       *(bool *)field = true;
