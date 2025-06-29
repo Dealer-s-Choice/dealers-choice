@@ -15,6 +15,11 @@ Adapted from
 [File:Gaius Julius Caesar, denarius, 44 BC, RRC 480-3.jpg](https://commons.wikimedia.org/wiki/File:Gaius_Julius_Caesar,_denarius,_44_BC,_RRC_480-3.jpg)
 Classical Numismatic Group, Inc. http://www.cngcoins.com, CC BY-SA 2.5 <https://creativecommons.org/licenses/by-sa/2.5>, via Wikimedia Commons
 
+
+48x48_Hammurabi.png
+
+[Sculpture by Thomas Hudson Jones; photo by the Architect of the Capitol](https://commons.wikimedia.org/wiki/File:Hammurabi_bas-relief_in_the_U.S._House_of_Representatives_chamber.jpg), Public domain, via Wikimedia Commons
+
 ## Fonts
 
 * LiberationSans-Bold.ttf

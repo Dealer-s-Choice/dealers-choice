@@ -749,6 +749,7 @@ static bool run_game_loop(const PlayerConfig_t *player_config, GameState_t *game
 
   Coin_t coin[] = {
       {"48x48_1907_Saint_Gaudens_gold_coin.png"},
+      {"48x48_Hammurabi.png"},
       {"48x48_Gaius-Julius-Caesar-denarius-44-BC-RRC-480-3.png"},
   };
   size_t num_coins = ARRAY_SIZE(coin);
