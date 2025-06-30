@@ -28,7 +28,10 @@ message GameState {
   uint32 player_count = 5;
   uint32 total_bets_plus_raises = 6;
   bool winner_declared = 7;
-  uint32 action_timeout_ms = 8;
-  uint32 end_of_game_timeout_ms = 9;
-  repeated Player player = 10;
+  repeated Player player = 8;
+}
+
+message GameSettings {
+  uint32 action_timeout_ms = 1;
+  uint32 end_of_game_timeout_ms = 2;
 }

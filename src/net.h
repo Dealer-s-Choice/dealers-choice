@@ -42,7 +42,7 @@
 #include "types.h"
 
 #define GAME_PROTOCOL_MAGIC "DCPROTO"
-#define GAME_PROTOCOL_VERSION 1
+#define GAME_PROTOCOL_VERSION 2
 
 #ifdef _MSC_VER
 #pragma pack(push, 1)
@@ -107,6 +107,9 @@ struct player_message_builder_t {
 uint8_t *serialize_game_state(const GameState_t *src, size_t *size_out);
 GameState_t deserialize_game_state(const uint8_t *data, size_t size);
 
+uint8_t *serialize_game_settings(const GameSettings_t *src, size_t *size_out);
+GameSettings_t deserialize_game_settings(const uint8_t *data, size_t size);
+
 uint8_t *serialize_player(const Player_t *src, size_t *size_out);
 Player_t deserialize_player(const uint8_t *data, size_t size);
 
@@ -117,6 +120,9 @@ int recv_all_tcp(TCPsocket sock, void *data, int32_t length);
 ERecvStatus_t recv_game_state(TCPsocket client_socket, SDLNet_SocketSet socket_set,
                               GameState_t *game_state, ClientState_t *client_state,
                               const int8_t id);
+
+ERecvStatus_t recv_game_settings(TCPsocket client_socket, SDLNet_SocketSet socket_set,
+                                 GameSettings_t *game_settings);
 
 void socket_cleanup(TCPsocket sock, SDLNet_SocketSet set);
 

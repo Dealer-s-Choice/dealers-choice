@@ -98,9 +98,15 @@ Config_t init_game_state(GameState_t *game_state, Path_t *path, CliArgs_t *cli_a
   game_state->player_count = 0;
   game_state->total_bets_plus_raises = 0;
   game_state->winner_declared = false;
-  game_state->action_timeout_ms = config.action_timeout_ms;
-  game_state->end_of_game_timeout_ms = (cli_args->test_mode) ? 500 : config.end_of_game_timeout_ms;
   return config;
+}
+
+GameSettings_t init_game_settings(const Config_t *config, const CliArgs_t *cli_args) {
+  GameSettings_t game_settings = {
+      .action_timeout_ms = config->action_timeout_ms,
+      .end_of_game_timeout_ms = (cli_args->test_mode) ? 500 : config->end_of_game_timeout_ms,
+  };
+  return game_settings;
 }
 
 // In the future, hands will be sent using functions like this, rather than how it's
@@ -208,6 +214,23 @@ static void broadcast_game_state(ArgsBroadcastGameState_t *args) {
     }
     free(data);
   }
+}
+
+static void send_game_settings(ArgsBroadcastGameState_t *args, TCPsocket sock) {
+  size_t size = 0;
+  uint8_t *data = serialize_game_settings(args->game_settings, &size);
+  if (!data)
+    return;
+
+  uint32_t size_net = htonl(size);
+
+  // fprintf(stderr, "sending to %d\n", i);
+  if (send_with_retries(sock, &size_net, sizeof(size_net)) == -1 ||
+      send_with_retries(sock, data, size) == -1) {
+    fprintf(stderr, "Failed to send game settings to client after retries\n");
+    handle_disconnections(args);
+  }
+  free(data);
 }
 
 int send_status_message(TCPsocket sock, const char *msg) {
@@ -379,7 +402,7 @@ static int handle_draw(ArgsBroadcastGameState_t *args, TCPsocket sock, const int
   DrawRequestMsg_t req;
   uint8_t buffer[7] = {0};
 
-  uint32_t wait_ms = args->game_state->action_timeout_ms;
+  uint32_t wait_ms = args->game_settings->action_timeout_ms;
   uint32_t start = SDL_GetTicks();
   int n_bytes = 0;
   while (SDL_GetTicks() - start < wait_ms) {
@@ -543,7 +566,7 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args) {
     broadcast_game_state(args);
     broadcast_start_action_timer_msg(args);
 
-    uint32_t wait_ms = args->game_state->action_timeout_ms;
+    uint32_t wait_ms = args->game_settings->action_timeout_ms;
     uint32_t start = SDL_GetTicks();
     PlayerActionMsg_t action = {0};
 
@@ -972,7 +995,7 @@ static EReturnCode_t receive_game_type_and_run_game(ArgsBroadcastGameState_t *ar
 
   broadcast_game_state(args);
 
-  Uint32 wait_ms = args->game_state->end_of_game_timeout_ms;
+  Uint32 wait_ms = args->game_settings->end_of_game_timeout_ms;
   // Uint32 wait_ms = 2000;
   Uint32 start = SDL_GetTicks();
   while (SDL_GetTicks() - start < wait_ms) {
@@ -1111,6 +1134,7 @@ static ELoop_t register_new_client(ArgsBroadcastGameState_t *args) {
         ensure_unique_nick(args->game_state, player, slot);
       }
 
+      send_game_settings(args, new_client);
       broadcast_game_state(args);
     } else {
       printf("Server full. Rejecting connection.\n");
@@ -1123,6 +1147,7 @@ static ELoop_t register_new_client(ArgsBroadcastGameState_t *args) {
 int run_server(CliArgs_t *cli_args, Path_t *path) {
   GameState_t game_state = {0};
   Config_t config = init_game_state(&game_state, path, cli_args);
+  GameSettings_t game_settings = init_game_settings(&config, cli_args);
   game_state.pot = 0;
 
   if (SDL_Init(0) == -1 || SDLNet_Init() == -1) {
@@ -1190,6 +1215,7 @@ int run_server(CliArgs_t *cli_args, Path_t *path) {
         .slot_taken = slot_taken,
         .cli_args = cli_args,
         .server_sock = &server,
+        .game_settings = &game_settings,
     };
 
     uint8_t active_clients = count_active_clients(slot_taken);

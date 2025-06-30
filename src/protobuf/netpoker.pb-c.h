@@ -19,6 +19,7 @@ typedef struct Card Card;
 typedef struct Hand Hand;
 typedef struct Player Player;
 typedef struct GameState GameState;
+typedef struct GameSettings GameSettings;
 
 
 /* --- enums --- */
@@ -75,14 +76,23 @@ struct  GameState
   uint32_t player_count;
   uint32_t total_bets_plus_raises;
   protobuf_c_boolean winner_declared;
-  uint32_t action_timeout_ms;
-  uint32_t end_of_game_timeout_ms;
   size_t n_player;
   Player **player;
 };
 #define GAME_STATE__INIT \
  { PROTOBUF_C_MESSAGE_INIT (&game_state__descriptor) \
-, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,NULL }
+, 0, 0, 0, 0, 0, 0, 0, 0,NULL }
+
+
+struct  GameSettings
+{
+  ProtobufCMessage base;
+  uint32_t action_timeout_ms;
+  uint32_t end_of_game_timeout_ms;
+};
+#define GAME_SETTINGS__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&game_settings__descriptor) \
+, 0, 0 }
 
 
 /* Card methods */
@@ -161,6 +171,25 @@ GameState *
 void   game_state__free_unpacked
                      (GameState *message,
                       ProtobufCAllocator *allocator);
+/* GameSettings methods */
+void   game_settings__init
+                     (GameSettings         *message);
+size_t game_settings__get_packed_size
+                     (const GameSettings   *message);
+size_t game_settings__pack
+                     (const GameSettings   *message,
+                      uint8_t             *out);
+size_t game_settings__pack_to_buffer
+                     (const GameSettings   *message,
+                      ProtobufCBuffer     *buffer);
+GameSettings *
+       game_settings__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   game_settings__free_unpacked
+                     (GameSettings *message,
+                      ProtobufCAllocator *allocator);
 /* --- per-message closures --- */
 
 typedef void (*Card_Closure)
@@ -175,6 +204,9 @@ typedef void (*Player_Closure)
 typedef void (*GameState_Closure)
                  (const GameState *message,
                   void *closure_data);
+typedef void (*GameSettings_Closure)
+                 (const GameSettings *message,
+                  void *closure_data);
 
 /* --- services --- */
 
@@ -185,6 +217,7 @@ extern const ProtobufCMessageDescriptor card__descriptor;
 extern const ProtobufCMessageDescriptor hand__descriptor;
 extern const ProtobufCMessageDescriptor player__descriptor;
 extern const ProtobufCMessageDescriptor game_state__descriptor;
+extern const ProtobufCMessageDescriptor game_settings__descriptor;
 
 PROTOBUF_C__END_DECLS
 

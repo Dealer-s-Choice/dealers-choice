@@ -90,8 +90,6 @@ uint8_t *serialize_game_state(const GameState_t *src, size_t *size_out) {
   msg.total_bets_plus_raises = src->total_bets_plus_raises;
   msg.player_count = src->player_count;
   msg.winner_declared = src->winner_declared;
-  msg.action_timeout_ms = src->action_timeout_ms;
-  msg.end_of_game_timeout_ms = src->end_of_game_timeout_ms;
 
   // player
   Player *player_msgs[MAX_PLAYERS];
@@ -133,8 +131,6 @@ GameState_t deserialize_game_state(const uint8_t *data, size_t size) {
   result.total_bets_plus_raises = msg->total_bets_plus_raises;
   result.player_count = msg->player_count;
   result.winner_declared = msg->winner_declared;
-  result.action_timeout_ms = msg->action_timeout_ms;
-  result.end_of_game_timeout_ms = msg->end_of_game_timeout_ms;
 
   size_t n = msg->n_player < MAX_PLAYERS ? msg->n_player : MAX_PLAYERS;
   for (size_t i = 0; i < n; ++i) {
@@ -146,6 +142,40 @@ GameState_t deserialize_game_state(const uint8_t *data, size_t size) {
   }
 
   game_state__free_unpacked(msg, NULL);
+  return result;
+}
+
+uint8_t *serialize_game_settings(const GameSettings_t *src, size_t *size_out) {
+  GameSettings msg = GAME_SETTINGS__INIT;
+
+  msg.action_timeout_ms = src->action_timeout_ms;
+  msg.end_of_game_timeout_ms = src->end_of_game_timeout_ms;
+
+  // Serialize to buffer
+  *size_out = game_settings__get_packed_size(&msg);
+  uint8_t *buffer = malloc(*size_out);
+  if (!buffer) {
+    *size_out = 0;
+    return NULL;
+  }
+
+  game_settings__pack(&msg, buffer);
+  return buffer;
+}
+
+GameSettings_t deserialize_game_settings(const uint8_t *data, size_t size) {
+  GameSettings_t result = {0};
+
+  GameSettings *msg = game_settings__unpack(NULL, size, data);
+  if (!msg) {
+    fprintf(stderr, "Failed to unpack GameSettings message\n");
+    return result;
+  }
+
+  result.action_timeout_ms = msg->action_timeout_ms;
+  result.end_of_game_timeout_ms = msg->end_of_game_timeout_ms;
+
+  game_settings__free_unpacked(msg, NULL);
   return result;
 }
 
@@ -334,6 +364,59 @@ ERecvStatus_t recv_game_state(TCPsocket client_socket, SDLNet_SocketSet socket_s
       client_state->cards_sent = false;
     break;
   }
+
+  free(buffer);
+  return RECV_SUCCESS;
+}
+
+ERecvStatus_t recv_game_settings(TCPsocket client_socket, SDLNet_SocketSet socket_set,
+                                 GameSettings_t *game_settings) {
+  int result = SDLNet_CheckSockets(socket_set, 100);
+  if (result == -1) {
+    fputs(SDLNet_GetError(), stderr);
+    return RECV_ERROR;
+  }
+
+  if (result == 0) {
+    // This output can be particularly useful for debugging tests
+    // fputs("[recv_game_state] No activity on socket\n", stderr);
+    return RECV_NOTHING;
+  }
+
+  if (!SDLNet_SocketReady(client_socket)) {
+    printf("[recv_game_settings] client_socket not ready\n");
+    return RECV_ERROR;
+  }
+
+  uint32_t size_net = 0;
+  int r_size = recv_all_tcp(client_socket, &size_net, sizeof(size_net));
+  if (r_size <= 0) {
+    fprintf(stderr, "[recv_game_settings] Disconnected while reading game state size %d\n", r_size);
+    return RECV_ERROR;
+  }
+
+  uint32_t size = ntohl(size_net);
+  if (size == 0 || size > 65536) {
+    fprintf(stderr, "[recv_game_settings] Invalid game state size: %u\n", size);
+    return RECV_ERROR;
+  }
+
+  uint8_t *buffer = malloc(size);
+  if (!buffer) {
+    fprintf(stderr, "[recv_game_settings] Memory allocation failed\n");
+    return RECV_ERROR;
+  }
+
+  if (recv_all_tcp(client_socket, buffer, size) <= 0) {
+    fprintf(stderr, "[recv_game_settings] Disconnected while reading game state payload\n");
+    free(buffer);
+    return RECV_ERROR;
+  }
+
+  fprintf(stderr, "[recv_game_settings] size: %d\n", size);
+
+  printf("[recv_game_settings] Received %u bytes, deserializing...\n", size);
+  *game_settings = deserialize_game_settings(buffer, size);
 
   free(buffer);
   return RECV_SUCCESS;

@@ -47,10 +47,11 @@ static bool menu_display_game_choices(const PlayerConfig_t *player_config, TCPso
                                       SdlContext_t *sdl_context, Font_t *font,
                                       const SoundContext_t *sound_context);
 
-static bool run_game_loop(const PlayerConfig_t *player, GameState_t *game_state,
-                          ClientState_t *client_state, SdlContext_t *sdl_context,
-                          const Font_t *font, TCPsocket client_socket, SDLNet_SocketSet socket_set,
-                          const uint8_t my_id, Path_t *path, const SoundContext_t *sound_context);
+static bool run_game_loop(const PlayerConfig_t *player, const GameSettings_t *game_settings,
+                          GameState_t *game_state, ClientState_t *client_state,
+                          SdlContext_t *sdl_context, const Font_t *font, TCPsocket client_socket,
+                          SDLNet_SocketSet socket_set, const uint8_t my_id, Path_t *path,
+                          const SoundContext_t *sound_context);
 
 static int send_protocol_header(TCPsocket sock) {
   puts("Exchanging protocol information...");
@@ -104,6 +105,7 @@ SocketContext_t get_socket_context_and_run_client(PlayerConfig_t *player_config,
   ClientState_t client_state = {0};
   if (!test_mode) {
     GameState_t game_state = {0};
+    GameSettings_t game_settings = {0};
     char *nick = player_config->nick;
     size_t len = strlen(nick) + 1;
     int32_t net_len = htonl(len);
@@ -117,6 +119,14 @@ SocketContext_t get_socket_context_and_run_client(PlayerConfig_t *player_config,
     ERecvStatus_t recv_status;
 
     do {
+      recv_status = recv_game_settings(socket_context.sock, socket_context.set, &game_settings);
+      if (recv_status == RECV_SUCCESS) {
+        break;
+      } else if (recv_status == RECV_ERROR) {
+        fprintf(stderr, "Failed to receive game settings\n");
+        exit(EXIT_FAILURE);
+      }
+
       recv_status = recv_game_state(socket_context.sock, socket_context.set, &game_state,
                                     &client_state, socket_context.id);
 
@@ -197,9 +207,9 @@ SocketContext_t get_socket_context_and_run_client(PlayerConfig_t *player_config,
       if (!running)
         break;
 
-      running = run_game_loop(player_config, &game_state, &client_state, sdl_context, font,
-                              socket_context.sock, socket_context.set, socket_context.id, path,
-                              &sound_context);
+      running = run_game_loop(player_config, &game_settings, &game_state, &client_state,
+                              sdl_context, font, socket_context.sock, socket_context.set,
+                              socket_context.id, path, &sound_context);
     } while (running);
     for (i = 0; i < SND_NUM_SOUNDS; i++)
       ma_sound_uninit(&sounds[i].sound);
@@ -662,10 +672,11 @@ enum {
   MAX_ACTIONS,
 };
 
-static bool run_game_loop(const PlayerConfig_t *player_config, GameState_t *game_state,
-                          ClientState_t *client_state, SdlContext_t *sdl_context,
-                          const Font_t *font, TCPsocket client_socket, SDLNet_SocketSet socket_set,
-                          const uint8_t my_id, Path_t *path, const SoundContext_t *sound_context) {
+static bool run_game_loop(const PlayerConfig_t *player_config, const GameSettings_t *game_settings,
+                          GameState_t *game_state, ClientState_t *client_state,
+                          SdlContext_t *sdl_context, const Font_t *font, TCPsocket client_socket,
+                          SDLNet_SocketSet socket_set, const uint8_t my_id, Path_t *path,
+                          const SoundContext_t *sound_context) {
   // This will likely get used later. For now, suppress the warning about "unused parameter"
   card_area.w = SCALE_X(80);
   card_area.h = SCALE_Y(50);
@@ -901,7 +912,7 @@ static bool run_game_loop(const PlayerConfig_t *player_config, GameState_t *game
     } else {
       Uint32 now = SDL_GetTicks();
       int32_t remaining_ms =
-          (int32_t)(client_state->timer_start + game_state->action_timeout_ms) - (int32_t)now;
+          (int32_t)(client_state->timer_start + game_settings->action_timeout_ms) - (int32_t)now;
 
       if (remaining_ms > 0) {
         int elapsed = remaining_ms / 1000;
