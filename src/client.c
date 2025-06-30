@@ -41,18 +41,6 @@
 
 #define x_begin_action_button SCALE_X(500);
 
-static bool menu_display_game_choices(const PlayerConfig_t *player_config, TCPsocket client_socket,
-                                      SDLNet_SocketSet socket_set, const int8_t my_id,
-                                      GameState_t *game_state, ClientState_t *client_state,
-                                      SdlContext_t *sdl_context, Font_t *font,
-                                      const SoundContext_t *sound_context);
-
-static bool run_game_loop(const PlayerConfig_t *player, const GameSettings_t *game_settings,
-                          GameState_t *game_state, ClientState_t *client_state,
-                          SdlContext_t *sdl_context, const Font_t *font, TCPsocket client_socket,
-                          SDLNet_SocketSet socket_set, const uint8_t my_id, Path_t *path,
-                          const SoundContext_t *sound_context);
-
 static int send_protocol_header(TCPsocket sock) {
   puts("Exchanging protocol information...");
   GameProtocolHeader_t hdr = {0};
@@ -60,169 +48,6 @@ static int send_protocol_header(TCPsocket sock) {
   hdr.version = htonl(GAME_PROTOCOL_VERSION);
 
   return send_all_tcp(sock, &hdr, sizeof(hdr));
-}
-
-SocketContext_t get_socket_context_and_run_client(PlayerConfig_t *player_config,
-                                                  const char *host_str, SdlContext_t *sdl_context,
-                                                  Font_t *font, Path_t *path,
-                                                  const bool test_mode) {
-  IPaddress server_ip;
-  SocketContext_t socket_context = {NULL, NULL, -1};
-  if (SDLNet_ResolveHost(&server_ip, host_str, player_config->port) == -1) {
-    fprintf(stderr, "Failed to resolve server: %s\n", SDLNet_GetError());
-    return socket_context;
-  }
-
-  socket_context.sock = SDLNet_TCP_Open(&server_ip);
-  if (!socket_context.sock) {
-    fprintf(stderr, "Failed to connect to server: %s\n", SDLNet_GetError());
-    return socket_context;
-  }
-
-  socket_context.set = SDLNet_AllocSocketSet(1);
-  if (!socket_context.set) {
-    fprintf(stderr, "Failed to allocate socket set: %s\n", SDLNet_GetError());
-    SDLNet_TCP_Close(socket_context.sock);
-    return socket_context;
-  }
-
-  if (SDLNet_TCP_AddSocket(socket_context.set, socket_context.sock) == -1)
-    fputs("Socket set full\n", stderr);
-
-  if (send_protocol_header(socket_context.sock) != 0) {
-    fputs("Failed to send protocol\n", stderr);
-    goto cleanup;
-  }
-
-  int32_t net_player_id;
-  if (recv_all_tcp(socket_context.sock, &net_player_id, sizeof(int32_t)) > 0) {
-    socket_context.id = ntohl(net_player_id);
-    fprintf(stderr, "Assigned id %d by server\n", socket_context.id);
-  } else {
-    goto cleanup;
-  }
-
-  ClientState_t client_state = {0};
-  if (!test_mode) {
-    GameState_t game_state = {0};
-    GameSettings_t game_settings = {0};
-    char *nick = player_config->nick;
-    size_t len = strlen(nick) + 1;
-    int32_t net_len = htonl(len);
-    send_all_tcp(socket_context.sock, &net_len, sizeof(int32_t));
-    if (send_all_tcp(socket_context.sock, player_config->nick, len) != 0)
-      fprintf(stderr, "Failed to send player nick to server\n");
-    Uint32 start_time = SDL_GetTicks(); // milliseconds
-    const Uint32 timeout = 2000;        // 2 seconds
-    const Uint32 retry_delay = 100;     // milliseconds per retry
-
-    ERecvStatus_t recv_status;
-
-    do {
-      recv_status = recv_game_settings(socket_context.sock, socket_context.set, &game_settings);
-      if (recv_status == RECV_SUCCESS) {
-        break;
-      } else if (recv_status == RECV_ERROR) {
-        fprintf(stderr, "Failed to receive game settings\n");
-        exit(EXIT_FAILURE);
-      }
-
-      recv_status = recv_game_state(socket_context.sock, socket_context.set, &game_state,
-                                    &client_state, socket_context.id);
-
-      if (recv_status == RECV_SUCCESS) {
-        break;
-      } else if (recv_status == RECV_ERROR) {
-        fprintf(stderr, "Failed to receive initial game state\n");
-        exit(EXIT_FAILURE);
-      }
-
-      SDL_Delay(retry_delay);
-    } while (SDL_GetTicks() - start_time < timeout);
-    if (recv_status != RECV_SUCCESS)
-      exit(EXIT_FAILURE);
-
-    SoundContext_t sound_context = {0};
-    if (player_config->volume == 0) {
-      ma_engine_config_init();
-      sound_context.engineConfig.noDevice = MA_TRUE;
-      sound_context.engineConfig.channels = 2;       // Must be set when not using a device.
-      sound_context.engineConfig.sampleRate = 48000; // Must be set when not using a device.
-    }
-    sound_context.result = ma_engine_init(&sound_context.engineConfig, &sound_context.engine);
-    if (sound_context.result != MA_SUCCESS) {
-      fprintf(stderr, "Failed to initialize miniaudio engine.\n");
-      exit(EXIT_FAILURE);
-    }
-
-    ma_engine_set_volume(&sound_context.engine, player_config->volume * .1f);
-
-    // Using {0} or {{0}} for the The ma_sound field initializer doesn't work so
-    // using 'ma_tmp' instead
-    ma_sound ma_tmp = {0};
-    Sound_t sounds[] = {[SND_SERVER_JOIN] = {"server_join.wav", ma_tmp},
-                        [SND_CARD_DEALT] = {"card_dealt.wav", ma_tmp},
-                        [SND_MY_TURN] = {"my_turn.wav", ma_tmp}};
-
-    Sound_t coin_hit_sounds[] = {
-        {"coin_hit_001.wav", ma_tmp}, {"coin_hit_002.wav", ma_tmp}, {"coin_hit_003.wav", ma_tmp},
-        {"coin_hit_004.wav", ma_tmp}, {"coin_hit_005.wav", ma_tmp}, {"coin_hit_006.wav", ma_tmp},
-        {"coin_hit_007.wav", ma_tmp},
-    };
-
-    sound_context.coin_array_size = ARRAY_SIZE(coin_hit_sounds);
-
-    sound_context.sounds = sounds;
-    sound_context.coin_hit_sounds = coin_hit_sounds;
-
-    PathconfLimits_t limits;
-    get_pathconf_limits(path->data, &limits);
-    size_t i;
-    for (i = 0; i < SND_NUM_SOUNDS; i++) {
-      char *snd_path = join_paths(limits.path_max, path->data, "sounds", sounds[i].filename);
-      if (ma_sound_init_from_file(&sound_context.engine, snd_path, 0, NULL, NULL,
-                                  &sounds[i].sound) != MA_SUCCESS) {
-        fprintf(stderr, "Failed to init sound %zd\n", i);
-        exit(EXIT_FAILURE);
-      }
-      free(snd_path);
-    }
-
-    for (i = 0; i < ARRAY_SIZE(coin_hit_sounds); i++) {
-      char *snd_path =
-          join_paths(limits.path_max, path->data, "sounds/coin", coin_hit_sounds[i].filename);
-      if (ma_sound_init_from_file(&sound_context.engine, snd_path, 0, NULL, NULL,
-                                  &coin_hit_sounds[i].sound) != MA_SUCCESS) {
-        fprintf(stderr, "Failed to init sound %zd\n", i);
-        exit(EXIT_FAILURE);
-      }
-      free(snd_path);
-    }
-
-    bool running = true;
-    do {
-      running = menu_display_game_choices(player_config, socket_context.sock, socket_context.set,
-                                          socket_context.id, &game_state, &client_state,
-                                          sdl_context, font, &sound_context);
-      if (!running)
-        break;
-
-      running = run_game_loop(player_config, &game_settings, &game_state, &client_state,
-                              sdl_context, font, socket_context.sock, socket_context.set,
-                              socket_context.id, path, &sound_context);
-    } while (running);
-    for (i = 0; i < SND_NUM_SOUNDS; i++)
-      ma_sound_uninit(&sounds[i].sound);
-    for (i = 0; i < ARRAY_SIZE(coin_hit_sounds); i++)
-      ma_sound_uninit(&coin_hit_sounds[i].sound);
-    ma_engine_uninit(&sound_context.engine);
-  } else
-    return socket_context;
-
-cleanup:
-  socket_cleanup(socket_context.sock, socket_context.set);
-  SDLNet_Quit();
-  return socket_context;
 }
 
 // Build fails using gcc on Ubuntu 24.04 (and maybe others) without this
@@ -1143,6 +968,169 @@ static bool run_game_loop(const PlayerConfig_t *player_config, const GameSetting
   }
   SDL_DestroyTexture(coin_tex);
   return running;
+}
+
+SocketContext_t get_socket_context_and_run_client(PlayerConfig_t *player_config,
+                                                  const char *host_str, SdlContext_t *sdl_context,
+                                                  Font_t *font, Path_t *path,
+                                                  const bool test_mode) {
+  IPaddress server_ip;
+  SocketContext_t socket_context = {NULL, NULL, -1};
+  if (SDLNet_ResolveHost(&server_ip, host_str, player_config->port) == -1) {
+    fprintf(stderr, "Failed to resolve server: %s\n", SDLNet_GetError());
+    return socket_context;
+  }
+
+  socket_context.sock = SDLNet_TCP_Open(&server_ip);
+  if (!socket_context.sock) {
+    fprintf(stderr, "Failed to connect to server: %s\n", SDLNet_GetError());
+    return socket_context;
+  }
+
+  socket_context.set = SDLNet_AllocSocketSet(1);
+  if (!socket_context.set) {
+    fprintf(stderr, "Failed to allocate socket set: %s\n", SDLNet_GetError());
+    SDLNet_TCP_Close(socket_context.sock);
+    return socket_context;
+  }
+
+  if (SDLNet_TCP_AddSocket(socket_context.set, socket_context.sock) == -1)
+    fputs("Socket set full\n", stderr);
+
+  if (send_protocol_header(socket_context.sock) != 0) {
+    fputs("Failed to send protocol\n", stderr);
+    goto cleanup;
+  }
+
+  int32_t net_player_id;
+  if (recv_all_tcp(socket_context.sock, &net_player_id, sizeof(int32_t)) > 0) {
+    socket_context.id = ntohl(net_player_id);
+    fprintf(stderr, "Assigned id %d by server\n", socket_context.id);
+  } else {
+    goto cleanup;
+  }
+
+  ClientState_t client_state = {0};
+  if (!test_mode) {
+    GameState_t game_state = {0};
+    GameSettings_t game_settings = {0};
+    char *nick = player_config->nick;
+    size_t len = strlen(nick) + 1;
+    int32_t net_len = htonl(len);
+    send_all_tcp(socket_context.sock, &net_len, sizeof(int32_t));
+    if (send_all_tcp(socket_context.sock, player_config->nick, len) != 0)
+      fprintf(stderr, "Failed to send player nick to server\n");
+    Uint32 start_time = SDL_GetTicks(); // milliseconds
+    const Uint32 timeout = 2000;        // 2 seconds
+    const Uint32 retry_delay = 100;     // milliseconds per retry
+
+    ERecvStatus_t recv_status;
+
+    do {
+      recv_status = recv_game_settings(socket_context.sock, socket_context.set, &game_settings);
+      if (recv_status == RECV_SUCCESS) {
+        break;
+      } else if (recv_status == RECV_ERROR) {
+        fprintf(stderr, "Failed to receive game settings\n");
+        exit(EXIT_FAILURE);
+      }
+
+      recv_status = recv_game_state(socket_context.sock, socket_context.set, &game_state,
+                                    &client_state, socket_context.id);
+
+      if (recv_status == RECV_SUCCESS) {
+        break;
+      } else if (recv_status == RECV_ERROR) {
+        fprintf(stderr, "Failed to receive initial game state\n");
+        exit(EXIT_FAILURE);
+      }
+
+      SDL_Delay(retry_delay);
+    } while (SDL_GetTicks() - start_time < timeout);
+    if (recv_status != RECV_SUCCESS)
+      exit(EXIT_FAILURE);
+
+    SoundContext_t sound_context = {0};
+    if (player_config->volume == 0) {
+      ma_engine_config_init();
+      sound_context.engineConfig.noDevice = MA_TRUE;
+      sound_context.engineConfig.channels = 2;       // Must be set when not using a device.
+      sound_context.engineConfig.sampleRate = 48000; // Must be set when not using a device.
+    }
+    sound_context.result = ma_engine_init(&sound_context.engineConfig, &sound_context.engine);
+    if (sound_context.result != MA_SUCCESS) {
+      fprintf(stderr, "Failed to initialize miniaudio engine.\n");
+      exit(EXIT_FAILURE);
+    }
+
+    ma_engine_set_volume(&sound_context.engine, player_config->volume * .1f);
+
+    // Using {0} or {{0}} for the The ma_sound field initializer doesn't work so
+    // using 'ma_tmp' instead
+    ma_sound ma_tmp = {0};
+    Sound_t sounds[] = {[SND_SERVER_JOIN] = {"server_join.wav", ma_tmp},
+                        [SND_CARD_DEALT] = {"card_dealt.wav", ma_tmp},
+                        [SND_MY_TURN] = {"my_turn.wav", ma_tmp}};
+
+    Sound_t coin_hit_sounds[] = {
+        {"coin_hit_001.wav", ma_tmp}, {"coin_hit_002.wav", ma_tmp}, {"coin_hit_003.wav", ma_tmp},
+        {"coin_hit_004.wav", ma_tmp}, {"coin_hit_005.wav", ma_tmp}, {"coin_hit_006.wav", ma_tmp},
+        {"coin_hit_007.wav", ma_tmp},
+    };
+
+    sound_context.coin_array_size = ARRAY_SIZE(coin_hit_sounds);
+
+    sound_context.sounds = sounds;
+    sound_context.coin_hit_sounds = coin_hit_sounds;
+
+    PathconfLimits_t limits;
+    get_pathconf_limits(path->data, &limits);
+    size_t i;
+    for (i = 0; i < SND_NUM_SOUNDS; i++) {
+      char *snd_path = join_paths(limits.path_max, path->data, "sounds", sounds[i].filename);
+      if (ma_sound_init_from_file(&sound_context.engine, snd_path, 0, NULL, NULL,
+                                  &sounds[i].sound) != MA_SUCCESS) {
+        fprintf(stderr, "Failed to init sound %zd\n", i);
+        exit(EXIT_FAILURE);
+      }
+      free(snd_path);
+    }
+
+    for (i = 0; i < ARRAY_SIZE(coin_hit_sounds); i++) {
+      char *snd_path =
+          join_paths(limits.path_max, path->data, "sounds/coin", coin_hit_sounds[i].filename);
+      if (ma_sound_init_from_file(&sound_context.engine, snd_path, 0, NULL, NULL,
+                                  &coin_hit_sounds[i].sound) != MA_SUCCESS) {
+        fprintf(stderr, "Failed to init sound %zd\n", i);
+        exit(EXIT_FAILURE);
+      }
+      free(snd_path);
+    }
+
+    bool running = true;
+    do {
+      running = menu_display_game_choices(player_config, socket_context.sock, socket_context.set,
+                                          socket_context.id, &game_state, &client_state,
+                                          sdl_context, font, &sound_context);
+      if (!running)
+        break;
+
+      running = run_game_loop(player_config, &game_settings, &game_state, &client_state,
+                              sdl_context, font, socket_context.sock, socket_context.set,
+                              socket_context.id, path, &sound_context);
+    } while (running);
+    for (i = 0; i < SND_NUM_SOUNDS; i++)
+      ma_sound_uninit(&sounds[i].sound);
+    for (i = 0; i < ARRAY_SIZE(coin_hit_sounds); i++)
+      ma_sound_uninit(&coin_hit_sounds[i].sound);
+    ma_engine_uninit(&sound_context.engine);
+  } else
+    return socket_context;
+
+cleanup:
+  socket_cleanup(socket_context.sock, socket_context.set);
+  SDLNet_Quit();
+  return socket_context;
 }
 
 void do_sdl_cleanup(SdlContext_t *sdl_context) {
