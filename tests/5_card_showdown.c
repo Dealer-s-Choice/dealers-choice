@@ -2,7 +2,7 @@
 
 int main(int argc, char *argv[]) {
   _SETUP_SOCKET_CONTEXT()
-  usleep(n_useconds);
+  SDL_Delay(n_ms);
   fprintf(stderr, "Dealer %d selecting game\n", *dealer_id);
   assert(send_game_select(socket_context[*dealer_id].sock,
                           game_choices[FIVE_CARD_SHOWDOWN].game_type) == 0);
@@ -15,7 +15,7 @@ int main(int argc, char *argv[]) {
   const int expected_bet_turn[3] = {1, 0, 1};
   assert(expected_bet_turn[game] == *turn_id);
 
-  usleep(n_useconds);
+  SDL_Delay(n_ms);
 
   assert(send_player_action(socket_context[*turn_id].sock, ACTION_BET, 500) == 0);
 
@@ -31,7 +31,7 @@ int main(int argc, char *argv[]) {
   const int expected_call_turn[3] = {0, 1, 0};
   assert(expected_call_turn[game] == *turn_id);
 
-  usleep(n_useconds);
+  SDL_Delay(n_ms);
   assert(send_player_action(socket_context[*turn_id].sock, ACTION_CALL, 0) == 0);
 
   _RECEIVE_GAME_STATE()
@@ -40,7 +40,7 @@ int main(int argc, char *argv[]) {
   _RECEIVE_GAME_STATE()
   _RECEIVE_GAME_STATE()
 
-  usleep(n_useconds);
+  SDL_Delay(n_ms);
   for (i = 0; i < 2; i++) {
     fprintf(stderr, "%d: %d\n", i, game_state[i].player[i].coins);
   }

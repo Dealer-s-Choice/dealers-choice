@@ -11,7 +11,7 @@
 #include "server.h"
 #include "util.h"
 
-extern const useconds_t n_useconds;
+extern const uint32_t n_ms;
 
 #define _MAIN_HEAD_                                                                                \
   int main(int argc, char *argv[]) {                                                               \
@@ -23,14 +23,14 @@ extern const useconds_t n_useconds;
   }
 
 #define _SOCKET_CLEANUP_AND_NET_QUIT_                                                              \
-  sleep(2);                                                                                        \
+  SDL_Delay(2000);                                                                                 \
   for (int i = 0; i < 2; i++) {                                                                    \
     socket_cleanup(socket_context[i].sock, socket_context[i].set);                                 \
   }                                                                                                \
   SDLNet_Quit();
 
 #define _RECEIVE_GAME_STATE()                                                                      \
-  usleep(n_useconds);                                                                              \
+  SDL_Delay(n_ms);                                                                                 \
   for (i = 0; i < 2; i++) {                                                                        \
     recv_status = recv_game_state(socket_context[i].sock, socket_context[i].set, &game_state[i],   \
                                   &client_state[i], socket_context[i].id);                         \
@@ -66,12 +66,12 @@ extern const useconds_t n_useconds;
                                                           &path, test_mode);                       \
     assert(socket_context[i].sock != NULL);                                                        \
     recv_game_settings(socket_context[i].sock, socket_context[i].set, &game_settings[i]);          \
-    usleep(n_useconds);                                                                            \
+    SDL_Delay(n_ms);                                                                               \
   }                                                                                                \
                                                                                                    \
   for (int game = 0; game < n_passes; game++) {                                                    \
     fprintf(stderr, "\n-#- game: %d\n", game);                                                     \
-    usleep(n_useconds);                                                                            \
+    SDL_Delay(n_ms);                                                                               \
     int i;                                                                                         \
                                                                                                    \
     _RECEIVE_GAME_STATE()                                                                          \

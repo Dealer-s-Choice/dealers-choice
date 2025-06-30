@@ -1,3 +1,3 @@
 #include "00_test.h"
 
-const useconds_t n_useconds = 250000;
+const uint32_t n_ms = 250;
