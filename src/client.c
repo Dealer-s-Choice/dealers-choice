@@ -386,15 +386,19 @@ static bool menu_display_game_choices(const PlayerConfig_t *player_config, TCPso
         recv_game_state(client_socket, socket_set, game_state, client_state, my_id);
     if (recv_status == RECV_ERROR)
       return false;
-    // else if (recv_status == RECV_NOTHING)
-    // fprintf(stderr, "%s: Received nothing\n", __func__);
+
+    for (int i = 0; i < MAX_CHOICES; i++)
+      game_choice_button[i].enabled = (game_state->dealer_id == my_id && n_clients > 1);
+
+    SDL_Point mouse_pos;
+    SDL_GetMouseState(&mouse_pos.x, &mouse_pos.y);
+    for (int i = 0; i < MAX_CHOICES; i++) {
+      game_choice_button[i].hovered = SDL_PointInRect(&mouse_pos, &game_choice_button[i].rect);
+    }
+
     SDL_Event e;
     while (SDL_PollEvent(&e)) {
-      SDL_Point mouse_pos = {e.button.x, e.button.y};
-      for (int i = 0; i < MAX_CHOICES; i++) {
-        game_choice_button[i].enabled = (game_state->dealer_id == my_id && n_clients > 1);
-        game_choice_button[i].hovered = SDL_PointInRect(&mouse_pos, &game_choice_button[i].rect);
-      }
+      // SDL_Point mouse_pos = {e.button.x, e.button.y};
       for (size_t i = 0; i < ARRAY_SIZE(link); i++) {
         link[i].hovered = SDL_PointInRect(&mouse_pos, &link[i].rect);
       }
