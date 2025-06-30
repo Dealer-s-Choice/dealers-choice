@@ -1180,6 +1180,7 @@ int run_server(CliArgs_t *cli_args, Path_t *path) {
   RealHand_t real_hand = {0};
 
   bool slot_taken[MAX_CLIENTS] = {false};
+  uint32_t dealer_timeout_start = 0;
   while (!game_started) {
     ArgsBroadcastGameState_t args_broadcast_game_state = {
         .clients = clients,
@@ -1225,11 +1226,19 @@ int run_server(CliArgs_t *cli_args, Path_t *path) {
       continue;
 
     if (active_clients > 1) {
+      if (dealer_timeout_start == 0) {
+        dealer_timeout_start = SDL_GetTicks();
+      } else if (SDL_GetTicks() - dealer_timeout_start >= config.dealer_timeout_ms) {
+        *dealer_id = get_next_dealer(*dealer_id, slot_taken);
+        dealer_timeout_start = 0;
+        broadcast_game_state(&args_broadcast_game_state);
+      }
       if (SDLNet_CheckSockets(socket_set, 50) == -1) {
         fputs(SDLNet_GetError(), stderr);
         continue;
       }
-    }
+    } else if (active_clients == 1)
+      dealer_timeout_start = 0;
 
     if (reassign_dealer_if_needed(&game_state, slot_taken))
       broadcast_game_state(&args_broadcast_game_state);

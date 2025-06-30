@@ -62,6 +62,7 @@ Config_t get_config(Path_t *path, CliArgs_t *cli_args) {
     BIND_ADDRESS,
     END_OF_ROUND_TIMEOUT_MS,
     ACTION_TIMEOUT_MS,
+    DEALER_TIMEOUT_MS,
     INVALID_OPTION,
   } cfg_opt_id;
 
@@ -73,6 +74,7 @@ Config_t get_config(Path_t *path, CliArgs_t *cli_args) {
   struct Opt_t opt[] = {{"bind_address", BIND_ADDRESS},
                         {"end_of_game_timeout_ms", END_OF_ROUND_TIMEOUT_MS},
                         {"action_timeout_ms", ACTION_TIMEOUT_MS},
+                        {"dealer_timeout_ms", DEALER_TIMEOUT_MS},
                         {NULL, INVALID_OPTION}};
 
   int cfg_idx = 0;
@@ -91,6 +93,9 @@ Config_t get_config(Path_t *path, CliArgs_t *cli_args) {
       break;
     case ACTION_TIMEOUT_MS:
       config.action_timeout_ms = (uint32_t)strtol(cfg_node->value, NULL, 0);
+      break;
+    case DEALER_TIMEOUT_MS:
+      config.dealer_timeout_ms = (uint32_t)strtol(cfg_node->value, NULL, 0);
       break;
     default:
       break;

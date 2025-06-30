@@ -37,8 +37,9 @@
 
 typedef struct {
   char bind_address[INET6_ADDRSTRLEN];
-  int32_t end_of_game_timeout_ms;
-  int32_t action_timeout_ms;
+  uint32_t end_of_game_timeout_ms;
+  uint32_t action_timeout_ms;
+  uint32_t dealer_timeout_ms;
 } Config_t;
 
 typedef struct {

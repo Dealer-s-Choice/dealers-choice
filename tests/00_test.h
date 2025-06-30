@@ -72,6 +72,7 @@
                                                                                                    \
     _RECEIVE_GAME_STATE()                                                                          \
     _RECEIVE_GAME_STATE()                                                                          \
+    _RECEIVE_GAME_STATE()                                                                          \
                                                                                                    \
     int8_t *dealer_id = &game_state[0].dealer_id;                                                  \
     const int expected_dealer_turn[3][3] = {{0, 0}, {1, 1}, {2, 0}};                               \
