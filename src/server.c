@@ -1220,19 +1220,20 @@ int run_server(CliArgs_t *cli_args, Path_t *path) {
       }
     }
 
+    active_clients = count_active_clients(slot_taken);
+    if (active_clients == 0)
+      continue;
+
     if (active_clients > 1) {
-      int result = SDLNet_CheckSockets(socket_set, 50);
-      if (result == -1) {
+      if (SDLNet_CheckSockets(socket_set, 50) == -1) {
         fputs(SDLNet_GetError(), stderr);
         continue;
       }
-
-      if (reassign_dealer_if_needed(&game_state, slot_taken))
-        broadcast_game_state(&args_broadcast_game_state);
-
-      if (*dealer_id == -1)
-        continue; // No valid dealer
     }
+
+    if (reassign_dealer_if_needed(&game_state, slot_taken))
+      broadcast_game_state(&args_broadcast_game_state);
+
     SDL_Delay(50);
   }
 
