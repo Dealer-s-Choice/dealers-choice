@@ -1085,7 +1085,7 @@ static ELoop_t register_new_client(ArgsBroadcastGameState_t *args) {
         slot_id->in = true;
       else {
         for (int i = 0; i < POKEVAL_HAND_SIZE; i++)
-          memcpy(&args->real_hand->player[slot].card[i], &DH_card_null, sizeof(DH_card_null));
+          args->real_hand->player[slot].card[i] = DH_card_null;
         memcpy(&args->game_state->player[slot].hand, &args->real_hand->player[slot],
                sizeof(POKEVAL_Hand));
       }
