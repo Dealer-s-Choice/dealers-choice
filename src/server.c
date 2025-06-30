@@ -1224,7 +1224,9 @@ int run_server(CliArgs_t *cli_args, Path_t *path) {
     if (num_ready > 0) {
       if (active_clients > 1 && SDLNet_SocketReady(clients[*dealer_id]) &&
           game_state.player[*dealer_id].id != -1) {
-        if (receive_game_type_and_run_game(&args_broadcast_game_state, &deck) == RC_ERR)
+        EReturnCode_t status = receive_game_type_and_run_game(&args_broadcast_game_state, &deck);
+        dealer_timeout_start = 0;
+        if (status == RC_ERR)
           continue;
       } else {
         handle_disconnections(&args_broadcast_game_state);
