@@ -3,7 +3,7 @@
 int main(int argc, char *argv[]) {
   _SETUP_SOCKET_CONTEXT()
 
-  sleep(n_seconds);
+  usleep(n_useconds);
   fprintf(stderr, "Dealer %d selecting game\n", *dealer_id);
   assert(send_game_select(socket_context[*dealer_id].sock,
                           game_choices[FIVE_CARD_SHOWDOWN].game_type) == 0);
@@ -13,7 +13,7 @@ int main(int argc, char *argv[]) {
   _RECEIVE_GAME_STATE()
 
   int8_t *turn_id = &game_state[0].turn_id;
-  sleep(n_seconds);
+  usleep(n_useconds);
 
   if (game == 0) {
 
@@ -23,14 +23,14 @@ int main(int argc, char *argv[]) {
     _RECEIVE_GAME_STATE()
     _RECEIVE_GAME_STATE()
 
-    sleep(n_seconds);
+    usleep(n_useconds);
     assert(send_player_action(socket_context[*turn_id].sock, ACTION_CHECK, 0) == 0);
 
     _RECEIVE_GAME_STATE()
     _RECEIVE_GAME_STATE()
     _RECEIVE_GAME_STATE()
 
-    sleep(n_seconds);
+    usleep(n_useconds);
     for (i = 0; i < 2; i++) {
       fprintf(stderr, "%d: %d\n", i, game_state[i].player[i].coins);
     }
@@ -46,7 +46,7 @@ int main(int argc, char *argv[]) {
     // assert(expected_bet_turn[game] == *turn_id);
 
     assert(1 == *turn_id);
-    sleep(n_seconds);
+    usleep(n_useconds);
     assert(send_player_action(socket_context[*turn_id].sock, ACTION_BET, 500) == 0);
     for (i = 0; i < 2; i++) {
       debug_print_cards(&game_state[i].player[i].hand);
@@ -61,7 +61,7 @@ int main(int argc, char *argv[]) {
     // assert(expected_call_turn[game] == *turn_id);
 
     assert(0 == *turn_id);
-    sleep(n_seconds);
+    usleep(n_useconds);
     assert(send_player_action(socket_context[*turn_id].sock, ACTION_CALL, 0) == 0);
 
     _RECEIVE_GAME_STATE()
@@ -75,7 +75,7 @@ int main(int argc, char *argv[]) {
     fputc('\n', stderr);
   }
 
-  sleep(n_seconds);
+  usleep(n_useconds);
   for (i = 0; i < 2; i++) {
     fprintf(stderr, "%d: %d\n", i, game_state[i].player[i].coins);
   }
@@ -88,7 +88,7 @@ int main(int argc, char *argv[]) {
 
   if (game == 1)
     break;
-  sleep(n_seconds);
+  usleep(n_useconds);
 }
 
 _SOCKET_CLEANUP_AND_NET_QUIT_

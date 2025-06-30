@@ -2,7 +2,7 @@
 
 int main(int argc, char *argv[]) {
   _SETUP_SOCKET_CONTEXT()
-  sleep(n_seconds);
+  usleep(n_useconds);
   fprintf(stderr, "Dealer %d selecting game\n", *dealer_id);
   assert(send_game_select(socket_context[*dealer_id].sock,
                           game_choices[FIVE_CARD_STUD].game_type) == 0);
@@ -19,7 +19,7 @@ int main(int argc, char *argv[]) {
     const int expected_bet_turn[3] = {1, 0, 1};
     assert(expected_bet_turn[game] == *turn_id);
 
-    sleep(n_seconds);
+    usleep(n_useconds);
     fprintf(stderr, "turn_id: %d sending bet...\n", *turn_id);
     assert(send_player_action(socket_context[*turn_id].sock, ACTION_BET, 500) == 0);
 
@@ -36,7 +36,7 @@ int main(int argc, char *argv[]) {
     const int expected_call_turn[3] = {0, 1, 0};
     assert(expected_call_turn[game] == *turn_id);
 
-    sleep(n_seconds);
+    usleep(n_useconds);
     fprintf(stderr, "turn_id: %d\n", *turn_id);
     assert(send_player_action(socket_context[*turn_id].sock, ACTION_CALL, 0) == 0);
 
@@ -48,7 +48,7 @@ int main(int argc, char *argv[]) {
 
   _RECEIVE_GAME_STATE()
 
-  sleep(n_seconds);
+  usleep(n_useconds);
   for (i = 0; i < 2; i++)
     fprintf(stderr, "%d: %d\n", i, game_state[i].player[i].coins);
 
@@ -58,7 +58,7 @@ int main(int argc, char *argv[]) {
   assert(game_state[0].player[0].coins == expected_coins[game][0]);
   assert(game_state[0].player[1].coins == expected_coins[game][1]);
 
-  sleep(n_seconds);
+  usleep(n_useconds);
 }
 
 _SOCKET_CLEANUP_AND_NET_QUIT_
