@@ -90,18 +90,18 @@ ServerConfig_t get_server_config(Path_t *path, CliArgs_t *cli_args) {
   }
 
   // Track which keys were found
-  bool found_keys[config_entry_count];
+  bool found_keys[server_config_entry_count];
   memset(found_keys, 0, sizeof(found_keys));
 
   while (cfg_node) {
-    for (size_t i = 0; i < config_entry_count; i++) {
+    for (size_t i = 0; i < server_config_entry_count; i++) {
       if (strcasecmp(cfg_node->key, server_config_entries[i].key) == 0) {
         server_config_set_from_string(&config, &server_config_entries[i], cfg_node->value);
         found_keys[i] = true;
         break;
       }
     }
-    for (size_t i = 0; i < config_entry_count; i++)
+    for (size_t i = 0; i < server_config_entry_count; i++)
       if (!found_keys[i])
         server_config_set_from_string(&config, &server_config_entries[i],
                                       server_config_entries[i].default_value);
@@ -151,7 +151,7 @@ PlayerConfig_t get_player_config(void) {
       printf("Creating %s\n", cfg_pathname);
       FILE *fp = fopen(cfg_pathname, "w");
       if (fp) {
-        for (size_t i = 0; i < config_entry_count; i++) {
+        for (size_t i = 0; i < player_config_entry_count; i++) {
           fprintf(fp, "%s = %s\n", player_config_entries[i].key,
                   player_config_entries[i].default_value);
           config_set_default(&config, &player_config_entries[i]);
@@ -169,11 +169,11 @@ PlayerConfig_t get_player_config(void) {
     }
   } else {
     // Track which keys were found
-    bool found_keys[config_entry_count];
+    bool found_keys[player_config_entry_count];
     memset(found_keys, 0, sizeof(found_keys));
 
     while (cfg_node) {
-      for (size_t i = 0; i < config_entry_count; i++) {
+      for (size_t i = 0; i < player_config_entry_count; i++) {
         if (strcasecmp(cfg_node->key, player_config_entries[i].key) == 0) {
           player_config_set_from_string(&config, &player_config_entries[i], cfg_node->value);
           found_keys[i] = true;
@@ -188,7 +188,7 @@ PlayerConfig_t get_player_config(void) {
     if (!fp) {
       perror("fopen (appending missing keys)");
     } else {
-      for (size_t i = 0; i < config_entry_count; i++) {
+      for (size_t i = 0; i < player_config_entry_count; i++) {
         if (!found_keys[i]) {
           fprintf(fp, "%s = %s\n", player_config_entries[i].key,
                   player_config_entries[i].default_value);

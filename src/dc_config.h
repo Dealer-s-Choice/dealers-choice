@@ -41,6 +41,7 @@ typedef struct ServerConfig_t {
   uint32_t action_timeout_ms;
   uint32_t dealer_timeout_ms;
   uint32_t ante;
+  int starting_coins;
 } ServerConfig_t;
 
 typedef struct {
@@ -72,7 +73,7 @@ static const ConfigEntry player_config_entries[] = {
     {"sound.notify.turn", CFG_TYPE_BOOL, "yes", offsetof(PlayerConfig_t, turn_notify),
      sizeof(bool)}};
 
-static const size_t config_entry_count =
+static const size_t player_config_entry_count =
     sizeof(player_config_entries) / sizeof(player_config_entries[0]);
 
 static const ConfigEntry server_config_entries[] = {
@@ -84,7 +85,11 @@ static const ConfigEntry server_config_entries[] = {
      sizeof(uint32_t)},
     {"dealer_timeout_ms", CFG_TYPE_UINT32, "60000", offsetof(ServerConfig_t, dealer_timeout_ms),
      sizeof(uint32_t)},
-    {"ante", CFG_TYPE_UINT32, "50", offsetof(ServerConfig_t, ante), sizeof(uint32_t)}};
+    {"ante", CFG_TYPE_UINT32, "50", offsetof(ServerConfig_t, ante), sizeof(uint32_t)},
+    {"starting_coins", CFG_TYPE_INT, "20000", offsetof(ServerConfig_t, starting_coins),
+     sizeof(int)}};
+
+static const size_t server_config_entry_count = ARRAY_SIZE(server_config_entries);
 
 ServerConfig_t get_server_config(Path_t *path, CliArgs_t *cli_args);
 

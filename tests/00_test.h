@@ -11,6 +11,8 @@
 #include "server.h"
 #include "util.h"
 
+#define STARTING_N_COINS 20000
+
 extern const uint32_t n_ms;
 
 #define _MAIN_HEAD_                                                                                \

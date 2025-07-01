@@ -84,7 +84,7 @@ ServerConfig_t init_game_state(GameState_t *game_state, Path_t *path, CliArgs_t 
   for (int i = 0; i < MAX_PLAYERS; i++) {
     game_state->player[i] = (Player_t){
         .id = -1,
-        .coins = STARTING_N_COINS,
+        .coins = config.starting_coins,
         .in = false,
         .total_paid = 0,
         .winner = false,
@@ -722,7 +722,7 @@ static void remove_disconnected_player(ArgsBroadcastGameState_t *args, const int
   args->slot_taken[id] = false;
 
   // Reset player info
-  p->coins = STARTING_N_COINS;
+  p->coins = args->config->starting_coins;
   p->total_paid = 0;
   p->winner = false;
   p->has_checked = false;
