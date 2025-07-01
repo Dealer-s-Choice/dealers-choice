@@ -34,79 +34,7 @@
 #include "dc_config.h"
 #include "util.h"
 
-Config_t get_config(Path_t *path, CliArgs_t *cli_args) {
-  PathconfLimits_t limits = {0};
-  if (!cli_args->server_conf) {
-    get_pathconf_limits(path->data, &limits);
-    path->server_conf_name = calloc_wrap(limits.path_max, 1);
-    snprintf(path->server_conf_name, limits.path_max, "%s/%s", path->data, "server.conf");
-  } else {
-    get_pathconf_limits(cli_args->server_conf, &limits);
-    path->server_conf_name = calloc_wrap(limits.path_max, 1);
-    snprintf(path->server_conf_name, limits.path_max, "%s", cli_args->server_conf);
-  }
-
-  struct Canfigger *cfg_node = canfigger_parse_file(path->server_conf_name, ',');
-  free(path->server_conf_name);
-  if (!cfg_node) {
-    perror("canfigger");
-    exit(EXIT_FAILURE);
-  }
-
-  Config_t config = {0};
-
-  // Adapted from rmw (https://github.com/theimpossibleastronaut/rmw).
-  //
-  // Jammy should improve the variable names before the first release ;)
-  typedef enum {
-    BIND_ADDRESS,
-    END_OF_ROUND_TIMEOUT_MS,
-    ACTION_TIMEOUT_MS,
-    DEALER_TIMEOUT_MS,
-    INVALID_OPTION,
-  } cfg_opt_id;
-
-  struct Opt_t {
-    const char *opt;
-    cfg_opt_id id;
-  };
-
-  struct Opt_t opt[] = {{"bind_address", BIND_ADDRESS},
-                        {"end_of_game_timeout_ms", END_OF_ROUND_TIMEOUT_MS},
-                        {"action_timeout_ms", ACTION_TIMEOUT_MS},
-                        {"dealer_timeout_ms", DEALER_TIMEOUT_MS},
-                        {NULL, INVALID_OPTION}};
-
-  int cfg_idx = 0;
-  while (cfg_node != NULL) {
-    if (strcmp(cfg_node->key, opt[cfg_idx].opt) != 0) {
-      fprintf(stderr, "Invalid option: %s\n", cfg_node->key);
-      exit(EXIT_FAILURE);
-      break;
-    }
-    switch (opt[cfg_idx].id) {
-    case BIND_ADDRESS:
-      snprintf(config.bind_address, sizeof(config.bind_address), "%s", cfg_node->value);
-      break;
-    case END_OF_ROUND_TIMEOUT_MS:
-      config.end_of_game_timeout_ms = (uint32_t)strtol(cfg_node->value, NULL, 0);
-      break;
-    case ACTION_TIMEOUT_MS:
-      config.action_timeout_ms = (uint32_t)strtol(cfg_node->value, NULL, 0);
-      break;
-    case DEALER_TIMEOUT_MS:
-      config.dealer_timeout_ms = (uint32_t)strtol(cfg_node->value, NULL, 0);
-      break;
-    default:
-      break;
-    }
-    cfg_idx++;
-    canfigger_free_current_key_node_advance(&cfg_node);
-  }
-  return config;
-}
-
-static void config_set_from_string(PlayerConfig_t *cfg, const ConfigEntry *entry, const char *val) {
+static void config_set_from_string_real(void *cfg, const ConfigEntry *entry, const char *val) {
   void *field = (uint8_t *)cfg + entry->offset;
 
   switch (entry->type) {
@@ -115,6 +43,9 @@ static void config_set_from_string(PlayerConfig_t *cfg, const ConfigEntry *entry
     break;
   case CFG_TYPE_INT:
     *(int *)field = atoi(val);
+    break;
+  case CFG_TYPE_UINT32:
+    *(uint32_t *)field = strtol(val, NULL, 0);
     break;
   case CFG_TYPE_BOOL:
     if (strcasecmp(val, "yes") == 0 || strcasecmp(val, "true") == 0 || strcmp(val, "1") == 0) {
@@ -126,8 +57,57 @@ static void config_set_from_string(PlayerConfig_t *cfg, const ConfigEntry *entry
   }
 }
 
+static void server_config_set_from_string(ServerConfig_t *cfg, const ConfigEntry *entry,
+                                          const char *val) {
+  config_set_from_string_real(cfg, entry, val);
+}
+
+static void player_config_set_from_string(PlayerConfig_t *cfg, const ConfigEntry *entry,
+                                          const char *val) {
+  config_set_from_string_real(cfg, entry, val);
+}
+
+ServerConfig_t get_server_config(Path_t *path, CliArgs_t *cli_args) {
+  ServerConfig_t config = {0};
+
+  PathconfLimits_t limits = {0};
+  if (!cli_args->server_conf) {
+    get_pathconf_limits(path->data, &limits);
+    path->server_conf_name = calloc_wrap(limits.path_max, 1);
+    snprintf(path->server_conf_name, limits.path_max, "%s/%s", path->data, "server.conf");
+  } else {
+    get_pathconf_limits(cli_args->server_conf, &limits);
+    path->server_conf_name = calloc_wrap(limits.path_max, 1);
+    snprintf(path->server_conf_name, limits.path_max, "%s", cli_args->server_conf);
+  }
+
+  printf("Reading server config: %s\n", path->server_conf_name);
+  struct Canfigger *cfg_node = canfigger_parse_file(path->server_conf_name, ',');
+  free(path->server_conf_name);
+  if (!cfg_node) {
+    perror("canfigger");
+    exit(EXIT_FAILURE);
+  }
+
+  // Track which keys were found
+  bool found_keys[config_entry_count];
+  memset(found_keys, 0, sizeof(found_keys));
+
+  while (cfg_node) {
+    for (size_t i = 0; i < config_entry_count; i++) {
+      if (strcasecmp(cfg_node->key, server_config_entries[i].key) == 0) {
+        server_config_set_from_string(&config, &server_config_entries[i], cfg_node->value);
+        found_keys[i] = true;
+        break;
+      }
+    }
+    canfigger_free_current_key_node_advance(&cfg_node);
+  }
+  return config;
+}
+
 static void config_set_default(PlayerConfig_t *cfg, const ConfigEntry *entry) {
-  config_set_from_string(cfg, entry, entry->default_value);
+  player_config_set_from_string(cfg, entry, entry->default_value);
 }
 
 PlayerConfig_t get_player_config(void) {
@@ -167,8 +147,9 @@ PlayerConfig_t get_player_config(void) {
       FILE *fp = fopen(cfg_pathname, "w");
       if (fp) {
         for (size_t i = 0; i < config_entry_count; i++) {
-          fprintf(fp, "%s = %s\n", config_entries[i].key, config_entries[i].default_value);
-          config_set_default(&config, &config_entries[i]);
+          fprintf(fp, "%s = %s\n", player_config_entries[i].key,
+                  player_config_entries[i].default_value);
+          config_set_default(&config, &player_config_entries[i]);
         }
         fclose(fp);
       } else {
@@ -188,8 +169,8 @@ PlayerConfig_t get_player_config(void) {
 
     while (cfg_node) {
       for (size_t i = 0; i < config_entry_count; i++) {
-        if (strcasecmp(cfg_node->key, config_entries[i].key) == 0) {
-          config_set_from_string(&config, &config_entries[i], cfg_node->value);
+        if (strcasecmp(cfg_node->key, player_config_entries[i].key) == 0) {
+          player_config_set_from_string(&config, &player_config_entries[i], cfg_node->value);
           found_keys[i] = true;
           break;
         }
@@ -204,8 +185,9 @@ PlayerConfig_t get_player_config(void) {
     } else {
       for (size_t i = 0; i < config_entry_count; i++) {
         if (!found_keys[i]) {
-          fprintf(fp, "%s = %s\n", config_entries[i].key, config_entries[i].default_value);
-          config_set_default(&config, &config_entries[i]);
+          fprintf(fp, "%s = %s\n", player_config_entries[i].key,
+                  player_config_entries[i].default_value);
+          config_set_default(&config, &player_config_entries[i]);
         }
       }
       fclose(fp);

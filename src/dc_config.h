@@ -40,7 +40,7 @@ typedef struct {
   uint32_t end_of_game_timeout_ms;
   uint32_t action_timeout_ms;
   uint32_t dealer_timeout_ms;
-} Config_t;
+} ServerConfig_t;
 
 typedef struct {
   bool loaded;
@@ -51,7 +51,7 @@ typedef struct {
   bool turn_notify;
 } PlayerConfig_t;
 
-typedef enum { CFG_TYPE_STRING, CFG_TYPE_INT, CFG_TYPE_BOOL } ConfigType;
+typedef enum { CFG_TYPE_STRING, CFG_TYPE_INT, CFG_TYPE_UINT32, CFG_TYPE_BOOL } ConfigType;
 
 typedef struct {
   const char *key;
@@ -61,7 +61,7 @@ typedef struct {
   size_t size;               // Size of the target field
 } ConfigEntry;
 
-static const ConfigEntry config_entries[] = {
+static const ConfigEntry player_config_entries[] = {
     {"nick", CFG_TYPE_STRING, "New Player", offsetof(PlayerConfig_t, nick),
      sizeof(((PlayerConfig_t *)0)->nick)},
     {"host", CFG_TYPE_STRING, "127.0.0.1", offsetof(PlayerConfig_t, host),
@@ -71,9 +71,20 @@ static const ConfigEntry config_entries[] = {
     {"sound.notify.turn", CFG_TYPE_BOOL, "yes", offsetof(PlayerConfig_t, turn_notify),
      sizeof(bool)}};
 
-static const size_t config_entry_count = sizeof(config_entries) / sizeof(config_entries[0]);
+static const size_t config_entry_count =
+    sizeof(player_config_entries) / sizeof(player_config_entries[0]);
 
-Config_t get_config(Path_t *path, CliArgs_t *cli_args);
+static const ConfigEntry server_config_entries[] = {
+    {"bind_address", CFG_TYPE_STRING, NULL, offsetof(ServerConfig_t, bind_address),
+     sizeof(((ServerConfig_t *)0)->bind_address)},
+    {"end_of_game_timeout_ms", CFG_TYPE_UINT32, NULL,
+     offsetof(ServerConfig_t, end_of_game_timeout_ms), sizeof(uint32_t)},
+    {"action_timeout_ms", CFG_TYPE_UINT32, NULL, offsetof(ServerConfig_t, action_timeout_ms),
+     sizeof(uint32_t)},
+    {"dealer_timeout_ms", CFG_TYPE_UINT32, NULL, offsetof(ServerConfig_t, dealer_timeout_ms),
+     sizeof(uint32_t)}};
+
+ServerConfig_t get_server_config(Path_t *path, CliArgs_t *cli_args);
 
 PlayerConfig_t get_player_config(void);
 

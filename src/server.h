@@ -37,7 +37,7 @@
   ArgsBroadcastGameState_t *args, Player_t *players_array, DH_Deck *deck,                          \
       const uint8_t n_betting_rounds, const uint8_t n_draws, const uint8_t n_stud_new_cards
 
-Config_t init_game_state(GameState_t *game_state, Path_t *path, CliArgs_t *cli_args);
+ServerConfig_t init_game_state(GameState_t *game_state, Path_t *path, CliArgs_t *cli_args);
 
 RealHand_t deal_cards_to_players(GameState_t *game_state, DH_Deck *deck, const uint8_t game_type);
 

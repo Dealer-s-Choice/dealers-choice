@@ -79,8 +79,8 @@ static void print_ipaddress(const IPaddress *ip) {
   printf("%s:%u\n", ipaddr, SDL_SwapBE16(ip->port));
 }
 
-Config_t init_game_state(GameState_t *game_state, Path_t *path, CliArgs_t *cli_args) {
-  Config_t config = get_config(path, cli_args);
+ServerConfig_t init_game_state(GameState_t *game_state, Path_t *path, CliArgs_t *cli_args) {
+  ServerConfig_t config = get_server_config(path, cli_args);
   for (int i = 0; i < MAX_PLAYERS; i++) {
     game_state->player[i] = (Player_t){
         .id = -1,
@@ -101,7 +101,7 @@ Config_t init_game_state(GameState_t *game_state, Path_t *path, CliArgs_t *cli_a
   return config;
 }
 
-GameSettings_t init_game_settings(const Config_t *config, const CliArgs_t *cli_args) {
+GameSettings_t init_game_settings(const ServerConfig_t *config, const CliArgs_t *cli_args) {
   GameSettings_t game_settings = {
       .action_timeout_ms = config->action_timeout_ms,
       .end_of_game_timeout_ms = (cli_args->test_mode) ? 500 : config->end_of_game_timeout_ms,
@@ -1145,7 +1145,7 @@ static ELoop_t register_new_client(ArgsBroadcastGameState_t *args) {
 
 int run_server(CliArgs_t *cli_args, Path_t *path) {
   GameState_t game_state = {0};
-  Config_t config = init_game_state(&game_state, path, cli_args);
+  ServerConfig_t config = init_game_state(&game_state, path, cli_args);
   GameSettings_t game_settings = init_game_settings(&config, cli_args);
   game_state.pot = 0;
 
