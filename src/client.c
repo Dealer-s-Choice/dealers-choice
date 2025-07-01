@@ -714,7 +714,7 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
     if (!my_turn)
       turn_switch = false;
     if (my_turn && !turn_switch) {
-      if (player_config->turn_notify && game_state->player_count > 2)
+      if (player_config->turn_notify)
         ma_sound_start(&sound_context->sounds[SND_MY_TURN].sound);
       turn_switch = true;
     }
