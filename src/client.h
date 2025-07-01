@@ -35,12 +35,6 @@
 #include "types.h"
 
 typedef struct {
-  TCPsocket sock;
-  SDLNet_SocketSet set;
-  int8_t id;
-} SocketContext_t;
-
-typedef struct {
   const char *text;
   const char *url;
   TTF_Font *font;

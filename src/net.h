@@ -85,6 +85,11 @@ typedef enum {
 } ERecvStatus_t;
 
 typedef struct {
+  TCPsocket sock;
+  SDLNet_SocketSet set;
+} SocketContext_t;
+
+typedef struct {
   bool do_discard_draw;
   bool has_ace;
   uint8_t n_cards_selected;
@@ -117,13 +122,12 @@ int send_all_tcp(TCPsocket sock, const void *data, size_t length);
 
 int recv_all_tcp(TCPsocket sock, void *data, int32_t length);
 
-ERecvStatus_t recv_game_state(TCPsocket client_socket, SDLNet_SocketSet socket_set,
-                              GameState_t *game_state, ClientState_t *client_state,
-                              const int8_t id);
+ERecvStatus_t recv_game_state(SocketContext_t *socket_context, GameState_t *game_state,
+                              ClientState_t *client_state, const int8_t id);
 
 ERecvStatus_t recv_game_settings(TCPsocket client_socket, SDLNet_SocketSet socket_set,
                                  GameSettings_t *game_settings);
 
-void socket_cleanup(TCPsocket sock, SDLNet_SocketSet set);
+void socket_cleanup(SocketContext_t *socket_context);
 
 #endif

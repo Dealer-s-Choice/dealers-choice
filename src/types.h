@@ -74,6 +74,7 @@ typedef struct {
 } GameState_t;
 
 typedef struct {
+  int8_t client_id;
   uint32_t action_timeout_ms;
   uint32_t end_of_game_timeout_ms;
 } GameSettings_t;
@@ -95,7 +96,7 @@ typedef struct {
   bool *slot_taken;
   CliArgs_t *cli_args;
   TCPsocket *server_sock;
-  const GameSettings_t *game_settings;
+  GameSettings_t *game_settings;
 } ArgsBroadcastGameState_t;
 
 typedef void (*game_func_t)(ArgsBroadcastGameState_t *, Player_t *, DH_Deck *, uint8_t, uint8_t,

@@ -1095,9 +1095,6 @@ static ELoop_t register_new_client(ArgsBroadcastGameState_t *args) {
         return LOOP_CONTINUE;
       }
 
-      int32_t net_player_id = htonl(slot);
-      send_all_tcp(new_client, &net_player_id, sizeof(int32_t));
-
       if (!args->cli_args->test_mode) {
         Player_t *player = &(args->game_state->player)[slot];
         int32_t net_len;
@@ -1134,14 +1131,16 @@ static ELoop_t register_new_client(ArgsBroadcastGameState_t *args) {
         ensure_unique_nick(args->game_state, player, slot);
       }
 
+      args->game_settings->client_id = slot;
       send_game_settings(args, new_client);
       broadcast_game_state(args);
     } else {
       printf("Server full. Rejecting connection.\n");
       SDLNet_TCP_Close(new_client);
     }
+    return LOOP_OK;
   }
-  return LOOP_OK;
+  return LOOP_CONTINUE;
 }
 
 int run_server(CliArgs_t *cli_args, Path_t *path) {

@@ -87,12 +87,13 @@ struct  GameState
 struct  GameSettings
 {
   ProtobufCMessage base;
+  int32_t client_id;
   uint32_t action_timeout_ms;
   uint32_t end_of_game_timeout_ms;
 };
 #define GAME_SETTINGS__INIT \
  { PROTOBUF_C_MESSAGE_INIT (&game_settings__descriptor) \
-, 0, 0 }
+, 0, 0, 0 }
 
 
 /* Card methods */

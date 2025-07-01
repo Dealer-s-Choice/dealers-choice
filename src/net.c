@@ -148,6 +148,7 @@ GameState_t deserialize_game_state(const uint8_t *data, size_t size) {
 uint8_t *serialize_game_settings(const GameSettings_t *src, size_t *size_out) {
   GameSettings msg = GAME_SETTINGS__INIT;
 
+  msg.client_id = src->client_id;
   msg.action_timeout_ms = src->action_timeout_ms;
   msg.end_of_game_timeout_ms = src->end_of_game_timeout_ms;
 
@@ -172,6 +173,7 @@ GameSettings_t deserialize_game_settings(const uint8_t *data, size_t size) {
     return result;
   }
 
+  result.client_id = msg->client_id;
   result.action_timeout_ms = msg->action_timeout_ms;
   result.end_of_game_timeout_ms = msg->end_of_game_timeout_ms;
 
@@ -254,11 +256,10 @@ int recv_all_tcp(TCPsocket sock, void *data, int length) {
 
 // Eventually some, or most, of the data in the game state struct will be sent
 // via opcodes, like what's done for the discard/draw request
-ERecvStatus_t recv_game_state(TCPsocket client_socket, SDLNet_SocketSet socket_set,
-                              GameState_t *game_state, ClientState_t *client_state,
-                              const int8_t id) {
+ERecvStatus_t recv_game_state(SocketContext_t *socket_context, GameState_t *game_state,
+                              ClientState_t *client_state, const int8_t id) {
   // printf("[recv_game_state] Waiting for game state...\n");
-  int result = SDLNet_CheckSockets(socket_set, 100);
+  int result = SDLNet_CheckSockets(socket_context->set, 100);
   // printf("[recv_game_state] CheckSockets returned: %d\n", result);
   if (result == -1) {
     fputs(SDLNet_GetError(), stderr);
@@ -271,13 +272,14 @@ ERecvStatus_t recv_game_state(TCPsocket client_socket, SDLNet_SocketSet socket_s
     return RECV_NOTHING;
   }
 
-  if (!SDLNet_SocketReady(client_socket)) {
-    printf("[recv_game_state] client_socket not ready\n");
+  TCPsocket sock = socket_context->sock;
+  if (!SDLNet_SocketReady(sock)) {
+    printf("[recv_game_state] sock not ready\n");
     return RECV_ERROR;
   }
 
   uint32_t size_net = 0;
-  int r_size = recv_all_tcp(client_socket, &size_net, sizeof(size_net));
+  int r_size = recv_all_tcp(sock, &size_net, sizeof(size_net));
   if (r_size <= 0) {
     fprintf(stderr, "[recv_game_state] Disconnected while reading game state size %d\n", r_size);
     return RECV_ERROR;
@@ -295,7 +297,7 @@ ERecvStatus_t recv_game_state(TCPsocket client_socket, SDLNet_SocketSet socket_s
     return RECV_ERROR;
   }
 
-  if (recv_all_tcp(client_socket, buffer, size) <= 0) {
+  if (recv_all_tcp(sock, buffer, size) <= 0) {
     fprintf(stderr, "[recv_game_state] Disconnected while reading game state payload\n");
     free(buffer);
     return RECV_ERROR;
@@ -422,9 +424,9 @@ ERecvStatus_t recv_game_settings(TCPsocket client_socket, SDLNet_SocketSet socke
   return RECV_SUCCESS;
 }
 
-void socket_cleanup(TCPsocket sock, SDLNet_SocketSet set) {
-  if (SDLNet_TCP_DelSocket(set, sock) == -1)
+void socket_cleanup(SocketContext_t *socket_context) {
+  if (SDLNet_TCP_DelSocket(socket_context->set, socket_context->sock) == -1)
     fputs(SDLNet_GetError(), stderr);
-  SDLNet_FreeSocketSet(set);
-  SDLNet_TCP_Close(sock);
+  SDLNet_FreeSocketSet(socket_context->set);
+  SDLNet_TCP_Close(socket_context->sock);
 }

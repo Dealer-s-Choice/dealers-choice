@@ -25,15 +25,15 @@ extern const uint32_t n_ms;
 #define _SOCKET_CLEANUP_AND_NET_QUIT_                                                              \
   SDL_Delay(2000);                                                                                 \
   for (int i = 0; i < 2; i++) {                                                                    \
-    socket_cleanup(socket_context[i].sock, socket_context[i].set);                                 \
+    socket_cleanup(&socket_context[i]);                                                            \
   }                                                                                                \
   SDLNet_Quit();
 
 #define _RECEIVE_GAME_STATE()                                                                      \
   SDL_Delay(n_ms);                                                                                 \
   for (i = 0; i < 2; i++) {                                                                        \
-    recv_status = recv_game_state(socket_context[i].sock, socket_context[i].set, &game_state[i],   \
-                                  &client_state[i], socket_context[i].id);                         \
+    recv_status = recv_game_state(&socket_context[i], &game_state[i], &client_state[i],            \
+                                  game_settings[i].client_id);                                     \
     assert(recv_status != RECV_ERROR);                                                             \
     if (recv_status == RECV_NOTHING)                                                               \
       fprintf(stderr, "Received nothing\n");                                                       \
