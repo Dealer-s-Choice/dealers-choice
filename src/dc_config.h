@@ -73,8 +73,7 @@ static const ConfigEntry player_config_entries[] = {
     {"sound.notify.turn", CFG_TYPE_BOOL, "yes", offsetof(PlayerConfig_t, turn_notify),
      sizeof(bool)}};
 
-static const size_t player_config_entry_count =
-    sizeof(player_config_entries) / sizeof(player_config_entries[0]);
+static const size_t player_config_entry_count = ARRAY_SIZE(player_config_entries);
 
 static const ConfigEntry server_config_entries[] = {
     {"bind_address", CFG_TYPE_STRING, "127.0.0.1", offsetof(ServerConfig_t, bind_address),
