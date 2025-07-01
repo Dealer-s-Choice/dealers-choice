@@ -35,11 +35,12 @@
 #include "net.h"
 #include "util.h"
 
-typedef struct {
+typedef struct ServerConfig_t {
   char bind_address[INET6_ADDRSTRLEN];
   uint32_t end_of_game_timeout_ms;
   uint32_t action_timeout_ms;
   uint32_t dealer_timeout_ms;
+  uint32_t ante;
 } ServerConfig_t;
 
 typedef struct {
@@ -75,14 +76,15 @@ static const size_t config_entry_count =
     sizeof(player_config_entries) / sizeof(player_config_entries[0]);
 
 static const ConfigEntry server_config_entries[] = {
-    {"bind_address", CFG_TYPE_STRING, NULL, offsetof(ServerConfig_t, bind_address),
+    {"bind_address", CFG_TYPE_STRING, "127.0.0.1", offsetof(ServerConfig_t, bind_address),
      sizeof(((ServerConfig_t *)0)->bind_address)},
-    {"end_of_game_timeout_ms", CFG_TYPE_UINT32, NULL,
+    {"end_of_game_timeout_ms", CFG_TYPE_UINT32, "15000",
      offsetof(ServerConfig_t, end_of_game_timeout_ms), sizeof(uint32_t)},
-    {"action_timeout_ms", CFG_TYPE_UINT32, NULL, offsetof(ServerConfig_t, action_timeout_ms),
+    {"action_timeout_ms", CFG_TYPE_UINT32, "20000", offsetof(ServerConfig_t, action_timeout_ms),
      sizeof(uint32_t)},
-    {"dealer_timeout_ms", CFG_TYPE_UINT32, NULL, offsetof(ServerConfig_t, dealer_timeout_ms),
-     sizeof(uint32_t)}};
+    {"dealer_timeout_ms", CFG_TYPE_UINT32, "60000", offsetof(ServerConfig_t, dealer_timeout_ms),
+     sizeof(uint32_t)},
+    {"ante", CFG_TYPE_UINT32, "50", offsetof(ServerConfig_t, ante), sizeof(uint32_t)}};
 
 ServerConfig_t get_server_config(Path_t *path, CliArgs_t *cli_args);
 

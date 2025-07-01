@@ -101,6 +101,11 @@ ServerConfig_t get_server_config(Path_t *path, CliArgs_t *cli_args) {
         break;
       }
     }
+    for (size_t i = 0; i < config_entry_count; i++)
+      if (!found_keys[i])
+        server_config_set_from_string(&config, &server_config_entries[i],
+                                      server_config_entries[i].default_value);
+
     canfigger_free_current_key_node_advance(&cfg_node);
   }
   return config;

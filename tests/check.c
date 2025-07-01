@@ -83,7 +83,7 @@ int main(int argc, char *argv[]) {
 
   fprintf(stderr, "%d\n", game_state[0].pot);
 
-  const int expected_coins[3][2] = {{19750, 20250}, {20500, 19500}, {20750, 19250}};
+  const int expected_coins[3][2] = {{19950, 20050}, {20500, 19500}, {20500, 19500}};
   assert(game_state[0].player[0].coins == expected_coins[game][0]);
   assert(game_state[0].player[1].coins == expected_coins[game][1]);
 

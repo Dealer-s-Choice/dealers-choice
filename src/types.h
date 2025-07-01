@@ -88,6 +88,9 @@ typedef struct {
   bool test_mode, run_server_flag;
 } CliArgs_t;
 
+// A forward declaration
+struct ServerConfig_t;
+
 typedef struct {
   TCPsocket *clients;
   SDLNet_SocketSet socket_set;
@@ -97,6 +100,7 @@ typedef struct {
   CliArgs_t *cli_args;
   TCPsocket *server_sock;
   GameSettings_t *game_settings;
+  struct ServerConfig_t *config;
 } ArgsBroadcastGameState_t;
 
 typedef void (*game_func_t)(ArgsBroadcastGameState_t *, Player_t *, DH_Deck *, uint8_t, uint8_t,

@@ -800,7 +800,7 @@ void game_five_card_draw(GAME_ARGS) {
   (void)n_stud_new_cards;
   uint8_t dealer_id = args->game_state->dealer_id;
   Player_t *starting_player = get_next_player(players_array, dealer_id);
-  server_handle_ante(args->game_state, 250);
+  server_handle_ante(args->game_state, args->config->ante);
 
   Player_t *turn = starting_player;
   RoundResults results = {0};
@@ -848,7 +848,7 @@ void game_five_card_stud(GAME_ARGS) {
   (void)n_draws;
   Player_t *starting_player = get_next_player(players_array, args->game_state->dealer_id);
   Player_t *turn = starting_player;
-  server_handle_ante(args->game_state, 250);
+  server_handle_ante(args->game_state, args->config->ante);
   int8_t save_starting_player_id = starting_player->id;
 
   RoundResults results = {0};
@@ -1215,6 +1215,7 @@ int run_server(CliArgs_t *cli_args, Path_t *path) {
         .cli_args = cli_args,
         .server_sock = &server,
         .game_settings = &game_settings,
+        .config = &config,
     };
 
     uint8_t active_clients = count_active_clients(slot_taken);
