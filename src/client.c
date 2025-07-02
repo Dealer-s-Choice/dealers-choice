@@ -58,7 +58,7 @@ static int send_protocol_header(TCPsocket sock) {
 // What's the max this needs to be to support the unicode suit symbol?
 #define SIZEOF_CARD_TEXT 20
 
-#define CARD_DEAL_DELAY 100
+#define CARD_DEAL_DELAY 250
 
 #define MAX_POT_COINS 50
 
@@ -685,19 +685,19 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
         // printf("%d\n", __LINE__);
         render_card(&card_context[player_ptr->id][card_n], font->fonts[FONT_CARD]);
 
-        if (!cards_dealt) {
+        if (!cards_dealt && !card_context[player_ptr->id][card_n].is_null &&
+            game_state->player[my_id].in) {
           Uint32 start = SDL_GetTicks();
-          ma_sound_start(&sound_context->sounds[SND_CARD_DEALT].sound);
           while (SDL_GetTicks() - start < CARD_DEAL_DELAY) {
             SDL_Event e;
             while (SDL_PollEvent(&e)) {
               if (e.type == SDL_QUIT)
                 running = false;
             }
+            SDL_Delay(16);
           }
           SDL_RenderPresent(sdl_context->renderer);
-          SDL_Delay(16);
-          // fprintf(stderr, "%s:turn->id: %d\n", __func__, turn->id);
+          ma_sound_start(&sound_context->sounds[SND_CARD_DEALT].sound);
         }
       } while ((player_ptr = get_next_connected_client(players_array, player_ptr->id)) !=
                starting_turn);
