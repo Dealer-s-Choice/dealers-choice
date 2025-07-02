@@ -1,9 +1,10 @@
-2025-06-23
+2025-07-02
 
-- dealers-choice 0.0.3:
-  + Add command line option to specify alternate server config file
-  * Fix player incorrectly gets message that the max is selected (double draw)
-  * Fix multiple amount button selection
-  * Fix build on Arch Linux (config.h not found when building tests)
-  + Add partial German translation (See #74 for more info)
-  * Begin implementing auto-scaling for screens with different resolutions
+- dealers-choice 0.0.4:
+  + Add sound effects and notifications
+  + Add ante and starting_coins amount to server.conf
+  * Fix game choice buttons not being enabled until mouse is moved
+  + Deal rotates to next player if dealer doesn't start a game within 60 seconds
+  * Network Protocol bumped to 2
+  + Allow clients to connect while game is running
+  + Add desktop icons and svg

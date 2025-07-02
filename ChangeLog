@@ -1,8 +1,13 @@
+2025-07-02
+
+- dealers-choice 0.0.4:
+  + Add sound effects and notifications
+  + Add ante and starting_coins amount to server.conf
   * Fix game choice buttons not being enabled until mouse is moved
   + Deal rotates to next player if dealer doesn't start a game within 60 seconds
   * Network Protocol bumped to 2
   + Allow clients to connect while game is running
-  + Add icons and svg
+  + Add desktop icons and svg
 
 2025-06-23
 
