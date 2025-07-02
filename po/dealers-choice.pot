@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: dealers-choice\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-06-22 22:40-0500\n"
+"POT-Creation-Date: 2025-07-02 00:18-0500\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,35 +17,35 @@ msgstr ""
 "Content-Type: text/plain; charset=CHARSET\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: src/client.c:295
+#: src/client.c:192
 msgid " Discord Channel (on Lazarus Project Server) "
 msgstr ""
 
-#: src/client.c:365
+#: src/client.c:268
 msgid "Connected players:"
 msgstr ""
 
-#: src/client.c:641
+#: src/client.c:541
 msgid "Check"
 msgstr ""
 
-#: src/client.c:641
+#: src/client.c:541
 msgid "Bet"
 msgstr ""
 
-#: src/client.c:641
+#: src/client.c:541
 msgid "Fold"
 msgstr ""
 
-#: src/client.c:642
+#: src/client.c:542
 msgid "Call"
 msgstr ""
 
-#: src/client.c:642
+#: src/client.c:542
 msgid "Raise"
 msgstr ""
 
-#: src/client.c:642
+#: src/client.c:542
 msgid "Discard"
 msgstr ""
 

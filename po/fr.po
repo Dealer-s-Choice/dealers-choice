@@ -1,57 +1,54 @@
-# German translations for dealers-choice package.
+# French translations for dealers-choice package.
 # Copyright (C) 2025 THE dealers-choice'S COPYRIGHT HOLDER
 # This file is distributed under the same license as the dealers-choice package.
-# Andy <andy@prometheus.localhost.localdomain>, 2025.
+# Automatically generated, 2025.
 #
 msgid ""
 msgstr ""
 "Project-Id-Version: dealers-choice\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2025-07-02 00:18-0500\n"
-"PO-Revision-Date: 2025-06-19 21:52-0500\n"
-"Last-Translator: Andy <andy@prometheus.localhost.localdomain>\n"
-"Language-Team: German <translation-team-de@lists.sourceforge.net>\n"
-"Language: de\n"
+"PO-Revision-Date: 2025-07-02 00:18-0500\n"
+"Last-Translator: Automatically generated\n"
+"Language-Team: none\n"
+"Language: fr\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
 
 #: src/client.c:192
 msgid " Discord Channel (on Lazarus Project Server) "
-msgstr " Discord Channel (on Lazarus Project Server) "
+msgstr " Canal Discord (sur le serveur du projet Lazarus) "
 
 #: src/client.c:268
 msgid "Connected players:"
-msgstr "Anwesende Spieler"
+msgstr "Joueurs connectés :"
 
 #: src/client.c:541
 msgid "Check"
-msgstr "Prüfen"
+msgstr "Parole"
 
 #: src/client.c:541
 msgid "Bet"
-msgstr "Setzen"
+msgstr "Miser"
 
 #: src/client.c:541
 msgid "Fold"
-msgstr "Aufgeben"
+msgstr "Se coucher"
 
 #: src/client.c:542
 msgid "Call"
-msgstr "Mitgehen"
+msgstr "Suivre"
 
 #: src/client.c:542
 msgid "Raise"
-msgstr "Erhöhen"
+msgstr "Relancer"
 
 #: src/client.c:542
 msgid "Discard"
-msgstr "Ablegen"
+msgstr "Défausser"
 
 #: src/main.c:47
 msgid "Connect"
-msgstr "verbinden"
-
-#~ msgid "folded"
-#~ msgstr "Hat aufgegeben"
+msgstr "Se connecter"
