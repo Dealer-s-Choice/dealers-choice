@@ -1,3 +1,5 @@
+  * Fix dealer rotation when timeout reached
+
 2025-07-02
 
 - dealers-choice 0.0.4:

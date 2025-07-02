@@ -1056,6 +1056,7 @@ static void do_socket_cleanup(TCPsocket sock, SDLNet_SocketSet socket_set, bool 
 }
 
 static ELoop_t register_new_client(ArgsBroadcastGameState_t *args) {
+  // checks for and accepts incoming connections
   TCPsocket new_client = SDLNet_TCP_Accept(*args->server_sock);
   if (new_client) {
     int slot = -1;
@@ -1138,9 +1139,8 @@ static ELoop_t register_new_client(ArgsBroadcastGameState_t *args) {
       printf("Server full. Rejecting connection.\n");
       SDLNet_TCP_Close(new_client);
     }
-    return LOOP_OK;
   }
-  return LOOP_CONTINUE;
+  return LOOP_OK;
 }
 
 int run_server(CliArgs_t *cli_args, Path_t *path) {
