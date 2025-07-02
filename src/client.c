@@ -60,7 +60,7 @@ static int send_protocol_header(TCPsocket sock) {
 
 #define CARD_DEAL_DELAY 250
 
-#define MAX_POT_COINS 50
+#define MAX_POT_COINS 80
 
 SDL_Rect card_area = {0};
 
