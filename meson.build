@@ -145,11 +145,12 @@ install_subdir(
   strip_directory: true,
 )
 
-# Check the Dockerfile when updating this
 install_data(
-  files('LICENSE', 'README.md', 'ReleaseNotes'),
+  files('ChangeLog', 'LICENSE', 'README.md', 'ReleaseNotes'),
   install_dir: get_option('docdir'),
 )
+
+install_subdir('docs', install_dir: get_option('docdir'))
 
 install_data(
   'packaging/dealers-choice.desktop',

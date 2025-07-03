@@ -3,6 +3,23 @@
 [![Windows](https://github.com/Dealer-s-Choice/dealers_choice/actions/workflows/windows.yml/badge.svg)](https://github.com/Dealer-s-Choice/dealers_choice/actions/workflows/windows.yml)
 [![CodeQL Advanced](https://github.com/Dealer-s-Choice/dealers_choice/actions/workflows/codeql.yml/badge.svg)](https://github.com/Dealer-s-Choice/dealers_choice/actions/workflows/codeql.yml)
 
+- [Dealer's Choice](#dealer's-choice)
+  - [License](#license)
+  - [Project Links](#project-links)
+  - [Current state](#current-state)
+    - [Games available](#games-available)
+  - [Game play](#game-play)
+    - [Player action timeouts](#player-action-timeouts)
+    - [Hotkeys](#hotkeys)
+    - [Computer Opponents](#computer-opponents)
+  - [Server](#server)
+  - [Client](#client)
+  - [Player Config](#player-config)
+  - [Dedicated Servers](#dedicated-servers)
+  - [Building](#building)
+  - [Translating](#translating)
+  - [Note on AppImages](#note-on-appimages)
+
 # Dealer's Choice
 
 Online Multiplayer Stud and Draw Poker, where the deal rotates and each new
@@ -84,18 +101,9 @@ file](https://github.com/Dealer-s-Choice/dealers_choice/tree/trunk/docker) or
 To run the client, simply run the binary without any arguments. A game can not
 be started until there is more than one player connected.
 
-## Config
+## Player Config
 
-When you run the client, you'll see the path to your config file. You will
-need to manually edit the file, as there is not yet a way to make changes from
-the gui.
-
-### Sound
-
-```
-sound.volume = 7 # You can use a range of 0 - 10
-sound.notify.turn = yes # Use "no" to disable your turn audio notification
-```
+See [docs/CONFIG.md](docs/CONFIG.md) for details.
 
 ## Dedicated Servers
 
@@ -107,7 +115,7 @@ See [BUILD.md](https://github.com/Dealer-s-Choice/dealers_choice/blob/trunk/BUIL
 
 ## Translating
 
-See [docs/TRANSLATING.md](docs/TRANSLATING.md)
+See [docs/TRANSLATE.md](docs/TRANSLATE.md)
 
 ## Note on AppImages
 
