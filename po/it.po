@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: dealers-choice\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-07-02 00:18-0500\n"
+"POT-Creation-Date: 2025-07-02 18:30-0500\n"
 "PO-Revision-Date: 2025-07-02 00:46-0500\n"
 "Last-Translator: Andy <andy@prometheus.localhost.localdomain>\n"
 "Language-Team: Italian <tp@lists.linux.it>\n"
@@ -25,27 +25,27 @@ msgstr "Canale Discord (sul server Lazarus Project)"
 msgid "Connected players:"
 msgstr "Giocatori connessi:"
 
-#: src/client.c:541
+#: src/client.c:535
 msgid "Check"
 msgstr "Check"
 
-#: src/client.c:541
+#: src/client.c:535
 msgid "Bet"
 msgstr "Punta"
 
-#: src/client.c:541
+#: src/client.c:535
 msgid "Fold"
 msgstr "Molla"
 
-#: src/client.c:542
+#: src/client.c:536
 msgid "Call"
 msgstr "Chiamata"
 
-#: src/client.c:542
+#: src/client.c:536
 msgid "Raise"
 msgstr "Rilancia"
 
-#: src/client.c:542
+#: src/client.c:536
 msgid "Discard"
 msgstr "Scarta"
 

@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: dealers-choice\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-07-02 00:18-0500\n"
+"POT-Creation-Date: 2025-07-02 18:30-0500\n"
 "PO-Revision-Date: 2025-07-02 00:18-0500\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -25,27 +25,27 @@ msgstr " Canal de Discord (en el servidor del proyecto Lazarus) "
 msgid "Connected players:"
 msgstr "Jugadores conectados:"
 
-#: src/client.c:541
+#: src/client.c:535
 msgid "Check"
 msgstr "Pasar"
 
-#: src/client.c:541
+#: src/client.c:535
 msgid "Bet"
 msgstr "Apostar"
 
-#: src/client.c:541
+#: src/client.c:535
 msgid "Fold"
 msgstr "Retirarse"
 
-#: src/client.c:542
+#: src/client.c:536
 msgid "Call"
 msgstr "Igualar"
 
-#: src/client.c:542
+#: src/client.c:536
 msgid "Raise"
 msgstr "Subir la apuesta"
 
-#: src/client.c:542
+#: src/client.c:536
 msgid "Discard"
 msgstr "Descartar"
 
