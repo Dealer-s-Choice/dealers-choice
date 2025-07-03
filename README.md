@@ -105,6 +105,10 @@ There are no dedicated public servers yet.
 
 See [BUILD.md](https://github.com/Dealer-s-Choice/dealers_choice/blob/trunk/BUILD.md)
 
+## Translating
+
+See [docs/TRANSLATING.md](docs/TRANSLATING.md)
+
 ## Note on AppImages
 
 If you're a Linux user, you can download the AppImage from the [Releases

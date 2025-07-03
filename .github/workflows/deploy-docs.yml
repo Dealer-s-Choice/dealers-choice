@@ -8,6 +8,7 @@ on:
     branches: [trunk]
     paths:
       - 'README.md'
+      - 'docs/**'
       - '!**.yml'
       - '**/deploy-docs.yml'
 
@@ -23,6 +24,7 @@ jobs:
         run: |
           mkdir deploy
           cp README.md deploy/
+          cp -r docs deploy/
 
       - name: Deploy to destination repo
         uses: peaceiris/actions-gh-pages@v4
