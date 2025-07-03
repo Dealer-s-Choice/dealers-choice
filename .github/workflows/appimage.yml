@@ -11,6 +11,8 @@ on:
         required: false
         type: string
   push:
+    tags:
+      - 'v*'
     branches: trunk
     paths:
     - '**'
@@ -47,9 +49,13 @@ jobs:
 
       - name: Set version
         run: |
-          if [ -z "$VERSION" ]; then
-            echo "VERSION=snapshot" >> $GITHUB_ENV
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            TAG_NAME=${GITHUB_REF#refs/tags/}
+            VERSION=${TAG_NAME#v}
+          else
+            VERSION=snapshot
           fi
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
 
       - name: Build AppImage
         run: |
@@ -74,6 +80,17 @@ jobs:
           name: ${{ env.ARTIFACT_NAME }}
           path: ./out/*AppImage*
           if-no-files-found: error
+
+      - name: Release (Tagged)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: ncipollo/release-action@v1
+        with:
+          artifacts: "./out/*AppImage*"
+          allowUpdates: true
+          prerelease: false
+          omitBodyDuringUpdate: true
+          omitNameDuringUpdate: true
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - if: ${{ github.ref == 'refs/heads/trunk' }}
         name: 'Prerelease'
