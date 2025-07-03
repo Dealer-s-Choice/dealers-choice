@@ -190,6 +190,8 @@ PlayerConfig_t get_player_config(void) {
     } else {
       for (size_t i = 0; i < player_config_entry_count; i++) {
         if (!found_keys[i]) {
+          printf("Appending config: %s = %s\n", player_config_entries[i].key,
+                 player_config_entries[i].default_value);
           fprintf(fp, "%s = %s\n", player_config_entries[i].key,
                   player_config_entries[i].default_value);
           config_set_default(&config, &player_config_entries[i]);
