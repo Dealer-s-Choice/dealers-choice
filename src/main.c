@@ -27,6 +27,7 @@
 */
 
 #include <stdio.h>
+#include <stdlib.h> // For setenv()
 #include <string.h>
 
 #include "client.h"
@@ -255,7 +256,11 @@ int main(int argc, char *argv[]) {
 
 #ifdef ENABLE_NLS
   if (strlen(player_config.language) != 0) {
+#ifdef _WIN32
+    _putenv_s("LANGUAGE", player_config.language);
+#else
     setenv("LANGUAGE", player_config.language, 1);
+#endif
     setlocale(LC_ALL, "");
     bindtextdomain(DEALERSCHOICE_NAME, locale_dir);
     textdomain(DEALERSCHOICE_NAME);
