@@ -26,7 +26,6 @@
 
 */
 
-#include <pokeval.h>
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
@@ -119,8 +118,8 @@ GameSettings_t init_game_settings(const ServerConfig_t *config, const CliArgs_t 
 
 // In the future, hands will be sent using functions like this, rather than how it's
 // presently done in broadcast_game_state()
-static int send_new_hand(TCPsocket sock, const POKEVAL_Hand *hand, uint8_t hand_size) {
-  if (hand_size == 0 || hand_size > POKEVAL_HAND_SIZE)
+static int send_new_hand(TCPsocket sock, const POKEVAL_Hand_7 *hand, uint8_t hand_size) {
+  if (hand_size == 0 || hand_size > MAX_HAND_SIZE)
     return -1;
 
   // TODO: Can this be simplified via protobuf-c (already being used to serialize game_state)?
@@ -153,23 +152,40 @@ RealHand_t deal_cards_to_players(GameState_t *game_state, DH_Deck *deck, const u
   Player_t *turn = get_next_player(players_array, game_state->dealer_id);
   Player_t *starting_turn = turn;
 
+  const GameChoice_t *choice = find_game_choice_by_type(game_type);
+
+  int i = 0;
   do {
-    if (game_type != game_choices[FIVE_CARD_STUD].game_type) {
-      for (int i = 0; i < POKEVAL_HAND_SIZE; ++i) {
+    if (game_type != game_choices[FIVE_CARD_STUD].game_type &&
+        game_type != game_choices[SEVEN_CARD_STUD].game_type) {
+      for (i = 0; i < MAX_HAND_SIZE; ++i) {
+        if (i >= choice->hand_size) {
+          real_hand.player[turn->id].card[i] = DH_card_null;
+          turn->hand.card[i] = DH_card_null;
+          continue;
+        }
         turn->hand.card[i] = DH_card_back;
         real_hand.player[turn->id].card[i] = DH_deal_top_card(deck);
       }
     } else {
-      POKEVAL_Hand *hand = &turn->hand;
-      // First card face down
-      hand->card[0] = DH_card_back;
-      real_hand.player[turn->id].card[0] = DH_deal_top_card(deck);
+      int cards_dealt = 0;
+      POKEVAL_Hand_7 *hand = &turn->hand;
 
-      // Second card face up
-      hand->card[1] = DH_deal_top_card(deck);
-      real_hand.player[turn->id].card[1] = hand->card[1];
+      for (i = 0; i < 2; i++) {
+        // First card face down
+        hand->card[cards_dealt] = DH_card_back;
+        real_hand.player[turn->id].card[cards_dealt] = DH_deal_top_card(deck);
+        cards_dealt++;
+        if (game_type == game_choices[FIVE_CARD_STUD].game_type)
+          break;
+      }
 
-      for (int i = 2; i < POKEVAL_HAND_SIZE; i++) {
+      // Next card face up
+      hand->card[cards_dealt] = DH_deal_top_card(deck);
+      real_hand.player[turn->id].card[cards_dealt] = hand->card[cards_dealt];
+      cards_dealt++;
+
+      for (i = cards_dealt; i < MAX_HAND_SIZE; i++) {
         hand->card[i] = DH_card_null;
         real_hand.player[turn->id].card[i] = hand->card[i];
       }
@@ -195,13 +211,15 @@ static void broadcast_game_state(ArgsBroadcastGameState_t *args) {
       continue;
     }
 
-    POKEVAL_Hand hand_tmp = {0};
+    POKEVAL_Hand_7 hand_tmp = {0};
     if (args->game_state->winner_declared && args->game_state->player_count != 1) {
-      memcpy(&args->game_state->player[i].hand, &args->real_hand->player[i], sizeof(POKEVAL_Hand));
+      memcpy(&args->game_state->player[i].hand, &args->real_hand->player[i],
+             sizeof(POKEVAL_Hand_7));
 
     } else {
-      memcpy(&hand_tmp, &args->game_state->player[i].hand, sizeof(POKEVAL_Hand));
-      memcpy(&args->game_state->player[i].hand, &args->real_hand->player[i], sizeof(POKEVAL_Hand));
+      memcpy(&hand_tmp, &args->game_state->player[i].hand, sizeof(POKEVAL_Hand_7));
+      memcpy(&args->game_state->player[i].hand, &args->real_hand->player[i],
+             sizeof(POKEVAL_Hand_7));
     }
 
     size_t size = 0;
@@ -210,7 +228,7 @@ static void broadcast_game_state(ArgsBroadcastGameState_t *args) {
       return;
 
     if (!args->game_state->winner_declared || args->game_state->player_count == 1)
-      memcpy(&args->game_state->player[i].hand, &hand_tmp, sizeof(POKEVAL_Hand));
+      memcpy(&args->game_state->player[i].hand, &hand_tmp, sizeof(POKEVAL_Hand_7));
 
     uint32_t size_net = htonl(size);
 
@@ -460,7 +478,7 @@ static int handle_draw(ArgsBroadcastGameState_t *args, TCPsocket sock, const int
   char status_str[LEN_STATUS_STR] = {0};
   snprintf(status_str, sizeof status_str, "%s drew %d", args->game_state->player[id].nick,
            req.discard_count);
-  send_new_hand(sock, &args->real_hand->player[id], POKEVAL_HAND_SIZE);
+  send_new_hand(sock, &args->real_hand->player[id], MAX_HAND_SIZE);
   broadcast_status_message(args, status_str);
 
   return 0;
@@ -496,18 +514,12 @@ static void determine_winner(ArgsBroadcastGameState_t *args, RoundResults *resul
   Player_t *starting_player = players_array;
   uint8_t pl_count = args->game_state->player_count;
 
-  // I've seen this twice now during testing. Maybe happens during a tie.
-  //
-  // ../src/server.c:350:39: runtime error: variable length array bound evaluates to non-positive
-  // value 0
-  // ../subprojects/pokeval/pokeval.c:298:11: runtime error: variable length array bound evaluates
-  // to non-positive value 0
   POKEVAL_NeedComparing need_comparing[pl_count];
   Player_t *ptr = starting_player;
   for (uint8_t i = 0; i < pl_count; i++) {
     need_comparing[i].won = false;
     need_comparing[i].id = ptr->id;
-    memcpy(&need_comparing[i].hand, &args->real_hand->player[ptr->id], sizeof(POKEVAL_Hand));
+    memcpy(&need_comparing[i].hand, &args->real_hand->player[ptr->id], sizeof(POKEVAL_Hand_7));
     ptr = get_next_player(players_array, ptr->id);
   }
 
@@ -529,7 +541,7 @@ static void determine_winner(ArgsBroadcastGameState_t *args, RoundResults *resul
              // When broadcast is called, it will reveal the cards if winner has been declared. We
              // don't need to call that yet, so using the values from "real_hand" for now
              "%s wins with %s", winner->nick,
-             POKEVAL_rank[POKEVAL_evaluate_hand(args->real_hand->player[winner->id])]);
+             POKEVAL_rank[POKEVAL_evaluate_hand(need_comparing[winner->id].hand_5)]);
     broadcast_status_message(args, status_str);
     if (args->cli_args->server_log_game_results_file) {
       FILE *fp = fopen(args->cli_args->server_log_game_results_file, "a");
@@ -538,7 +550,7 @@ static void determine_winner(ArgsBroadcastGameState_t *args, RoundResults *resul
       else {
         fprintf(fp, "pot: %d<br>\n", args->game_state->pot);
         fprintf(fp, "%s wins with %s\n\n", winner->nick,
-                POKEVAL_rank[POKEVAL_evaluate_hand(args->real_hand->player[winner->id])]);
+                POKEVAL_rank[POKEVAL_evaluate_hand(need_comparing[winner->id].hand_5)]);
         fclose(fp);
       }
     }
@@ -826,7 +838,6 @@ static int get_next_dealer(int current, const bool *slot_taken) {
 }
 
 void game_five_card_draw(GAME_ARGS) {
-  (void)n_stud_new_cards;
   uint8_t dealer_id = args->game_state->dealer_id;
   Player_t *starting_player = get_next_player(players_array, dealer_id);
   server_handle_ante(args->game_state, args->config->ante);
@@ -835,9 +846,9 @@ void game_five_card_draw(GAME_ARGS) {
   RoundResults results = {0};
   int8_t save_starting_player_id = starting_player->id;
 
-  for (int i = 0; i < n_betting_rounds; i++) {
+  for (int i = 0; i < choice->n_betting_rounds; i++) {
     results = handle_round();
-    if (results.n_winners > 0 || i == n_draws)
+    if (results.n_winners > 0 || i == choice->n_draws)
       break;
 
     if (!starting_player->in) {
@@ -873,18 +884,17 @@ void game_five_card_draw(GAME_ARGS) {
   determine_winner(args, &results);
 }
 
-void game_five_card_stud(GAME_ARGS) {
-  (void)n_draws;
+void game_stud(GAME_ARGS) {
   Player_t *starting_player = get_next_player(players_array, args->game_state->dealer_id);
   Player_t *turn = starting_player;
   server_handle_ante(args->game_state, args->config->ante);
   int8_t save_starting_player_id = starting_player->id;
 
   RoundResults results = {0};
-  for (int i = 0; i < n_betting_rounds; i++) {
+  for (int i = 0; i < choice->n_betting_rounds; i++) {
     results = handle_round();
 
-    if (results.n_winners > 0 || i == n_stud_new_cards)
+    if (results.n_winners > 0 || i == choice->n_stud_new_cards)
       break;
 
     if (!starting_player->in) {
@@ -896,10 +906,14 @@ void game_five_card_stud(GAME_ARGS) {
     printf("round: %d\n", i);
     do {
       int id = turn->id;
-      POKEVAL_Hand *hand = &turn->hand;
-      uint8_t n = i + 2;
-      hand->card[n] = DH_deal_top_card(deck);
-      args->real_hand->player[id].card[n] = hand->card[n];
+      POKEVAL_Hand_7 *hand = &turn->hand;
+
+      uint8_t n = i + (choice->hand_size - choice->n_stud_new_cards);
+      args->real_hand->player[id].card[n] = DH_deal_top_card(deck);
+      if (n != 6)
+        hand->card[n] = args->real_hand->player[id].card[n];
+      else
+        hand->card[n] = DH_card_back;
       // broadcast_game_state(args);
     } while ((turn = get_next_player(players_array, turn->id)) != starting_player);
     broadcast_game_state(args);
@@ -907,7 +921,7 @@ void game_five_card_stud(GAME_ARGS) {
   determine_winner(args, &results);
 }
 
-static void play_game(const char game_type, ArgsBroadcastGameState_t *args, DH_Deck *deck) {
+static void play_game(ArgsBroadcastGameState_t *args, DH_Deck *deck) {
   DH_shuffle_deck(deck);
   if (!args->cli_args->test_mode) {
     int cut_point = 16 + pcg32_boundedrand_r(&rng, 21);
@@ -915,7 +929,7 @@ static void play_game(const char game_type, ArgsBroadcastGameState_t *args, DH_D
   }
 
   Player_t *players_array = args->game_state->player;
-  *args->real_hand = deal_cards_to_players(args->game_state, deck, game_type);
+  *args->real_hand = deal_cards_to_players(args->game_state, deck, args->game_type);
   args->game_state->winner_declared = false;
   args->game_state->player_count = count_active_clients(args->slot_taken);
   fprintf(stderr, "player count: %d\n", args->game_state->player_count);
@@ -924,7 +938,7 @@ static void play_game(const char game_type, ArgsBroadcastGameState_t *args, DH_D
 
   broadcast_game_state(args);
 
-  const GameChoice_t *choice = find_game_choice_by_type(game_type);
+  const GameChoice_t *choice = find_game_choice_by_type(args->game_type);
   char tmp[LEN_STATUS_STR] = {0};
   snprintf(tmp, sizeof(tmp), _("Game: %s"), choice->str);
   broadcast_status_message(args, tmp);
@@ -944,8 +958,7 @@ static void play_game(const char game_type, ArgsBroadcastGameState_t *args, DH_D
 
   if (choice && choice->func) {
     // Using function pointers...
-    choice->func(args, players_array, deck, choice->n_betting_rounds, choice->n_draws,
-                 choice->n_stud_new_cards);
+    choice->func(args, players_array, deck, choice);
   }
 }
 
@@ -1022,6 +1035,7 @@ static EReturnCode_t receive_game_type_and_run_game(ArgsBroadcastGameState_t *ar
   uint8_t game_type = 0;
   int8_t *dealer_id = &args->game_state->dealer_id;
   if (recv_game_select(args->clients[*dealer_id], &game_type) == SIZE_MESSAGE_GAME_SELECT) {
+    args->game_type = game_type;
     fprintf(stderr, "Client chose game type: 0x%02x\n", game_type);
   } else {
     fprintf(stderr, "Dealer failed to send valid game type or disconnected.\n");
@@ -1034,7 +1048,7 @@ static EReturnCode_t receive_game_type_and_run_game(ArgsBroadcastGameState_t *ar
   printf("All %d players are ready. Starting game.\n", count_active_clients(args->slot_taken));
   args->game_state->at_menu = false;
 
-  play_game(game_type, args, deck);
+  play_game(args, deck);
 
   broadcast_game_state(args);
 
@@ -1128,10 +1142,10 @@ static ELoop_t register_new_client(ArgsBroadcastGameState_t *args) {
       if (args->game_state->at_menu)
         slot_id->in = true;
       else {
-        for (int i = 0; i < POKEVAL_HAND_SIZE; i++)
+        for (int i = 0; i < MAX_HAND_SIZE; i++)
           args->real_hand->player[slot].card[i] = DH_card_null;
         memcpy(&args->game_state->player[slot].hand, &args->real_hand->player[slot],
-               sizeof(POKEVAL_Hand));
+               sizeof(POKEVAL_Hand_7));
       }
 
       if (recv_and_validate_protocol_header(new_client) != 0) {
@@ -1271,6 +1285,7 @@ int run_server(CliArgs_t *cli_args, Path_t *path) {
         .server_sock = &server,
         .game_settings = &game_settings,
         .config = &config,
+        .game_type = 0,
     };
 
     uint8_t active_clients = count_active_clients(slot_taken);

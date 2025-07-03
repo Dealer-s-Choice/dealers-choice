@@ -29,12 +29,10 @@
 #ifndef __DEBUG_H
 #define __DEBUG_H
 
-#include <pokeval.h>
-
 typedef struct {
   char str[200];
 } DebugPrintCards_t;
 
-DebugPrintCards_t debug_print_cards(POKEVAL_Hand *hand);
+DebugPrintCards_t debug_print_cards(POKEVAL_Hand_7 *hand);
 
 #endif

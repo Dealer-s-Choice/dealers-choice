@@ -44,14 +44,14 @@ static void fill_player_message(struct player_message_builder_t *builder, const 
   builder->msg.has_checked = src->has_checked;
 
   // Hand
-  for (int i = 0; i < POKEVAL_HAND_SIZE; ++i) {
+  for (int i = 0; i < MAX_HAND_SIZE; ++i) {
     card__init(&builder->cards[i]);
     builder->cards[i].face_val = src->hand.card[i].face_val;
     builder->cards[i].suit = src->hand.card[i].suit;
     builder->card_ptrs[i] = &builder->cards[i];
   }
 
-  builder->hand.n_card = POKEVAL_HAND_SIZE;
+  builder->hand.n_card = MAX_HAND_SIZE;
   builder->hand.card = builder->card_ptrs;
   builder->msg.hand = &builder->hand;
 }
@@ -71,7 +71,7 @@ static void fill_player_from_message(Player_t *dst, const Player *msg) {
   dst->has_checked = msg->has_checked;
 
   if (msg->hand) {
-    size_t n = msg->hand->n_card < POKEVAL_HAND_SIZE ? msg->hand->n_card : POKEVAL_HAND_SIZE;
+    size_t n = msg->hand->n_card < MAX_HAND_SIZE ? msg->hand->n_card : MAX_HAND_SIZE;
     for (size_t i = 0; i < n; ++i) {
       dst->hand.card[i].face_val = msg->hand->card[i]->face_val;
       dst->hand.card[i].suit = msg->hand->card[i]->suit;
@@ -343,7 +343,7 @@ ERecvStatus_t recv_game_state(SocketContext_t *socket_context, GameState_t *game
 
     uint8_t hand_size = buffer[2];
     uint8_t expected_size = 3 + hand_size * 8;
-    if (hand_size == 0 || hand_size > POKEVAL_HAND_SIZE || size != expected_size) {
+    if (hand_size == 0 || hand_size > MAX_HAND_SIZE || size != expected_size) {
       fprintf(stderr, "Invalid hand size or message length: %u\n", hand_size);
       break;
     }
