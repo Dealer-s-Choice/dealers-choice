@@ -155,6 +155,7 @@ int main(int argc, char *argv[]) {
 
   enum {
     OPT_SERVER = 1,
+    OPT_SERVER_LOG_GAME_RESULTS,
     OPT_SERVER_CONF,
     OPT_TEST,
     OPT_BIND,
@@ -162,13 +163,15 @@ int main(int argc, char *argv[]) {
     OPT_VERSION,
   };
 
-  static const glopt_option_t options[] = {{"server", GLOPT_NO_ARG, OPT_SERVER},
-                                           {"server-conf", GLOPT_REQUIRED_ARG, OPT_SERVER_CONF},
-                                           {"-test", GLOPT_NO_ARG, OPT_TEST},
-                                           {"bind-address", GLOPT_REQUIRED_ARG, OPT_BIND},
-                                           {"host", GLOPT_REQUIRED_ARG, OPT_HOST},
-                                           {"version", GLOPT_NO_ARG, OPT_VERSION},
-                                           {NULL, 0, 0}};
+  static const glopt_option_t options[] = {
+      {"server", GLOPT_NO_ARG, OPT_SERVER},
+      {"server-log-game-results", GLOPT_REQUIRED_ARG, OPT_SERVER_LOG_GAME_RESULTS},
+      {"server-conf", GLOPT_REQUIRED_ARG, OPT_SERVER_CONF},
+      {"-test", GLOPT_NO_ARG, OPT_TEST},
+      {"bind-address", GLOPT_REQUIRED_ARG, OPT_BIND},
+      {"host", GLOPT_REQUIRED_ARG, OPT_HOST},
+      {"version", GLOPT_NO_ARG, OPT_VERSION},
+      {NULL, 0, 0}};
 
   glopt_parser_t parser;
   glopt_init(&parser, options);
@@ -178,6 +181,9 @@ int main(int argc, char *argv[]) {
     switch (opt) {
     case OPT_SERVER:
       cli_args.run_server_flag = true;
+      break;
+    case OPT_SERVER_LOG_GAME_RESULTS:
+      cli_args.server_log_game_results_file = parser.optarg;
       break;
     case OPT_SERVER_CONF:
       cli_args.server_conf = parser.optarg;
@@ -200,6 +206,7 @@ int main(int argc, char *argv[]) {
       print_version();
       fputs("Usage:\n"
             "  --server [--bind-address IP]\n"
+            "  --server-log-game-results [path/to/file]\n"
             "  --server-conf [Path to alternate server config file]\n"
             "  --host IP\n"
             "  --version\n",

@@ -85,6 +85,7 @@ typedef struct {
 
 typedef struct {
   const char *host, *server_conf, *bind_address;
+  const char *server_log_game_results_file;
   bool test_mode, run_server_flag;
 } CliArgs_t;
 

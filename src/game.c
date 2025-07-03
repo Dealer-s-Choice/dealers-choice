@@ -93,6 +93,7 @@ CliArgs_t init_cli_args(void) {
   CliArgs_t cli_args = {
       .host = NULL,
       .server_conf = NULL,
+      .server_log_game_results_file = NULL,
       .bind_address = NULL,
       .test_mode = false,
       .run_server_flag = false,

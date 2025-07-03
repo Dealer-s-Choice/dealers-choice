@@ -29,6 +29,7 @@
 #include <pokeval.h>
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
 
 #include "dc_config.h"
 #include "game.h"
@@ -515,7 +516,7 @@ static void determine_winner(ArgsBroadcastGameState_t *args, RoundResults *resul
     results->id[winners++] = need_comparing[i].id;
     Player_t *winner = &args->game_state->player[need_comparing[i].id];
     winner->winner = true;
-    fprintf(stderr, "winner id: %d\n", need_comparing[i].id);
+    // fprintf(stderr, "winner id: %d\n", need_comparing[i].id);
     char status_str[LEN_STATUS_STR];
     snprintf(status_str, sizeof(status_str),
              // When broadcast is called, it will reveal the cards if winner has been declared. We
@@ -523,6 +524,17 @@ static void determine_winner(ArgsBroadcastGameState_t *args, RoundResults *resul
              "%s wins with %s", winner->nick,
              POKEVAL_rank[POKEVAL_evaluate_hand(args->real_hand->player[winner->id])]);
     broadcast_status_message(args, status_str);
+    if (args->cli_args->server_log_game_results_file) {
+      FILE *fp = fopen(args->cli_args->server_log_game_results_file, "a");
+      if (!fp)
+        perror("fopen");
+      else {
+        fprintf(fp, "pot: %d</br>\n", args->game_state->pot);
+        fprintf(fp, "%s wins with %s\n\n", winner->nick,
+                POKEVAL_rank[POKEVAL_evaluate_hand(args->real_hand->player[winner->id])]);
+        fclose(fp);
+      }
+    }
     uint32_t share = args->game_state->pot / results->n_winners;
     args->game_state->pot = args->game_state->pot % results->n_winners;
     winner->coins += share;
@@ -540,10 +552,20 @@ static void award_last_player_in_game(ArgsBroadcastGameState_t *args, Player_t *
   char status_str[LEN_STATUS_STR] = {0};
   snprintf(status_str, sizeof(status_str), "%s wins", turn->nick);
   broadcast_status_message(args, status_str);
+  if (args->cli_args->server_log_game_results_file) {
+    FILE *fp = fopen(args->cli_args->server_log_game_results_file, "a");
+    if (!fp)
+      perror("fopen");
+    else {
+      fprintf(fp, "pot: %d</br>\n", args->game_state->pot);
+      fprintf(fp, "%s wins\n\n", turn->nick);
+      fclose(fp);
+    }
+  }
 
   args->game_state->winner_declared = true;
   results->n_winners = 1;
-  fprintf(stderr, "winner id from fold: %d\n", turn->id);
+  // fprintf(stderr, "winner id from fold: %d\n", turn->id);
   results->id[0] = turn->id;
   turn->coins += args->game_state->pot;
   args->game_state->pot = 0;
@@ -1199,6 +1221,18 @@ int run_server(CliArgs_t *cli_args, Path_t *path) {
     DH_pcg_srand_auto();
   else
     DH_pcg_srand(1, 1);
+
+  if (cli_args->server_log_game_results_file) {
+    FILE *fp = fopen(cli_args->server_log_game_results_file, "a");
+    if (!fp)
+      perror("fopen");
+    else {
+      time_t t = time(NULL);
+      struct tm tm = *localtime(&t);
+      fprintf(fp, "## %04d-%02d-%02d\n\n", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday);
+      fclose(fp);
+    }
+  }
 
   int game_started = 0;
   RealHand_t real_hand = {0};
