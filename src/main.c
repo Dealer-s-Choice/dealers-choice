@@ -253,6 +253,15 @@ int main(int argc, char *argv[]) {
     exit(EXIT_FAILURE);
   }
 
+#ifdef ENABLE_NLS
+  if (strlen(player_config.language) != 0) {
+    setenv("LANGUAGE", player_config.language, 1);
+    setlocale(LC_ALL, "");
+    bindtextdomain(DEALERSCHOICE_NAME, locale_dir);
+    textdomain(DEALERSCHOICE_NAME);
+  }
+#endif
+
   char host_str[MAX_INPUT_LENGTH] = {0};
   snprintf(host_str, sizeof(host_str), "%s", (cli_args.host) ? cli_args.host : player_config.host);
 

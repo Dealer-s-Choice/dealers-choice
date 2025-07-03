@@ -49,6 +49,7 @@ typedef struct {
   char nick[SIZEOF_NICK];
   char host[MAX_INPUT_LENGTH];
   int port;
+  char language[6];
   int volume;
   bool turn_notify;
 } PlayerConfig_t;
@@ -69,6 +70,8 @@ static const ConfigEntry player_config_entries[] = {
     {"host", CFG_TYPE_STRING, "127.0.0.1", offsetof(PlayerConfig_t, host),
      sizeof(((PlayerConfig_t *)0)->host)},
     {"port", CFG_TYPE_INT, DEFAULT_PORT, offsetof(PlayerConfig_t, port), sizeof(int)},
+    {"language", CFG_TYPE_STRING, "", offsetof(PlayerConfig_t, language),
+     sizeof(((PlayerConfig_t *)0)->language)},
     {"sound.volume", CFG_TYPE_INT, "5", offsetof(PlayerConfig_t, volume), sizeof(int)},
     {"sound.notify.turn", CFG_TYPE_BOOL, "yes", offsetof(PlayerConfig_t, turn_notify),
      sizeof(bool)}};
