@@ -43,6 +43,13 @@
 
 #define handle_round() handle_round_real(args)
 
+#define __START_PLAYER_LOOP                                                                        \
+  for (int i = 0; i < MAX_PLAYERS; i++) {                                                          \
+    if (args->game_state->player[i].id == -1)                                                      \
+      continue;
+
+#define __END_PLAYER_LOOP }
+
 typedef struct {
   uint8_t n_winners;
   int id[MAX_PLAYERS];
@@ -921,6 +928,20 @@ static void play_game(const char game_type, ArgsBroadcastGameState_t *args, DH_D
   char tmp[LEN_STATUS_STR] = {0};
   snprintf(tmp, sizeof(tmp), _("Game: %s"), choice->str);
   broadcast_status_message(args, tmp);
+
+  if (args->cli_args->server_log_game_results_file) {
+    FILE *fp = fopen(args->cli_args->server_log_game_results_file, "a");
+    if (!fp)
+      perror("fopen");
+    else {
+      __START_PLAYER_LOOP
+      fprintf(fp, "%s: %d<br>\n", args->game_state->player[i].nick,
+              args->game_state->player[i].coins);
+      __END_PLAYER_LOOP
+      fclose(fp);
+    }
+  }
+
   if (choice && choice->func) {
     // Using function pointers...
     choice->func(args, players_array, deck, choice->n_betting_rounds, choice->n_draws,
