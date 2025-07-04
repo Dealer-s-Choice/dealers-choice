@@ -529,7 +529,7 @@ static void determine_winner(ArgsBroadcastGameState_t *args, RoundResults *resul
       if (!fp)
         perror("fopen");
       else {
-        fprintf(fp, "pot: %d</br>\n", args->game_state->pot);
+        fprintf(fp, "pot: %d<br>\n", args->game_state->pot);
         fprintf(fp, "%s wins with %s\n\n", winner->nick,
                 POKEVAL_rank[POKEVAL_evaluate_hand(args->real_hand->player[winner->id])]);
         fclose(fp);
@@ -557,7 +557,7 @@ static void award_last_player_in_game(ArgsBroadcastGameState_t *args, Player_t *
     if (!fp)
       perror("fopen");
     else {
-      fprintf(fp, "pot: %d</br>\n", args->game_state->pot);
+      fprintf(fp, "pot: %d<br>\n", args->game_state->pot);
       fprintf(fp, "%s wins\n\n", turn->nick);
       fclose(fp);
     }
