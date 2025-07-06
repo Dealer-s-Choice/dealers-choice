@@ -35,6 +35,7 @@ file for details.
 
 * [GitHub Repo](https://github.com/Dealer-s-Choice/dealers_choice)
 * [Screenshots](https://dealer-s-choice.github.io/screenshots/)
+* [Game Results](https://dealer-s-choice.github.io/game_results.html)
 * [Discussions](https://github.com/Dealer-s-Choice/dealers_choice/discussions)
 * [Bug Reporting](https://github.com/Dealer-s-Choice/dealers_choice/issues)
 * [Releases](https://github.com/Dealer-s-Choice/dealers_choice/releases)
