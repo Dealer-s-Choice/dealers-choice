@@ -154,7 +154,7 @@ RealHand_t deal_cards_to_players(GameState_t *game_state, DH_Deck *deck, const u
 
   const GameChoice_t *choice = find_game_choice_by_type(game_type);
 
-  int i = 0;
+  size_t i = 0;
   do {
     if (game_type != game_choices[FIVE_CARD_STUD].game_type &&
         game_type != game_choices[SEVEN_CARD_STUD].game_type) {
