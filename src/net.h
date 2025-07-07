@@ -41,8 +41,12 @@
 #include "netpoker.pb-c.h"
 #include "types.h"
 
+#ifndef MAX_HAND_SIZE
+#define MAX_HAND_SIZE 7
+#endif
+
 #define GAME_PROTOCOL_MAGIC "DCPROTO"
-#define GAME_PROTOCOL_VERSION 2
+#define GAME_PROTOCOL_VERSION 3
 
 #ifdef _MSC_VER
 #pragma pack(push, 1)
@@ -105,8 +109,8 @@ struct player_message_builder_t {
   // These types come from the generated protobuf header file
   Player msg;
   Hand hand;
-  Card cards[POKEVAL_HAND_SIZE];
-  Card *card_ptrs[POKEVAL_HAND_SIZE];
+  Card cards[MAX_HAND_SIZE];
+  Card *card_ptrs[MAX_HAND_SIZE];
 };
 
 uint8_t *serialize_game_state(const GameState_t *src, size_t *size_out);

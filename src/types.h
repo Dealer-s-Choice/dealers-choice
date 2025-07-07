@@ -47,6 +47,7 @@ typedef enum {
   FIVE_CARD_DRAW,
   FIVE_CARD_DOUBLE_DRAW,
   FIVE_CARD_STUD,
+  SEVEN_CARD_STUD,
   FIVE_CARD_SHOWDOWN,
   MAX_CHOICES,
 } EMenuOption_t;
@@ -54,7 +55,7 @@ typedef enum {
 typedef struct {
   char nick[SIZEOF_NICK];
   int8_t id;
-  POKEVAL_Hand hand;
+  POKEVAL_Hand_7 hand;
   int32_t coins;
   bool in; // Used for spectators or when someone has folded
   uint32_t total_paid;
@@ -80,7 +81,7 @@ typedef struct {
 } GameSettings_t;
 
 typedef struct {
-  POKEVAL_Hand player[MAX_PLAYERS];
+  POKEVAL_Hand_7 player[MAX_PLAYERS];
 } RealHand_t;
 
 typedef struct {
@@ -102,16 +103,19 @@ typedef struct {
   TCPsocket *server_sock;
   GameSettings_t *game_settings;
   struct ServerConfig_t *config;
+  uint8_t game_type;
 } ArgsBroadcastGameState_t;
 
-typedef void (*game_func_t)(ArgsBroadcastGameState_t *, Player_t *, DH_Deck *, uint8_t, uint8_t,
-                            uint8_t);
+struct GameChoice_t;
+typedef void (*game_func_t)(ArgsBroadcastGameState_t *, Player_t *, DH_Deck *,
+                            const struct GameChoice_t *);
 
-typedef struct {
+typedef struct GameChoice_t {
   const EMenuOption_t g;
   const char *str;
   const uint8_t game_type;
   game_func_t func;
+  uint8_t hand_size;
   uint8_t n_betting_rounds, n_draws, n_stud_new_cards;
 } GameChoice_t;
 
