@@ -58,11 +58,14 @@ available yet](https://github.com/Dealer-s-Choice/dealers_choice/issues/68).
 
 ### Player action timeouts
 
+If a player is at their turn but doesn't select an action (e.g. bet, discard)
+within 20 seconds, the client will enact a default.
+
 If there has been no bet, the default action is "check".
 
-If there has been a bet, the default actions is "fold".
+If there has been a bet, the default action is "fold".
 
-The duration of the timeouts are defined in
+The timeout is defined in
 [server.conf](https://github.com/Dealer-s-Choice/dealers_choice/blob/trunk/data/server.conf).
 
 ### Hotkeys
