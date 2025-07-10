@@ -427,6 +427,19 @@ static void render_card(CardContext_t *context, TTF_Font *font) {
   SDL_DestroyTexture(textTexture);
 }
 
+static void make_human_readable_card(DH_Card *card, CardContext_t *context) {
+  const char *face = DH_get_card_face_str(card->face_val);
+  const char *suit = DH_get_card_unicode_suit(*card);
+  context->textColor = (card->suit == DH_SUIT_HEARTS || card->suit == DH_SUIT_DIAMONDS)
+                           ? get_color(COLOR_RED)
+                           : get_color(COLOR_BLACK);
+  snprintf(context->text, sizeof(context->text), "%s%s", face, suit);
+  if (strlen(context->text) == 0) {
+    fprintf(stderr, "%s:String length 0\n", __func__);
+    exit(EXIT_FAILURE);
+  }
+}
+
 static void create_card_context(CardContext_t card_context[MAX_PLAYERS][MAX_HAND_SIZE],
                                 const int start_i, Player_t *players_array,
                                 const SDL_Point *player_pos, SDL_Renderer *renderer) {
@@ -452,6 +465,7 @@ static void create_card_context(CardContext_t card_context[MAX_PLAYERS][MAX_HAND
       context.rect = rect;
 
       SDL_Color textColor = {0, 0, 0, 0};
+      // Initialize even though it's not used for backs and null cards
       context.textColor = textColor;
 
       context.is_null = DH_is_card_null(*card);
@@ -466,16 +480,7 @@ static void create_card_context(CardContext_t card_context[MAX_PLAYERS][MAX_HAND
         if (!context.is_wild)
           context.is_wild = card->face_val == DH_CARD_TWO;
 
-        const char *face = DH_get_card_face_str(card->face_val);
-        const char *suit = DH_get_card_unicode_suit(*card);
-        context.textColor = (card->suit == DH_SUIT_HEARTS || card->suit == DH_SUIT_DIAMONDS)
-                                ? get_color(COLOR_RED)
-                                : get_color(COLOR_BLACK);
-        snprintf(context.text, sizeof(context.text), "%s%s", face, suit);
-        if (strlen(context.text) == 0) {
-          fprintf(stderr, "%s:String length 0\n", __func__);
-          exit(EXIT_FAILURE);
-        }
+        make_human_readable_card(card, &context);
       }
       card_context[id][card_n] = context;
     }
@@ -851,20 +856,52 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
     } while ((player_ptr = get_next_connected_client(players_array, player_ptr->id)) !=
              starting_turn);
 
-    int y_offset = card_area.h * 2;
-    SDL_Rect card_faces[13] = {0};
+    int y_offset = card_area.h * 1;
+    Button_t card_faces[13] = {0};
+    int width, height;
+    TTF_SizeUTF8(font->fonts[FONT_WILD_SELECT], " 10 ", &width, &height);
     for (size_t i = 0; i < ARRAY_SIZE(card_faces); i++) {
       int card_val = i + 1;
       if (card_val == DH_CARD_TWO)
         continue;
 
-      SDL_Rect card_face_rect = {sdl_context->win_center.x - SCALE_X(100), y_offset, 0, 0};
-      render_text_plain(sdl_context->renderer, font->fonts[FONT_DEFAULT],
-                        DH_get_card_face_str(card_val), get_color(COLOR_BLACK), &card_face_rect);
-      TTF_SizeUTF8(font->fonts[FONT_BOLD], DH_get_card_face_str(card_val), &card_face_rect.w,
-                   &card_face_rect.h);
-      card_faces[i] = card_face_rect;
-      y_offset += SCALE_Y(30);
+      card_faces[i] = (Button_t){
+          DH_get_card_face_str(card_val),
+          sdl_context->renderer,
+          get_color(COLOR_WHITE),
+          get_color(COLOR_BROWN),
+          {sdl_context->win_center.x - SCALE_X(100), y_offset, width, height},
+          font->fonts[FONT_WILD_SELECT],
+          false,
+          true,
+          false,
+          0,
+      };
+
+      y_offset += height + SCALE_Y(10);
+      render_button(&card_faces[i]);
+    }
+
+    y_offset = (height + SCALE_Y(10)) * 6;
+    Button_t card_suits[DH_SUIT_MAX] = {0};
+
+    TTF_SizeUTF8(font->fonts[FONT_CARD], "   ", &width, &height);
+    for (DH_suit i = 0; i < ARRAY_SIZE(card_suits); i++) {
+      card_suits[i] = (Button_t){
+          DH_get_unicode_suit(i),
+          sdl_context->renderer,
+          get_color(COLOR_WHITE),
+          get_color(COLOR_BROWN),
+          {sdl_context->win_center.x - SCALE_X(100) + width + SCALE_X(20), y_offset, width, height},
+          font->fonts[FONT_CARD],
+          false,
+          true,
+          false,
+          0,
+      };
+
+      y_offset += height + SCALE_Y(10);
+      render_button(&card_suits[i]);
     }
 
     SDL_RenderPresent(sdl_context->renderer);
@@ -915,30 +952,34 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
           break;
         }
       }
+      bool wild_changed = false;
       for (int card_n = 0; card_n < MAX_HAND_SIZE; card_n++) {
         if (card_context[my_id][card_n].selected) {
           for (size_t f = 0; f < ARRAY_SIZE(card_faces); f++) {
             int card_val = f + 1;
             if (card_val == DH_CARD_TWO)
               continue;
-            if (SDL_PointInRect(&mouse_pos, &card_faces[f]) && event.type == SDL_MOUSEBUTTONDOWN) {
+            if (SDL_PointInRect(&mouse_pos, &card_faces[f].rect) &&
+                event.type == SDL_MOUSEBUTTONDOWN) {
               DH_Card *card = &turn->hand.card[card_n];
               card->face_val = card_val;
-              const char *face = DH_get_card_face_str(card->face_val);
-              const char *suit = DH_get_card_unicode_suit(*card);
-              card_context[my_id][card_n].textColor =
-                  (card->suit == DH_SUIT_HEARTS || card->suit == DH_SUIT_DIAMONDS)
-                      ? get_color(COLOR_RED)
-                      : get_color(COLOR_BLACK);
-              snprintf(card_context[my_id][card_n].text, sizeof(card_context[my_id][card_n].text),
-                       "%s%s", face, suit);
+              make_human_readable_card(card, &card_context[my_id][card_n]);
+              break;
+            }
+          }
+          for (DH_suit s = 0; s < ARRAY_SIZE(card_suits); s++) {
+            if (SDL_PointInRect(&mouse_pos, &card_suits[s].rect) &&
+                event.type == SDL_MOUSEBUTTONDOWN) {
+              DH_Card *card = &turn->hand.card[card_n];
+              card->suit = s;
+              make_human_readable_card(card, &card_context[my_id][card_n]);
               break;
             }
           }
         }
       }
-      // if (wild_card_selected != -1)
-      // break;
+      if (wild_changed)
+        break; // from sdl event loop only
 
       for (int i = 0; i < MAX_ACTIONS; i++) {
         action_button[i].hovered = SDL_PointInRect(&mouse_pos, &action_button[i].rect);
