@@ -69,16 +69,17 @@ __attribute__((packed)) GameProtocolHeader_t;
 #define INET6_ADDRSTRLEN 46
 #endif
 
-#define MSG_GAME_SELECT 0x0001       // Player_t chooses a game variant
-#define MSG_PLAYER_ACTION 0x0002     // Player_t bets, folds, etc.
-#define MSG_GAME_START 0x0004        // Game begins
-#define MSG_DEAL_CARDS 0x0005        // Cards sent to player
-#define MSG_DRAW_REQUEST 0x0006      // Player_t discards cards for draw
-#define MSG_GAME_STATE_UPDATE 0x0007 // Server sends state update
-#define MSG_DRAW_PROMPT 0x0008
-#define MSG_STATUS_MESSAGE 0x0009
-#define MSG_NEW_HAND 0x0010
-#define MSG_START_ACTION_TIMER 0x0011
+#define MSG_GAME_SELECT 0x0001   // Player_t chooses a game variant
+#define MSG_PLAYER_ACTION 0x0002 // Player_t bets, folds, etc.
+#define MSG_GAME_START 0x0004    // Game begins
+#define MSG_DEAL_CARDS 0x0005    // Cards sent to player
+#define MSG_DRAW_REQUEST 0x0006  // Player_t discards cards for draw
+#define MSG_WILD_REPLACEMENT 0x0007
+#define MSG_GAME_STATE_UPDATE 0x0008 // Server sends state update
+#define MSG_DRAW_PROMPT 0x0009
+#define MSG_STATUS_MESSAGE 0x0010
+#define MSG_NEW_HAND 0x0011
+#define MSG_START_ACTION_TIMER 0x0012
 
 #define DEFAULT_PORT "22777"
 
@@ -95,6 +96,7 @@ typedef struct {
 
 typedef struct {
   bool do_discard_draw;
+  bool do_submit_wilds;
   bool has_ace;
   uint8_t n_cards_selected;
   int selected_amount;
@@ -118,6 +120,9 @@ GameState_t deserialize_game_state(const uint8_t *data, size_t size);
 
 uint8_t *serialize_game_settings(const GameSettings_t *src, size_t *size_out);
 GameSettings_t deserialize_game_settings(const uint8_t *data, size_t size);
+
+uint8_t *serialize_hand(const POKEVAL_Hand_7 hand, size_t *size_out);
+POKEVAL_Hand_7 deserialize_hand(const uint8_t *data, size_t size);
 
 uint8_t *serialize_player(const Player_t *src, size_t *size_out);
 Player_t deserialize_player(const uint8_t *data, size_t size);

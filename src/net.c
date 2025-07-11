@@ -181,6 +181,45 @@ GameSettings_t deserialize_game_settings(const uint8_t *data, size_t size) {
   return result;
 }
 
+uint8_t *serialize_hand(const POKEVAL_Hand_7 hand, size_t *size_out) {
+  Hand proto_hand = HAND__INIT;
+  Card proto_cards[MAX_HAND_SIZE];
+  Card *proto_card_ptrs[MAX_HAND_SIZE]; // Array of pointers
+
+  proto_hand.n_card = MAX_HAND_SIZE;
+  proto_hand.card = proto_card_ptrs;
+
+  for (size_t i = 0; i < MAX_HAND_SIZE; i++) {
+    card__init(&proto_cards[i]);
+    proto_cards[i].face_val = hand.card[i].face_val;
+    proto_cards[i].suit = hand.card[i].suit;
+    proto_card_ptrs[i] = &proto_cards[i]; // Point to each Card
+  }
+
+  *size_out = hand__get_packed_size(&proto_hand);
+  uint8_t *buffer = malloc(*size_out);
+  if (!buffer)
+    return NULL;
+
+  hand__pack(&proto_hand, buffer);
+  return buffer;
+}
+
+POKEVAL_Hand_7 deserialize_hand(const uint8_t *data, size_t size) {
+  POKEVAL_Hand_7 result = {0};
+  Hand *proto_hand = hand__unpack(NULL, size, data);
+  if (!proto_hand)
+    return result;
+
+  for (size_t i = 0; i < proto_hand->n_card && i < MAX_HAND_SIZE; i++) {
+    result.card[i].face_val = proto_hand->card[i]->face_val;
+    result.card[i].suit = proto_hand->card[i]->suit;
+  }
+
+  hand__free_unpacked(proto_hand, NULL);
+  return result;
+}
+
 uint8_t *serialize_player(const Player_t *src, size_t *size_out) {
   struct player_message_builder_t builder;
   fill_player_message(&builder, src);
@@ -314,6 +353,16 @@ ERecvStatus_t recv_game_state(SocketContext_t *socket_context, GameState_t *game
     client_state->do_discard_draw = true;
     client_state->n_cards_selected = 0;
     printf("[recv_game_state] Received %u bytes, server wants discards...\n", size);
+    break;
+
+  case MSG_WILD_REPLACEMENT:
+    if (size != 2) {
+      fprintf(stderr, "[recv_game_state] Invalid size for MSG_WILD_REPLACEMENTS: %u\n", size);
+      break;
+    }
+    client_state->do_submit_wilds = true;
+    // client_state->n_cards_selected = 0;
+    printf("[recv_game_state] Received %u bytes, server wants wilds...\n", size);
     break;
 
   case MSG_START_ACTION_TIMER:

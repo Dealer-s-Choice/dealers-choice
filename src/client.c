@@ -511,6 +511,7 @@ enum {
   CALL,
   RAISE,
   DISCARD,
+  SUBMIT,
   MAX_ACTIONS,
 };
 
@@ -544,8 +545,9 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
 #define SIZEOF_STATUS_MSGS 16
   char status_msgs[SIZEOF_STATUS_MSGS][LEN_STATUS_STR] = {0};
 
-  const char *action[] = {[CHECK] = _("Check"), [BET] = _("Bet"),     [FOLD] = _("Fold"),
-                          [CALL] = _("Call"),   [RAISE] = _("Raise"), [DISCARD] = _("Discard")};
+  const char *action[] = {
+      [CHECK] = _("Check"), [BET] = _("Bet"),         [FOLD] = _("Fold"),    [CALL] = _("Call"),
+      [RAISE] = _("Raise"), [DISCARD] = _("Discard"), [SUBMIT] = _("Submit")};
 
   const int action_button_y = sdl_context->window_height - (card_area.h * 4);
   Button_t action_button[MAX_ACTIONS];
@@ -830,6 +832,25 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
                                         action_button[DISCARD].rect.y + card_area.h, 0, 0});
         }
         render_button(&action_button[DISCARD]);
+      } else if (client_state.do_submit_wilds) {
+        // If this condition is true, that means they didn't click submit before
+        // the timer ran out and the server changed the turn id
+        if (game_state->turn_id != my_id) {
+          client_state.do_submit_wilds = false;
+          continue;
+        }
+
+        action_button[SUBMIT].enabled = true;
+        action_button[SUBMIT].rect.x = x_begin_action_button;
+        if (action_button[SUBMIT].enabled) {
+          char tmp[50] = {0};
+          snprintf(tmp, sizeof(tmp), "Select your wild card, then select changes");
+          render_text_plain(sdl_context->renderer, font->fonts[FONT_BOLD], tmp,
+                            get_color(COLOR_WHITE),
+                            &(SDL_Rect){action_button[SUBMIT].rect.x,
+                                        action_button[SUBMIT].rect.y + card_area.h, 0, 0});
+        }
+        render_button(&action_button[SUBMIT]);
       } else if (game_state->turn_id == my_id && !client_state.cards_sent) {
         int x_offset = x_begin_action_button;
         if (game_state->total_bets_plus_raises == 0 && !turn->has_checked) {
@@ -1021,7 +1042,8 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
                  (event.key.keysym.sym == SDLK_RETURN && event.key.keysym.mod & KMOD_ALT)) {
         toggle_fullscreen(sdl_context->window);
       } else if (event.type == SDL_MOUSEBUTTONDOWN || event.type == SDL_KEYDOWN) {
-        if (game_state->turn_id == my_id && !client_state.do_discard_draw) {
+        if (game_state->turn_id == my_id && !client_state.do_discard_draw &&
+            !client_state.do_submit_wilds) {
           if ((game_state->total_bets_plus_raises == 0 && !turn->has_checked) ||
               game_state->player[my_id].total_paid != game_state->total_bets_plus_raises) {
             if (SDL_PointInRect(&mouse_pos, &action_button[FOLD].rect) ||
@@ -1083,6 +1105,37 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
           else {
             puts("Discards sent");
           }
+        } else if (action_button[SUBMIT].enabled &&
+                   (SDL_PointInRect(&mouse_pos, &action_button[SUBMIT].rect) ||
+                    event.key.keysym.sym == SDLK_s)) {
+          puts("submitting wilds");
+          POKEVAL_Hand_7 hand = {0};
+
+          for (int i = 0; i < MAX_HAND_SIZE; i++) {
+            if (!card_context[my_id][i].is_wild) {
+              hand.card[i] = DH_card_null;
+              continue;
+            }
+            hand.card[i] = turn->hand.card[i];
+          }
+
+          // Reset the flag that's used to indicate to the client it's their turn to draw
+          client_state.do_submit_wilds = false;
+
+          size_t size = 0;
+          uint8_t *data = serialize_hand(hand, &size);
+          if (!data) {
+            fprintf(stderr, "Failed to serialize hand\n");
+            return -1;
+          }
+
+          // Just send the serialized protobuf
+          if (send_all_tcp(sock, data, size) != 0) {
+            fprintf(stderr, "Failed to send hand\n");
+            free(data);
+            return -1;
+          }
+          free(data);
         }
       }
     } // End Poll event

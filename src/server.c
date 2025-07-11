@@ -36,6 +36,7 @@
 #include "util.h"
 
 #define MAX_DISCARDS 4
+#define MAX_WILDS 4
 
 #define SEND_RETRY_COUNT 3
 #define SEND_RETRY_DELAY_MS 500
@@ -349,6 +350,20 @@ static int send_draw_prompt(TCPsocket sock) {
   return sent;
 }
 
+static int send_wild_prompt(TCPsocket sock) {
+  uint8_t buffer[6]; // 4 bytes size + 2 bytes opcode
+
+  uint32_t size = htonl(2); // payload is 2 bytes
+  memcpy(buffer, &size, 4);
+
+  buffer[4] = (MSG_WILD_REPLACEMENT >> 8) & 0xFF;
+  buffer[5] = MSG_WILD_REPLACEMENT & 0xFF;
+
+  int sent = send_all_tcp(sock, buffer, sizeof(buffer));
+  printf("Sent wild prompt: %d bytes\n", sent);
+  return sent;
+}
+
 static int send_start_action_timeout_msg(TCPsocket sock) {
   uint8_t buffer[6]; // 4 bytes size + 2 bytes opcode
 
@@ -484,6 +499,62 @@ static int handle_draw(ArgsBroadcastGameState_t *args, TCPsocket sock, const int
   return 0;
 }
 
+static int handle_wild_cards(ArgsBroadcastGameState_t *args, TCPsocket sock, const int id) {
+  puts("sending submit wild prompt");
+  if (send_wild_prompt(sock) != 0) {
+    fputs("Failed to send submit wild prompt\n", stderr);
+    return -1;
+  }
+
+  broadcast_start_action_timer_msg(args);
+
+  const uint32_t wait_ms = args->game_settings->action_timeout_ms;
+  const uint32_t start = SDL_GetTicks();
+
+  POKEVAL_Hand_7 received_hand;
+  while (SDL_GetTicks() - start < wait_ms) {
+    register_new_client(args);
+    int num_ready = SDLNet_CheckSockets(args->socket_set, 0);
+    if (num_ready == -1) {
+      fprintf(stderr, "SDLNet_CheckSockets: %s\n", SDLNet_GetError());
+      return -1;
+    }
+
+    if (num_ready > 0) {
+      if (SDLNet_SocketReady(sock)) {
+        uint8_t buffer[512] = {0}; // pick a reasonable buffer size
+        // int n_bytes = recv_all_tcp(sock, buffer, sizeof(buffer));
+        int n_bytes = SDLNet_TCP_Recv(sock, buffer, sizeof(buffer));
+        if (n_bytes <= 0) {
+          fprintf(stderr, "Failed to receive wilds\n");
+          return -1;
+        }
+        received_hand = deserialize_hand(buffer, n_bytes);
+        break;
+      } else {
+        handle_disconnections(args);
+      }
+    }
+  }
+
+  // Apply wilds:
+  for (int i = 0; i < MAX_HAND_SIZE; i++) {
+    DH_Card c = received_hand.card[i];
+    if (!DH_is_card_null(c)) {
+      args->real_hand->player[id].card[i] = c;
+    }
+  }
+
+  // printf("Player %d submitted %d wild replacements\n", id, cards_changed);
+
+  char status_str[LEN_STATUS_STR] = {0};
+  snprintf(status_str, sizeof status_str, "%s submitted wilds", args->game_state->player[id].nick);
+
+  broadcast_status_message(args, status_str);
+
+  return 0;
+}
+
 static EPlayerAction_t handle_check(Player_t *turn, PlayerActionMsg_t *action) {
   turn->has_checked = true;
   action->str = _("checked");
@@ -506,16 +577,34 @@ static void determine_winner(ArgsBroadcastGameState_t *args, RoundResults *resul
   if (results->n_winners > 0)
     return;
 
-  // When set to true, the opponents` cards will be revealed to all the players the next
-  // time broadcast_game_state is called
-  args->game_state->winner_declared = true;
-
   Player_t *players_array = args->game_state->player;
   Player_t *starting_player = players_array;
   uint8_t pl_count = args->game_state->player_count;
 
-  POKEVAL_NeedComparing need_comparing[pl_count];
   Player_t *ptr = starting_player;
+
+  for (uint8_t i = 0; i < pl_count; i++) {
+    if (ptr->in) {
+      for (int c = 0; c < MAX_HAND_SIZE; c++) {
+        puts("Checking cards for wilds");
+        if (args->real_hand->player[ptr->id].card[c].face_val == DH_CARD_TWO) {
+          printf("Wild found for player %d", ptr->id);
+          args->game_state->turn_id = ptr->id;
+          broadcast_game_state(args);
+          handle_wild_cards(args, args->clients[ptr->id], ptr->id);
+          break;
+        }
+      }
+    }
+    ptr = get_next_player(players_array, ptr->id);
+  }
+
+  // When set to true, the opponents` cards will be revealed to all the players the next
+  // time broadcast_game_state is called
+  args->game_state->winner_declared = true;
+
+  POKEVAL_NeedComparing need_comparing[pl_count];
+  ptr = starting_player;
   for (uint8_t i = 0; i < pl_count; i++) {
     need_comparing[i].won = false;
     need_comparing[i].id = ptr->id;
@@ -930,6 +1019,8 @@ static void play_game(ArgsBroadcastGameState_t *args, DH_Deck *deck) {
 
   Player_t *players_array = args->game_state->player;
   *args->real_hand = deal_cards_to_players(args->game_state, deck, args->game_type);
+  // args->real_hand->player[0].card[0].face_val = 2;
+  // args->real_hand->player[0].card[3].face_val = 2;
   args->game_state->winner_declared = false;
   args->game_state->player_count = count_active_clients(args->slot_taken);
   fprintf(stderr, "player count: %d\n", args->game_state->player_count);
