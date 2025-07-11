@@ -72,9 +72,13 @@ sub_proj = cmake.subproject('miniaudio')
 # Fetch the dependency object
 miniaudio_dep = sub_proj.dependency('miniaudio')
 
+message('CMake targets:\n - ' + '\n - '.join(cmake.subproject('lumen').target_list()))
+lumen_dep = cmake.subproject('lumen').dependency('lumen-static')
+
 shared_dep = [
   canfigger_dep,
   deckhandler_dep,
+  lumen_dep,
   miniaudio_dep,
   pokeval_dep,
   win_deps,

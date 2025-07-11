@@ -1,0 +1,9 @@
+[wrap-file]
+directory = lumen-1.2.6
+source_url = https://codeload.github.com/jakitliang/lumen/tar.gz/refs/tags/v1.2.6
+source_filename = lumen-1.2.6.tar.gz
+source_hash = 0c339ffa91c4048d84070b1790c34b63ed0faf537756ec1d879c64754be2ff99
+method = cmake
+
+[provide]
+dependency_names = lumen-static
