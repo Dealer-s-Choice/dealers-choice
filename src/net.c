@@ -91,7 +91,12 @@ uint8_t *serialize_game_state(const GameState_t *src, size_t *size_out) {
   msg.player_count = src->player_count;
   msg.winner_declared = src->winner_declared;
 
-  // player
+  static Card wild_msg;
+  card__init(&wild_msg);
+  wild_msg.face_val = src->wild.face_val;
+  wild_msg.suit = src->wild.suit;
+  msg.wild = &wild_msg;
+
   Player *player_msgs[MAX_PLAYERS];
   struct player_message_builder_t builders[MAX_PLAYERS];
 
@@ -131,6 +136,13 @@ GameState_t deserialize_game_state(const uint8_t *data, size_t size) {
   result.total_bets_plus_raises = msg->total_bets_plus_raises;
   result.player_count = msg->player_count;
   result.winner_declared = msg->winner_declared;
+
+  if (msg->wild) {
+    result.wild.face_val = msg->wild->face_val;
+    result.wild.suit = msg->wild->suit;
+  } else {
+    result.wild = DH_card_null;
+  }
 
   size_t n = msg->n_player < MAX_PLAYERS ? msg->n_player : MAX_PLAYERS;
   for (size_t i = 0; i < n; ++i) {

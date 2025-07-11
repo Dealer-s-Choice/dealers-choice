@@ -106,6 +106,7 @@ ServerConfig_t init_game_state(GameState_t *game_state, Path_t *path, CliArgs_t 
   game_state->player_count = 0;
   game_state->total_bets_plus_raises = 0;
   game_state->winner_declared = false;
+  game_state->wild = DH_card_null;
   return config;
 }
 
@@ -583,20 +584,23 @@ static void determine_winner(ArgsBroadcastGameState_t *args, RoundResults *resul
 
   Player_t *ptr = starting_player;
 
-  for (uint8_t i = 0; i < pl_count; i++) {
-    if (ptr->in) {
-      for (int c = 0; c < MAX_HAND_SIZE; c++) {
-        puts("Checking cards for wilds");
-        if (args->real_hand->player[ptr->id].card[c].face_val == DH_CARD_TWO) {
-          printf("Wild found for player %d", ptr->id);
-          args->game_state->turn_id = ptr->id;
-          broadcast_game_state(args);
-          handle_wild_cards(args, args->clients[ptr->id], ptr->id);
-          break;
+  if (!DH_is_card_null(args->game_state->wild)) {
+    for (uint8_t i = 0; i < pl_count; i++) {
+      if (ptr->in) {
+        for (int c = 0; c < MAX_HAND_SIZE; c++) {
+          puts("Checking cards for wilds");
+          if (args->real_hand->player[ptr->id].card[c].face_val ==
+              args->game_state->wild.face_val) {
+            printf("Wild found for player %d", ptr->id);
+            args->game_state->turn_id = ptr->id;
+            broadcast_game_state(args);
+            handle_wild_cards(args, args->clients[ptr->id], ptr->id);
+            break;
+          }
         }
       }
+      ptr = get_next_player(players_array, ptr->id);
     }
-    ptr = get_next_player(players_array, ptr->id);
   }
 
   // When set to true, the opponents` cards will be revealed to all the players the next

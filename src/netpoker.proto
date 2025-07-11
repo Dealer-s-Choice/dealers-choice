@@ -28,7 +28,8 @@ message GameState {
   uint32 player_count = 5;
   uint32 total_bets_plus_raises = 6;
   bool winner_declared = 7;
-  repeated Player player = 8;
+  Card wild = 8;
+  repeated Player player = 9;
 }
 
 message GameSettings {
