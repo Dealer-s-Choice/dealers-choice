@@ -583,6 +583,42 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
 
   CardContext_t card_context[MAX_PLAYERS][MAX_HAND_SIZE];
 
+  Button_t card_faces[13] = {0};
+  for (size_t i = 0; i < ARRAY_SIZE(card_faces); i++) {
+    int card_val = i + 1;
+    if (card_val == DH_CARD_TWO)
+      continue;
+
+    card_faces[i] = (Button_t){
+        "",
+        sdl_context->renderer,
+        get_color(COLOR_WHITE),
+        get_color(COLOR_BROWN),
+        {0, 0, 0, 0},
+        font->fonts[FONT_WILD_SELECT],
+        false,
+        true,
+        false,
+        0,
+    };
+  }
+
+  Button_t card_suits[DH_SUIT_MAX] = {0};
+  for (DH_suit i = 0; i < ARRAY_SIZE(card_suits); i++) {
+    card_suits[i] = (Button_t){
+        DH_get_unicode_suit(i),
+        sdl_context->renderer,
+        get_color(COLOR_WHITE),
+        get_color(COLOR_BROWN),
+        {0, 0, 0, 0},
+        font->fonts[FONT_CARD],
+        false,
+        true,
+        false,
+        0,
+    };
+  }
+
   int running = 1;
   bool cards_dealt = false;
   bool cards_created = false;
@@ -857,49 +893,24 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
              starting_turn);
 
     int y_offset = card_area.h * 1;
-    Button_t card_faces[13] = {0};
     int width, height;
     TTF_SizeUTF8(font->fonts[FONT_WILD_SELECT], " 10 ", &width, &height);
     for (size_t i = 0; i < ARRAY_SIZE(card_faces); i++) {
       int card_val = i + 1;
       if (card_val == DH_CARD_TWO)
         continue;
-
-      card_faces[i] = (Button_t){
-          DH_get_card_face_str(card_val),
-          sdl_context->renderer,
-          get_color(COLOR_WHITE),
-          get_color(COLOR_BROWN),
-          {sdl_context->win_center.x - SCALE_X(100), y_offset, width, height},
-          font->fonts[FONT_WILD_SELECT],
-          false,
-          true,
-          false,
-          0,
-      };
-
+      card_faces[i].text = DH_get_card_face_str(card_val);
+      card_faces[i].rect =
+          (SDL_Rect){sdl_context->win_center.x - SCALE_X(100), y_offset, width, height};
       y_offset += height + SCALE_Y(10);
       render_button(&card_faces[i]);
     }
 
     y_offset = (height + SCALE_Y(10)) * 6;
-    Button_t card_suits[DH_SUIT_MAX] = {0};
-
     TTF_SizeUTF8(font->fonts[FONT_CARD], "   ", &width, &height);
     for (DH_suit i = 0; i < ARRAY_SIZE(card_suits); i++) {
-      card_suits[i] = (Button_t){
-          DH_get_unicode_suit(i),
-          sdl_context->renderer,
-          get_color(COLOR_WHITE),
-          get_color(COLOR_BROWN),
-          {sdl_context->win_center.x - SCALE_X(100) + width + SCALE_X(20), y_offset, width, height},
-          font->fonts[FONT_CARD],
-          false,
-          true,
-          false,
-          0,
-      };
-
+      card_suits[i].rect = (SDL_Rect){
+          sdl_context->win_center.x - SCALE_X(100) + width + SCALE_X(20), y_offset, width, height};
       y_offset += height + SCALE_Y(10);
       render_button(&card_suits[i]);
     }
@@ -940,7 +951,8 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
       for (int card_n = 0; card_n < MAX_HAND_SIZE; card_n++) {
         card_context[my_id][card_n].hovered =
             SDL_PointInRect(&mouse_pos, &card_context[my_id][card_n].rect);
-        if (card_context[my_id][card_n].hovered && event.type == SDL_MOUSEBUTTONDOWN)
+        if (card_context[my_id][card_n].is_wild && card_context[my_id][card_n].hovered &&
+            event.type == SDL_MOUSEBUTTONDOWN)
           wild_card_selected = card_n;
         if (wild_card_selected != -1) {
           if (!card_context[my_id][card_n].selected) {
