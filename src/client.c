@@ -1155,7 +1155,7 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
         } else if (action_button[EXCHANGE].enabled &&
                    (SDL_PointInRect(&mouse_pos, &action_button[EXCHANGE].rect) ||
                     event.key.keysym.sym == SDLK_x)) {
-          puts("submitting wilds");
+          puts("exchanging wilds");
           POKEVAL_Hand_7 hand = {0};
 
           for (int i = 0; i < MAX_HAND_SIZE; i++) {
