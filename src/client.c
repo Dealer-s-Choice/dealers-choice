@@ -918,6 +918,7 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
       } else {
       }
     }
+    action_button[DISCARD].enabled = client_state.do_discard_draw == true;
     // printf("%d\n", __LINE__);
 
     cards_dealt = true;
