@@ -1061,6 +1061,7 @@ static void play_game(ArgsBroadcastGameState_t *args, DH_Deck *deck) {
     if (!fp)
       perror("fopen");
     else {
+      fprintf(fp, "### %s\n\n", tmp);
       __START_PLAYER_LOOP
       fprintf(fp, "%s: %d<br>\n", args->game_state->player[i].nick,
               args->game_state->player[i].coins);
