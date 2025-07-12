@@ -1,3 +1,4 @@
+  + Implement Deuces Wild option
   * Fix tie handling
   * Reduce client console output messages
   + Partially implement 7-card stud

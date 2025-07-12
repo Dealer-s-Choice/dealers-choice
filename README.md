@@ -8,9 +8,6 @@
   - [Project Links](#project-links)
   - [Current state](#current-state)
     - [Games available](#games-available)
-  - [Game play](#game-play)
-    - [Player action timeouts](#player-action-timeouts)
-    - [Hotkeys](#hotkeys)
     - [Computer Opponents](#computer-opponents)
   - [Server](#server)
   - [Client](#client)
@@ -34,6 +31,7 @@ file for details.
 ## Project Links
 
 * [GitHub Repo](https://github.com/Dealer-s-Choice/dealers_choice)
+* [Game Play](docs/GAME_PLAY.md)
 * [Screenshots](https://dealer-s-choice.github.io/screenshots/)
 * [Game Results](https://dealer-s-choice.github.io/game_results.html)
 * [Discussions](https://github.com/Dealer-s-Choice/dealers_choice/discussions)
@@ -54,36 +52,8 @@ available yet](https://github.com/Dealer-s-Choice/dealers_choice/issues/68).
 * [5-card stud](https://en.wikipedia.org/wiki/Five-card_stud) (not all the rules have been implemented yet, such as the bring-in bet)
 * [7-card stud](https://en.wikipedia.org/wiki/Seven-card_stud) (not all the rules have been implemented yet, such as the bring-in bet)
 
-## Game play
-
-### Player action timeouts
-
-If a player is at their turn but doesn't select an action (e.g. bet, discard)
-within 20 seconds, the client will enact a default.
-
-If there has been no bet, the default action is "check".
-
-If there has been a bet, the default action is "fold".
-
-The timeout is defined in
-[server.conf](https://github.com/Dealer-s-Choice/dealers_choice/blob/trunk/data/server.conf).
-
-### Hotkeys
-
-| Key  |   Action   |
-|------|------------|
-| c    | call/check |
-| r    | raise      |
-| f    | fold       |
-| d    | discard    |
-| b    | bet        |
-
-|      |   Amount   |
-|------|------------|
-| 1    |    100     |
-| 2    |    250     |
-| 3    |    500     |
-
+Any of the games above can be played with the Deuces (Twos) Wild option
+enabled.
 
 ### Computer Opponents
 

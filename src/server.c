@@ -589,9 +589,7 @@ static void determine_winner(ArgsBroadcastGameState_t *args, RoundResults *resul
     for (uint8_t i = 0; i < pl_count; i++) {
       if (ptr->in) {
         for (int c = 0; c < MAX_HAND_SIZE; c++) {
-          puts("Checking cards for wilds");
           if (args->real_hand->player[ptr->id].card[c].face_val == DH_CARD_TWO) {
-            printf("Wild found for player %d", ptr->id);
             args->game_state->turn_id = ptr->id;
             broadcast_game_state(args);
             handle_wild_cards(args, args->clients[ptr->id], ptr->id);
@@ -1049,7 +1047,7 @@ static void play_game(ArgsBroadcastGameState_t *args, DH_Deck *deck) {
   const GameChoice_t *choice = find_game_choice_by_type(args->game_type);
   char tmp[LEN_STATUS_STR] = {0};
   snprintf(tmp, sizeof(tmp), _("Game: %s%s"), choice->str,
-           args->game_state->deuces_wild ? " / Deuces Wild" : "");
+           args->game_state->deuces_wild ? _(" / Deuces Wild") : "");
   broadcast_status_message(args, tmp);
 
   if (args->cli_args->server_log_game_results_file) {
