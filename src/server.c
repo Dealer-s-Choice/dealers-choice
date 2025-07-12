@@ -544,7 +544,10 @@ static int handle_wild_cards(ArgsBroadcastGameState_t *args, TCPsocket sock, con
     for (int i = 0; i < MAX_HAND_SIZE; i++) {
       DH_Card c = received_hand.card[i];
       if (!DH_is_card_null(c)) {
-        args->real_hand->player[id].card[i] = c;
+        if (args->real_hand->player[id].card[i].face_val == DH_CARD_TWO)
+          args->real_hand->player[id].card[i] = c;
+        else
+          fprintf(stderr, "Invalid wild replacement (not a 2)\n");
       }
     }
   }
