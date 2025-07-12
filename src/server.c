@@ -484,12 +484,11 @@ static int handle_draw(ArgsBroadcastGameState_t *args, TCPsocket sock, const int
   req.discard_count = count;
   memcpy(req.discard_indices, &buffer[3], MAX_DISCARDS); // copy all 4
 
-  printf("Player wants to discard %u cards: ", req.discard_count);
+  // printf("Player wants to discard %u cards: ", req.discard_count);
   for (int i = 0; i < req.discard_count; ++i) {
-    printf("%u ", req.discard_indices[i]);
+    // printf("%u ", req.discard_indices[i]);
     args->real_hand->player[id].card[req.discard_indices[i]] = DH_deal_top_card(deck);
-
-    puts("");
+    // puts("");
   }
 
   char status_str[LEN_STATUS_STR] = {0};
