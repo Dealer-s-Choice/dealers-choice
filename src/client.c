@@ -573,7 +573,7 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
   char status_msgs[SIZEOF_STATUS_MSGS][LEN_STATUS_STR] = {0};
 
   const char *action[] = {
-      [CHECK] = _("Check"), [BET] = _("Bet"),         [FOLD] = _("Fold"),    [CALL] = _("Call"),
+      [CHECK] = _("Check"), [BET] = _("Bet"),         [FOLD] = _("Fold"),        [CALL] = _("Call"),
       [RAISE] = _("Raise"), [DISCARD] = _("Discard"), [EXCHANGE] = _("Exchange")};
 
   const int action_button_y = sdl_context->window_height - (card_area.h * 4);
