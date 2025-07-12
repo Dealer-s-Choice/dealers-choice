@@ -46,3 +46,5 @@ see an **"Exchange"** button and a column showing face values and suits.
 3. Repeat for any other 2 in your hand.
 4. When finished, click **"Exchange"** again to submit your changes.
    *(Note: The button text may vary if a translation is enabled.)*
+
+[![Exchanging Wild Cards](https://dealer-s-choice.github.io/screenshots/dealers-choice_wild-card_exchange-columns.png)](https://dealer-s-choice.github.io/screenshots/dealers-choice_wild-card_exchange-columns.png)
