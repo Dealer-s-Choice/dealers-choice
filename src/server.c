@@ -539,23 +539,27 @@ static int handle_wild_cards(ArgsBroadcastGameState_t *args, TCPsocket sock, con
     }
   }
 
+  int n_wilds = 0;
   if (received_hand.card[0].face_val != 0) {
     // Apply wilds:
     for (int i = 0; i < MAX_HAND_SIZE; i++) {
       DH_Card c = received_hand.card[i];
       if (!DH_is_card_null(c)) {
-        if (args->real_hand->player[id].card[i].face_val == DH_CARD_TWO)
+        if (args->real_hand->player[id].card[i].face_val == DH_CARD_TWO) {
           args->real_hand->player[id].card[i] = c;
-        else
+          n_wilds++;
+        } else
           fprintf(stderr, "Invalid wild replacement (not a 2)\n");
       }
     }
   }
 
-  char status_str[LEN_STATUS_STR] = {0};
-  snprintf(status_str, sizeof status_str, "%s submitted wilds", args->game_state->player[id].nick);
-
-  broadcast_status_message(args, status_str);
+  if (n_wilds > 0) {
+    char status_str[LEN_STATUS_STR] = {0};
+    snprintf(status_str, sizeof status_str, "%s exchanged %d wild card(s)",
+             args->game_state->player[id].nick, n_wilds);
+    broadcast_status_message(args, status_str);
+  }
 
   return 0;
 }
