@@ -356,7 +356,7 @@ ERecvStatus_t recv_game_state(SocketContext_t *socket_context, GameState_t *game
     return RECV_ERROR;
   }
 
-  fprintf(stderr, "[recv_game_state] size: %d\n", size);
+  // fprintf(stderr, "[recv_game_state] size: %d\n", size);
   uint16_t opcode = (buffer[0] << 8) | buffer[1];
   switch (opcode) {
   case MSG_DRAW_PROMPT:
@@ -366,7 +366,7 @@ ERecvStatus_t recv_game_state(SocketContext_t *socket_context, GameState_t *game
     }
     client_state->do_discard_draw = true;
     client_state->n_cards_selected = 0;
-    printf("[recv_game_state] Received %u bytes, server wants discards...\n", size);
+    // printf("[recv_game_state] Received %u bytes, server wants discards...\n", size);
     break;
 
   case MSG_WILD_REPLACEMENT:
@@ -376,7 +376,7 @@ ERecvStatus_t recv_game_state(SocketContext_t *socket_context, GameState_t *game
     }
     client_state->do_submit_wilds = true;
     // client_state->n_cards_selected = 0;
-    printf("[recv_game_state] Received %u bytes, server wants wilds...\n", size);
+    // printf("[recv_game_state] Received %u bytes, server wants wilds...\n", size);
     break;
 
   case MSG_START_ACTION_TIMER:
@@ -385,14 +385,14 @@ ERecvStatus_t recv_game_state(SocketContext_t *socket_context, GameState_t *game
       break;
     }
     client_state->timer_start = SDL_GetTicks();
-    printf("[recv_game_state] Received %u bytes, starting action timer\n", size);
+    // printf("[recv_game_state] Received %u bytes, starting action timer\n", size);
     break;
 
   case MSG_STATUS_MESSAGE: {
     size_t msg_len = size - 2;
     snprintf(client_state->server_status_str, sizeof(client_state->server_status_str), "%.*s",
              (int)msg_len, (char *)&buffer[2]);
-    fprintf(stderr, "[Status Message] %s\n", client_state->server_status_str);
+    // fprintf(stderr, "[Status Message] %s\n", client_state->server_status_str);
     if (strstr(client_state->server_status_str, "bet") ||
         strstr(client_state->server_status_str, "call") ||
         strstr(client_state->server_status_str, "raise"))
@@ -419,11 +419,11 @@ ERecvStatus_t recv_game_state(SocketContext_t *socket_context, GameState_t *game
       game_state->player[id].hand.card[i].suit = ntohl(s);
     }
 
-    printf("[recv_game_state] Received new hand with %u cards\n", hand_size);
+    // printf("[recv_game_state] Received new hand with %u cards\n", hand_size);
     break;
   } break;
   default:
-    printf("[recv_game_state] Received %u bytes, deserializing...\n", size);
+    // printf("[recv_game_state] Received %u bytes, deserializing...\n", size);
     *game_state = deserialize_game_state(buffer, size);
     if (client_state->cards_sent)
       client_state->cards_sent = false;
