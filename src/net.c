@@ -374,7 +374,7 @@ ERecvStatus_t recv_game_state(SocketContext_t *socket_context, GameState_t *game
       fprintf(stderr, "[recv_game_state] Invalid size for MSG_WILD_REPLACEMENTS: %u\n", size);
       break;
     }
-    client_state->do_submit_wilds = true;
+    client_state->do_exchange_wilds = true;
     // client_state->n_cards_selected = 0;
     // printf("[recv_game_state] Received %u bytes, server wants wilds...\n", size);
     break;

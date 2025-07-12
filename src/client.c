@@ -405,7 +405,8 @@ typedef struct {
   bool is_wild;
 } CardContext_t;
 
-static void render_card(CardContext_t *context, TTF_Font *font) {
+static void render_card(CardContext_t *context, TTF_Font *font, const bool my_card,
+                        const bool do_wild_exchange) {
   // printf("%d\n", __LINE__);
   if (context->is_back) {
     draw_card_back_pattern(context->renderer, &context->rect);
@@ -417,7 +418,7 @@ static void render_card(CardContext_t *context, TTF_Font *font) {
   SDL_RenderFillRect(context->renderer, &context->rect);
 
   // Highlight hovered card for the local player (draw after card background)
-  if (context->hovered) {
+  if (context->hovered && my_card) {
     SDL_SetRenderDrawBlendMode(context->renderer, SDL_BLENDMODE_BLEND);
     SDL_SetRenderDrawColor(context->renderer, 255, 255, 128, 96); // translucent yellow
     SDL_RenderFillRect(context->renderer, &context->rect);
@@ -426,6 +427,19 @@ static void render_card(CardContext_t *context, TTF_Font *font) {
 
   if (context->selected)
     mark_selected(context->renderer, &context->rect);
+
+  if (context->is_wild && do_wild_exchange) {
+    Uint32 ticks = SDL_GetTicks();
+    // Blink every 500 ms
+    bool blink_on = (ticks / 500) % 2 == 0;
+
+    if (blink_on) {
+      SDL_SetRenderDrawBlendMode(context->renderer, SDL_BLENDMODE_BLEND);
+      SDL_SetRenderDrawColor(context->renderer, 255, 165, 0, 128); // translucent orange
+      SDL_RenderFillRect(context->renderer, &context->rect);
+      SDL_SetRenderDrawBlendMode(context->renderer, SDL_BLENDMODE_NONE);
+    }
+  }
 
   // Draw card border
   SDL_SetRenderDrawColor(context->renderer, 0, 0, 0, 255);
@@ -765,7 +779,8 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
     for (int card_n = 0; card_n < MAX_HAND_SIZE; ++card_n) {
       do {
         // printf("%d\n", __LINE__);
-        render_card(&card_context[player_ptr->id][card_n], font->fonts[FONT_CARD]);
+        render_card(&card_context[player_ptr->id][card_n], font->fonts[FONT_CARD],
+                    player_ptr->id == my_id, client_state.do_exchange_wilds);
 
         if (!cards_dealt && !card_context[player_ptr->id][card_n].is_null &&
             game_state->player[my_id].in) {
@@ -859,11 +874,11 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
                                         action_button[DISCARD].rect.y + card_area.h, 0, 0});
         }
         render_button(&action_button[DISCARD]);
-      } else if (client_state.do_submit_wilds) {
+      } else if (client_state.do_exchange_wilds) {
         // If this condition is true, that means they didn't click submit before
         // the timer ran out and the server changed the turn id
         if (game_state->turn_id != my_id) {
-          client_state.do_submit_wilds = false;
+          client_state.do_exchange_wilds = false;
           continue;
         }
 
@@ -939,7 +954,7 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
     } while ((player_ptr = get_next_connected_client(players_array, player_ptr->id)) !=
              starting_turn);
 
-    if (game_state->deuces_wild && client_state.do_submit_wilds) {
+    if (game_state->deuces_wild && client_state.do_exchange_wilds) {
       int y_offset = card_area.h * 1;
       int width, height;
       TTF_SizeUTF8(font->fonts[FONT_WILD_SELECT], " 10 ", &width, &height);
@@ -997,7 +1012,7 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
             break;
         }
       }
-      if (client_state.do_submit_wilds) {
+      if (client_state.do_exchange_wilds) {
         int wild_card_selected = -1;
         for (int card_n = 0; card_n < MAX_HAND_SIZE; card_n++) {
           card_context[my_id][card_n].hovered =
@@ -1074,7 +1089,7 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
         toggle_fullscreen(sdl_context->window);
       } else if (event.type == SDL_MOUSEBUTTONDOWN || event.type == SDL_KEYDOWN) {
         if (game_state->turn_id == my_id && !client_state.do_discard_draw &&
-            !client_state.do_submit_wilds) {
+            !client_state.do_exchange_wilds) {
           if ((game_state->total_bets_plus_raises == 0 && !turn->has_checked) ||
               game_state->player[my_id].total_paid != game_state->total_bets_plus_raises) {
             if (SDL_PointInRect(&mouse_pos, &action_button[FOLD].rect) ||
@@ -1151,7 +1166,7 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
           }
 
           // Reset the flag that's used to indicate to the client it's their turn to draw
-          client_state.do_submit_wilds = false;
+          client_state.do_exchange_wilds = false;
 
           size_t size = 0;
           uint8_t *data = serialize_hand(hand, &size);

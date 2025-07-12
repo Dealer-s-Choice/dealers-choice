@@ -96,7 +96,7 @@ typedef struct {
 
 typedef struct {
   bool do_discard_draw;
-  bool do_submit_wilds;
+  bool do_exchange_wilds;
   bool has_ace;
   uint8_t n_cards_selected;
   int selected_amount;
