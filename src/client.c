@@ -870,7 +870,7 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
         action_button[EXCHANGE].enabled = true;
         action_button[EXCHANGE].rect.x = x_begin_action_button;
         if (action_button[EXCHANGE].enabled) {
-          char *tmp = _("Click a 2, then choose value and suit to assign.");
+          const char *tmp = _("Click a 2, then choose value and suit to assign.");
           render_text_plain(sdl_context->renderer, font->fonts[FONT_BOLD], tmp,
                             get_color(COLOR_WHITE),
                             &(SDL_Rect){action_button[EXCHANGE].rect.x,
