@@ -1,3 +1,4 @@
+  * Fix tie handling
   * Reduce client console output messages
   + Partially implement 7-card stud
   + Add optional 'language' setting (https://dealer-s-choice.github.io/docs/CONFIG.html)

@@ -619,36 +619,36 @@ static void determine_winner(ArgsBroadcastGameState_t *args, RoundResults *resul
   results->n_winners = POKEVAL_compare_hands(need_comparing, pl_count);
   uint8_t winners = 0;
 
-  // Ties are not fully implemented yet. POKEVAL_compare_hands() handles them, but
-  // the tests need to be reviewed and perhaps added to in the pokeval library. The code
-  // here to report ties and distribute the pot to tied players isn't complete.
+  uint32_t pot = args->game_state->pot;
+  uint32_t share = pot / results->n_winners;
+  uint32_t leftover = pot % results->n_winners;
+  args->game_state->pot = leftover; // Remainder stays in the pot
+
   for (int i = 0; i < pl_count; i++) {
     if (!need_comparing[i].won)
       continue;
+
     results->id[winners++] = need_comparing[i].id;
     Player_t *winner = &args->game_state->player[need_comparing[i].id];
     winner->winner = true;
-    // fprintf(stderr, "winner id: %d\n", need_comparing[i].id);
+
     char status_str[LEN_STATUS_STR];
-    snprintf(status_str, sizeof(status_str),
-             // When broadcast is called, it will reveal the cards if winner has been declared. We
-             // don't need to call that yet, so using the values from "real_hand" for now
-             "%s wins with %s", winner->nick,
+    snprintf(status_str, sizeof status_str, "%s wins with %s", winner->nick,
              POKEVAL_rank[POKEVAL_evaluate_hand(need_comparing[winner->id].hand_5)]);
     broadcast_status_message(args, status_str);
+
     if (args->cli_args->server_log_game_results_file) {
       FILE *fp = fopen(args->cli_args->server_log_game_results_file, "a");
       if (!fp)
         perror("fopen");
       else {
-        fprintf(fp, "pot: %d<br>\n", args->game_state->pot);
+        fprintf(fp, "pot: %u<br>\n", pot);
         fprintf(fp, "%s wins with %s\n\n", winner->nick,
                 POKEVAL_rank[POKEVAL_evaluate_hand(need_comparing[winner->id].hand_5)]);
         fclose(fp);
       }
     }
-    uint32_t share = args->game_state->pot / results->n_winners;
-    args->game_state->pot = args->game_state->pot % results->n_winners;
+
     winner->coins += share;
   }
   broadcast_game_state(args);
@@ -1023,8 +1023,21 @@ static void play_game(ArgsBroadcastGameState_t *args, DH_Deck *deck) {
 
   Player_t *players_array = args->game_state->player;
   *args->real_hand = deal_cards_to_players(args->game_state, deck, args->game_type);
-  // args->real_hand->player[0].card[0].face_val = 2;
-  // args->real_hand->player[0].card[3].face_val = 2;
+
+  /* For testing...
+    for (int i = 0; i < 3; i++)
+      for (int j = 0; j < 4; j++)
+        args->real_hand->player[i].card[j].face_val = DH_CARD_ACE;
+
+
+    args->real_hand->player[0].card[4].face_val = DH_CARD_KING;
+    args->real_hand->player[1].card[4].face_val = DH_CARD_KING;
+    args->real_hand->player[2].card[4].face_val = DH_CARD_KING;
+    */
+  /*
+     args->real_hand->player[0].card[0].face_val = 2;
+     args->real_hand->player[0].card[3].face_val = 2;
+     */
   args->game_state->winner_declared = false;
   args->game_state->player_count = count_active_clients(args->slot_taken);
   fprintf(stderr, "player count: %d\n", args->game_state->player_count);
