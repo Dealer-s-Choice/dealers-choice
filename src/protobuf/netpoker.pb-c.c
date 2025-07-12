@@ -537,13 +537,13 @@ static const ProtobufCFieldDescriptor game_state__field_descriptors[9] =
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
   {
-    "wild",
+    "deuces_wild",
     8,
     PROTOBUF_C_LABEL_NONE,
-    PROTOBUF_C_TYPE_MESSAGE,
+    PROTOBUF_C_TYPE_BOOL,
     0,   /* quantifier_offset */
-    offsetof(GameState, wild),
-    &card__descriptor,
+    offsetof(GameState, deuces_wild),
+    NULL,
     NULL,
     0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
@@ -564,12 +564,12 @@ static const ProtobufCFieldDescriptor game_state__field_descriptors[9] =
 static const unsigned game_state__field_indices_by_name[] = {
   3,   /* field[3] = at_menu */
   1,   /* field[1] = dealer_id */
+  7,   /* field[7] = deuces_wild */
   8,   /* field[8] = player */
   4,   /* field[4] = player_count */
   0,   /* field[0] = pot */
   5,   /* field[5] = total_bets_plus_raises */
   2,   /* field[2] = turn_id */
-  7,   /* field[7] = wild */
   6,   /* field[6] = winner_declared */
 };
 static const ProtobufCIntRange game_state__number_ranges[1 + 1] =

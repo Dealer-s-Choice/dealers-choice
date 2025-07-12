@@ -106,7 +106,7 @@ ServerConfig_t init_game_state(GameState_t *game_state, Path_t *path, CliArgs_t 
   game_state->player_count = 0;
   game_state->total_bets_plus_raises = 0;
   game_state->winner_declared = false;
-  game_state->wild = DH_card_null;
+  game_state->deuces_wild = false;
   return config;
 }
 
@@ -301,8 +301,8 @@ static void broadcast_status_message(const ArgsBroadcastGameState_t *args, const
   } while ((recipient = get_next_connected_client(args->game_state->player, pl_idx)) != start);
 }
 
-static int8_t recv_game_select(TCPsocket sock, uint8_t *out_game_type) {
-  uint8_t buffer[3];
+static int8_t recv_game_select(TCPsocket sock, uint8_t *out_game_type, bool *deuces_wild) {
+  uint8_t buffer[4];
 
   int bytes_n;
   if ((bytes_n = recv_all_tcp(sock, buffer, sizeof(buffer))) <= 0)
@@ -313,6 +313,7 @@ static int8_t recv_game_select(TCPsocket sock, uint8_t *out_game_type) {
     return -1;
 
   *out_game_type = buffer[2];
+  *deuces_wild = buffer[3] != 0;
   return bytes_n;
 }
 
@@ -512,7 +513,7 @@ static int handle_wild_cards(ArgsBroadcastGameState_t *args, TCPsocket sock, con
   const uint32_t wait_ms = args->game_settings->action_timeout_ms;
   const uint32_t start = SDL_GetTicks();
 
-  POKEVAL_Hand_7 received_hand;
+  POKEVAL_Hand_7 received_hand = {0};
   while (SDL_GetTicks() - start < wait_ms) {
     register_new_client(args);
     int num_ready = SDLNet_CheckSockets(args->socket_set, 0);
@@ -538,15 +539,15 @@ static int handle_wild_cards(ArgsBroadcastGameState_t *args, TCPsocket sock, con
     }
   }
 
-  // Apply wilds:
-  for (int i = 0; i < MAX_HAND_SIZE; i++) {
-    DH_Card c = received_hand.card[i];
-    if (!DH_is_card_null(c)) {
-      args->real_hand->player[id].card[i] = c;
+  if (received_hand.card[0].face_val != 0) {
+    // Apply wilds:
+    for (int i = 0; i < MAX_HAND_SIZE; i++) {
+      DH_Card c = received_hand.card[i];
+      if (!DH_is_card_null(c)) {
+        args->real_hand->player[id].card[i] = c;
+      }
     }
   }
-
-  // printf("Player %d submitted %d wild replacements\n", id, cards_changed);
 
   char status_str[LEN_STATUS_STR] = {0};
   snprintf(status_str, sizeof status_str, "%s submitted wilds", args->game_state->player[id].nick);
@@ -584,13 +585,12 @@ static void determine_winner(ArgsBroadcastGameState_t *args, RoundResults *resul
 
   Player_t *ptr = starting_player;
 
-  if (!DH_is_card_null(args->game_state->wild)) {
+  if (args->game_state->deuces_wild) {
     for (uint8_t i = 0; i < pl_count; i++) {
       if (ptr->in) {
         for (int c = 0; c < MAX_HAND_SIZE; c++) {
           puts("Checking cards for wilds");
-          if (args->real_hand->player[ptr->id].card[c].face_val ==
-              args->game_state->wild.face_val) {
+          if (args->real_hand->player[ptr->id].card[c].face_val == DH_CARD_TWO) {
             printf("Wild found for player %d", ptr->id);
             args->game_state->turn_id = ptr->id;
             broadcast_game_state(args);
@@ -1035,7 +1035,8 @@ static void play_game(ArgsBroadcastGameState_t *args, DH_Deck *deck) {
 
   const GameChoice_t *choice = find_game_choice_by_type(args->game_type);
   char tmp[LEN_STATUS_STR] = {0};
-  snprintf(tmp, sizeof(tmp), _("Game: %s"), choice->str);
+  snprintf(tmp, sizeof(tmp), _("Game: %s%s"), choice->str,
+           args->game_state->deuces_wild ? " / Deuces Wild" : "");
   broadcast_status_message(args, tmp);
 
   if (args->cli_args->server_log_game_results_file) {
@@ -1129,9 +1130,10 @@ static void ensure_unique_nick(GameState_t *game_state, Player_t *player, const 
 static EReturnCode_t receive_game_type_and_run_game(ArgsBroadcastGameState_t *args, DH_Deck *deck) {
   uint8_t game_type = 0;
   int8_t *dealer_id = &args->game_state->dealer_id;
-  if (recv_game_select(args->clients[*dealer_id], &game_type) == SIZE_MESSAGE_GAME_SELECT) {
+  if (recv_game_select(args->clients[*dealer_id], &game_type, &args->game_state->deuces_wild) ==
+      SIZE_MESSAGE_GAME_SELECT) {
     args->game_type = game_type;
-    fprintf(stderr, "Client chose game type: 0x%02x\n", game_type);
+    printf("Client chose game type: 0x%02x\n", game_type);
   } else {
     fprintf(stderr, "Dealer failed to send valid game type or disconnected.\n");
     remove_disconnected_player(args, *dealer_id);

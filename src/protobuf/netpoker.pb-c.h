@@ -76,13 +76,13 @@ struct  GameState
   uint32_t player_count;
   uint32_t total_bets_plus_raises;
   protobuf_c_boolean winner_declared;
-  Card *wild;
+  protobuf_c_boolean deuces_wild;
   size_t n_player;
   Player **player;
 };
 #define GAME_STATE__INIT \
  { PROTOBUF_C_MESSAGE_INIT (&game_state__descriptor) \
-, 0, 0, 0, 0, 0, 0, 0, NULL, 0,NULL }
+, 0, 0, 0, 0, 0, 0, 0, 0, 0,NULL }
 
 
 struct  GameSettings
