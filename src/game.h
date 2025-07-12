@@ -53,7 +53,7 @@ typedef enum {
 } EPlayerAction_t;
 
 #define MSG_PLAYER_ACTION 0x0002
-#define SIZE_MESSAGE_GAME_SELECT 3
+#define SIZE_MESSAGE_GAME_SELECT 4
 
 typedef struct {
   uint8_t action;

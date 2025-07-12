@@ -36,6 +36,7 @@
 #include "util.h"
 
 #define MAX_DISCARDS 4
+#define MAX_WILDS 4
 
 #define SEND_RETRY_COUNT 3
 #define SEND_RETRY_DELAY_MS 500
@@ -105,6 +106,7 @@ ServerConfig_t init_game_state(GameState_t *game_state, Path_t *path, CliArgs_t 
   game_state->player_count = 0;
   game_state->total_bets_plus_raises = 0;
   game_state->winner_declared = false;
+  game_state->deuces_wild = false;
   return config;
 }
 
@@ -299,8 +301,8 @@ static void broadcast_status_message(const ArgsBroadcastGameState_t *args, const
   } while ((recipient = get_next_connected_client(args->game_state->player, pl_idx)) != start);
 }
 
-static int8_t recv_game_select(TCPsocket sock, uint8_t *out_game_type) {
-  uint8_t buffer[3];
+static int8_t recv_game_select(TCPsocket sock, uint8_t *out_game_type, bool *deuces_wild) {
+  uint8_t buffer[4];
 
   int bytes_n;
   if ((bytes_n = recv_all_tcp(sock, buffer, sizeof(buffer))) <= 0)
@@ -311,6 +313,7 @@ static int8_t recv_game_select(TCPsocket sock, uint8_t *out_game_type) {
     return -1;
 
   *out_game_type = buffer[2];
+  *deuces_wild = buffer[3] != 0;
   return bytes_n;
 }
 
@@ -346,6 +349,20 @@ static int send_draw_prompt(TCPsocket sock) {
 
   int sent = send_all_tcp(sock, buffer, sizeof(buffer));
   printf("Sent draw prompt: %d bytes\n", sent);
+  return sent;
+}
+
+static int send_wild_prompt(TCPsocket sock) {
+  uint8_t buffer[6]; // 4 bytes size + 2 bytes opcode
+
+  uint32_t size = htonl(2); // payload is 2 bytes
+  memcpy(buffer, &size, 4);
+
+  buffer[4] = (MSG_WILD_REPLACEMENT >> 8) & 0xFF;
+  buffer[5] = MSG_WILD_REPLACEMENT & 0xFF;
+
+  int sent = send_all_tcp(sock, buffer, sizeof(buffer));
+  printf("Sent wild prompt: %d bytes\n", sent);
   return sent;
 }
 
@@ -467,12 +484,11 @@ static int handle_draw(ArgsBroadcastGameState_t *args, TCPsocket sock, const int
   req.discard_count = count;
   memcpy(req.discard_indices, &buffer[3], MAX_DISCARDS); // copy all 4
 
-  printf("Player wants to discard %u cards: ", req.discard_count);
+  // printf("Player wants to discard %u cards: ", req.discard_count);
   for (int i = 0; i < req.discard_count; ++i) {
-    printf("%u ", req.discard_indices[i]);
+    // printf("%u ", req.discard_indices[i]);
     args->real_hand->player[id].card[req.discard_indices[i]] = DH_deal_top_card(deck);
-
-    puts("");
+    // puts("");
   }
 
   char status_str[LEN_STATUS_STR] = {0};
@@ -480,6 +496,69 @@ static int handle_draw(ArgsBroadcastGameState_t *args, TCPsocket sock, const int
            req.discard_count);
   send_new_hand(sock, &args->real_hand->player[id], MAX_HAND_SIZE);
   broadcast_status_message(args, status_str);
+
+  return 0;
+}
+
+static int handle_wild_cards(ArgsBroadcastGameState_t *args, TCPsocket sock, const int id) {
+  puts("sending submit wild prompt");
+  if (send_wild_prompt(sock) != 0) {
+    fputs("Failed to send submit wild prompt\n", stderr);
+    return -1;
+  }
+
+  broadcast_start_action_timer_msg(args);
+
+  const uint32_t wait_ms = args->game_settings->action_timeout_ms;
+  const uint32_t start = SDL_GetTicks();
+
+  POKEVAL_Hand_7 received_hand = {0};
+  while (SDL_GetTicks() - start < wait_ms) {
+    register_new_client(args);
+    int num_ready = SDLNet_CheckSockets(args->socket_set, 0);
+    if (num_ready == -1) {
+      fprintf(stderr, "SDLNet_CheckSockets: %s\n", SDLNet_GetError());
+      return -1;
+    }
+
+    if (num_ready > 0) {
+      if (SDLNet_SocketReady(sock)) {
+        uint8_t buffer[512] = {0}; // pick a reasonable buffer size
+        // int n_bytes = recv_all_tcp(sock, buffer, sizeof(buffer));
+        int n_bytes = SDLNet_TCP_Recv(sock, buffer, sizeof(buffer));
+        if (n_bytes <= 0) {
+          fprintf(stderr, "Failed to receive wilds\n");
+          return -1;
+        }
+        received_hand = deserialize_hand(buffer, n_bytes);
+        break;
+      } else {
+        handle_disconnections(args);
+      }
+    }
+  }
+
+  int n_wilds = 0;
+  if (received_hand.card[0].face_val != 0) {
+    // Apply wilds:
+    for (int i = 0; i < MAX_HAND_SIZE; i++) {
+      DH_Card c = received_hand.card[i];
+      if (!DH_is_card_null(c)) {
+        if (args->real_hand->player[id].card[i].face_val == DH_CARD_TWO) {
+          args->real_hand->player[id].card[i] = c;
+          n_wilds++;
+        } else
+          fprintf(stderr, "Invalid wild replacement (not a 2)\n");
+      }
+    }
+  }
+
+  if (n_wilds > 0) {
+    char status_str[LEN_STATUS_STR] = {0};
+    snprintf(status_str, sizeof status_str, "%s exchanged %d wild card(s)",
+             args->game_state->player[id].nick, n_wilds);
+    broadcast_status_message(args, status_str);
+  }
 
   return 0;
 }
@@ -506,16 +585,34 @@ static void determine_winner(ArgsBroadcastGameState_t *args, RoundResults *resul
   if (results->n_winners > 0)
     return;
 
-  // When set to true, the opponents` cards will be revealed to all the players the next
-  // time broadcast_game_state is called
-  args->game_state->winner_declared = true;
-
   Player_t *players_array = args->game_state->player;
   Player_t *starting_player = players_array;
   uint8_t pl_count = args->game_state->player_count;
 
-  POKEVAL_NeedComparing need_comparing[pl_count];
   Player_t *ptr = starting_player;
+
+  if (args->game_state->deuces_wild) {
+    for (uint8_t i = 0; i < pl_count; i++) {
+      if (ptr->in) {
+        for (int c = 0; c < MAX_HAND_SIZE; c++) {
+          if (args->real_hand->player[ptr->id].card[c].face_val == DH_CARD_TWO) {
+            args->game_state->turn_id = ptr->id;
+            broadcast_game_state(args);
+            handle_wild_cards(args, args->clients[ptr->id], ptr->id);
+            break;
+          }
+        }
+      }
+      ptr = get_next_player(players_array, ptr->id);
+    }
+  }
+
+  // When set to true, the opponents` cards will be revealed to all the players the next
+  // time broadcast_game_state is called
+  args->game_state->winner_declared = true;
+
+  POKEVAL_NeedComparing need_comparing[pl_count];
+  ptr = starting_player;
   for (uint8_t i = 0; i < pl_count; i++) {
     need_comparing[i].won = false;
     need_comparing[i].id = ptr->id;
@@ -526,36 +623,36 @@ static void determine_winner(ArgsBroadcastGameState_t *args, RoundResults *resul
   results->n_winners = POKEVAL_compare_hands(need_comparing, pl_count);
   uint8_t winners = 0;
 
-  // Ties are not fully implemented yet. POKEVAL_compare_hands() handles them, but
-  // the tests need to be reviewed and perhaps added to in the pokeval library. The code
-  // here to report ties and distribute the pot to tied players isn't complete.
+  uint32_t pot = args->game_state->pot;
+  uint32_t share = pot / results->n_winners;
+  uint32_t leftover = pot % results->n_winners;
+  args->game_state->pot = leftover; // Remainder stays in the pot
+
   for (int i = 0; i < pl_count; i++) {
     if (!need_comparing[i].won)
       continue;
+
     results->id[winners++] = need_comparing[i].id;
     Player_t *winner = &args->game_state->player[need_comparing[i].id];
     winner->winner = true;
-    // fprintf(stderr, "winner id: %d\n", need_comparing[i].id);
+
     char status_str[LEN_STATUS_STR];
-    snprintf(status_str, sizeof(status_str),
-             // When broadcast is called, it will reveal the cards if winner has been declared. We
-             // don't need to call that yet, so using the values from "real_hand" for now
-             "%s wins with %s", winner->nick,
+    snprintf(status_str, sizeof status_str, "%s wins with %s", winner->nick,
              POKEVAL_rank[POKEVAL_evaluate_hand(need_comparing[winner->id].hand_5)]);
     broadcast_status_message(args, status_str);
+
     if (args->cli_args->server_log_game_results_file) {
       FILE *fp = fopen(args->cli_args->server_log_game_results_file, "a");
       if (!fp)
         perror("fopen");
       else {
-        fprintf(fp, "pot: %d<br>\n", args->game_state->pot);
+        fprintf(fp, "pot: %u<br>\n", pot);
         fprintf(fp, "%s wins with %s\n\n", winner->nick,
                 POKEVAL_rank[POKEVAL_evaluate_hand(need_comparing[winner->id].hand_5)]);
         fclose(fp);
       }
     }
-    uint32_t share = args->game_state->pot / results->n_winners;
-    args->game_state->pot = args->game_state->pot % results->n_winners;
+
     winner->coins += share;
   }
   broadcast_game_state(args);
@@ -930,6 +1027,21 @@ static void play_game(ArgsBroadcastGameState_t *args, DH_Deck *deck) {
 
   Player_t *players_array = args->game_state->player;
   *args->real_hand = deal_cards_to_players(args->game_state, deck, args->game_type);
+
+  /* For testing...
+    for (int i = 0; i < 3; i++)
+      for (int j = 0; j < 4; j++)
+        args->real_hand->player[i].card[j].face_val = DH_CARD_ACE;
+
+
+    args->real_hand->player[0].card[4].face_val = DH_CARD_KING;
+    args->real_hand->player[1].card[4].face_val = DH_CARD_KING;
+    args->real_hand->player[2].card[4].face_val = DH_CARD_KING;
+    */
+  /*
+     args->real_hand->player[0].card[0].face_val = 2;
+     args->real_hand->player[0].card[3].face_val = 2;
+     */
   args->game_state->winner_declared = false;
   args->game_state->player_count = count_active_clients(args->slot_taken);
   fprintf(stderr, "player count: %d\n", args->game_state->player_count);
@@ -940,7 +1052,8 @@ static void play_game(ArgsBroadcastGameState_t *args, DH_Deck *deck) {
 
   const GameChoice_t *choice = find_game_choice_by_type(args->game_type);
   char tmp[LEN_STATUS_STR] = {0};
-  snprintf(tmp, sizeof(tmp), _("Game: %s"), choice->str);
+  snprintf(tmp, sizeof(tmp), _("Game: %s%s"), choice->str,
+           args->game_state->deuces_wild ? _(" / Deuces Wild") : "");
   broadcast_status_message(args, tmp);
 
   if (args->cli_args->server_log_game_results_file) {
@@ -948,6 +1061,7 @@ static void play_game(ArgsBroadcastGameState_t *args, DH_Deck *deck) {
     if (!fp)
       perror("fopen");
     else {
+      fprintf(fp, "### %s\n\n", tmp);
       __START_PLAYER_LOOP
       fprintf(fp, "%s: %d<br>\n", args->game_state->player[i].nick,
               args->game_state->player[i].coins);
@@ -1034,9 +1148,10 @@ static void ensure_unique_nick(GameState_t *game_state, Player_t *player, const 
 static EReturnCode_t receive_game_type_and_run_game(ArgsBroadcastGameState_t *args, DH_Deck *deck) {
   uint8_t game_type = 0;
   int8_t *dealer_id = &args->game_state->dealer_id;
-  if (recv_game_select(args->clients[*dealer_id], &game_type) == SIZE_MESSAGE_GAME_SELECT) {
+  if (recv_game_select(args->clients[*dealer_id], &game_type, &args->game_state->deuces_wild) ==
+      SIZE_MESSAGE_GAME_SELECT) {
     args->game_type = game_type;
-    fprintf(stderr, "Client chose game type: 0x%02x\n", game_type);
+    printf("Client chose game type: 0x%02x\n", game_type);
   } else {
     fprintf(stderr, "Dealer failed to send valid game type or disconnected.\n");
     remove_disconnected_player(args, *dealer_id);

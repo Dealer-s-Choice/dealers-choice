@@ -64,16 +64,17 @@ static int send_protocol_header(TCPsocket sock) {
 
 SDL_Rect card_area = {0};
 
-int8_t send_game_select(TCPsocket sock, uint8_t game_type) {
-  uint8_t buffer[3];
+int8_t send_game_select(TCPsocket sock, uint8_t game_type, const bool deuces_wild) {
+  uint8_t buffer[4];
   buffer[0] = (MSG_GAME_SELECT >> 8) & 0xFF;
   buffer[1] = (MSG_GAME_SELECT) & 0xFF;
   buffer[2] = game_type;
+  buffer[3] = deuces_wild ? 1 : 0;
 
   const GameChoice_t *choice = find_game_choice_by_type(game_type);
   int r = send_all_tcp(sock, buffer, sizeof(buffer));
   if (r == 0) {
-    fprintf(stderr, "Game type sent: %s\n", choice->str);
+    printf("Game type sent: %s (Deuces wild: %s)\n", choice->str, deuces_wild ? "Yes" : "No");
     return r;
   }
 
@@ -204,6 +205,19 @@ static bool menu_display_game_choices(const PlayerConfig_t *player_config,
                      (i * (link[i].rect.h * 0.2));
   }
 
+  Button_t deuces_wild = {
+      _("Deuces Wild"),
+      sdl_context->renderer,
+      get_color(COLOR_WHITE),
+      get_color(COLOR_BROWN),
+      {0, 0, 0, 0},
+      font->fonts[FONT_BOLD],
+      false,
+      true,
+      false,
+      0,
+  };
+
   static uint8_t saved_n_clients = 0;
   TCPsocket sock = socket_context->sock;
 
@@ -215,11 +229,19 @@ static bool menu_display_game_choices(const PlayerConfig_t *player_config,
     for (int i = 0; i < MAX_CHOICES; i++)
       game_choice_button[i].enabled = (game_state->dealer_id == my_id && n_clients > 1);
 
+    deuces_wild.enabled = (game_state->dealer_id == my_id && n_clients > 1);
+
     SDL_Point mouse_pos;
     SDL_GetMouseState(&mouse_pos.x, &mouse_pos.y);
     for (int i = 0; i < MAX_CHOICES; i++) {
       game_choice_button[i].hovered = SDL_PointInRect(&mouse_pos, &game_choice_button[i].rect);
     }
+
+    deuces_wild.rect = (SDL_Rect){sdl_context->win_center.x, sdl_context->win_center.y / 2, 0, 0};
+    TTF_SizeUTF8(deuces_wild.font, deuces_wild.text, &deuces_wild.rect.w, &deuces_wild.rect.h);
+    deuces_wild.rect.w += SCALE_X(10);
+    deuces_wild.rect.h += SCALE_Y(10);
+    deuces_wild.hovered = SDL_PointInRect(&mouse_pos, &deuces_wild.rect) && deuces_wild.enabled;
 
     SDL_Event e;
     while (SDL_PollEvent(&e)) {
@@ -237,7 +259,7 @@ static bool menu_display_game_choices(const PlayerConfig_t *player_config,
         for (int i = 0; i < MAX_CHOICES; i++) {
           if (SDL_PointInRect(&mouse_pos, &game_choice_button[i].rect) &&
               game_state->dealer_id == my_id) {
-            if (send_game_select(sock, game_choices[i].game_type) == 0) {
+            if (send_game_select(sock, game_choices[i].game_type, deuces_wild.selected) == 0) {
               running = false;
               break;
             } else {
@@ -250,6 +272,8 @@ static bool menu_display_game_choices(const PlayerConfig_t *player_config,
             if (SDL_OpenURL(link[i].url) == -1)
               fputs(SDL_GetError(), stderr);
         }
+        if (deuces_wild.hovered)
+          deuces_wild.selected = !deuces_wild.selected;
       }
     }
 
@@ -257,6 +281,8 @@ static bool menu_display_game_choices(const PlayerConfig_t *player_config,
 
     for (int i = 0; i < MAX_CHOICES; i++)
       render_button(&game_choice_button[i]);
+
+    render_button(&deuces_wild);
 
     SDL_Point status_pos = {
         sdl_context->window_width * .1,
@@ -376,9 +402,11 @@ typedef struct {
   // SDL_Color fg_color;
   SDL_Rect rect;
   bool hovered, selected, is_back, is_null;
+  bool is_wild;
 } CardContext_t;
 
-static void render_card(CardContext_t *context, TTF_Font *font) {
+static void render_card(CardContext_t *context, TTF_Font *font, const bool my_card,
+                        const bool do_wild_exchange) {
   // printf("%d\n", __LINE__);
   if (context->is_back) {
     draw_card_back_pattern(context->renderer, &context->rect);
@@ -390,7 +418,7 @@ static void render_card(CardContext_t *context, TTF_Font *font) {
   SDL_RenderFillRect(context->renderer, &context->rect);
 
   // Highlight hovered card for the local player (draw after card background)
-  if (context->hovered) {
+  if (context->hovered && my_card) {
     SDL_SetRenderDrawBlendMode(context->renderer, SDL_BLENDMODE_BLEND);
     SDL_SetRenderDrawColor(context->renderer, 255, 255, 128, 96); // translucent yellow
     SDL_RenderFillRect(context->renderer, &context->rect);
@@ -399,6 +427,19 @@ static void render_card(CardContext_t *context, TTF_Font *font) {
 
   if (context->selected)
     mark_selected(context->renderer, &context->rect);
+
+  if (context->is_wild && do_wild_exchange) {
+    Uint32 ticks = SDL_GetTicks();
+    // Blink every 500 ms
+    bool blink_on = (ticks / 500) % 2 == 0;
+
+    if (blink_on) {
+      SDL_SetRenderDrawBlendMode(context->renderer, SDL_BLENDMODE_BLEND);
+      SDL_SetRenderDrawColor(context->renderer, 255, 165, 0, 128); // translucent orange
+      SDL_RenderFillRect(context->renderer, &context->rect);
+      SDL_SetRenderDrawBlendMode(context->renderer, SDL_BLENDMODE_NONE);
+    }
+  }
 
   // Draw card border
   SDL_SetRenderDrawColor(context->renderer, 0, 0, 0, 255);
@@ -426,19 +467,34 @@ static void render_card(CardContext_t *context, TTF_Font *font) {
   SDL_DestroyTexture(textTexture);
 }
 
+static void make_human_readable_card(DH_Card *card, CardContext_t *context) {
+  const char *face = DH_get_card_face_str(card->face_val);
+  const char *suit = DH_get_card_unicode_suit(*card);
+  context->textColor = (card->suit == DH_SUIT_HEARTS || card->suit == DH_SUIT_DIAMONDS)
+                           ? get_color(COLOR_RED)
+                           : get_color(COLOR_BLACK);
+  snprintf(context->text, sizeof(context->text), "%s%s", face, suit);
+  if (strlen(context->text) == 0) {
+    fprintf(stderr, "%s:String length 0\n", __func__);
+    exit(EXIT_FAILURE);
+  }
+}
+
 static void create_card_context(CardContext_t card_context[MAX_PLAYERS][MAX_HAND_SIZE],
                                 const int start_i, Player_t *players_array,
-                                const SDL_Point *player_pos, SDL_Renderer *renderer) {
+                                const SDL_Point *player_pos, SDL_Renderer *renderer,
+                                const bool deuces_wild) {
   memset(card_context, 0, sizeof(CardContext_t) * MAX_PLAYERS * MAX_HAND_SIZE);
   Player_t *turn = &players_array[start_i];
   Player_t *starting_turn = turn;
   do {
-    CardContext_t context = {
-        .renderer = renderer,
-        .hovered = false,
-        .selected = false,
-    };
     for (int card_n = 0; card_n < MAX_HAND_SIZE; card_n++) {
+      CardContext_t context = {
+          .renderer = renderer,
+          .hovered = false,
+          .selected = false,
+          .is_wild = false,
+      };
       // printf("%d\n", __LINE__);
       const int id = turn->id;
       DH_Card *card = &(turn->hand.card)[card_n];
@@ -450,6 +506,7 @@ static void create_card_context(CardContext_t card_context[MAX_PLAYERS][MAX_HAND
       context.rect = rect;
 
       SDL_Color textColor = {0, 0, 0, 0};
+      // Initialize even though it's not used for backs and null cards
       context.textColor = textColor;
 
       context.is_null = DH_is_card_null(*card);
@@ -459,16 +516,12 @@ static void create_card_context(CardContext_t card_context[MAX_PLAYERS][MAX_HAND
       context.is_back = DH_is_card_back(*card);
 
       if (!context.is_back && !context.is_null) {
-        const char *face = DH_get_card_face_str(card->face_val);
-        const char *suit = DH_get_card_unicode_suit(*card);
-        context.textColor = (card->suit == DH_SUIT_HEARTS || card->suit == DH_SUIT_DIAMONDS)
-                                ? get_color(COLOR_RED)
-                                : get_color(COLOR_BLACK);
-        snprintf(context.text, sizeof(context.text), "%s%s", face, suit);
-        if (strlen(context.text) == 0) {
-          fprintf(stderr, "%s:String length 0\n", __func__);
-          exit(EXIT_FAILURE);
-        }
+        // Use a condition here so is_wild is not set to false if the card has
+        // been changed
+        if (!context.is_wild && deuces_wild)
+          context.is_wild = card->face_val == DH_CARD_TWO;
+
+        make_human_readable_card(card, &context);
       }
       card_context[id][card_n] = context;
     }
@@ -499,6 +552,7 @@ enum {
   CALL,
   RAISE,
   DISCARD,
+  EXCHANGE,
   MAX_ACTIONS,
 };
 
@@ -532,8 +586,9 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
 #define SIZEOF_STATUS_MSGS 16
   char status_msgs[SIZEOF_STATUS_MSGS][LEN_STATUS_STR] = {0};
 
-  const char *action[] = {[CHECK] = _("Check"), [BET] = _("Bet"),     [FOLD] = _("Fold"),
-                          [CALL] = _("Call"),   [RAISE] = _("Raise"), [DISCARD] = _("Discard")};
+  const char *action[] = {
+      [CHECK] = _("Check"), [BET] = _("Bet"),         [FOLD] = _("Fold"),        [CALL] = _("Call"),
+      [RAISE] = _("Raise"), [DISCARD] = _("Discard"), [EXCHANGE] = _("Exchange")};
 
   const int action_button_y = sdl_context->window_height - (card_area.h * 4);
   Button_t action_button[MAX_ACTIONS];
@@ -570,6 +625,42 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
   amount_button[0].selected = true;
 
   CardContext_t card_context[MAX_PLAYERS][MAX_HAND_SIZE];
+
+  Button_t card_faces[13] = {0};
+  for (size_t i = 0; i < ARRAY_SIZE(card_faces); i++) {
+    int card_val = i + 1;
+    if (card_val == DH_CARD_TWO)
+      continue;
+
+    card_faces[i] = (Button_t){
+        "",
+        sdl_context->renderer,
+        get_color(COLOR_WHITE),
+        get_color(COLOR_BROWN),
+        {0, 0, 0, 0},
+        font->fonts[FONT_WILD_SELECT],
+        false,
+        true,
+        false,
+        0,
+    };
+  }
+
+  Button_t card_suits[DH_SUIT_MAX] = {0};
+  for (DH_suit i = 0; i < ARRAY_SIZE(card_suits); i++) {
+    card_suits[i] = (Button_t){
+        "",
+        sdl_context->renderer,
+        get_color(COLOR_WHITE),
+        get_color(COLOR_BROWN),
+        {0, 0, 0, 0},
+        font->fonts[FONT_CARD],
+        false,
+        true,
+        false,
+        0,
+    };
+  }
 
   int running = 1;
   bool cards_dealt = false;
@@ -649,7 +740,7 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
     if (!cards_created) {
       // printf("%d\n", __LINE__);
       create_card_context(card_context, starting_turn->id, players_array, player_pos,
-                          sdl_context->renderer);
+                          sdl_context->renderer, game_state->deuces_wild);
       cards_created = true;
     }
     // printf("%d\n", __LINE__);
@@ -688,7 +779,8 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
     for (int card_n = 0; card_n < MAX_HAND_SIZE; ++card_n) {
       do {
         // printf("%d\n", __LINE__);
-        render_card(&card_context[player_ptr->id][card_n], font->fonts[FONT_CARD]);
+        render_card(&card_context[player_ptr->id][card_n], font->fonts[FONT_CARD],
+                    player_ptr->id == my_id, client_state.do_exchange_wilds);
 
         if (!cards_dealt && !card_context[player_ptr->id][card_n].is_null &&
             game_state->player[my_id].in) {
@@ -782,6 +874,24 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
                                         action_button[DISCARD].rect.y + card_area.h, 0, 0});
         }
         render_button(&action_button[DISCARD]);
+      } else if (client_state.do_exchange_wilds) {
+        // If this condition is true, that means they didn't click submit before
+        // the timer ran out and the server changed the turn id
+        if (game_state->turn_id != my_id) {
+          client_state.do_exchange_wilds = false;
+          continue;
+        }
+
+        action_button[EXCHANGE].enabled = true;
+        action_button[EXCHANGE].rect.x = x_begin_action_button;
+        if (action_button[EXCHANGE].enabled) {
+          const char *tmp = _("Click a 2, then choose value and suit to assign.");
+          render_text_plain(sdl_context->renderer, font->fonts[FONT_BOLD], tmp,
+                            get_color(COLOR_WHITE),
+                            &(SDL_Rect){action_button[EXCHANGE].rect.x,
+                                        action_button[EXCHANGE].rect.y + card_area.h, 0, 0});
+        }
+        render_button(&action_button[EXCHANGE]);
       } else if (game_state->turn_id == my_id && !client_state.cards_sent) {
         int x_offset = x_begin_action_button;
         if (game_state->total_bets_plus_raises == 0 && !turn->has_checked) {
@@ -808,6 +918,7 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
       } else {
       }
     }
+    action_button[DISCARD].enabled = client_state.do_discard_draw == true;
     // printf("%d\n", __LINE__);
 
     cards_dealt = true;
@@ -844,6 +955,33 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
     } while ((player_ptr = get_next_connected_client(players_array, player_ptr->id)) !=
              starting_turn);
 
+    if (game_state->deuces_wild && client_state.do_exchange_wilds) {
+      int y_offset = card_area.h * 1;
+      int width, height;
+      TTF_SizeUTF8(font->fonts[FONT_WILD_SELECT], " 10 ", &width, &height);
+      for (size_t i = 0; i < ARRAY_SIZE(card_faces); i++) {
+        int card_val = i + 1;
+        if (card_val == DH_CARD_TWO)
+          continue;
+        card_faces[i].text = DH_get_card_face_str(card_val);
+        card_faces[i].rect =
+            (SDL_Rect){sdl_context->win_center.x - SCALE_X(100), y_offset, width, height};
+        y_offset += height + SCALE_Y(10);
+        render_button(&card_faces[i]);
+      }
+
+      y_offset = (height + SCALE_Y(10)) * 6;
+      TTF_SizeUTF8(font->fonts[FONT_CARD], "   ", &width, &height);
+      for (DH_suit i = 0; i < ARRAY_SIZE(card_suits); i++) {
+        card_suits[i].text = DH_get_unicode_suit(i);
+        card_suits[i].rect =
+            (SDL_Rect){sdl_context->win_center.x - SCALE_X(100) + width + SCALE_X(20), y_offset,
+                       width, height};
+        y_offset += height + SCALE_Y(10);
+        render_button(&card_suits[i]);
+      }
+    }
+
     SDL_RenderPresent(sdl_context->renderer);
     SDL_Delay(16);
 
@@ -875,6 +1013,54 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
             break;
         }
       }
+      if (client_state.do_exchange_wilds) {
+        int wild_card_selected = -1;
+        for (int card_n = 0; card_n < MAX_HAND_SIZE; card_n++) {
+          card_context[my_id][card_n].hovered =
+              SDL_PointInRect(&mouse_pos, &card_context[my_id][card_n].rect);
+          if (card_context[my_id][card_n].is_wild && card_context[my_id][card_n].hovered &&
+              event.type == SDL_MOUSEBUTTONDOWN)
+            wild_card_selected = card_n;
+          if (wild_card_selected != -1) {
+            if (!card_context[my_id][card_n].selected) {
+              for (size_t j = 0; j < MAX_HAND_SIZE; j++) {
+                card_context[my_id][j].selected = false;
+              }
+              card_context[my_id][card_n].selected = true;
+            }
+            break;
+          }
+        }
+        bool wild_changed = false;
+        for (int card_n = 0; card_n < MAX_HAND_SIZE; card_n++) {
+          if (card_context[my_id][card_n].selected) {
+            for (size_t f = 0; f < ARRAY_SIZE(card_faces); f++) {
+              int card_val = f + 1;
+              if (card_val == DH_CARD_TWO)
+                continue;
+              if (SDL_PointInRect(&mouse_pos, &card_faces[f].rect) &&
+                  event.type == SDL_MOUSEBUTTONDOWN) {
+                DH_Card *card = &turn->hand.card[card_n];
+                card->face_val = card_val;
+                make_human_readable_card(card, &card_context[my_id][card_n]);
+                break;
+              }
+            }
+            for (DH_suit s = 0; s < ARRAY_SIZE(card_suits); s++) {
+              if (SDL_PointInRect(&mouse_pos, &card_suits[s].rect) &&
+                  event.type == SDL_MOUSEBUTTONDOWN) {
+                DH_Card *card = &turn->hand.card[card_n];
+                card->suit = s;
+                make_human_readable_card(card, &card_context[my_id][card_n]);
+                break;
+              }
+            }
+          }
+        }
+        if (wild_changed)
+          break; // from sdl event loop only
+      }
+
       for (int i = 0; i < MAX_ACTIONS; i++) {
         action_button[i].hovered = SDL_PointInRect(&mouse_pos, &action_button[i].rect);
       }
@@ -903,7 +1089,8 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
                  (event.key.keysym.sym == SDLK_RETURN && event.key.keysym.mod & KMOD_ALT)) {
         toggle_fullscreen(sdl_context->window);
       } else if (event.type == SDL_MOUSEBUTTONDOWN || event.type == SDL_KEYDOWN) {
-        if (game_state->turn_id == my_id && !client_state.do_discard_draw) {
+        if (game_state->turn_id == my_id && !client_state.do_discard_draw &&
+            !client_state.do_exchange_wilds) {
           if ((game_state->total_bets_plus_raises == 0 && !turn->has_checked) ||
               game_state->player[my_id].total_paid != game_state->total_bets_plus_raises) {
             if (SDL_PointInRect(&mouse_pos, &action_button[FOLD].rect) ||
@@ -965,6 +1152,37 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
           else {
             puts("Discards sent");
           }
+        } else if (action_button[EXCHANGE].enabled &&
+                   (SDL_PointInRect(&mouse_pos, &action_button[EXCHANGE].rect) ||
+                    event.key.keysym.sym == SDLK_x)) {
+          puts("exchanging wilds");
+          POKEVAL_Hand_7 hand = {0};
+
+          for (int i = 0; i < MAX_HAND_SIZE; i++) {
+            if (!card_context[my_id][i].is_wild) {
+              hand.card[i] = DH_card_null;
+              continue;
+            }
+            hand.card[i] = turn->hand.card[i];
+          }
+
+          // Reset the flag that's used to indicate to the client it's their turn to draw
+          client_state.do_exchange_wilds = false;
+
+          size_t size = 0;
+          uint8_t *data = serialize_hand(hand, &size);
+          if (!data) {
+            fprintf(stderr, "Failed to serialize hand\n");
+            return -1;
+          }
+
+          // Just send the serialized protobuf
+          if (send_all_tcp(sock, data, size) != 0) {
+            fprintf(stderr, "Failed to send hand\n");
+            free(data);
+            return -1;
+          }
+          free(data);
         }
       }
     } // End Poll event

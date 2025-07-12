@@ -241,11 +241,23 @@ void render_nick(SDL_Renderer *renderer, TTF_Font *font, const char *text, SDL_C
 }
 
 void mark_selected(SDL_Renderer *renderer, SDL_Rect *rect) {
-  SDL_SetRenderDrawColor(renderer, 200, 200, 200, 255); // light grey
-  int thickness = 4;
-  for (int i = 0; i < thickness; ++i) {
+  const int outer_thickness = 4;
+  const int inner_thickness = 2;
+
+  // Outer border (light grey, expanding outwards)
+  SDL_SetRenderDrawColor(renderer, 200, 200, 200, 255);
+  for (int i = 0; i < outer_thickness; ++i) {
     SDL_Rect border = {rect->x - i, rect->y - i, rect->w + 2 * i, rect->h + 2 * i};
     SDL_RenderDrawRect(renderer, &border);
+  }
+
+  // Inner border (black, shrinking inwards)
+  SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+  for (int i = 0; i < inner_thickness; ++i) {
+    SDL_Rect border = {rect->x + i, rect->y + i, rect->w - 2 * i, rect->h - 2 * i};
+    if (border.w > 0 && border.h > 0) {
+      SDL_RenderDrawRect(renderer, &border);
+    }
   }
 }
 

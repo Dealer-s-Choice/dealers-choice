@@ -4,8 +4,8 @@ int main(int argc, char *argv[]) {
   _SETUP_SOCKET_CONTEXT()
   SDL_Delay(n_ms);
   fprintf(stderr, "Dealer %d selecting game\n", *dealer_id);
-  assert(send_game_select(socket_context[*dealer_id].sock,
-                          game_choices[FIVE_CARD_STUD].game_type) == 0);
+  assert(send_game_select(socket_context[*dealer_id].sock, game_choices[FIVE_CARD_STUD].game_type,
+                          false) == 0);
 
   _RECEIVE_GAME_STATE()
   _RECEIVE_GAME_STATE()

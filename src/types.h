@@ -71,6 +71,7 @@ typedef struct {
   uint8_t player_count;
   uint32_t total_bets_plus_raises;
   bool winner_declared;
+  bool deuces_wild;
   Player_t player[MAX_PLAYERS];
 } GameState_t;
 

@@ -75,7 +75,7 @@ SocketContext_t get_socket_context_and_run_client(PlayerConfig_t *player_config,
 
 void render_link(Link_t *link);
 
-int8_t send_game_select(TCPsocket sock, uint8_t game_type);
+int8_t send_game_select(TCPsocket sock, uint8_t game_type, const bool deuces_wild);
 
 int8_t send_player_action(TCPsocket sock, uint8_t action, uint32_t amount);
 

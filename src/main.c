@@ -245,6 +245,7 @@ int main(int argc, char *argv[]) {
       [FONT_STATUS_MSG] = {.file = "LiberationSans-Regular.ttf", .ptsize = 24},
       [FONT_TITLE] = {.file = "LiberationSerif-BoldItalic.ttf", .ptsize = 72},
       [FONT_VERSION] = {.file = "LiberationSans-Regular.ttf", .ptsize = 22},
+      [FONT_WILD_SELECT] = {.file = "LiberationSans-Bold.ttf", .ptsize = 24},
   };
 
   for (int i = 0; i < NUM_FONTS; ++i) {

@@ -90,8 +90,14 @@ uint8_t *serialize_game_state(const GameState_t *src, size_t *size_out) {
   msg.total_bets_plus_raises = src->total_bets_plus_raises;
   msg.player_count = src->player_count;
   msg.winner_declared = src->winner_declared;
+  msg.deuces_wild = src->deuces_wild;
 
-  // player
+  // static Card wild_msg;
+  // card__init(&wild_msg);
+  // wild_msg.face_val = src->wild.face_val;
+  // wild_msg.suit = src->wild.suit;
+  // msg.wild = &wild_msg;
+
   Player *player_msgs[MAX_PLAYERS];
   struct player_message_builder_t builders[MAX_PLAYERS];
 
@@ -131,6 +137,14 @@ GameState_t deserialize_game_state(const uint8_t *data, size_t size) {
   result.total_bets_plus_raises = msg->total_bets_plus_raises;
   result.player_count = msg->player_count;
   result.winner_declared = msg->winner_declared;
+  result.deuces_wild = msg->deuces_wild;
+
+  // if (msg->wild) {
+  // result.wild.face_val = msg->wild->face_val;
+  // result.wild.suit = msg->wild->suit;
+  //} else {
+  // result.wild = DH_card_null;
+  //}
 
   size_t n = msg->n_player < MAX_PLAYERS ? msg->n_player : MAX_PLAYERS;
   for (size_t i = 0; i < n; ++i) {
@@ -178,6 +192,45 @@ GameSettings_t deserialize_game_settings(const uint8_t *data, size_t size) {
   result.end_of_game_timeout_ms = msg->end_of_game_timeout_ms;
 
   game_settings__free_unpacked(msg, NULL);
+  return result;
+}
+
+uint8_t *serialize_hand(const POKEVAL_Hand_7 hand, size_t *size_out) {
+  Hand proto_hand = HAND__INIT;
+  Card proto_cards[MAX_HAND_SIZE];
+  Card *proto_card_ptrs[MAX_HAND_SIZE]; // Array of pointers
+
+  proto_hand.n_card = MAX_HAND_SIZE;
+  proto_hand.card = proto_card_ptrs;
+
+  for (size_t i = 0; i < MAX_HAND_SIZE; i++) {
+    card__init(&proto_cards[i]);
+    proto_cards[i].face_val = hand.card[i].face_val;
+    proto_cards[i].suit = hand.card[i].suit;
+    proto_card_ptrs[i] = &proto_cards[i]; // Point to each Card
+  }
+
+  *size_out = hand__get_packed_size(&proto_hand);
+  uint8_t *buffer = malloc(*size_out);
+  if (!buffer)
+    return NULL;
+
+  hand__pack(&proto_hand, buffer);
+  return buffer;
+}
+
+POKEVAL_Hand_7 deserialize_hand(const uint8_t *data, size_t size) {
+  POKEVAL_Hand_7 result = {0};
+  Hand *proto_hand = hand__unpack(NULL, size, data);
+  if (!proto_hand)
+    return result;
+
+  for (size_t i = 0; i < proto_hand->n_card && i < MAX_HAND_SIZE; i++) {
+    result.card[i].face_val = proto_hand->card[i]->face_val;
+    result.card[i].suit = proto_hand->card[i]->suit;
+  }
+
+  hand__free_unpacked(proto_hand, NULL);
   return result;
 }
 
@@ -303,7 +356,7 @@ ERecvStatus_t recv_game_state(SocketContext_t *socket_context, GameState_t *game
     return RECV_ERROR;
   }
 
-  fprintf(stderr, "[recv_game_state] size: %d\n", size);
+  // fprintf(stderr, "[recv_game_state] size: %d\n", size);
   uint16_t opcode = (buffer[0] << 8) | buffer[1];
   switch (opcode) {
   case MSG_DRAW_PROMPT:
@@ -313,7 +366,17 @@ ERecvStatus_t recv_game_state(SocketContext_t *socket_context, GameState_t *game
     }
     client_state->do_discard_draw = true;
     client_state->n_cards_selected = 0;
-    printf("[recv_game_state] Received %u bytes, server wants discards...\n", size);
+    // printf("[recv_game_state] Received %u bytes, server wants discards...\n", size);
+    break;
+
+  case MSG_WILD_REPLACEMENT:
+    if (size != 2) {
+      fprintf(stderr, "[recv_game_state] Invalid size for MSG_WILD_REPLACEMENTS: %u\n", size);
+      break;
+    }
+    client_state->do_exchange_wilds = true;
+    // client_state->n_cards_selected = 0;
+    // printf("[recv_game_state] Received %u bytes, server wants wilds...\n", size);
     break;
 
   case MSG_START_ACTION_TIMER:
@@ -322,14 +385,14 @@ ERecvStatus_t recv_game_state(SocketContext_t *socket_context, GameState_t *game
       break;
     }
     client_state->timer_start = SDL_GetTicks();
-    printf("[recv_game_state] Received %u bytes, starting action timer\n", size);
+    // printf("[recv_game_state] Received %u bytes, starting action timer\n", size);
     break;
 
   case MSG_STATUS_MESSAGE: {
     size_t msg_len = size - 2;
     snprintf(client_state->server_status_str, sizeof(client_state->server_status_str), "%.*s",
              (int)msg_len, (char *)&buffer[2]);
-    fprintf(stderr, "[Status Message] %s\n", client_state->server_status_str);
+    // fprintf(stderr, "[Status Message] %s\n", client_state->server_status_str);
     if (strstr(client_state->server_status_str, "bet") ||
         strstr(client_state->server_status_str, "call") ||
         strstr(client_state->server_status_str, "raise"))
@@ -356,11 +419,11 @@ ERecvStatus_t recv_game_state(SocketContext_t *socket_context, GameState_t *game
       game_state->player[id].hand.card[i].suit = ntohl(s);
     }
 
-    printf("[recv_game_state] Received new hand with %u cards\n", hand_size);
+    // printf("[recv_game_state] Received new hand with %u cards\n", hand_size);
     break;
   } break;
   default:
-    printf("[recv_game_state] Received %u bytes, deserializing...\n", size);
+    // printf("[recv_game_state] Received %u bytes, deserializing...\n", size);
     *game_state = deserialize_game_state(buffer, size);
     if (client_state->cards_sent)
       client_state->cards_sent = false;
