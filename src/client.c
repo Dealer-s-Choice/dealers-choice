@@ -206,7 +206,7 @@ static bool menu_display_game_choices(const PlayerConfig_t *player_config,
   }
 
   Button_t deuces_wild = {
-      "Deuces Wild",
+      _("Deuces Wild"),
       sdl_context->renderer,
       get_color(COLOR_WHITE),
       get_color(COLOR_BROWN),
@@ -538,7 +538,7 @@ enum {
   CALL,
   RAISE,
   DISCARD,
-  SUBMIT,
+  EXCHANGE,
   MAX_ACTIONS,
 };
 
@@ -574,7 +574,7 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
 
   const char *action[] = {
       [CHECK] = _("Check"), [BET] = _("Bet"),         [FOLD] = _("Fold"),    [CALL] = _("Call"),
-      [RAISE] = _("Raise"), [DISCARD] = _("Discard"), [SUBMIT] = _("Submit")};
+      [RAISE] = _("Raise"), [DISCARD] = _("Discard"), [EXCHANGE] = _("Exchange")};
 
   const int action_button_y = sdl_context->window_height - (card_area.h * 4);
   Button_t action_button[MAX_ACTIONS];
@@ -867,17 +867,16 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
           continue;
         }
 
-        action_button[SUBMIT].enabled = true;
-        action_button[SUBMIT].rect.x = x_begin_action_button;
-        if (action_button[SUBMIT].enabled) {
-          char tmp[50] = {0};
-          snprintf(tmp, sizeof(tmp), "Select your wild card, then select changes");
+        action_button[EXCHANGE].enabled = true;
+        action_button[EXCHANGE].rect.x = x_begin_action_button;
+        if (action_button[EXCHANGE].enabled) {
+          char *tmp = _("Click a 2, then choose value and suit to assign.");
           render_text_plain(sdl_context->renderer, font->fonts[FONT_BOLD], tmp,
                             get_color(COLOR_WHITE),
-                            &(SDL_Rect){action_button[SUBMIT].rect.x,
-                                        action_button[SUBMIT].rect.y + card_area.h, 0, 0});
+                            &(SDL_Rect){action_button[EXCHANGE].rect.x,
+                                        action_button[EXCHANGE].rect.y + card_area.h, 0, 0});
         }
-        render_button(&action_button[SUBMIT]);
+        render_button(&action_button[EXCHANGE]);
       } else if (game_state->turn_id == my_id && !client_state.cards_sent) {
         int x_offset = x_begin_action_button;
         if (game_state->total_bets_plus_raises == 0 && !turn->has_checked) {
@@ -1137,9 +1136,9 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
           else {
             puts("Discards sent");
           }
-        } else if (action_button[SUBMIT].enabled &&
-                   (SDL_PointInRect(&mouse_pos, &action_button[SUBMIT].rect) ||
-                    event.key.keysym.sym == SDLK_s)) {
+        } else if (action_button[EXCHANGE].enabled &&
+                   (SDL_PointInRect(&mouse_pos, &action_button[EXCHANGE].rect) ||
+                    event.key.keysym.sym == SDLK_x)) {
           puts("submitting wilds");
           POKEVAL_Hand_7 hand = {0};
 
