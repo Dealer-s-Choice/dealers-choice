@@ -11,6 +11,8 @@ on:
         required: false
         type: string
   push:
+    tags:
+      - 'v*'
     branches: trunk
     paths:
     - '**'
@@ -44,9 +46,13 @@ jobs:
 
       - name: Set version
         run: |
-          if [ -z "$VERSION" ]; then
-            echo "VERSION=latest" >> $GITHUB_ENV
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            TAG_NAME=${GITHUB_REF#refs/tags/}
+            VERSION=${TAG_NAME}
+          else
+            VERSION=latest
           fi
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
 
       - name: Checkout
         uses: actions/checkout@v4
