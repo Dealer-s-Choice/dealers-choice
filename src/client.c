@@ -702,7 +702,8 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
   Player_t *starting_turn = NULL;
 
   Coin_t coin[] = {
-      {"48x48_1907_Saint_Gaudens_gold_coin.png", "48x48_1907_Saint_Gaudens_gold_coin.png"},
+      {"48x48_front_1907_Saint_Gaudens_gold_coin.png",
+       "48x48_back_1907_Saint_Gaudens_gold_coin.png"},
       {"48x48_Hammurabi.png", "48x48_Hammurabi.png"},
       {"48x48_front_Gaius-Julius-Caesar-denarius-44-BC-RRC-480-3.png",
        "48x48_back_Gaius-Julius-Caesar-denarius-44-BC-RRC-480-3.png"},
