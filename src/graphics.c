@@ -240,23 +240,30 @@ void render_nick(SDL_Renderer *renderer, TTF_Font *font, const char *text, SDL_C
   SDL_DestroyTexture(texture);
 }
 
-void mark_selected(SDL_Renderer *renderer, SDL_Rect *rect) {
-  const int outer_thickness = 4;
-  const int inner_thickness = 2;
+void mark_selected(SDL_Renderer *renderer, const SDL_Rect *rect) {
+  const float outer_thickness = 4.0f;
+  const float inner_thickness = 2.0f;
 
-  // Outer border (light grey, expanding outwards)
+  SDL_FRect frect = {
+      .x = (float)rect->x,
+      .y = (float)rect->y,
+      .w = (float)rect->w,
+      .h = (float)rect->h,
+  };
+
+  // Outer border (light grey, expanding outward)
   SDL_SetRenderDrawColor(renderer, 200, 200, 200, 255);
-  for (int i = 0; i < outer_thickness; ++i) {
-    SDL_Rect border = {rect->x - i, rect->y - i, rect->w + 2 * i, rect->h + 2 * i};
-    SDL_RenderDrawRect(renderer, &border);
+  for (float i = 0; i < outer_thickness; i += 1.0f) {
+    SDL_FRect border = {frect.x - i, frect.y - i, frect.w + 2.0f * i, frect.h + 2.0f * i};
+    SDL_RenderDrawRectF(renderer, &border);
   }
 
-  // Inner border (black, shrinking inwards)
+  // Inner border (black, shrinking inward)
   SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-  for (int i = 0; i < inner_thickness; ++i) {
-    SDL_Rect border = {rect->x + i, rect->y + i, rect->w - 2 * i, rect->h - 2 * i};
-    if (border.w > 0 && border.h > 0) {
-      SDL_RenderDrawRect(renderer, &border);
+  for (float i = 0; i < inner_thickness; i += 1.0f) {
+    SDL_FRect border = {frect.x + i, frect.y + i, frect.w - 2.0f * i, frect.h - 2.0f * i};
+    if (border.w > 0.0f && border.h > 0.0f) {
+      SDL_RenderDrawRectF(renderer, &border);
     }
   }
 }

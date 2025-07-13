@@ -121,7 +121,7 @@ typedef struct {
   SDL_Keycode hotkey;
 } Button_t;
 
-void mark_selected(SDL_Renderer *renderer, SDL_Rect *rect);
+void mark_selected(SDL_Renderer *renderer, const SDL_Rect *rect);
 
 void render_button(Button_t *button);
 
