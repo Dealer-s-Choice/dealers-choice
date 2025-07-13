@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: dealers-choice\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-07-12 06:37-0500\n"
+"POT-Creation-Date: 2025-07-13 00:55-0500\n"
 "PO-Revision-Date: 2025-07-02 00:46-0500\n"
 "Last-Translator: Andy <andy@prometheus.localhost.localdomain>\n"
 "Language-Team: Italian <tp@lists.linux.it>\n"
@@ -29,35 +29,35 @@ msgstr ""
 msgid "Connected players:"
 msgstr "Giocatori connessi:"
 
-#: src/client.c:576
+#: src/client.c:621
 msgid "Check"
 msgstr "Check"
 
-#: src/client.c:576
+#: src/client.c:621
 msgid "Bet"
 msgstr "Punta"
 
-#: src/client.c:576
+#: src/client.c:621
 msgid "Fold"
 msgstr "Molla"
 
-#: src/client.c:576
+#: src/client.c:621
 msgid "Call"
 msgstr "Chiamata"
 
-#: src/client.c:577
+#: src/client.c:622
 msgid "Raise"
 msgstr "Rilancia"
 
-#: src/client.c:577
+#: src/client.c:622
 msgid "Discard"
 msgstr "Scarta"
 
-#: src/client.c:577
+#: src/client.c:622
 msgid "Exchange"
 msgstr ""
 
-#: src/client.c:873
+#: src/client.c:938
 msgid "Click a 2, then choose value and suit to assign."
 msgstr ""
 
