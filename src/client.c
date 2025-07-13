@@ -545,6 +545,37 @@ static SDL_Texture *load_coin_texture(SDL_Renderer *renderer, const char *base_p
   return tex;
 }
 
+typedef struct {
+  SDL_Texture *texture;
+  SDL_Point start;
+  SDL_Point end;
+  uint32_t start_time;
+  uint32_t duration; // in milliseconds
+  bool active;
+} CoinAnimation_t;
+
+void render_coin_animation(SDL_Renderer *renderer, CoinAnimation_t *anim) {
+  if (!anim->active) {
+    SDL_RenderCopy(renderer, anim->texture, NULL,
+                   &(SDL_Rect){anim->end.x, anim->end.y, SCALE_X(48), SCALE_Y(48)});
+    return;
+  }
+
+  uint32_t now = SDL_GetTicks();
+  float progress = (now - anim->start_time) / (float)anim->duration;
+
+  if (progress >= 1.0f) {
+    progress = 1.0f;
+    anim->active = false; // Animation is done
+  }
+
+  int x = anim->start.x + (int)((anim->end.x - anim->start.x) * progress);
+  int y = anim->start.y + (int)((anim->end.y - anim->start.y) * progress);
+
+  SDL_Rect dst = {x, y, SCALE_X(48), SCALE_Y(48)};
+  SDL_RenderCopy(renderer, anim->texture, NULL, &dst);
+}
+
 enum {
   CHECK,
   BET,
@@ -689,8 +720,8 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
   } PotCoin_t;
 
   PotCoin_t pot_coin = {0};
-
   uint8_t coins = 0;
+  CoinAnimation_t coin_anim = {0};
 
   bool turn_switch = false;
 
@@ -747,24 +778,43 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
 
     clear_screen(sdl_context->renderer);
 
+    bool new_coin = false;
     SDL_Point pot_pos = {player_pos[4].x - POT_BOUNDARY + card_area.h,
                          sdl_context->win_center.y + card_area.h};
-    if (game_state->pot > coins * 250 && coins < MAX_POT_COINS) {
+    if (game_state->pot > coins * 100 && coins < MAX_POT_COINS) {
       pot_coin.pt[coins].x = pot_pos.x + pcg32_boundedrand_r(&rng, POT_BOUNDARY) - SCALE_X(150);
       pot_coin.pt[coins].y = pot_pos.y + pcg32_boundedrand_r(&rng, POT_BOUNDARY) - SCALE_Y(150);
       pot_coin.side[coins] = (pcg32_boundedrand_r(&rng, 2) == 0) ? coin_tex_front : coin_tex_back;
       coins++;
+      new_coin = true;
     }
 
-    for (int i = 0; i < coins; i++) {
+    int p;
+    for (p = 0; p < coins; p++) {
       SDL_Rect coin_rect = {
-          .x = pot_coin.pt[i].x,
-          .y = pot_coin.pt[i].y,
+          .x = pot_coin.pt[p].x,
+          .y = pot_coin.pt[p].y,
           .w = SCALE_X(48),
           .h = SCALE_Y(48),
       };
-      SDL_RenderCopy(sdl_context->renderer, pot_coin.side[i], NULL, &coin_rect);
+      if (p < coins - 1)
+        SDL_RenderCopy(sdl_context->renderer, pot_coin.side[p], NULL, &coin_rect);
     }
+
+    p--;
+    if (new_coin) {
+      coin_anim = (CoinAnimation_t){
+          .texture = pot_coin.side[p],
+          .start = (SDL_Point){player_pos[turn->id].x, player_pos[turn->id].y},
+          .end = (SDL_Point){pot_coin.pt[p].x, pot_coin.pt[p].y},
+          .start_time = SDL_GetTicks(),
+          .duration = 300,
+          .active = true,
+      };
+      new_coin = false;
+    }
+
+    render_coin_animation(sdl_context->renderer, &coin_anim);
 
     for (int i = 0; i < SIZEOF_STATUS_MSGS; i++) {
       char tmp[sizeof(status_msgs[0])];

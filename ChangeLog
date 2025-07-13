@@ -4,6 +4,7 @@
   + Partially implement 7-card stud
   + Add optional 'language' setting (https://dealer-s-choice.github.io/docs/CONFIG.html)
   * Network Protocol bumped to 3
+  + Add coin animation
 
 2025-07-03
 
