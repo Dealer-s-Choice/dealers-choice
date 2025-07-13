@@ -46,13 +46,15 @@ jobs:
 
       - name: Set version
         run: |
-          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
-            TAG_NAME=${GITHUB_REF#refs/tags/}
-            VERSION=${TAG_NAME}
-          else
-            VERSION=latest
+          if [[ -z "${VERSION}" ]]; then
+            if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+              TAG_NAME=${GITHUB_REF#refs/tags/}
+              VERSION=${TAG_NAME}
+            else
+              VERSION=latest
+            fi
+            echo "VERSION=$VERSION" >> $GITHUB_ENV
           fi
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
 
       - name: Checkout
         uses: actions/checkout@v4
@@ -114,8 +116,14 @@ jobs:
 
       - name: Set version
         run: |
-          if [ -z "$VERSION" ]; then
-            echo "VERSION=latest" >> $GITHUB_ENV
+          if [[ -z "${VERSION}" ]]; then
+            if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+              TAG_NAME=${GITHUB_REF#refs/tags/}
+              VERSION=${TAG_NAME}
+            else
+              VERSION=latest
+            fi
+            echo "VERSION=$VERSION" >> $GITHUB_ENV
           fi
 
       - name: Set up Docker Buildx

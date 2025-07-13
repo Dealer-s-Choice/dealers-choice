@@ -49,13 +49,15 @@ jobs:
 
       - name: Set version
         run: |
-          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
-            TAG_NAME=${GITHUB_REF#refs/tags/}
-            VERSION=${TAG_NAME#v}
-          else
-            VERSION=snapshot
+          if [[ -z "${VERSION}" ]]; then
+            if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+              TAG_NAME=${GITHUB_REF#refs/tags/}
+              VERSION=${TAG_NAME}
+            else
+              VERSION=latest
+            fi
+            echo "VERSION=$VERSION" >> $GITHUB_ENV
           fi
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
 
       - name: Build AppImage
         run: |
