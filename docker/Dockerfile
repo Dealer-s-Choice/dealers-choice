@@ -18,7 +18,7 @@ RUN apk update && apk add --no-cache \
 WORKDIR /dealer
 COPY . .
 
-RUN CFLAGS="-Werror" meson setup builddir --buildtype=release -Db_sanitize=none --prefix=/usr && \
+RUN meson setup builddir --buildtype=release -Db_sanitize=none --prefix=/usr && \
     meson compile -C builddir -v && \
     DESTDIR=/tmp/dealer_install meson install -C builddir
 
