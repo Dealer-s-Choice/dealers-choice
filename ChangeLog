@@ -1,3 +1,6 @@
+2025-07-13
+
+- dealers-choice 0.0.6:
   + Implement Deuces Wild option
   * Fix tie handling
   * Reduce client console output messages
