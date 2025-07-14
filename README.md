@@ -54,8 +54,8 @@ available yet](https://github.com/Dealer-s-Choice/dealers_choice/issues/68).
 * [5-card stud](https://en.wikipedia.org/wiki/Five-card_stud) (not all the rules have been implemented yet, such as the bring-in bet)
 * [7-card stud](https://en.wikipedia.org/wiki/Seven-card_stud) (not all the rules have been implemented yet, such as the bring-in bet)
 
-Any of the games above can be played with the Deuces (Twos) Wild option
-enabled.
+Any of the games above can be played with the [Deuces (Twos) Wild
+option](docs/GAME_PLAY.md#using-wild-cards) enabled.
 
 ### Computer Opponents
 
