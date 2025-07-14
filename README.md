@@ -19,8 +19,10 @@
 
 # Dealer's Choice
 
-Online Multiplayer Stud and Draw Poker, where the deal rotates and each new
-game allows a different player to select the variant.
+Dealer's Choice is a cross-platform, networked multiplayer poker game that
+supports various draw and stud variants, including optional wild cards. The
+deal rotates between players, and each new game allows a different player to
+choose the variant.
 
 ## License
 
