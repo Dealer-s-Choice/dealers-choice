@@ -63,4 +63,8 @@ jobs:
       shell: msys2 {0}
       continue-on-error: true
       run: |
+        export APPDATA=/tmp/fake-appdata
+        mkdir -p "$APPDATA"
+        export HOME=/tmp
+        mkdir -p "$HOME"
         meson test --no-stdsplit -v -C _build
