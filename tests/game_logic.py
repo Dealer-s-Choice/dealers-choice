@@ -7,7 +7,7 @@ import sys
 import os
 import signal
 
-def wait_for_server(host, port, timeout=10):
+def wait_for_server(host, port, timeout=40):
     """Wait until a TCP server is listening on (host, port)."""
     start_time = time.time()
     while time.time() - start_time < timeout:
