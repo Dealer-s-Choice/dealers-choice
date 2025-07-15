@@ -7,7 +7,8 @@ or the
 [Dockerfile](https://github.com/Dealer-s-Choice/dealers_choice/blob/trunk/docker/Dockerfile)
 that builds on Alpine Linux. There is also a [script that installs
 dependencies](https://github.com/Dealer-s-Choice/dealers_choice/blob/trunk/.github/scripts/install_ubuntu_deps.sh)
-on Ubuntu Linux.
+on Ubuntu Linux. The FreeBSD dependencies are listed in
+[cirrus.yml](https://github.com/Dealer-s-Choice/dealers_choice/tree/trunk/.cirrus.yml).
 
 [Meson](https://mesonbuild.com/) is used for the build system.
 
