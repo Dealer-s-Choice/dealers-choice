@@ -31,8 +31,15 @@ def main():
         print(f"Usage: {sys.argv[0]} <test_binary_name>", file=sys.stderr)
         sys.exit(1)
 
-    test_binary = os.path.join(os.environ["MESON_BUILD_TEST_ROOT"], sys.argv[1])
-    server_binary = os.path.join(os.environ["MESON_BUILD_ROOT"], "dealers-choice")
+    build_root = os.environ.get("MESON_BUILD_ROOT")
+    test_root = os.environ.get("MESON_BUILD_TEST_ROOT")
+
+    if not build_root or not test_root:
+        print("Error: MESON_BUILD_ROOT and MESON_BUILD_TEST_ROOT must be set in the environment.", file=sys.stderr)
+        sys.exit(1)
+
+    test_binary = os.path.join(test_root, sys.argv[1])
+    server_binary = os.path.join(build_root, "dealers-choice")
 
     # Launch the server in test mode
     server_proc = subprocess.Popen(
