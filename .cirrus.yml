@@ -11,6 +11,8 @@ common_meson_steps: &common_meson_steps
   build_script:
     - cd builddir && ninja -v
   test_script:
+    - export HOME=/tmp/fake-home
+    - mkdir -p "$HOME"
     - cd builddir && meson test -v
 
 common_freebsd_steps: &common_freebsd_steps
