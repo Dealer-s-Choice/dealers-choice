@@ -1,0 +1,39 @@
+filter_template: &filter_template
+  only_if: "changesInclude(
+    'src/*',
+    'tests/*',
+    '**meson.build',
+    '.cirrus.yml',
+    '**.wrap'
+    )"
+
+common_meson_steps: &common_meson_steps
+  build_script:
+    - cd builddir && ninja -v
+  test_script:
+    - cd builddir && meson test -v
+
+common_freebsd_steps: &common_freebsd_steps
+  pkginstall_script:
+    - pkg update -f
+    - pkg install -y git cmake gettext meson ninja pkgconf protobuf-c python3 SDL2 sdl2_image sdl2_net sdl2_ttf
+
+freebsd_task:
+  <<: *filter_template
+  name: freebsd-14-2
+  freebsd_instance:
+    image_family: freebsd-14-2
+  <<: *common_freebsd_steps
+  setup_script:
+    - meson setup builddir
+  <<: *common_meson_steps
+
+freebsd_task:
+  <<: *filter_template
+  name: freebsd-15-0-snap
+  freebsd_instance:
+    image_family: freebsd-15-0-snap
+  <<: *common_freebsd_steps
+  setup_script:
+    - meson setup builddir
+  <<: *common_meson_steps
