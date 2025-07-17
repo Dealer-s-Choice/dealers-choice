@@ -1,0 +1,35 @@
+name: ghcr-cleaner
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '30 2 7,21 * *'
+  push:
+    branches: trunk
+    paths:
+    - '**/ghcr-cleaner.yml'
+
+jobs:
+  clean:
+    runs-on: ubuntu-latest
+    name: Delete untagged images
+    steps:
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Delete all containers from package without tags
+        uses: Chizkiyahu/delete-untagged-ghcr-action@v6
+        with:
+            token: ${{ secrets.PAT_TOKEN }}
+            repository_owner: ${{ github.repository_owner }}
+            repository: ${{ github.repository }}
+            untagged_only: true
+            owner_type: org
+            except_untagged_multiplatform: true
