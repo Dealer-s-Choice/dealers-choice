@@ -39,7 +39,7 @@ jobs:
 
       fail-fast: true
     outputs:
-      ${{ steps.get_version.outputs.version }}
+      version: ${{ steps.get_version.outputs.version }}
     steps:
       - name: Prepare
         run: |
