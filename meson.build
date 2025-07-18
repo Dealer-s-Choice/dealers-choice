@@ -89,6 +89,12 @@ dep_names = [
   'SDL2_image',
 ]
 
+# On Slackware, the miniaudio build fails (linking) if dl and threads aren't added here
+if host_sys == 'linux'
+  shared_dep += [cc.find_library('dl')]
+  dep_names += ['threads']
+endif
+
 foreach dep : dep_names
   shared_dep += dependency(dep)
 endforeach

@@ -1,3 +1,5 @@
+  - Explicitly link to dl and thread (Fix Slackware build)
+
 2025-07-13
 
 - dealers-choice 0.0.6:
