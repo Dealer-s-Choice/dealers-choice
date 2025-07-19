@@ -1,5 +1,15 @@
 # Game Play
 
+## Discard / Draw
+
+When it is your turn, select the cards you would like to discard, then click
+the "Discard" button.
+
+[![Discarding](https://dealer-s-choice.github.io/screenshots/dealers-choice_discarding-2025-07-19.gif)](https://dealer-s-choice.github.io/screenshots/dealers-choice_discarding-2025-07-19.gif)
+
+If you want to keep all your cards, click the "Discard" button without
+selecting any cards.
+
 ## Player action timeouts
 
 If a player is at their turn but doesn't select an action (e.g. bet, discard)
@@ -47,4 +57,4 @@ see an **"Exchange"** button and a column showing face values and suits.
 4. When finished, click **"Exchange"** again to submit your changes.
    *(Note: The button text may vary if a translation is enabled.)*
 
-[![Exchanging Wild Cards](https://dealer-s-choice.github.io/screenshots/dealers-choice_wild-card_exchange-columns.png)](https://dealer-s-choice.github.io/screenshots/dealers-choice_wild-card_exchange-columns.png)
+[![Exchanging Wild Cards](https://dealer-s-choice.github.io/screenshots/dealers-choice_changing-wilds-2025-07-19.gif)](https://dealer-s-choice.github.io/screenshots/dealers-choice_changing-wilds-2025-07-19.gif)
