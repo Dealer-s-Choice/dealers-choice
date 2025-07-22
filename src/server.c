@@ -215,7 +215,7 @@ static void broadcast_game_state(ArgsBroadcastGameState_t *args) {
 
     POKEVAL_Hand_7 hand_tmp = {0};
     if ((args->game_state->winner_declared && args->game_state->player_count != 1) ||
-        args->real_hand) {
+        args->reveal_hand) {
       memcpy(&args->game_state->player[i].hand, &args->real_hand->player[i],
              sizeof(POKEVAL_Hand_7));
 
