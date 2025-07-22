@@ -1356,10 +1356,14 @@ SocketContext_t get_socket_context_and_run_client(PlayerConfig_t *player_config,
       sound_context.engineConfig.noDevice = MA_TRUE;
       sound_context.engineConfig.channels = 2;       // Must be set when not using a device.
       sound_context.engineConfig.sampleRate = 48000; // Must be set when not using a device.
-    }
+    } else // Obviously the engine gets initialized unconditionally, but I don't see
+      // any reason to show this and confuse a user who has their volume set to 0
+      verbose_puts("Initializing audio engine (powered by miniaudio: https://miniaud.io/)");
+
     sound_context.result = ma_engine_init(&sound_context.engineConfig, &sound_context.engine);
     if (sound_context.result != MA_SUCCESS) {
-      fprintf(stderr, "Failed to initialize miniaudio engine.\n");
+      fprintf(stderr, "Error: Failed to initialize miniaudio engine (code: %d).\n",
+              sound_context.result);
       exit(EXIT_FAILURE);
     }
 
