@@ -594,6 +594,7 @@ static void determine_winner(ArgsBroadcastGameState_t *args, RoundResults *resul
 
   if (args->game_state->deuces_wild) {
     args->reveal_hand = true;
+    broadcast_game_state(args);
     for (uint8_t i = 0; i < pl_count; i++) {
       if (ptr->in) {
         for (int c = 0; c < MAX_HAND_SIZE; c++) {
