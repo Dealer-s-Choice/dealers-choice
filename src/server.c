@@ -214,7 +214,8 @@ static void broadcast_game_state(ArgsBroadcastGameState_t *args) {
     }
 
     POKEVAL_Hand_7 hand_tmp = {0};
-    if (args->game_state->winner_declared && args->game_state->player_count != 1) {
+    if ((args->game_state->winner_declared && args->game_state->player_count != 1) ||
+        args->real_hand) {
       memcpy(&args->game_state->player[i].hand, &args->real_hand->player[i],
              sizeof(POKEVAL_Hand_7));
 
@@ -592,6 +593,7 @@ static void determine_winner(ArgsBroadcastGameState_t *args, RoundResults *resul
   Player_t *ptr = starting_player;
 
   if (args->game_state->deuces_wild) {
+    args->reveal_hand = true;
     for (uint8_t i = 0; i < pl_count; i++) {
       if (ptr->in) {
         for (int c = 0; c < MAX_HAND_SIZE; c++) {
@@ -1401,6 +1403,7 @@ int run_server(CliArgs_t *cli_args, Path_t *path) {
         .game_settings = &game_settings,
         .config = &config,
         .game_type = 0,
+        .reveal_hand = false,
     };
 
     uint8_t active_clients = count_active_clients(slot_taken);
