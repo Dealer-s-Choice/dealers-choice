@@ -46,7 +46,7 @@
 #endif
 
 #define GAME_PROTOCOL_MAGIC "DCPROTO"
-#define GAME_PROTOCOL_VERSION 3
+#define GAME_PROTOCOL_VERSION 4
 
 #ifdef _MSC_VER
 #pragma pack(push, 1)
