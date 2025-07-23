@@ -15,7 +15,7 @@ cli_args.test_mode = false;
 init_game_state(&game_state, &path, &cli_args);
 
 for (int i = 0; i < 3; i++) {
-  game_state.player[i].id = i;
+  game_state.player[i].is_connected = true;
   game_state.player[i].in = true;
 }
 
