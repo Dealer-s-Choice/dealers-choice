@@ -428,7 +428,7 @@ static void render_card(CardContext_t *context, TTF_Font *font, const bool my_ca
   if (context->selected)
     mark_selected(context->renderer, &context->rect);
 
-  if (context->is_wild && do_wild_exchange) {
+  if (context->is_wild && do_wild_exchange && my_card) {
     Uint32 ticks = SDL_GetTicks();
     // Blink every 500 ms
     bool blink_on = (ticks / 500) % 2 == 0;

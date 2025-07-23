@@ -105,6 +105,7 @@ typedef struct {
   GameSettings_t *game_settings;
   struct ServerConfig_t *config;
   uint8_t game_type;
+  bool reveal_hand;
 } ArgsBroadcastGameState_t;
 
 struct GameChoice_t;
