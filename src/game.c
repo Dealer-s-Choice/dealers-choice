@@ -51,15 +51,10 @@ const GameChoice_t *find_game_choice_by_type(const uint8_t type) {
 }
 
 static bool is_valid_player(const Player_t *p, bool want_all_clients) {
-  return p->id != -1 && (want_all_clients || p->in);
+  return p->is_connected && (want_all_clients || p->in);
 }
 
 static Player_t *get_next_player_real(Player_t *players_array, int cur, bool want_all_clients) {
-  if (cur < 0) {
-    fprintf(stderr, "%s: 'cur' may not be a negative value.\n", __func__);
-    exit(EXIT_FAILURE);
-  }
-
   int i = (cur + 1) % MAX_PLAYERS;
 
   while (i != cur) {

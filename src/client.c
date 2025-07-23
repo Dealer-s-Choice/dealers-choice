@@ -749,7 +749,7 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
       break;
 
     // For cases when the client who was designated as starting_turn disconnects
-    if (starting_turn->id == -1)
+    if (!starting_turn->is_connected)
       starting_turn = get_next_player(players_array, client_state.save_starting_turn_id);
 
     turn = &game_state->player[game_state->turn_id];

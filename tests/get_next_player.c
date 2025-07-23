@@ -83,7 +83,7 @@ turn = get_next_player(players_array, 2);
 fprintf(stderr, "turn->id: %d\n", turn->id);
 assert(turn->id == 3);
 
-game_state.player[3].id = -1;
+game_state.player[3].is_connected = false;
 
 turn = get_next_player(players_array, 2);
 fprintf(stderr, "turn->id: %d\n", turn->id);

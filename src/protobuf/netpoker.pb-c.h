@@ -60,10 +60,11 @@ struct  Player
   uint32_t total_paid;
   protobuf_c_boolean winner;
   protobuf_c_boolean has_checked;
+  protobuf_c_boolean is_connected;
 };
 #define PLAYER__INIT \
  { PROTOBUF_C_MESSAGE_INIT (&player__descriptor) \
-, (char *)protobuf_c_empty_string, 0, NULL, 0, 0, 0, 0, 0 }
+, (char *)protobuf_c_empty_string, 0, NULL, 0, 0, 0, 0, 0, 0 }
 
 
 struct  GameState
@@ -71,6 +72,7 @@ struct  GameState
   ProtobufCMessage base;
   uint32_t pot;
   int32_t dealer_id;
+  uint32_t starting_turn_id;
   int32_t turn_id;
   protobuf_c_boolean at_menu;
   uint32_t player_count;
@@ -82,7 +84,7 @@ struct  GameState
 };
 #define GAME_STATE__INIT \
  { PROTOBUF_C_MESSAGE_INIT (&game_state__descriptor) \
-, 0, 0, 0, 0, 0, 0, 0, 0, 0,NULL }
+, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,NULL }
 
 
 struct  GameSettings

@@ -67,6 +67,9 @@ Player_t *get_next_player(Player_t *players_array, int cur);
 
 Player_t *get_next_connected_client(Player_t *players_array, int cur);
 
+uint8_t get_next_player2(Player_t *players_array, int cur);
+uint8_t get_next_connected_client2(Player_t *players_array, int cur);
+
 CliArgs_t init_cli_args(void);
 
 extern pcg32_random_t rng;
