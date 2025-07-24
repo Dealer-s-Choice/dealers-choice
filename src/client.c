@@ -60,7 +60,7 @@ static int send_protocol_header(TCPsocket sock) {
 // What's the max this needs to be to support the unicode suit symbol?
 #define SIZEOF_CARD_TEXT 20
 
-#define CARD_DEAL_DELAY 250
+#define CARD_DEAL_DELAY 1
 
 #define MAX_POT_COINS 80
 
@@ -311,7 +311,8 @@ static bool menu_display_game_choices(const PlayerConfig_t *player_config,
       render_text_plain(sdl_context->renderer, font->fonts[FONT_BOLD], tmp, get_color(COLOR_WHITE),
                         &text_pos);
       n_clients++;
-    } while ((client = get_next_connected_client(game_state->player, client->id)) != start);
+      client = get_next_connected_client(game_state->player, client->id);
+    } while (client && client != start);
     if (saved_n_clients < n_clients && saved_n_clients != 0) {
       ma_sound_start(&sound_context->sounds[SND_SERVER_JOIN].sound);
     }
@@ -527,7 +528,8 @@ static void create_card_context(CardContext_t card_context[MAX_PLAYERS][MAX_HAND
       }
       card_context[id][card_n] = context;
     }
-  } while ((turn = get_next_connected_client(players_array, turn->id)) != starting_turn);
+    turn = get_next_connected_client(players_array, turn->id);
+  } while (turn && turn != starting_turn);
 }
 
 typedef struct {
@@ -731,7 +733,6 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
   client_state.timer_start = SDL_GetTicks();
   cards_dealt = false;
   starting_turn = &game_state->player[game_state->turn_id];
-  client_state.save_starting_turn_id = starting_turn->id;
   client_state.selected_amount = atoi(amount[0].n_str);
 
   const int8_t my_id = game_settings->client_id;
@@ -749,8 +750,13 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
       break;
 
     // For cases when the client who was designated as starting_turn disconnects
-    if (!starting_turn->is_connected)
-      starting_turn = get_next_player(players_array, client_state.save_starting_turn_id);
+    if (!starting_turn->is_connected) {
+      starting_turn = get_next_player(players_array, starting_turn->id);
+      if (!turn) {
+        running = false;
+        break;
+      }
+    }
 
     turn = &game_state->player[game_state->turn_id];
     // printf("turn id: %d\n", turn->id);
@@ -849,10 +855,10 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
             SDL_Delay(16);
           }
           SDL_RenderPresent(sdl_context->renderer);
-          ma_sound_start(&sound_context->sounds[SND_CARD_DEALT].sound);
+          // ma_sound_start(&sound_context->sounds[SND_CARD_DEALT].sound);
         }
-      } while ((player_ptr = get_next_connected_client(players_array, player_ptr->id)) !=
-               starting_turn);
+        player_ptr = get_next_connected_client(players_array, player_ptr->id);
+      } while (player_ptr != starting_turn);
     }
 
     if (client_state.play_coin_sound) {
@@ -884,8 +890,9 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
         if (player_ptr->winner == true) {
           break;
         }
-      } while ((player_ptr = get_next_connected_client(players_array, player_ptr->id)) !=
-               starting_turn);
+
+        player_ptr = get_next_connected_client(players_array, player_ptr->id);
+      } while (player_ptr && player_ptr != starting_turn);
 
       // printf("%d\n", __LINE__);
 
@@ -1007,8 +1014,8 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
       render_text_plain(sdl_context->renderer, font->fonts[FONT_BOLD], coins_text,
                         get_color(COLOR_BLACK), &coin_text_rect);
 
-    } while ((player_ptr = get_next_connected_client(players_array, player_ptr->id)) !=
-             starting_turn);
+      player_ptr = get_next_connected_client(players_array, player_ptr->id);
+    } while (player_ptr && player_ptr != starting_turn);
 
     if (game_state->deuces_wild && client_state.do_exchange_wilds) {
       int y_offset = card_area.h * 1;

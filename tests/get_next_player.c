@@ -91,7 +91,6 @@ for (int i = 1; i < MAX_PLAYERS; i++) {
 game_state.player[0].in = true;
 
 turn = get_next_player(players_array, 0);
-fprintf(stderr, "turn->id: %d\n", turn->id);
 assert(turn->id == 0);
 
 // turn = get_next_player(players_array, turn->id);
