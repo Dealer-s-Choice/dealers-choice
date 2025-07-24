@@ -571,13 +571,8 @@ static EPlayerAction_t handle_check(Player_t *turn, PlayerActionMsg_t *action) {
   return ACTION_CHECK;
 }
 
-static EPlayerAction_t handle_fold(GameState_t *game_state, Player_t *turn, Player_t *starting_turn,
+static EPlayerAction_t handle_fold(GameState_t *game_state, Player_t *turn,
                                    PlayerActionMsg_t *action) {
-  if (turn->id == game_state->starting_turn_id) {
-    starting_turn = get_next_player(game_state->player, turn->id);
-    game_state->starting_turn_id = starting_turn->id;
-  }
-
   turn->in = false;
   game_state->player_count--;
   action->str = _("folded");
@@ -696,13 +691,15 @@ static void award_last_player_in_game(ArgsBroadcastGameState_t *args, Player_t *
 }
 
 static RoundResults handle_round_real(ArgsBroadcastGameState_t *args) {
-  // Points to the address of the array of all the players
-  Player_t *players_array = args->game_state->player;
-
   Player_t *turn = args->starting_turn;
   printf("%s:turn->id: %d\n", __func__, turn->id);
 
   RoundResults results = {0};
+
+  if (!args->starting_turn->is_connected) {
+    args->starting_turn = get_next_player(args->game_state->player, args->starting_turn->id);
+    args->game_state->starting_turn_id = args->starting_turn->id;
+  }
 
   do {
     args->game_state->turn_id = turn->id;
@@ -734,7 +731,7 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args) {
                 action.str = _("bet ");
                 break;
               case ACTION_FOLD:
-                handle_fold(args->game_state, turn, args->starting_turn, &action);
+                handle_fold(args->game_state, turn, &action);
                 break;
               default:
                 fprintf(stderr, "Invalid Action received\n");
@@ -751,7 +748,7 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args) {
                 action.str = _("raised ");
                 break;
               case ACTION_FOLD:
-                handle_fold(args->game_state, turn, args->starting_turn, &action);
+                handle_fold(args->game_state, turn, &action);
                 break;
               default:
                 fprintf(stderr, "Invalid Action received\nThe client is writing checks their body "
@@ -780,7 +777,7 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args) {
       if (turn->is_connected) {
         if (action.action == 0) {
           if (!has_paid_all_bets(args->game_state, turn)) {
-            action.action = handle_fold(args->game_state, turn, args->starting_turn, &action);
+            action.action = handle_fold(args->game_state, turn, &action);
           } else if (args->game_state->total_bets_plus_raises == 0) {
             action.action = handle_check(turn, &action);
           }
@@ -801,7 +798,7 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args) {
         break;
       }
 
-      turn = get_next_player(players_array, turn->id);
+      turn = get_next_player(args->game_state->player, turn->id);
       if (args->game_state->total_bets_plus_raises == 0) {
         if (turn == args->starting_turn || !args->starting_turn->is_connected)
           break;
@@ -860,12 +857,6 @@ static void remove_disconnected_player(ArgsBroadcastGameState_t *args, const int
   SDLNet_TCP_Close(args->clients[id]);
   args->clients[id] = NULL;
   args->slot_taken[id] = false;
-
-  if (id == args->game_state->starting_turn_id) {
-    args->starting_turn = get_next_player(args->game_state->player, id);
-    args->game_state->starting_turn_id = args->starting_turn->id;
-    // fprintf(stderr, "id %d - new_start_turn %d\n", id, args->game_state->starting_turn_id);
-  }
 
   // Reset player info
   p->coins = args->config->starting_coins;
