@@ -43,13 +43,6 @@
 
 #define handle_round() handle_round_real(args)
 
-#define __START_PLAYER_LOOP                                                                        \
-  for (int i = 0; i < MAX_PLAYERS; i++) {                                                          \
-    if (!args->game_state->player[i].is_connected)                                                 \
-      continue;
-
-#define __END_PLAYER_LOOP }
-
 typedef struct {
   uint8_t n_winners;
   int id[MAX_PLAYERS];
@@ -974,10 +967,8 @@ void game_five_card_draw(GAME_ARGS) {
 }
 
 void game_stud(GAME_ARGS) {
-  Player_t *starting_player = get_next_player(players_array, args->game_state->dealer_id);
-  Player_t *turn = starting_player;
+  Player_t *turn;
   server_handle_ante(args->game_state, args->config->ante);
-  int8_t save_starting_player_id = starting_player->id;
 
   RoundResults results = {0};
   for (int i = 0; i < choice->n_betting_rounds; i++) {
@@ -986,11 +977,7 @@ void game_stud(GAME_ARGS) {
     if (results.n_winners > 0 || i == choice->n_stud_new_cards)
       break;
 
-    if (!starting_player->in) {
-      starting_player = get_next_player(players_array, save_starting_player_id);
-      save_starting_player_id = starting_player->id;
-    }
-    turn = starting_player;
+    turn = args->starting_turn;
 
     printf("round: %d\n", i);
     do {
@@ -1004,7 +991,7 @@ void game_stud(GAME_ARGS) {
       else
         hand->card[n] = DH_card_back;
       // broadcast_game_state(args);
-    } while ((turn = get_next_player(players_array, turn->id)) != starting_player);
+    } while ((turn = get_next_player(players_array, turn->id)) != args->starting_turn);
     broadcast_game_state(args);
   }
   determine_winner(args, &results);
@@ -1057,10 +1044,11 @@ static void play_game(ArgsBroadcastGameState_t *args, DH_Deck *deck) {
       perror("fopen");
     else {
       fprintf(fp, "### %s\n\n", tmp);
-      __START_PLAYER_LOOP
-      fprintf(fp, "%s: %d<br>\n", args->game_state->player[i].nick,
-              args->game_state->player[i].coins);
-      __END_PLAYER_LOOP
+      Player_t *p = args->starting_turn;
+      do {
+        fprintf(fp, "%s: %d<br>\n", args->game_state->player[p->id].nick,
+                args->game_state->player[p->id].coins);
+      } while ((p = get_next_player(players_array, p->id)) != args->starting_turn);
       fclose(fp);
     }
   }
