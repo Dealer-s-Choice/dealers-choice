@@ -638,7 +638,7 @@ static void determine_winner(ArgsBroadcastGameState_t *args, RoundResults *resul
 
     char status_str[LEN_STATUS_STR];
     snprintf(status_str, sizeof status_str, "%s wins with %s", winner->nick,
-             POKEVAL_rank[POKEVAL_evaluate_hand(need_comparing[winner->id].hand_5)]);
+             POKEVAL_rank[POKEVAL_evaluate_hand(need_comparing[i].hand_5)]);
     broadcast_status_message(args, status_str);
 
     if (args->cli_args->server_log_game_results_file) {
@@ -648,7 +648,7 @@ static void determine_winner(ArgsBroadcastGameState_t *args, RoundResults *resul
       else {
         fprintf(fp, "pot: %u<br>\n", pot);
         fprintf(fp, "%s wins with %s\n\n", winner->nick,
-                POKEVAL_rank[POKEVAL_evaluate_hand(need_comparing[winner->id].hand_5)]);
+                POKEVAL_rank[POKEVAL_evaluate_hand(need_comparing[i].hand_5)]);
         fclose(fp);
       }
     }
