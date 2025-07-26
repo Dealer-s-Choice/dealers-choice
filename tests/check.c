@@ -1,6 +1,6 @@
 #include "00_test.h"
 
-int main(int argc, char *argv[]) {
+_MAIN_HEAD_
   _SETUP_SOCKET_CONTEXT()
 
   SDL_Delay(n_ms);
@@ -18,38 +18,47 @@ int main(int argc, char *argv[]) {
 
   if (game == 0) {
 
+    assert(*turn_id == 1);
     assert(send_player_action(socket_context[*turn_id].sock, ACTION_CHECK, 0) == 0);
 
     _RECEIVE_GAME_STATE()
     _RECEIVE_GAME_STATE()
     _RECEIVE_GAME_STATE()
 
-    SDL_Delay(n_ms);
+    assert(*turn_id == 2);
     assert(send_player_action(socket_context[*turn_id].sock, ACTION_CHECK, 0) == 0);
-
-    _RECEIVE_GAME_STATE()
-    _RECEIVE_GAME_STATE()
-    _RECEIVE_GAME_STATE()
-
     SDL_Delay(n_ms);
-    for (i = 0; i < 2; i++) {
+
+    _RECEIVE_GAME_STATE()
+    _RECEIVE_GAME_STATE()
+    _RECEIVE_GAME_STATE()
+
+    assert(*turn_id == 0);
+    assert(send_player_action(socket_context[*turn_id].sock, ACTION_CHECK, 0) == 0);
+    SDL_Delay(n_ms);
+
+    _RECEIVE_GAME_STATE()
+    _RECEIVE_GAME_STATE()
+    _RECEIVE_GAME_STATE()
+
+    for (i = 0; i < N_PLAYERS; i++) {
       fprintf(stderr, "%d: %d\n", i, game_state[i].player[i].coins);
     }
   } else {
 
+    assert(*turn_id == 2);
     assert(send_player_action(socket_context[*turn_id].sock, ACTION_CHECK, 0) == 0);
-
-    _RECEIVE_GAME_STATE()
-    _RECEIVE_GAME_STATE()
-    _RECEIVE_GAME_STATE()
-
-    // const int expected_bet_turn[3] = {0, 1, 0};
-    // assert(expected_bet_turn[game] == *turn_id);
-
-    assert(1 == *turn_id);
     SDL_Delay(n_ms);
+
+    _RECEIVE_GAME_STATE()
+    _RECEIVE_GAME_STATE()
+    _RECEIVE_GAME_STATE()
+
+    assert(*turn_id == 0);
     assert(send_player_action(socket_context[*turn_id].sock, ACTION_BET, 500) == 0);
-    for (i = 0; i < 2; i++) {
+    SDL_Delay(n_ms);
+
+    for (i = 0; i < N_PLAYERS; i++) {
       debug_print_cards(&game_state[i].player[i].hand);
       fputc('\n', stderr);
     }
@@ -58,12 +67,17 @@ int main(int argc, char *argv[]) {
     _RECEIVE_GAME_STATE()
     _RECEIVE_GAME_STATE()
 
-    // const int expected_call_turn[3] = {0, 1, 0};
-    // assert(expected_call_turn[game] == *turn_id);
-
-    assert(0 == *turn_id);
-    SDL_Delay(n_ms);
+    assert(*turn_id == 1);
     assert(send_player_action(socket_context[*turn_id].sock, ACTION_CALL, 0) == 0);
+    SDL_Delay(n_ms);
+
+    _RECEIVE_GAME_STATE()
+    _RECEIVE_GAME_STATE()
+    _RECEIVE_GAME_STATE()
+
+    assert(*turn_id == 2);
+    assert(send_player_action(socket_context[*turn_id].sock, ACTION_CALL, 0) == 0);
+    SDL_Delay(n_ms);
 
     _RECEIVE_GAME_STATE()
     _RECEIVE_GAME_STATE()
@@ -71,21 +85,21 @@ int main(int argc, char *argv[]) {
   }
   _RECEIVE_GAME_STATE()
 
-  for (i = 0; i < 2; i++) {
+  for (i = 0; i < N_PLAYERS; i++) {
     debug_print_cards(&game_state[i].player[i].hand);
     fputc('\n', stderr);
   }
 
-  SDL_Delay(n_ms);
-  for (i = 0; i < 2; i++) {
+  for (i = 0; i < N_PLAYERS; i++) {
     fprintf(stderr, "%d: %d\n", i, game_state[i].player[i].coins);
   }
 
   fprintf(stderr, "%d\n", game_state[0].pot);
+  assert(game_state[0].pot == 0);
 
-  const int expected_coins[3][2] = {{19950, 20050}, {20500, 19500}, {20500, 19500}};
-  assert(game_state[0].player[0].coins == expected_coins[game][0]);
-  assert(game_state[0].player[1].coins == expected_coins[game][1]);
+  const int expected_coins[][3] = {{19950, 20100, 19950}, {19400, 21200, 19400}};
+  for (i = 0; i < N_PLAYERS; i++)
+    assert(game_state[0].player[i].coins == expected_coins[game][i]);
 
   if (game == 1)
     break;
@@ -94,5 +108,4 @@ int main(int argc, char *argv[]) {
 
 _SOCKET_CLEANUP_AND_NET_QUIT_
 
-return 0;
-}
+_MAIN_TAIL_

@@ -494,8 +494,10 @@ static ELoop_t handle_draw(ArgsBroadcastGameState_t *args, TCPsocket sock, const
   char status_str[LEN_STATUS_STR] = {0};
   snprintf(status_str, sizeof status_str, "%s drew %d", args->game_state->player[id].nick,
            req.discard_count);
-  send_new_hand(sock, &args->real_hand->player[id], MAX_HAND_SIZE);
   broadcast_status_message(args, status_str);
+
+  if (req.discard_count > 0)
+    send_new_hand(sock, &args->real_hand->player[id], MAX_HAND_SIZE);
 
   return LOOP_OK;
 }
@@ -656,7 +658,6 @@ static void determine_winner(ArgsBroadcastGameState_t *args, RoundResults *resul
         fclose(fp);
       }
     }
-
     winner->coins += share;
   }
   broadcast_game_state(args);
@@ -698,12 +699,12 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args) {
 
   RoundResults results = {0};
 
-  if (!args->starting_turn->is_connected || !args->starting_turn->in) {
-    args->starting_turn = get_next_player(args->game_state->player, args->starting_turn->id);
-    args->game_state->starting_turn_id = args->starting_turn->id;
+  if (!(*args->starting_turn)->is_connected || !(*args->starting_turn)->in) {
+    *args->starting_turn = get_next_player(args->game_state->player, (*args->starting_turn)->id);
+    args->game_state->starting_turn_id = (*args->starting_turn)->id;
     // broadcast_game_state(args);
   }
-  turn = args->starting_turn;
+  turn = *args->starting_turn;
 
   do {
     args->game_state->turn_id = turn->id;
@@ -805,7 +806,7 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args) {
 
       turn = get_next_player(args->game_state->player, turn->id);
       if (args->game_state->total_bets_plus_raises == 0) {
-        if (turn == args->starting_turn || !args->starting_turn->is_connected)
+        if (turn == *args->starting_turn || !(*args->starting_turn)->is_connected)
           break;
       } else if (has_paid_all_bets(args->game_state, turn)) {
         break; // Everyone either checked or paid all bets and raises
@@ -950,10 +951,16 @@ void game_five_card_draw(GAME_ARGS) {
     if (results.n_winners > 0 || i == choice->n_draws)
       break;
 
-    turn = args->starting_turn;
+    if (!(*args->starting_turn)->is_connected || !(*args->starting_turn)->in) {
+      *args->starting_turn = get_next_player(args->game_state->player, (*args->starting_turn)->id);
+      args->game_state->starting_turn_id = (*args->starting_turn)->id;
+    }
+
+    turn = *args->starting_turn;
 
     do {
       args->game_state->turn_id = turn->id;
+      fprintf(stderr, "turn->id: %d\n", turn->id);
 
       // The player's new cards are sent to them in handle_draw(), but
       // the clients use game_state.turn_id to decide which buttons to display.
@@ -973,7 +980,7 @@ void game_five_card_draw(GAME_ARGS) {
         printf("Failed to receive cards or player disconnected: %d\n", turn->id);
 
       turn = get_next_player(players_array, turn->id);
-    } while (turn && turn != args->starting_turn);
+    } while (turn && turn != *args->starting_turn);
     broadcast_game_state(args);
     if (results.n_winners > 0)
       break;
@@ -992,7 +999,7 @@ void game_stud(GAME_ARGS) {
     if (results.n_winners > 0 || i == choice->n_stud_new_cards)
       break;
 
-    turn = args->starting_turn;
+    turn = *args->starting_turn;
 
     printf("round: %d\n", i);
     do {
@@ -1007,7 +1014,7 @@ void game_stud(GAME_ARGS) {
         hand->card[n] = DH_card_back;
       // broadcast_game_state(args);
       turn = get_next_player(players_array, turn->id);
-    } while (turn && turn != args->starting_turn);
+    } while (turn && turn != *args->starting_turn);
     broadcast_game_state(args);
   }
   determine_winner(args, &results);
@@ -1043,8 +1050,9 @@ static void play_game(ArgsBroadcastGameState_t *args, DH_Deck *deck) {
   args->game_state->total_bets_plus_raises = 0;
   args->game_state->winner_declared = false;
 
-  args->starting_turn = get_next_player(players_array, args->game_state->dealer_id);
-  args->game_state->starting_turn_id = args->starting_turn->id;
+  Player_t *turn = get_next_player(players_array, args->game_state->dealer_id);
+  args->starting_turn = &turn;
+  args->game_state->starting_turn_id = (*args->starting_turn)->id;
 
   broadcast_game_state(args);
 
@@ -1060,13 +1068,13 @@ static void play_game(ArgsBroadcastGameState_t *args, DH_Deck *deck) {
       perror("fopen");
     else {
       fprintf(fp, "### %s\n\n", tmp);
-      Player_t *p = args->starting_turn;
+      Player_t *p = *args->starting_turn;
       do {
         fprintf(fp, "%s: %d<br>\n", args->game_state->player[p->id].nick,
                 args->game_state->player[p->id].coins);
 
         p = get_next_player(players_array, p->id);
-      } while (p && p != args->starting_turn);
+      } while (p && p != *args->starting_turn);
       fclose(fp);
     }
   }

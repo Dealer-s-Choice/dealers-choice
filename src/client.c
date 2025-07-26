@@ -381,7 +381,7 @@ int8_t send_player_action(TCPsocket sock, uint8_t action, uint32_t amount) {
   return send_all_tcp(sock, buffer, sizeof(buffer));
 }
 
-static int8_t send_discards_request_new_cards(TCPsocket sock, const uint8_t *discard_indices,
+int8_t send_discards_request_new_cards(TCPsocket sock, const uint8_t *discard_indices,
                                               uint8_t count) {
   if (count > 4)
     return -1;

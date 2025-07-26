@@ -16,7 +16,7 @@ foreach test : cases
   test('test_' + test, exe, env: environment(env_dict))
 endforeach
 
-game_logic = ['check', '5_card_showdown', '5_card_stud']
+game_logic = ['check', '5_card_showdown', '5_card_draw', '5_card_stud']
 
 foreach test : game_logic
   # This is used by script, so not tested with the others above

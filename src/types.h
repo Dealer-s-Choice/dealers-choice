@@ -107,7 +107,7 @@ typedef struct {
   GameSettings_t *game_settings;
   struct ServerConfig_t *config;
   uint8_t game_type;
-  Player_t *starting_turn;
+  Player_t **starting_turn;
 } ArgsBroadcastGameState_t;
 
 struct GameChoice_t;

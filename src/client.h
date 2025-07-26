@@ -80,3 +80,6 @@ int8_t send_game_select(TCPsocket sock, uint8_t game_type, const bool deuces_wil
 int8_t send_player_action(TCPsocket sock, uint8_t action, uint32_t amount);
 
 void do_sdl_cleanup(SdlContext_t *sdl_context);
+
+int8_t send_discards_request_new_cards(TCPsocket sock, const uint8_t *discard_indices,
+                                              uint8_t count);
