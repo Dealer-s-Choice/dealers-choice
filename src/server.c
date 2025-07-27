@@ -971,7 +971,7 @@ void game_five_card_draw(GAME_ARGS) {
 
       ELoop_t d = handle_draw(args, args->clients[turn->id], turn->id, deck);
       if (d == LOOP_BREAK) {
-        //broadcast_game_state(args);
+        // broadcast_game_state(args);
         if (args->game_state->player_count == 1) {
           award_last_player_in_game(args, turn, &results);
           break;

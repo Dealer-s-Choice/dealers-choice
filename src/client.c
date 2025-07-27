@@ -382,7 +382,7 @@ int8_t send_player_action(TCPsocket sock, uint8_t action, uint32_t amount) {
 }
 
 int8_t send_discards_request_new_cards(TCPsocket sock, const uint8_t *discard_indices,
-                                              uint8_t count) {
+                                       uint8_t count) {
   if (count > 4)
     return -1;
 

@@ -54,7 +54,8 @@ static bool is_valid_player(const Player_t *p, bool want_all_clients) {
   return p->is_connected && (want_all_clients || p->in);
 }
 
-static Player_t *get_next_player_real(Player_t *players_array, int cur, bool want_all_clients, const char *FILE, const int LINE) {
+static Player_t *get_next_player_real(Player_t *players_array, int cur, bool want_all_clients,
+                                      const char *FILE, const int LINE) {
   int i = (cur + 1) % MAX_PLAYERS;
 
   while (i != cur) {
@@ -80,7 +81,8 @@ Player_t *get_next_player_(Player_t *players_array, int cur, const char *FILE, c
   return get_next_player_real(players_array, cur, want_all_clients, FILE, LINE);
 }
 
-Player_t *get_next_connected_client_(Player_t *players_array, int cur, const char *FILE, const int LINE) {
+Player_t *get_next_connected_client_(Player_t *players_array, int cur, const char *FILE,
+                                     const int LINE) {
   const bool want_all_clients = true;
   return get_next_player_real(players_array, cur, want_all_clients, FILE, LINE);
 }
