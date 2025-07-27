@@ -37,6 +37,8 @@
 #include "graphics.h"
 #include "util.h"
 
+const uint8_t MAX_CONNECTION_ATTEMPTS = 12;
+
 #define POT_BOUNDARY SCALE_Y(250)
 
 #define x_begin_action_button SCALE_X(500);
@@ -1255,13 +1257,42 @@ SocketContext_t get_socket_context_and_run_client(PlayerConfig_t *player_config,
     return socket_context;
   }
 
-  socket_context.sock = SDLNet_TCP_Open(&server_ip);
-  TCPsocket sock = socket_context.sock;
-  if (!sock) {
-    fprintf(stderr, "Failed to connect to server: %s\n", SDLNet_GetError());
+  uint8_t attempts;
+  for (attempts = 0; attempts < MAX_CONNECTION_ATTEMPTS; ++attempts) {
+    socket_context.sock = SDLNet_TCP_Open(&server_ip);
+    if (socket_context.sock) {
+      break; // Success
+    }
+
+    fprintf(stderr, "Attempt %d: Failed to connect to server: %s\n", attempts + 1,
+            SDLNet_GetError());
+
+    bool quit = false;
+    if (attempts < MAX_CONNECTION_ATTEMPTS - 1) {
+      Uint32 start = SDL_GetTicks();
+      while (SDL_GetTicks() - start < 5000) {
+        SDL_Event e;
+        while (SDL_PollEvent(&e)) {
+          if (e.type == SDL_QUIT)
+            quit = true;
+        }
+        SDL_Delay(16);
+        if (quit)
+          break;
+      }
+    }
+    if (quit) {
+      attempts++;
+      break;
+    }
+  }
+
+  if (!socket_context.sock) {
+    printf("All %d attempts failed. Giving up.\n", attempts);
     return socket_context;
   }
 
+  TCPsocket sock = socket_context.sock;
   socket_context.set = SDLNet_AllocSocketSet(1);
   if (!socket_context.set) {
     fprintf(stderr, "Failed to allocate socket set: %s\n", SDLNet_GetError());

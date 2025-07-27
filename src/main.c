@@ -279,7 +279,12 @@ int main(int argc, char *argv[]) {
   snprintf(host_str, sizeof(host_str), "%s", (cli_args.host) ? cli_args.host : player_config.host);
 
   if (menu_display_connect(&player_config, host_str, &sdl_context, &font) == RUN_CLIENT) {
-    printf("Attempting to connect to: %s\n", host_str);
+    char tmp[256] = {0};
+    snprintf(tmp, sizeof(tmp), "Attempting to connect to: %s...", host_str);
+    render_text_plain(sdl_context.renderer, font.fonts[FONT_DEFAULT], tmp, get_color(COLOR_WHITE),
+                      &(SDL_Rect){SCALE_X(10), sdl_context.win_center.y, 0, 0});
+    SDL_RenderPresent(sdl_context.renderer);
+
     get_socket_context_and_run_client(&player_config, host_str, &sdl_context, &font, &path,
                                       cli_args.test_mode);
   }

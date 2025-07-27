@@ -1,4 +1,6 @@
   * Increase player action timeout from 20 to 30 seconds
+  + The client will now retry server connection for 60 seconds
+    before timing out if server is unavailable
   - Explicitly link to dl and thread (Fix Slackware build)
 
 2025-07-13
