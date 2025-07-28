@@ -66,10 +66,10 @@ typedef struct {
 
 const GameChoice_t *find_game_choice_by_type(const uint8_t type);
 
-Player_t *get_next_player_(Player_t *players_array, int cur, const char *FILE, const int LINE);
+Player_t *get_next_player_(Player_t *players_array, int cur, const char *file, const int line);
 
-Player_t *get_next_connected_client_(Player_t *players_array, int cur, const char *FILE,
-                                     const int LINE);
+Player_t *get_next_connected_client_(Player_t *players_array, int cur, const char *file,
+                                     const int line);
 
 CliArgs_t init_cli_args(void);
 
