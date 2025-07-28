@@ -67,7 +67,6 @@ typedef struct {
 typedef struct {
   uint32_t pot;
   int8_t dealer_id;
-  uint8_t starting_turn_id;
   int8_t turn_id;
   bool at_menu;
   uint8_t player_count;

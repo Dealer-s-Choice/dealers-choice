@@ -53,7 +53,7 @@ typedef struct {
   uint8_t discard_indices[MAX_DISCARDS];
 } DrawRequestMsg_t;
 
-static void remove_disconnected_player(ArgsBroadcastGameState_t *args, const int8_t pl_index);
+static void remove_disconnected_player(ArgsBroadcastGameState_t *args, const int8_t id);
 
 static bool handle_disconnections(ArgsBroadcastGameState_t *args);
 
@@ -96,7 +96,6 @@ ServerConfig_t init_game_state(GameState_t *game_state, Path_t *path, CliArgs_t 
   }
 
   game_state->dealer_id = 0;
-  game_state->starting_turn_id = 0;
   game_state->at_menu = true;
   game_state->player_count = 0;
   game_state->total_bets_plus_raises = 0;
@@ -466,7 +465,8 @@ static ELoop_t handle_draw(ArgsBroadcastGameState_t *args, TCPsocket sock, const
         }
       } else {
         handle_disconnections(args);
-        return LOOP_BREAK;
+        if (args->game_state->player_count == 1)
+          return LOOP_BREAK;
       }
     }
   }
@@ -535,7 +535,8 @@ static ELoop_t handle_wild_cards(ArgsBroadcastGameState_t *args, TCPsocket sock,
         }
       } else {
         handle_disconnections(args);
-        return LOOP_BREAK;
+        if (args->game_state->player_count == 1)
+          return LOOP_BREAK;
       }
     }
   }
@@ -572,9 +573,11 @@ static EPlayerAction_t handle_check(Player_t *turn, PlayerActionMsg_t *action) {
 }
 
 static EPlayerAction_t handle_fold(GameState_t *game_state, Player_t *turn,
-                                   PlayerActionMsg_t *action) {
+                                   Player_t **starting_turn, PlayerActionMsg_t *action) {
   turn->in = false;
   game_state->player_count--;
+  if (game_state->player_count > 1)
+    *starting_turn = get_next_player(game_state->player, turn->id);
   action->str = _("folded");
   return ACTION_FOLD;
 }
@@ -699,12 +702,8 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args) {
 
   RoundResults results = {0};
 
-  if (!(*args->starting_turn)->is_connected || !(*args->starting_turn)->in) {
-    *args->starting_turn = get_next_player(args->game_state->player, (*args->starting_turn)->id);
-    args->game_state->starting_turn_id = (*args->starting_turn)->id;
-    // broadcast_game_state(args);
-  }
-  turn = *args->starting_turn;
+  Player_t *round_starting_turn = *args->starting_turn;
+  turn = round_starting_turn;
 
   do {
     args->game_state->turn_id = turn->id;
@@ -736,7 +735,7 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args) {
                 action.str = _("bet ");
                 break;
               case ACTION_FOLD:
-                handle_fold(args->game_state, turn, &action);
+                handle_fold(args->game_state, turn, args->starting_turn, &action);
                 break;
               default:
                 fprintf(stderr, "Invalid Action received\n");
@@ -753,7 +752,7 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args) {
                 action.str = _("raised ");
                 break;
               case ACTION_FOLD:
-                handle_fold(args->game_state, turn, &action);
+                handle_fold(args->game_state, turn, args->starting_turn, &action);
                 break;
               default:
                 fprintf(stderr, "Invalid Action received\nThe client is writing checks their body "
@@ -782,7 +781,7 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args) {
       if (turn->is_connected) {
         if (action.action == 0) {
           if (!has_paid_all_bets(args->game_state, turn)) {
-            action.action = handle_fold(args->game_state, turn, &action);
+            action.action = handle_fold(args->game_state, turn, args->starting_turn, &action);
           } else if (args->game_state->total_bets_plus_raises == 0) {
             action.action = handle_check(turn, &action);
           }
@@ -806,7 +805,7 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args) {
 
       turn = get_next_player(args->game_state->player, turn->id);
       if (args->game_state->total_bets_plus_raises == 0) {
-        if (turn == *args->starting_turn || !(*args->starting_turn)->is_connected)
+        if (turn == round_starting_turn)
           break;
       } else if (has_paid_all_bets(args->game_state, turn)) {
         break; // Everyone either checked or paid all bets and raises
@@ -878,6 +877,10 @@ static void remove_disconnected_player(ArgsBroadcastGameState_t *args, const int
     char status_str[LEN_STATUS_STR] = {0};
     snprintf(status_str, sizeof status_str, _("%s disconnected"), p->nick);
     broadcast_status_message(args, status_str);
+
+    if (args->game_state->player_count > 1)
+      if ((*args->starting_turn)->id == id)
+        *args->starting_turn = get_next_player(args->game_state->player, id);
   }
 
   memset(p->nick, 0, sizeof(p->nick));
@@ -946,15 +949,9 @@ void game_five_card_draw(GAME_ARGS) {
   RoundResults results = {0};
 
   for (int i = 0; i < choice->n_betting_rounds; i++) {
-    printf("Starting turn: %d\n", args->game_state->starting_turn_id);
     results = handle_round();
     if (results.n_winners > 0 || i == choice->n_draws)
       break;
-
-    if (!(*args->starting_turn)->is_connected || !(*args->starting_turn)->in) {
-      *args->starting_turn = get_next_player(args->game_state->player, (*args->starting_turn)->id);
-      args->game_state->starting_turn_id = (*args->starting_turn)->id;
-    }
 
     turn = *args->starting_turn;
 
@@ -1052,8 +1049,6 @@ static void play_game(ArgsBroadcastGameState_t *args, DH_Deck *deck) {
 
   Player_t *turn = get_next_player(players_array, args->game_state->dealer_id);
   args->starting_turn = &turn;
-  args->game_state->starting_turn_id = (*args->starting_turn)->id;
-
   broadcast_game_state(args);
 
   const GameChoice_t *choice = find_game_choice_by_type(args->game_type);

@@ -87,7 +87,6 @@ uint8_t *serialize_game_state(const GameState_t *src, size_t *size_out) {
   // Pot
   msg.pot = src->pot;
   msg.dealer_id = src->dealer_id;
-  msg.starting_turn_id = src->starting_turn_id;
   msg.turn_id = src->turn_id;
   msg.at_menu = src->at_menu;
   msg.total_bets_plus_raises = src->total_bets_plus_raises;
@@ -135,7 +134,6 @@ GameState_t deserialize_game_state(const uint8_t *data, size_t size) {
 
   result.pot = msg->pot;
   result.dealer_id = msg->dealer_id;
-  result.starting_turn_id = msg->starting_turn_id;
   result.turn_id = msg->turn_id;
   result.at_menu = msg->at_menu;
   result.total_bets_plus_raises = msg->total_bets_plus_raises;
