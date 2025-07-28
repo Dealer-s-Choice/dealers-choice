@@ -790,7 +790,8 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
       pot_coin.side[coins] = (pcg32_boundedrand_r(&rng, 2) == 0) ? coin_tex_front : coin_tex_back;
       coins++;
       new_coin = true;
-    }
+    } else if (game_state->pot == 0)
+      coins = 0;
 
     int p;
     for (p = 0; p < coins; p++) {
@@ -817,7 +818,8 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
       new_coin = false;
     }
 
-    render_coin_animation(sdl_context->renderer, &coin_anim);
+    if (game_state->pot > 0)
+      render_coin_animation(sdl_context->renderer, &coin_anim);
 
     for (int i = 0; i < SIZEOF_STATUS_MSGS; i++) {
       char tmp[sizeof(status_msgs[0])];
