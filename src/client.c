@@ -1157,7 +1157,7 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
               game_state->player[my_id].total_paid != game_state->total_bets_plus_raises) {
             if (SDL_PointInRect(&mouse_pos, &action_button[FOLD].rect) ||
                 event.key.keysym.sym == SDLK_f) {
-              puts("folding");
+              verbose_puts("folding");
               if (send_player_action(sock, ACTION_FOLD, 0) != 0)
                 fprintf(stderr, "Failed to fold\n");
             }
@@ -1166,24 +1166,24 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
             // TODO: use existing array (or modify it) to loop through each action
             if (SDL_PointInRect(&mouse_pos, &action_button[BET].rect) ||
                 event.key.keysym.sym == SDLK_b) {
-              puts("sending bet");
+              verbose_puts("sending bet");
               if (send_player_action(sock, ACTION_BET, client_state.selected_amount) != 0)
                 fprintf(stderr, "Failed to send bet\n");
             } else if (SDL_PointInRect(&mouse_pos, &action_button[CHECK].rect) ||
                        event.key.keysym.sym == SDLK_c) {
-              puts("checking");
+              verbose_puts("checking");
               if (send_player_action(sock, ACTION_CHECK, 0) != 0)
                 fprintf(stderr, "Failed to check\n");
             }
           } else if (game_state->player[my_id].total_paid != game_state->total_bets_plus_raises) {
             if (SDL_PointInRect(&mouse_pos, &action_button[RAISE].rect) ||
                 event.key.keysym.sym == SDLK_r) {
-              puts("raising");
+              verbose_puts("raising");
               if (send_player_action(sock, ACTION_RAISE, client_state.selected_amount) != 0)
                 fprintf(stderr, "Failed to raise\n");
             } else if (SDL_PointInRect(&mouse_pos, &action_button[CALL].rect) ||
                        event.key.keysym.sym == SDLK_c) {
-              puts("calling");
+              verbose_puts("calling");
               if (send_player_action(sock, ACTION_CALL, 0) != 0)
                 fprintf(stderr, "Failed to call\n");
             }
@@ -1191,7 +1191,7 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
         } else if (action_button[DISCARD].enabled &&
                    (SDL_PointInRect(&mouse_pos, &action_button[DISCARD].rect) ||
                     event.key.keysym.sym == SDLK_d)) {
-          puts("discarding");
+          verbose_puts("discarding");
           // Although the maximum allowed discards for 5 card draw can never
           // exceed 4, we need an array size of MAX_HAND_SIZE in case they select
           // all 5. However, the player will be required to have < 5 selected
@@ -1212,12 +1212,12 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
           if (send_discards_request_new_cards(sock, discard_indices, discard_count) != 0)
             fprintf(stderr, "Failed to send discards\n");
           else {
-            puts("Discards sent");
+            verbose_puts("Discards sent");
           }
         } else if (action_button[EXCHANGE].enabled &&
                    (SDL_PointInRect(&mouse_pos, &action_button[EXCHANGE].rect) ||
                     event.key.keysym.sym == SDLK_x)) {
-          puts("exchanging wilds");
+          verbose_puts("exchanging wilds");
           POKEVAL_Hand_7 hand = {0};
 
           for (int i = 0; i < MAX_HAND_SIZE; i++) {

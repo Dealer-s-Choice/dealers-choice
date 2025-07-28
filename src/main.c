@@ -40,8 +40,6 @@
 
 enum { RUN_CLIENT = 20 };
 
-#include <SDL.h>
-
 static int menu_display_connect(PlayerConfig_t *player_config, char *host_str,
                                 SdlContext_t *sdl_context, Font_t *font) {
   Button_t button_connect = {
@@ -161,6 +159,7 @@ int main(int argc, char *argv[]) {
     OPT_BIND,
     OPT_HOST,
     OPT_VERSION,
+    OPT_VERBOSE
   };
 
   static const glopt_option_t options[] = {
@@ -171,6 +170,7 @@ int main(int argc, char *argv[]) {
       {"bind-address", GLOPT_REQUIRED_ARG, OPT_BIND},
       {"host", GLOPT_REQUIRED_ARG, OPT_HOST},
       {"version", GLOPT_NO_ARG, OPT_VERSION},
+      {"verbose", GLOPT_NO_ARG, OPT_VERBOSE},
       {NULL, 0, 0}};
 
   glopt_parser_t parser;
@@ -201,10 +201,14 @@ int main(int argc, char *argv[]) {
       print_version();
       exit(EXIT_SUCCESS);
       break;
+    case OPT_VERBOSE:
+      verbose = true;
+      break;
     case '?':
     default:
       print_version();
       fputs("Usage:\n"
+            "  --verbose\n"
             "  --server [--bind-address IP]\n"
             "  --server-log-game-results [path/to/file]\n"
             "  --server-conf [Path to alternate server config file]\n"

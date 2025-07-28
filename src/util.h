@@ -29,6 +29,8 @@
 #ifndef __UTIL_H
 #define __UTIL_H
 
+extern bool verbose;
+
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
 
 char *real_join_paths(long path_max, const char *first, ...);
@@ -64,5 +66,9 @@ int make_directory_recursive(const char *path);
 void *calloc_wrap(const size_t n, const size_t size);
 
 int get_pathconf_limits(const char *path, PathconfLimits_t *limits);
+
+void verbose_printf(const char *fmt, ...);
+
+void verbose_puts(const char *s);
 
 #endif
