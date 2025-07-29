@@ -52,6 +52,8 @@
 #include "dc_config.h"
 #include "util.h"
 
+bool verbose = false;
+
 void get_data_dir(Path_t *path) {
   // TODO: Maybe we need a different name for this. It's also defined
   // as a macro during compilation
@@ -269,4 +271,19 @@ char *real_join_paths(long path_max, const char *first, ...) {
 
   va_end(ap);
   return path;
+}
+
+void verbose_printf(const char *fmt, ...) {
+  if (!verbose)
+    return;
+
+  va_list args;
+  va_start(args, fmt);
+  vfprintf(stdout, fmt, args);
+  va_end(args);
+}
+
+void verbose_puts(const char *s) {
+  if (verbose && s)
+    puts(s);
 }

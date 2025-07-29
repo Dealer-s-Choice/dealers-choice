@@ -51,15 +51,11 @@ const GameChoice_t *find_game_choice_by_type(const uint8_t type) {
 }
 
 static bool is_valid_player(const Player_t *p, bool want_all_clients) {
-  return p->id != -1 && (want_all_clients || p->in);
+  return p->is_connected && (want_all_clients || p->in);
 }
 
-static Player_t *get_next_player_real(Player_t *players_array, int cur, bool want_all_clients) {
-  if (cur < 0) {
-    fprintf(stderr, "%s: 'cur' may not be a negative value.\n", __func__);
-    exit(EXIT_FAILURE);
-  }
-
+static Player_t *get_next_player_real(Player_t *players_array, int cur, bool want_all_clients,
+                                      const char *file, const int line) {
   int i = (cur + 1) % MAX_PLAYERS;
 
   while (i != cur) {
@@ -76,18 +72,19 @@ static Player_t *get_next_player_real(Player_t *players_array, int cur, bool wan
     return &players_array[cur];
   }
 
-  fputs("No valid players found\n", stderr);
-  exit(EXIT_FAILURE);
+  fprintf(stderr, "No valid players/clients found\n%s:%d\n", file, line);
+  return NULL;
 }
 
-Player_t *get_next_player(Player_t *players_array, int cur) {
+Player_t *get_next_player_(Player_t *players_array, int cur, const char *file, const int line) {
   const bool want_all_clients = false;
-  return get_next_player_real(players_array, cur, want_all_clients);
+  return get_next_player_real(players_array, cur, want_all_clients, file, line);
 }
 
-Player_t *get_next_connected_client(Player_t *players_array, int cur) {
+Player_t *get_next_connected_client_(Player_t *players_array, int cur, const char *file,
+                                     const int line) {
   const bool want_all_clients = true;
-  return get_next_player_real(players_array, cur, want_all_clients);
+  return get_next_player_real(players_array, cur, want_all_clients, file, line);
 }
 
 CliArgs_t init_cli_args(void) {

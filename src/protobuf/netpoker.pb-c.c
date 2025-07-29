@@ -321,7 +321,7 @@ const ProtobufCMessageDescriptor hand__descriptor =
   (ProtobufCMessageInit) hand__init,
   NULL,NULL,NULL    /* reserved[123] */
 };
-static const ProtobufCFieldDescriptor player__field_descriptors[8] =
+static const ProtobufCFieldDescriptor player__field_descriptors[9] =
 {
   {
     "nick",
@@ -419,6 +419,18 @@ static const ProtobufCFieldDescriptor player__field_descriptors[8] =
     0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
+  {
+    "is_connected",
+    9,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_BOOL,
+    0,   /* quantifier_offset */
+    offsetof(Player, is_connected),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
 };
 static const unsigned player__field_indices_by_name[] = {
   3,   /* field[3] = coins */
@@ -426,6 +438,7 @@ static const unsigned player__field_indices_by_name[] = {
   7,   /* field[7] = has_checked */
   1,   /* field[1] = id */
   4,   /* field[4] = in */
+  8,   /* field[8] = is_connected */
   0,   /* field[0] = nick */
   5,   /* field[5] = total_paid */
   6,   /* field[6] = winner */
@@ -433,7 +446,7 @@ static const unsigned player__field_indices_by_name[] = {
 static const ProtobufCIntRange player__number_ranges[1 + 1] =
 {
   { 1, 0 },
-  { 0, 8 }
+  { 0, 9 }
 };
 const ProtobufCMessageDescriptor player__descriptor =
 {
@@ -443,7 +456,7 @@ const ProtobufCMessageDescriptor player__descriptor =
   "Player",
   "",
   sizeof(Player),
-  8,
+  9,
   player__field_descriptors,
   player__field_indices_by_name,
   1,  player__number_ranges,

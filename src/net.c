@@ -42,6 +42,7 @@ static void fill_player_message(struct player_message_builder_t *builder, const 
   builder->msg.total_paid = src->total_paid;
   builder->msg.winner = src->winner;
   builder->msg.has_checked = src->has_checked;
+  builder->msg.is_connected = src->is_connected;
 
   // Hand
   for (int i = 0; i < MAX_HAND_SIZE; ++i) {
@@ -69,6 +70,7 @@ static void fill_player_from_message(Player_t *dst, const Player *msg) {
   dst->total_paid = msg->total_paid;
   dst->winner = msg->winner;
   dst->has_checked = msg->has_checked;
+  dst->is_connected = msg->is_connected;
 
   if (msg->hand) {
     size_t n = msg->hand->n_card < MAX_HAND_SIZE ? msg->hand->n_card : MAX_HAND_SIZE;

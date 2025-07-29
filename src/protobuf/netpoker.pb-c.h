@@ -60,10 +60,11 @@ struct  Player
   uint32_t total_paid;
   protobuf_c_boolean winner;
   protobuf_c_boolean has_checked;
+  protobuf_c_boolean is_connected;
 };
 #define PLAYER__INIT \
  { PROTOBUF_C_MESSAGE_INIT (&player__descriptor) \
-, (char *)protobuf_c_empty_string, 0, NULL, 0, 0, 0, 0, 0 }
+, (char *)protobuf_c_empty_string, 0, NULL, 0, 0, 0, 0, 0, 0 }
 
 
 struct  GameState

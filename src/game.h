@@ -43,6 +43,9 @@
 #include "translate.h"
 #include "types.h"
 
+#define get_next_player(a, b) get_next_player_(a, b, __FILE__, __LINE__)
+#define get_next_connected_client(a, b) get_next_connected_client_(a, b, __FILE__, __LINE__)
+
 typedef enum {
   ACTION_INVALID = 0x00,
   ACTION_CHECK = 0x01,
@@ -63,9 +66,10 @@ typedef struct {
 
 const GameChoice_t *find_game_choice_by_type(const uint8_t type);
 
-Player_t *get_next_player(Player_t *players_array, int cur);
+Player_t *get_next_player_(Player_t *players_array, int cur, const char *file, const int line);
 
-Player_t *get_next_connected_client(Player_t *players_array, int cur);
+Player_t *get_next_connected_client_(Player_t *players_array, int cur, const char *file,
+                                     const int line);
 
 CliArgs_t init_cli_args(void);
 

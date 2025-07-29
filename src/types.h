@@ -61,6 +61,7 @@ typedef struct {
   uint32_t total_paid;
   bool winner;
   bool has_checked;
+  bool is_connected;
 } Player_t;
 
 typedef struct {
@@ -105,6 +106,7 @@ typedef struct {
   GameSettings_t *game_settings;
   struct ServerConfig_t *config;
   uint8_t game_type;
+  Player_t **starting_turn;
 } ArgsBroadcastGameState_t;
 
 struct GameChoice_t;

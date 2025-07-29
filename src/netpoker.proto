@@ -18,6 +18,7 @@ message Player {
   uint32 total_paid = 6;
   bool winner = 7;
   bool has_checked = 8;
+  bool is_connected = 9;
 }
 
 message GameState {
