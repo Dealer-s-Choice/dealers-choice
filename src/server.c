@@ -590,11 +590,9 @@ static void determine_winner(ArgsBroadcastGameState_t *args, RoundResults *resul
   if (results->n_winners > 0)
     return;
 
-  Player_t *players_array = args->game_state->player;
-  Player_t *starting_player = players_array;
   uint8_t pl_count = args->game_state->player_count;
 
-  Player_t *ptr = starting_player;
+  Player_t *ptr = *args->starting_turn;
 
   if (args->game_state->deuces_wild) {
     ELoop_t w = LOOP_OK;
@@ -612,7 +610,7 @@ static void determine_winner(ArgsBroadcastGameState_t *args, RoundResults *resul
       if (w == LOOP_BREAK)
         if (args->game_state->player_count == 1)
           break;
-      ptr = get_next_player(players_array, ptr->id);
+      ptr = get_next_player(args->game_state->player, ptr->id);
     }
   }
 
@@ -620,13 +618,13 @@ static void determine_winner(ArgsBroadcastGameState_t *args, RoundResults *resul
   // time broadcast_game_state is called
   args->game_state->winner_declared = true;
 
-  POKEVAL_NeedComparing need_comparing[pl_count];
-  ptr = starting_player;
+  POKEVAL_NeedComparing *need_comparing = calloc_wrap(pl_count * sizeof(*need_comparing), 1);
+  ptr = *args->starting_turn;
   for (uint8_t i = 0; i < pl_count; i++) {
     need_comparing[i].won = false;
     need_comparing[i].id = ptr->id;
     memcpy(&need_comparing[i].hand, &args->real_hand->player[ptr->id], sizeof(POKEVAL_Hand_7));
-    ptr = get_next_player(players_array, ptr->id);
+    ptr = get_next_player(args->game_state->player, ptr->id);
   }
 
   results->n_winners = POKEVAL_compare_hands(need_comparing, pl_count);
@@ -663,6 +661,7 @@ static void determine_winner(ArgsBroadcastGameState_t *args, RoundResults *resul
     }
     winner->coins += share;
   }
+  free(need_comparing);
   broadcast_game_state(args);
 }
 
@@ -1027,16 +1026,30 @@ static void play_game(ArgsBroadcastGameState_t *args, DH_Deck *deck) {
   Player_t *players_array = args->game_state->player;
   *args->real_hand = deal_cards_to_players(args->game_state, deck, args->game_type);
 
-  /* For testing...
-    for (int i = 0; i < 3; i++)
+  if (args->cli_args->test_mode) {
+    static int test_case = 0;
+    test_case++;
+    if (test_case == 1) {
+      for (int i = 1; i < 3; i++)
+        for (int j = 0; j < 4; j++)
+          args->real_hand->player[i].card[j].face_val = DH_CARD_ACE;
+
+      args->real_hand->player[1].card[4].face_val = DH_CARD_KING;
+      args->real_hand->player[2].card[4].face_val = DH_CARD_KING;
+    } else if (test_case == 2) {
       for (int j = 0; j < 4; j++)
-        args->real_hand->player[i].card[j].face_val = DH_CARD_ACE;
+        args->real_hand->player[2].card[j].face_val = DH_CARD_ACE;
+    } else if (test_case == 3) {
+      for (int i = 0; i < 3; i++)
+        for (int j = 0; j < 4; j++)
+          args->real_hand->player[i].card[j].face_val = DH_CARD_ACE;
 
+      args->real_hand->player[0].card[4].face_val = DH_CARD_KING;
+      args->real_hand->player[1].card[4].face_val = DH_CARD_KING;
+      args->real_hand->player[2].card[4].face_val = DH_CARD_KING;
+    }
+  }
 
-    args->real_hand->player[0].card[4].face_val = DH_CARD_KING;
-    args->real_hand->player[1].card[4].face_val = DH_CARD_KING;
-    args->real_hand->player[2].card[4].face_val = DH_CARD_KING;
-    */
   /*
      args->real_hand->player[0].card[0].face_val = 2;
      args->real_hand->player[0].card[3].face_val = 2;

@@ -1,6 +1,7 @@
   * Increase player action timeout from 20 to 30 seconds
   + The client will now retry server connection for 60 seconds
     before timing out if server is unavailable
+  * Fix incorrect hand wins in some cases when there are 3 or more players
   - Explicitly link to dl and thread (Fix Slackware build)
 
 2025-07-13

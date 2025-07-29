@@ -84,6 +84,8 @@ if (game == 0) {
   _RECEIVE_GAME_STATE()
 }
 _RECEIVE_GAME_STATE()
+_RECEIVE_GAME_STATE()
+_RECEIVE_GAME_STATE()
 
 for (i = 0; i < N_PLAYERS; i++) {
   debug_print_cards(&game_state[i].player[i].hand);
@@ -97,7 +99,7 @@ for (i = 0; i < N_PLAYERS; i++) {
 fprintf(stderr, "%d\n", game_state[0].pot);
 assert(game_state[0].pot == 0);
 
-const int expected_coins[][3] = {{19950, 20100, 19950}, {19400, 21200, 19400}};
+const int expected_coins[][3] = {{19950, 20025, 20025}, {19400, 19475, 21125}};
 for (i = 0; i < N_PLAYERS; i++)
   assert(game_state[0].player[i].coins == expected_coins[game][i]);
 

@@ -68,7 +68,7 @@ fprintf(stderr, "%d\n", game_state[0].pot);
 assert(game_state[0].pot == 0);
 
 const int expected_coins[][3] = {
-    {24100, 17950, 17950}, {22050, 15900, 22050}, {20000, 13850, 26150}};
+    {17950, 17950, 24100}, {15900, 15900, 28200}, {20000, 13850, 26150}};
 
 for (i = 0; i < N_PLAYERS; i++)
   assert(game_state[0].player[i].coins == expected_coins[game][i]);
