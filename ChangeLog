@@ -1,4 +1,5 @@
   + Set default maximum raises per round to 3 (config option)
+  * Fix discard button being clickable when disabled
   * Increase player action timeout from 20 to 30 seconds
   + The client will now retry server connection for 60 seconds
     before timing out if server is unavailable
