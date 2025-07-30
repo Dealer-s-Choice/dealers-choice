@@ -100,6 +100,7 @@ static Button_t create_button(const char *text, SDL_Renderer *renderer, const in
       .hovered = false,
       .enabled = true,
       .selected = false,
+      .active = true,
       .hotkey = hotkey,
   };
   if (TTF_SizeUTF8(font, text, &button.rect.w, &button.rect.h) != 0)
@@ -121,6 +122,7 @@ static Button_t create_game_choice_button(const char *text, SDL_Renderer *render
       .hovered = false,
       .enabled = false,
       .selected = false,
+      .active = true,
       .hotkey = hotkey,
   };
   return button;
@@ -217,6 +219,7 @@ static bool menu_display_game_choices(const PlayerConfig_t *player_config,
       false,
       true,
       false,
+      true,
       0,
   };
 
@@ -654,6 +657,7 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
         false,
         true,
         false,
+        true,
         amount[i].hotkey,
     };
   }
@@ -677,6 +681,7 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
         false,
         true,
         false,
+        true,
         0,
     };
   }
@@ -693,6 +698,7 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
         false,
         true,
         false,
+        true,
         0,
     };
   }
@@ -970,6 +976,7 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
           x_offset = action_button[CALL].rect.x + action_button[CALL].rect.w + BUTTON_X_SPACING;
 
           action_button[RAISE].rect.x = x_offset;
+          action_button[RAISE].active = game_state->raises_remaining > 0;
           render_button(&action_button[RAISE]);
           x_offset = action_button[RAISE].rect.x + action_button[RAISE].rect.w + BUTTON_X_SPACING;
         }
@@ -1176,11 +1183,13 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
                 fprintf(stderr, "Failed to check\n");
             }
           } else if (game_state->player[my_id].total_paid != game_state->total_bets_plus_raises) {
-            if (SDL_PointInRect(&mouse_pos, &action_button[RAISE].rect) ||
-                event.key.keysym.sym == SDLK_r) {
-              verbose_puts("raising");
-              if (send_player_action(sock, ACTION_RAISE, client_state.selected_amount) != 0)
-                fprintf(stderr, "Failed to raise\n");
+            if (action_button[RAISE].active &&
+                (SDL_PointInRect(&mouse_pos, &action_button[RAISE].rect) ||
+                 event.key.keysym.sym == SDLK_r)) {
+              if (send_player_action(sock, ACTION_RAISE, client_state.selected_amount) == 0)
+                verbose_puts("raising");
+              else
+                fputs("Failed to raise\n", stderr);
             } else if (SDL_PointInRect(&mouse_pos, &action_button[CALL].rect) ||
                        event.key.keysym.sym == SDLK_c) {
               verbose_puts("calling");

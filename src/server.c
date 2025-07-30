@@ -99,6 +99,7 @@ ServerConfig_t init_game_state(GameState_t *game_state, Path_t *path, CliArgs_t 
   game_state->at_menu = true;
   game_state->player_count = 0;
   game_state->total_bets_plus_raises = 0;
+  game_state->raises_remaining = 0;
   game_state->winner_declared = false;
   game_state->deuces_wild = false;
   return config;
@@ -430,6 +431,7 @@ static void server_handle_raise(GameState_t *game_state, const uint8_t turn_id,
                                 const uint32_t amount) {
   server_handle_call(game_state, turn_id);
   server_handle_bet(game_state, turn_id, amount);
+  game_state->raises_remaining--;
 }
 
 static ELoop_t handle_draw(ArgsBroadcastGameState_t *args, TCPsocket sock, const int id,
@@ -697,6 +699,8 @@ static void award_last_player_in_game(ArgsBroadcastGameState_t *args, Player_t *
 }
 
 static RoundResults handle_round_real(ArgsBroadcastGameState_t *args) {
+  args->game_state->raises_remaining = args->config->max_raises;
+
   Player_t *turn;
   // printf("%s:turn->id: %d\n", __func__, turn->id);
 
@@ -748,15 +752,21 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args) {
                 action.str = _("called");
                 break;
               case ACTION_RAISE:
-                server_handle_raise(args->game_state, turn->id, action.amount);
-                action.str = _("raised ");
+                if (args->game_state->raises_remaining > 0) {
+                  server_handle_raise(args->game_state, turn->id, action.amount);
+                  action.str = _("raised ");
+                } else
+                  fputs("Raise received; however, max raises has been reached. The client should "
+                        "not be able to send a raise\n",
+                        stderr);
                 break;
               case ACTION_FOLD:
                 handle_fold(args->game_state, turn, args->starting_turn, &action);
                 break;
               default:
-                fprintf(stderr, "Invalid Action received\nThe client is writing checks their body "
-                                "can't cash.\n");
+                fputs("Invalid Action received\nThe client is writing checks their body "
+                      "can't cash.\n",
+                      stderr);
                 exit(EXIT_FAILURE);
               }
             }

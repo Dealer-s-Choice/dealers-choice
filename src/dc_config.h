@@ -41,7 +41,8 @@ typedef struct ServerConfig_t {
   uint32_t action_timeout_ms;
   uint32_t dealer_timeout_ms;
   uint32_t ante;
-  int starting_coins;
+  int32_t starting_coins;
+  uint32_t max_raises;
 } ServerConfig_t;
 
 typedef struct {
@@ -89,7 +90,8 @@ static const ConfigEntry server_config_entries[] = {
      sizeof(uint32_t)},
     {"ante", CFG_TYPE_UINT32, "50", offsetof(ServerConfig_t, ante), sizeof(uint32_t)},
     {"starting_coins", CFG_TYPE_INT, "20000", offsetof(ServerConfig_t, starting_coins),
-     sizeof(int)}};
+     sizeof(int32_t)},
+    {"max_raises", CFG_TYPE_UINT32, "3", offsetof(ServerConfig_t, max_raises), sizeof(uint32_t)}};
 
 static const size_t server_config_entry_count = ARRAY_SIZE(server_config_entries);
 

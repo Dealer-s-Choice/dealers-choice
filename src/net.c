@@ -90,6 +90,7 @@ uint8_t *serialize_game_state(const GameState_t *src, size_t *size_out) {
   msg.turn_id = src->turn_id;
   msg.at_menu = src->at_menu;
   msg.total_bets_plus_raises = src->total_bets_plus_raises;
+  msg.raises_remaining = src->raises_remaining;
   msg.player_count = src->player_count;
   msg.winner_declared = src->winner_declared;
   msg.deuces_wild = src->deuces_wild;
@@ -137,6 +138,7 @@ GameState_t deserialize_game_state(const uint8_t *data, size_t size) {
   result.turn_id = msg->turn_id;
   result.at_menu = msg->at_menu;
   result.total_bets_plus_raises = msg->total_bets_plus_raises;
+  result.raises_remaining = msg->raises_remaining;
   result.player_count = msg->player_count;
   result.winner_declared = msg->winner_declared;
   result.deuces_wild = msg->deuces_wild;

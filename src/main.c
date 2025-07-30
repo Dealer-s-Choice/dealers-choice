@@ -50,6 +50,7 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str,
       .rect = {100, 160, 0, 0},
       .font = font->fonts[FONT_BOLD],
       .enabled = true,
+      .active = true,
   };
 
   if (TTF_SizeUTF8(button_connect.font, button_connect.text, &button_connect.rect.w,

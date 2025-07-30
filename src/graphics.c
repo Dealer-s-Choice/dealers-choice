@@ -269,6 +269,8 @@ void mark_selected(SDL_Renderer *renderer, const SDL_Rect *rect) {
 }
 
 void render_button(Button_t *button) {
+  if (!button->active)
+    return;
   // Draw the filled background
   SDL_SetRenderDrawColor(button->renderer, button->bg_color.r, button->bg_color.g,
                          button->bg_color.b, button->bg_color.a);
