@@ -1243,7 +1243,8 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
             fprintf(stderr, "Failed to send hand\n");
             free(data);
             return -1;
-          }
+          } else
+            verbose_puts("Wilds sent");
           free(data);
         }
       }

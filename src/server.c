@@ -527,9 +527,10 @@ static ELoop_t handle_wild_cards(ArgsBroadcastGameState_t *args, TCPsocket sock,
       if (SDLNet_SocketReady(sock)) {
         uint8_t buffer[512] = {0}; // pick a reasonable buffer size
         int n_bytes = SDLNet_TCP_Recv(sock, buffer, sizeof(buffer));
-        if (n_bytes > 0)
+        if (n_bytes > 0) {
+          received_hand = deserialize_hand(buffer, n_bytes);
           break;
-        else {
+        } else {
           remove_disconnected_player(args, id);
           return LOOP_BREAK;
         }
@@ -1053,7 +1054,11 @@ static void play_game(ArgsBroadcastGameState_t *args, DH_Deck *deck) {
   /*
      args->real_hand->player[0].card[0].face_val = 2;
      args->real_hand->player[0].card[3].face_val = 2;
-     */
+
+     args->real_hand->player[2].card[0].face_val = 2;
+     args->real_hand->player[2].card[3].face_val = 2;
+  */
+
   args->game_state->winner_declared = false;
   args->game_state->player_count = count_active_clients(args->slot_taken);
   fprintf(stderr, "player count: %d\n", args->game_state->player_count);
