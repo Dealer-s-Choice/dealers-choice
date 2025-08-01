@@ -60,8 +60,6 @@ static int send_protocol_header(TCPsocket sock) {
 // What's the max this needs to be to support the unicode suit symbol?
 #define SIZEOF_CARD_TEXT 20
 
-#define CARD_DEAL_DELAY 1
-
 #define MAX_POT_COINS 80
 
 SDL_Rect card_area = {0};
@@ -708,7 +706,6 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
   }
 
   int running = 1;
-  bool cards_dealt = false;
   bool cards_created = false;
 
   Player_t *players_array = game_state->player;
@@ -739,7 +736,6 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
   CoinAnimation_t coin_anim = {0};
 
   client_state.timer_start = SDL_GetTicks();
-  cards_dealt = false;
 
   client_state.selected_amount = atoi(amount[0].n_str);
 
@@ -856,20 +852,6 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
         render_card(&card_context[player_ptr->id][card_n], font->fonts[FONT_CARD],
                     player_ptr->id == my_id, client_state.do_exchange_wilds);
 
-        if (!cards_dealt && !card_context[player_ptr->id][card_n].is_null &&
-            game_state->player[my_id].in) {
-          Uint32 start = SDL_GetTicks();
-          while (SDL_GetTicks() - start < CARD_DEAL_DELAY) {
-            SDL_Event e;
-            while (SDL_PollEvent(&e)) {
-              if (e.type == SDL_QUIT)
-                running = false;
-            }
-            SDL_Delay(16);
-          }
-          SDL_RenderPresent(sdl_context->renderer);
-          // ma_sound_start(&sound_context->sounds[SND_CARD_DEALT].sound);
-        }
         player_ptr = get_next_connected_client(players_array, player_ptr->id);
       } while (player_ptr != starting_turn);
     }
@@ -988,7 +970,6 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
       }
     }
 
-    cards_dealt = true;
     char buffer[128];
     snprintf(buffer, sizeof(buffer), "%d", game_state->pot);
     SDL_Color black = {0, 0, 0, 255};
