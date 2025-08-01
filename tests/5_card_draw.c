@@ -27,6 +27,7 @@ for (i = 0; i < N_PLAYERS; i++) {
 _RECEIVE_GAME_STATE()
 _RECEIVE_GAME_STATE()
 _RECEIVE_GAME_STATE()
+_RECEIVE_GAME_STATE()
 
 int expected_turn[3] = {2, 0, 1};
 assert(expected_turn[game] == *turn_id);
