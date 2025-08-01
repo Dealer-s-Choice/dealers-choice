@@ -14,7 +14,7 @@ _RECEIVE_GAME_STATE()
 for (int n_rounds = 0; n_rounds < game_choices[FIVE_CARD_STUD].n_betting_rounds; n_rounds++) {
   fprintf(stderr, "\n -#- game: %d -#- n_rounds: %d\n", game, n_rounds);
 
-  int8_t *turn_id = &game_state[0].turn_id;
+  int8_t *turn_id = &client_state[0].turn_id;
 
   const int expected_bet_turn[] = {1, 2, 0};
   assert(expected_bet_turn[game] == *turn_id);

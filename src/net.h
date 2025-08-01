@@ -82,6 +82,7 @@ __attribute__((packed)) GameProtocolHeader_t;
 #define MSG_START_ACTION_TIMER 0x0012
 #define MSG_BET_CHECK_FOLD 0x0013
 #define MSG_CALL_RAISE_FOLD 0x0014
+#define MSG_TURN_ID 0x0015
 
 #define DEFAULT_PORT "22777"
 
@@ -97,6 +98,8 @@ typedef struct {
 } SocketContext_t;
 
 typedef struct {
+  int8_t turn_id;
+  bool turn_switch;
   bool do_discard_draw;
   bool do_exchange_wilds;
   bool has_ace;

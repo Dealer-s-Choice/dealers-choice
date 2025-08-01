@@ -41,7 +41,6 @@ static void fill_player_message(struct player_message_builder_t *builder, const 
   builder->msg.in = src->in;
   builder->msg.total_paid = src->total_paid;
   builder->msg.winner = src->winner;
-  builder->msg.has_checked = src->has_checked;
   builder->msg.is_connected = src->is_connected;
 
   // Hand
@@ -69,7 +68,6 @@ static void fill_player_from_message(Player_t *dst, const Player *msg) {
   dst->in = msg->in;
   dst->total_paid = msg->total_paid;
   dst->winner = msg->winner;
-  dst->has_checked = msg->has_checked;
   dst->is_connected = msg->is_connected;
 
   if (msg->hand) {
@@ -87,7 +85,6 @@ uint8_t *serialize_game_state(const GameState_t *src, size_t *size_out) {
   // Pot
   msg.pot = src->pot;
   msg.dealer_id = src->dealer_id;
-  msg.turn_id = src->turn_id;
   msg.at_menu = src->at_menu;
   msg.total_bets_plus_raises = src->total_bets_plus_raises;
   msg.raises_remaining = src->raises_remaining;
@@ -135,7 +132,6 @@ GameState_t deserialize_game_state(const uint8_t *data, size_t size) {
 
   result.pot = msg->pot;
   result.dealer_id = msg->dealer_id;
-  result.turn_id = msg->turn_id;
   result.at_menu = msg->at_menu;
   result.total_bets_plus_raises = msg->total_bets_plus_raises;
   result.raises_remaining = msg->raises_remaining;
@@ -362,6 +358,10 @@ ERecvStatus_t recv_game_state(SocketContext_t *socket_context, GameState_t *game
 
   uint16_t opcode = (buffer[0] << 8) | buffer[1];
   switch (opcode) {
+  case MSG_TURN_ID:
+    client_state->turn_id = (int8_t)buffer[2];
+    client_state->turn_switch = true;
+    break;
   case MSG_BET_CHECK_FOLD:
     client_state->bet_check_fold = true;
     break;

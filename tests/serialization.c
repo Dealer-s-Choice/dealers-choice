@@ -25,7 +25,6 @@ void test_player(void) {
 void test_game_state(void) {
   GameState_t game_state = {0};
   game_state = (GameState_t){.pot = 500,
-                             .turn_id = 3,
                              .at_menu = true,
                              .total_bets_plus_raises = 623,
                              .player[0] = {
@@ -53,7 +52,6 @@ void test_game_state(void) {
   assert(game_state_receiver.at_menu == true);
   assert(strcmp(game_state_receiver.player[0].nick, "Foo") == 0);
   assert(game_state_receiver.total_bets_plus_raises == 623);
-  assert(game_state_receiver.turn_id == 3);
   assert(game_state_receiver.player[0].id == 0);
   assert(game_state_receiver.player[0].coins == STARTING_N_COINS);
   assert(game_state_receiver.player[0].in);

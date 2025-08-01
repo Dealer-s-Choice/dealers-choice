@@ -738,11 +738,9 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
   uint8_t coins = 0;
   CoinAnimation_t coin_anim = {0};
 
-  bool turn_switch = false;
-
   client_state.timer_start = SDL_GetTicks();
   cards_dealt = false;
-  starting_turn = &game_state->player[game_state->turn_id];
+
   client_state.selected_amount = atoi(amount[0].n_str);
 
   const int8_t my_id = game_settings->client_id;
@@ -759,6 +757,11 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
     if (game_state->at_menu)
       break;
 
+    int8_t *turn_id = &client_state.turn_id;
+
+    if (!starting_turn)
+      starting_turn = &game_state->player[*turn_id];
+
     // For cases when the client who was designated as starting_turn disconnects
     if (!starting_turn->is_connected) {
       starting_turn = get_next_player(players_array, starting_turn->id);
@@ -768,7 +771,7 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
       }
     }
 
-    turn = &game_state->player[game_state->turn_id];
+    turn = &game_state->player[*turn_id];
     // printf("turn id: %d\n", turn->id);
 
     if (strcmp(client_state.server_status_str, status_msgs[SIZEOF_STATUS_MSGS - 1]) != 0) {
@@ -878,20 +881,13 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
       client_state.play_coin_sound = false;
     }
 
-    bool my_turn = game_state->turn_id == my_id;
-    if (!my_turn)
-      turn_switch = false;
-    if (my_turn && !turn_switch) {
+    bool my_turn = *turn_id == my_id;
+    if (my_turn && client_state.turn_switch) {
       if (player_config->turn_notify)
         ma_sound_start(&sound_context->sounds[SND_MY_TURN].sound);
-      turn_switch = true;
-    }
 
-    //// printf("%d\n", __LINE__);
-    // printf("game_state->total_bets_plus_raises: %d\n",
-    // game_state->total_bets_plus_raises == 0 && !turn->has_checked);
-    // printf("turn->has_checked: %s, turn->id: %d, my_id: %d\n\n",
-    // turn->has_checked ? "true" : "false", turn->id, my_id);
+      client_state.turn_switch = false;
+    }
 
     if (game_state->winner_declared) {
       player_ptr = starting_turn;
@@ -924,7 +920,7 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
       if (client_state.do_discard_draw) {
         // If this condition is true, that means they didn't discard before
         // the timer ran out and the server changed the turn id
-        if (game_state->turn_id != my_id) {
+        if (!my_turn) {
           client_state.do_discard_draw = false;
           continue;
         }
@@ -949,7 +945,7 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
       } else if (client_state.do_exchange_wilds) {
         // If this condition is true, that means they didn't click submit before
         // the timer ran out and the server changed the turn id
-        if (game_state->turn_id != my_id) {
+        if (!my_turn) {
           client_state.do_exchange_wilds = false;
           continue;
         }
@@ -1164,8 +1160,7 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
                  (event.key.keysym.sym == SDLK_RETURN && event.key.keysym.mod & KMOD_ALT)) {
         toggle_fullscreen(sdl_context->window);
       } else if (event.type == SDL_MOUSEBUTTONDOWN || event.type == SDL_KEYDOWN) {
-        if (game_state->turn_id == my_id && !client_state.do_discard_draw &&
-            !client_state.do_exchange_wilds) {
+        if (my_turn && !client_state.do_discard_draw && !client_state.do_exchange_wilds) {
           if (client_state.bet_check_fold || client_state.call_raise_fold) {
             if (SDL_PointInRect(&mouse_pos, &action_button[FOLD].rect) ||
                 event.key.keysym.sym == SDLK_f) {

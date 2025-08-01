@@ -12,7 +12,7 @@ _RECEIVE_GAME_STATE()
 _RECEIVE_GAME_STATE()
 _RECEIVE_GAME_STATE()
 
-int8_t *turn_id = &game_state[0].turn_id;
+int8_t *turn_id = &client_state[0].turn_id;
 
 SDL_Delay(n_ms);
 
