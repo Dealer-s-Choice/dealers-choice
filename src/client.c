@@ -369,7 +369,8 @@ static void draw_card_back_pattern(SDL_Renderer *renderer, SDL_Rect *card_rect) 
   }
 }
 
-int8_t send_player_action(TCPsocket sock, uint8_t action, uint32_t amount) {
+int8_t send_player_action(ClientState_t *client_state, TCPsocket sock, uint8_t action,
+                          uint32_t amount) {
   uint8_t buffer[7];
 
   buffer[0] = (MSG_PLAYER_ACTION >> 8) & 0xFF;
@@ -380,6 +381,9 @@ int8_t send_player_action(TCPsocket sock, uint8_t action, uint32_t amount) {
   buffer[4] = (amount >> 16) & 0xFF;
   buffer[5] = (amount >> 8) & 0xFF;
   buffer[6] = (amount) & 0xFF;
+
+  client_state->bet_check_fold = false;
+  client_state->call_raise_fold = false;
 
   return send_all_tcp(sock, buffer, sizeof(buffer));
 }
@@ -960,9 +964,9 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
                                         action_button[EXCHANGE].rect.y + card_area.h, 0, 0});
         }
         render_button(&action_button[EXCHANGE]);
-      } else if (game_state->turn_id == my_id && !client_state.cards_sent) {
+      } else if (client_state.bet_check_fold || client_state.call_raise_fold) {
         int x_offset = x_begin_action_button;
-        if (game_state->total_bets_plus_raises == 0 && !turn->has_checked) {
+        if (client_state.bet_check_fold) {
           action_button[BET].rect.x = x_offset;
           render_button(&action_button[BET]);
           x_offset = action_button[BET].rect.x + action_button[BET].rect.w + BUTTON_X_SPACING;
@@ -970,7 +974,7 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
           action_button[CHECK].rect.x = x_offset;
           render_button(&action_button[CHECK]);
           x_offset = action_button[CHECK].rect.x + action_button[CHECK].rect.w + BUTTON_X_SPACING;
-        } else if (game_state->player[my_id].total_paid != game_state->total_bets_plus_raises) {
+        } else if (client_state.call_raise_fold) {
           action_button[CALL].rect.x = x_offset;
           render_button(&action_button[CALL]);
           x_offset = action_button[CALL].rect.x + action_button[CALL].rect.w + BUTTON_X_SPACING;
@@ -982,9 +986,13 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
         }
         action_button[FOLD].rect.x = x_offset;
         render_button(&action_button[FOLD]);
-        for (size_t i = 0; i < n_bet_amounts; i++)
-          render_button(&amount_button[i]);
-      } else {
+
+        // The amount buttons won't be shown if this is true (max raises were reached
+        // if the RAISE button is not active).
+        if (client_state.call_raise_fold && action_button[RAISE].active) {
+          for (size_t i = 0; i < n_bet_amounts; i++)
+            render_button(&amount_button[i]);
+        }
       }
     }
 
@@ -1158,40 +1166,41 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
       } else if (event.type == SDL_MOUSEBUTTONDOWN || event.type == SDL_KEYDOWN) {
         if (game_state->turn_id == my_id && !client_state.do_discard_draw &&
             !client_state.do_exchange_wilds) {
-          if ((game_state->total_bets_plus_raises == 0 && !turn->has_checked) ||
-              game_state->player[my_id].total_paid != game_state->total_bets_plus_raises) {
+          if (client_state.bet_check_fold || client_state.call_raise_fold) {
             if (SDL_PointInRect(&mouse_pos, &action_button[FOLD].rect) ||
                 event.key.keysym.sym == SDLK_f) {
               verbose_puts("folding");
-              if (send_player_action(sock, ACTION_FOLD, 0) != 0)
+              if (send_player_action(&client_state, sock, ACTION_FOLD, 0) != 0)
                 fprintf(stderr, "Failed to fold\n");
             }
           }
-          if (game_state->total_bets_plus_raises == 0 && !turn->has_checked) {
+          if (client_state.bet_check_fold) {
             // TODO: use existing array (or modify it) to loop through each action
             if (SDL_PointInRect(&mouse_pos, &action_button[BET].rect) ||
                 event.key.keysym.sym == SDLK_b) {
               verbose_puts("sending bet");
-              if (send_player_action(sock, ACTION_BET, client_state.selected_amount) != 0)
+              if (send_player_action(&client_state, sock, ACTION_BET,
+                                     client_state.selected_amount) != 0)
                 fprintf(stderr, "Failed to send bet\n");
             } else if (SDL_PointInRect(&mouse_pos, &action_button[CHECK].rect) ||
                        event.key.keysym.sym == SDLK_c) {
               verbose_puts("checking");
-              if (send_player_action(sock, ACTION_CHECK, 0) != 0)
+              if (send_player_action(&client_state, sock, ACTION_CHECK, 0) != 0)
                 fprintf(stderr, "Failed to check\n");
             }
-          } else if (game_state->player[my_id].total_paid != game_state->total_bets_plus_raises) {
+          } else if (client_state.call_raise_fold) {
             if (action_button[RAISE].active &&
                 (SDL_PointInRect(&mouse_pos, &action_button[RAISE].rect) ||
                  event.key.keysym.sym == SDLK_r)) {
-              if (send_player_action(sock, ACTION_RAISE, client_state.selected_amount) == 0)
+              if (send_player_action(&client_state, sock, ACTION_RAISE,
+                                     client_state.selected_amount) == 0)
                 verbose_puts("raising");
               else
                 fputs("Failed to raise\n", stderr);
             } else if (SDL_PointInRect(&mouse_pos, &action_button[CALL].rect) ||
                        event.key.keysym.sym == SDLK_c) {
               verbose_puts("calling");
-              if (send_player_action(sock, ACTION_CALL, 0) != 0)
+              if (send_player_action(&client_state, sock, ACTION_CALL, 0) != 0)
                 fprintf(stderr, "Failed to call\n");
             }
           }
@@ -1214,7 +1223,6 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
 
           // Reset the flag that's used to indicate to the client it's their turn to draw
           client_state.do_discard_draw = false;
-          client_state.cards_sent = true;
 
           if (send_discards_request_new_cards(sock, discard_indices, discard_count) != 0)
             fprintf(stderr, "Failed to send discards\n");

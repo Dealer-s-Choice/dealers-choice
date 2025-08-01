@@ -10,6 +10,7 @@ assert(send_game_select(socket_context[*dealer_id].sock, game_choices[FIVE_CARD_
 _RECEIVE_GAME_STATE()
 _RECEIVE_GAME_STATE()
 _RECEIVE_GAME_STATE()
+_RECEIVE_GAME_STATE()
 
 int8_t *turn_id = &game_state[0].turn_id;
 const int expected_bet_turn[3] = {1, 2, 0};
@@ -17,7 +18,7 @@ assert(expected_bet_turn[game] == *turn_id);
 
 SDL_Delay(n_ms);
 
-assert(send_player_action(socket_context[*turn_id].sock, ACTION_FOLD, 0) == 0);
+assert(send_player_action(client_state, socket_context[*turn_id].sock, ACTION_FOLD, 0) == 0);
 
 for (i = 0; i < N_PLAYERS; i++) {
   debug_print_cards(&game_state[i].player[i].hand);
@@ -27,13 +28,15 @@ for (i = 0; i < N_PLAYERS; i++) {
 _RECEIVE_GAME_STATE()
 _RECEIVE_GAME_STATE()
 _RECEIVE_GAME_STATE()
+_RECEIVE_GAME_STATE()
 
 int expected_call_turn[3] = {2, 0, 1};
 assert(expected_call_turn[game] == *turn_id);
 
 SDL_Delay(n_ms);
-assert(send_player_action(socket_context[*turn_id].sock, ACTION_BET, 500) == 0);
+assert(send_player_action(client_state, socket_context[*turn_id].sock, ACTION_BET, 500) == 0);
 
+_RECEIVE_GAME_STATE()
 _RECEIVE_GAME_STATE()
 _RECEIVE_GAME_STATE()
 _RECEIVE_GAME_STATE()
@@ -44,7 +47,7 @@ expected_call_turn[2] = 2;
 assert(expected_call_turn[game] == *turn_id);
 
 SDL_Delay(n_ms);
-assert(send_player_action(socket_context[*turn_id].sock, ACTION_CALL, 0) == 0);
+assert(send_player_action(client_state, socket_context[*turn_id].sock, ACTION_CALL, 0) == 0);
 
 _RECEIVE_GAME_STATE()
 _RECEIVE_GAME_STATE()

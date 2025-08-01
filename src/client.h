@@ -77,7 +77,8 @@ void render_link(Link_t *link);
 
 int8_t send_game_select(TCPsocket sock, uint8_t game_type, const bool deuces_wild);
 
-int8_t send_player_action(TCPsocket sock, uint8_t action, uint32_t amount);
+int8_t send_player_action(ClientState_t *client_state, TCPsocket sock, uint8_t action,
+                          uint32_t amount);
 
 void do_sdl_cleanup(SdlContext_t *sdl_context);
 

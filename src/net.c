@@ -360,9 +360,14 @@ ERecvStatus_t recv_game_state(SocketContext_t *socket_context, GameState_t *game
     return RECV_ERROR;
   }
 
-  // fprintf(stderr, "[recv_game_state] size: %d\n", size);
   uint16_t opcode = (buffer[0] << 8) | buffer[1];
   switch (opcode) {
+  case MSG_BET_CHECK_FOLD:
+    client_state->bet_check_fold = true;
+    break;
+  case MSG_CALL_RAISE_FOLD:
+    client_state->call_raise_fold = true;
+    break;
   case MSG_DRAW_PROMPT:
     if (size != 2) {
       fprintf(stderr, "[recv_game_state] Invalid size for MSG_DRAW_PROMPT: %u\n", size);
@@ -429,9 +434,6 @@ ERecvStatus_t recv_game_state(SocketContext_t *socket_context, GameState_t *game
   default:
     // printf("[recv_game_state] Received %u bytes, deserializing...\n", size);
     *game_state = deserialize_game_state(buffer, size);
-    if (client_state->cards_sent)
-      client_state->cards_sent = false;
-    break;
   }
 
   free(buffer);

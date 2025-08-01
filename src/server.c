@@ -336,44 +336,18 @@ static int recv_player_action(TCPsocket sock, PlayerActionMsg_t *out_action) {
   return n_bytes;
 }
 
-static int send_draw_prompt(TCPsocket sock) {
-  uint8_t buffer[6]; // 4 bytes size + 2 bytes opcode
+static int send_opcode(TCPsocket sock, const uint16_t opcode) {
+  uint8_t buffer[6];
 
-  uint32_t size = htonl(2); // payload is 2 bytes
+  uint32_t size = SDL_SwapBE32(2);
   memcpy(buffer, &size, 4);
 
-  buffer[4] = (MSG_DRAW_PROMPT >> 8) & 0xFF;
-  buffer[5] = MSG_DRAW_PROMPT & 0xFF;
+  uint16_t opcode_be = SDL_SwapBE16(opcode);
+  memcpy(&buffer[4], &opcode_be, 2);
 
   int sent = send_all_tcp(sock, buffer, sizeof(buffer));
-  printf("Sent draw prompt: %d bytes\n", sent);
-  return sent;
-}
-
-static int send_wild_prompt(TCPsocket sock) {
-  uint8_t buffer[6]; // 4 bytes size + 2 bytes opcode
-
-  uint32_t size = htonl(2); // payload is 2 bytes
-  memcpy(buffer, &size, 4);
-
-  buffer[4] = (MSG_WILD_REPLACEMENT >> 8) & 0xFF;
-  buffer[5] = MSG_WILD_REPLACEMENT & 0xFF;
-
-  int sent = send_all_tcp(sock, buffer, sizeof(buffer));
-  printf("Sent wild prompt: %d bytes\n", sent);
-  return sent;
-}
-
-static int send_start_action_timeout_msg(TCPsocket sock) {
-  uint8_t buffer[6]; // 4 bytes size + 2 bytes opcode
-
-  uint32_t size = htonl(2); // payload is 2 bytes
-  memcpy(buffer, &size, 4);
-
-  buffer[4] = (MSG_START_ACTION_TIMER >> 8) & 0xFF;
-  buffer[5] = MSG_START_ACTION_TIMER & 0xFF;
-
-  int sent = send_all_tcp(sock, buffer, sizeof(buffer));
+  if (sent == 0)
+    verbose_puts("Sent opcode");
   return sent;
 }
 
@@ -390,7 +364,7 @@ static void broadcast_start_action_timer_msg(const ArgsBroadcastGameState_t *arg
     if (!sock)
       continue;
 
-    if (send_start_action_timeout_msg(sock) < 0) {
+    if (send_opcode(sock, MSG_START_ACTION_TIMER) < 0) {
       fprintf(stderr, "[broadcast_start_action_timer_message] Failed to send to client %d\n",
               pl_idx);
     }
@@ -437,7 +411,7 @@ static void server_handle_raise(GameState_t *game_state, const uint8_t turn_id,
 static ELoop_t handle_draw(ArgsBroadcastGameState_t *args, TCPsocket sock, const int id,
                            DH_Deck *deck) {
   puts("sending draw prompt");
-  if (send_draw_prompt(sock) != 0) {
+  if (send_opcode(sock, MSG_DRAW_PROMPT) != 0) {
     fputs("Failed to send draw prompt\n", stderr);
     return LOOP_ERROR;
   }
@@ -506,7 +480,7 @@ static ELoop_t handle_draw(ArgsBroadcastGameState_t *args, TCPsocket sock, const
 
 static ELoop_t handle_wild_cards(ArgsBroadcastGameState_t *args, TCPsocket sock, const int id) {
   puts("sending submit wild prompt");
-  if (send_wild_prompt(sock) != 0) {
+  if (send_opcode(sock, MSG_WILD_REPLACEMENT) != 0) {
     fputs("Failed to send submit wild prompt\n", stderr);
     return LOOP_ERROR;
   }
@@ -718,6 +692,11 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args) {
     uint32_t start = SDL_GetTicks();
     PlayerActionMsg_t action = {0};
 
+    uint16_t opcode =
+        args->game_state->total_bets_plus_raises == 0 ? MSG_BET_CHECK_FOLD : MSG_CALL_RAISE_FOLD;
+    if (send_opcode(args->clients[turn->id], opcode) != 0)
+      fputs("Error sending action prompt", stderr);
+
     while (SDL_GetTicks() - start < wait_ms) {
       register_new_client(args);
       // fprintf(stderr, "Waiting for action from %d\n", args->game_state->turn_id);
@@ -729,7 +708,7 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args) {
           // puts("socket ready");
           // char tmp[sizeof args->game_state->status_str];
           if (recv_player_action(args->clients[turn->id], &action) > 0) {
-            if (args->game_state->total_bets_plus_raises == 0) {
+            if (opcode == MSG_BET_CHECK_FOLD) {
               switch (action.action) {
               case ACTION_CHECK:
                 handle_check(turn, &action);

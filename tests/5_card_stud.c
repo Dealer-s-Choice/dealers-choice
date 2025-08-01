@@ -21,7 +21,7 @@ for (int n_rounds = 0; n_rounds < game_choices[FIVE_CARD_STUD].n_betting_rounds;
 
   SDL_Delay(n_ms);
   fprintf(stderr, "turn_id: %d sending bet...\n", *turn_id);
-  assert(send_player_action(socket_context[*turn_id].sock, ACTION_BET, 500) == 0);
+  assert(send_player_action(client_state, socket_context[*turn_id].sock, ACTION_BET, 500) == 0);
 
   for (i = 0; i < N_PLAYERS; i++) {
     debug_print_cards(&game_state[i].player[i].hand);
@@ -38,7 +38,7 @@ for (int n_rounds = 0; n_rounds < game_choices[FIVE_CARD_STUD].n_betting_rounds;
 
   SDL_Delay(n_ms);
   fprintf(stderr, "turn_id: %d\n", *turn_id);
-  assert(send_player_action(socket_context[*turn_id].sock, ACTION_CALL, 0) == 0);
+  assert(send_player_action(client_state, socket_context[*turn_id].sock, ACTION_CALL, 0) == 0);
 
   _RECEIVE_GAME_STATE()
   _RECEIVE_GAME_STATE()
@@ -50,7 +50,7 @@ for (int n_rounds = 0; n_rounds < game_choices[FIVE_CARD_STUD].n_betting_rounds;
 
   SDL_Delay(n_ms);
   fprintf(stderr, "turn_id: %d\n", *turn_id);
-  assert(send_player_action(socket_context[*turn_id].sock, ACTION_CALL, 0) == 0);
+  assert(send_player_action(client_state, socket_context[*turn_id].sock, ACTION_CALL, 0) == 0);
 
   _RECEIVE_GAME_STATE()
   _RECEIVE_GAME_STATE()

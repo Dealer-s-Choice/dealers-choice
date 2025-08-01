@@ -80,6 +80,8 @@ __attribute__((packed)) GameProtocolHeader_t;
 #define MSG_STATUS_MESSAGE 0x0010
 #define MSG_NEW_HAND 0x0011
 #define MSG_START_ACTION_TIMER 0x0012
+#define MSG_BET_CHECK_FOLD 0x0013
+#define MSG_CALL_RAISE_FOLD 0x0014
 
 #define DEFAULT_PORT "22777"
 
@@ -100,11 +102,12 @@ typedef struct {
   bool has_ace;
   uint8_t n_cards_selected;
   int selected_amount;
-  bool cards_sent;
   int8_t save_starting_turn_id;
   uint32_t timer_start;
   char server_status_str[LEN_STATUS_STR];
   bool play_coin_sound;
+  bool bet_check_fold;
+  bool call_raise_fold;
 } ClientState_t;
 
 struct player_message_builder_t {
