@@ -882,10 +882,20 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
     }
 
     bool my_turn = *turn_id == my_id;
-    if (my_turn && client_state.turn_switch) {
-      if (player_config->turn_notify)
-        ma_sound_start(&sound_context->sounds[SND_MY_TURN].sound);
+    if (client_state.turn_switch) {
+      client_state.timer_start = SDL_GetTicks();
 
+      // Handle timeout: If there was no action by the player, one of these
+      // may be set to true
+      client_state.bet_check_fold = false;
+      client_state.call_raise_fold = false;
+      client_state.do_discard_draw = false;
+      client_state.do_exchange_wilds = false;
+
+      if (my_turn) {
+        if (player_config->turn_notify)
+          ma_sound_start(&sound_context->sounds[SND_MY_TURN].sound);
+      }
       client_state.turn_switch = false;
     }
 
@@ -918,13 +928,6 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
       }
 
       if (client_state.do_discard_draw) {
-        // If this condition is true, that means they didn't discard before
-        // the timer ran out and the server changed the turn id
-        if (!my_turn) {
-          client_state.do_discard_draw = false;
-          continue;
-        }
-
         for (int i = 0; i < MAX_HAND_SIZE; i++)
           if (turn->hand.card[i].face_val == DH_CARD_ACE) {
             client_state.has_ace = true;
@@ -943,13 +946,6 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
         }
         render_button(&action_button[DISCARD]);
       } else if (client_state.do_exchange_wilds) {
-        // If this condition is true, that means they didn't click submit before
-        // the timer ran out and the server changed the turn id
-        if (!my_turn) {
-          client_state.do_exchange_wilds = false;
-          continue;
-        }
-
         action_button[EXCHANGE].enabled = true;
         action_button[EXCHANGE].rect.x = x_begin_action_button;
         if (action_button[EXCHANGE].enabled) {

@@ -61,8 +61,6 @@ static void init_new_round(GameState_t *game_state);
 
 static uint8_t count_active_clients(const bool *slot_taken);
 
-static void broadcast_start_action_timer_msg(const ArgsBroadcastGameState_t *args);
-
 typedef enum { LOOP_BREAK, LOOP_CONTINUE, LOOP_OK, LOOP_ERROR } ELoop_t;
 static ELoop_t register_new_client(ArgsBroadcastGameState_t *args);
 
@@ -379,27 +377,6 @@ static int send_opcode(TCPsocket sock, const uint16_t opcode) {
   return sent;
 }
 
-static void broadcast_start_action_timer_msg(const ArgsBroadcastGameState_t *args) {
-  int8_t pl_idx = args->turn_id;
-  Player_t *recipient = &args->game_state->player[pl_idx];
-  if (!recipient->is_connected)
-    recipient = get_next_connected_client(args->game_state->player, pl_idx);
-  Player_t *start = recipient;
-
-  do {
-    pl_idx = recipient->id;
-    TCPsocket sock = args->clients[pl_idx];
-    if (!sock)
-      continue;
-
-    if (send_opcode(sock, MSG_START_ACTION_TIMER) < 0) {
-      fprintf(stderr, "[broadcast_start_action_timer_message] Failed to send to client %d\n",
-              pl_idx);
-    }
-    recipient = get_next_connected_client(args->game_state->player, pl_idx);
-  } while (recipient && recipient != start);
-}
-
 static void server_handle_call(GameState_t *game_state, const uint8_t turn_id) {
   uint32_t owed = game_state->total_bets_plus_raises - game_state->player[turn_id].total_paid;
   game_state->player[turn_id].coins -= owed;
@@ -443,7 +420,6 @@ static ELoop_t handle_draw(ArgsBroadcastGameState_t *args, TCPsocket sock, const
     fputs("Failed to send draw prompt\n", stderr);
     return LOOP_ERROR;
   }
-  broadcast_start_action_timer_msg(args);
 
   DrawRequestMsg_t req;
   uint8_t buffer[7] = {0};
@@ -512,8 +488,6 @@ static ELoop_t handle_wild_cards(ArgsBroadcastGameState_t *args, TCPsocket sock,
     fputs("Failed to send submit wild prompt\n", stderr);
     return LOOP_ERROR;
   }
-
-  broadcast_start_action_timer_msg(args);
 
   const uint32_t wait_ms = args->game_settings->action_timeout_ms;
   const uint32_t start = SDL_GetTicks();
@@ -714,7 +688,6 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args) {
     args->turn_id = turn->id;
     broadcast_turn_id(args);
     broadcast_game_state(args);
-    broadcast_start_action_timer_msg(args);
 
     uint32_t wait_ms = args->game_settings->action_timeout_ms;
     uint32_t start = SDL_GetTicks();
@@ -967,6 +940,7 @@ void game_five_card_draw(GAME_ARGS) {
     if (results.n_winners > 0 || i == choice->n_draws)
       break;
 
+    broadcast_game_state(args);
     turn = *args->starting_turn;
 
     do {

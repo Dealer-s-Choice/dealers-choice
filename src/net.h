@@ -79,7 +79,7 @@ __attribute__((packed)) GameProtocolHeader_t;
 #define MSG_DRAW_PROMPT 0x0009
 #define MSG_STATUS_MESSAGE 0x0010
 #define MSG_NEW_HAND 0x0011
-#define MSG_START_ACTION_TIMER 0x0012
+// #define MSG_START_ACTION_TIMER 0x0012
 #define MSG_BET_CHECK_FOLD 0x0013
 #define MSG_CALL_RAISE_FOLD 0x0014
 #define MSG_TURN_ID 0x0015

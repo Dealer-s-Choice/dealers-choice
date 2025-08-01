@@ -388,15 +388,6 @@ ERecvStatus_t recv_game_state(SocketContext_t *socket_context, GameState_t *game
     // printf("[recv_game_state] Received %u bytes, server wants wilds...\n", size);
     break;
 
-  case MSG_START_ACTION_TIMER:
-    if (size != 2) {
-      fprintf(stderr, "[recv_game_state] Invalid size for MSG_START_ACTION_TIMER: %u\n", size);
-      break;
-    }
-    client_state->timer_start = SDL_GetTicks();
-    // printf("[recv_game_state] Received %u bytes, starting action timer\n", size);
-    break;
-
   case MSG_STATUS_MESSAGE: {
     size_t msg_len = size - 2;
     snprintf(client_state->server_status_str, sizeof(client_state->server_status_str), "%.*s",
