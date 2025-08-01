@@ -116,7 +116,7 @@ static int send_new_hand(TCPsocket sock, const POKEVAL_Hand_7 *hand, uint8_t han
 
   const size_t card_bytes = hand_size * 8;        // each card is 8 bytes: 2 × 4-byte ints
   const size_t payload_size = 2 + 1 + card_bytes; // opcode + hand_size + cards
-  const uint32_t total_size = htonl(payload_size);
+  const uint32_t total_size = SDL_SwapBE32(payload_size);
 
   uint8_t buffer[4 + payload_size];
   memcpy(buffer, &total_size, 4); // size prefix
@@ -127,10 +127,10 @@ static int send_new_hand(TCPsocket sock, const POKEVAL_Hand_7 *hand, uint8_t han
 
   // Serialize each card (face_val and suit as 4-byte integers)
   for (uint8_t i = 0; i < hand_size; ++i) {
-    uint32_t fv = htonl(hand->card[i].face_val);
-    uint32_t s = htonl(hand->card[i].suit);
-    memcpy(&buffer[7 + i * 8], &fv, 4);
-    memcpy(&buffer[7 + i * 8 + 4], &s, 4);
+    int8_t fv = hand->card[i].face_val;
+    int8_t s = hand->card[i].suit;
+    memcpy(&buffer[7 + i * 2], &fv, sizeof(fv));   // writes 1 byte
+    memcpy(&buffer[7 + i * 2 + 1], &s, sizeof(s)); // writes 1 byte
   }
 
   return send_all_tcp(sock, buffer, 4 + payload_size);
@@ -255,13 +255,13 @@ int send_status_message(TCPsocket sock, const char *msg) {
   if (msg_len > 100)
     msg_len = 100;
 
-  uint32_t size = htonl(2 + msg_len); // payload: 2-byte opcode + N-byte msg
-  uint8_t buffer[4 + 2 + 100];        // max: 4 bytes (size) + 2 (opcode) + 100 (msg)
+  uint32_t size = SDL_SwapBE32(2 + msg_len); // payload: 2-byte opcode + N-byte msg
+  uint8_t buffer[4 + 2 + 100];               // max: 4 bytes (size) + 2 (opcode) + 100 (msg)
 
-  memcpy(buffer, &size, 4);
+  memcpy(buffer, &size, sizeof(size));
 
   uint16_t opcode_be = SDL_SwapBE16(MSG_STATUS_MESSAGE);
-  memcpy(&buffer[4], &opcode_be, 2);
+  memcpy(&buffer[4], &opcode_be, sizeof(opcode_be));
 
   memcpy(&buffer[6], msg, msg_len);
 
@@ -296,10 +296,10 @@ static int send_turn_id(TCPsocket sock, const int8_t turn_id) {
   uint8_t buffer[7];
 
   uint32_t size = SDL_SwapBE32(3); // payload = 2-byte opcode + 1-byte turn_id
-  memcpy(buffer, &size, sizeof(uint32_t));
+  memcpy(buffer, &size, sizeof(size));
 
   uint16_t opcode_be = SDL_SwapBE16(MSG_TURN_ID);
-  memcpy(&buffer[4], &opcode_be, sizeof(uint16_t));
+  memcpy(&buffer[4], &opcode_be, sizeof(opcode_be));
 
   buffer[6] = (uint8_t)turn_id;
 
@@ -362,10 +362,10 @@ static int send_opcode(TCPsocket sock, const uint16_t opcode) {
   uint8_t buffer[6];
 
   uint32_t size = SDL_SwapBE32(2);
-  memcpy(buffer, &size, 4);
+  memcpy(buffer, &size, sizeof(size));
 
   uint16_t opcode_be = SDL_SwapBE16(opcode);
-  memcpy(&buffer[4], &opcode_be, 2);
+  memcpy(&buffer[4], &opcode_be, sizeof(opcode_be));
 
   int sent = send_all_tcp(sock, buffer, sizeof(buffer));
   if (sent == 0)

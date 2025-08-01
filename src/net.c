@@ -408,11 +408,10 @@ ERecvStatus_t recv_game_state(SocketContext_t *socket_context, GameState_t *game
     }
 
     for (uint8_t i = 0; i < hand_size; ++i) {
-      uint32_t fv, s;
-      memcpy(&fv, &buffer[3 + i * 8], 4);
-      memcpy(&s, &buffer[3 + i * 8 + 4], 4);
-      game_state->player[id].hand.card[i].face_val = ntohl(fv);
-      game_state->player[id].hand.card[i].suit = ntohl(s);
+      int8_t fv = buffer[3 + i * 2];
+      int8_t s = buffer[3 + i * 2 + 1];
+      game_state->player[id].hand.card[i].face_val = fv;
+      game_state->player[id].hand.card[i].suit = s;
     }
 
     // printf("[recv_game_state] Received new hand with %u cards\n", hand_size);

@@ -47,7 +47,7 @@ static int send_protocol_header(TCPsocket sock) {
   puts("Exchanging protocol information...");
   GameProtocolHeader_t hdr = {0};
   snprintf(hdr.magic, sizeof(hdr.magic), "%s", GAME_PROTOCOL_MAGIC);
-  hdr.version = htonl(GAME_PROTOCOL_VERSION);
+  hdr.version = SDL_SwapBE16(GAME_PROTOCOL_VERSION);
 
   return send_all_tcp(sock, &hdr, sizeof(hdr));
 }
@@ -1310,9 +1310,9 @@ SocketContext_t get_socket_context_and_run_client(PlayerConfig_t *player_config,
     GameSettings_t game_settings = {0};
     ClientState_t client_state = {0};
     char *nick = player_config->nick;
-    size_t len = strlen(nick) + 1;
-    int32_t net_len = htonl(len);
-    send_all_tcp(sock, &net_len, sizeof(int32_t));
+    uint16_t len = strlen(nick) + 1;
+    uint16_t net_len = SDL_SwapBE16(len);
+    send_all_tcp(sock, &net_len, sizeof(net_len));
     if (send_all_tcp(sock, player_config->nick, len) != 0)
       fprintf(stderr, "Failed to send player nick to server\n");
 

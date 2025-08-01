@@ -8,9 +8,9 @@ void test_player(void) {
   uint8_t *data = serialize_player(&player, &size);
 
   fprintf(stderr, "before conversion: %zu\n", size);
-  uint32_t size_net = htonl(size);
+  uint32_t size_net = SDL_SwapBE32(size);
 
-  size = ntohl(size_net);
+  size = SDL_SwapBE32(size_net);
   fprintf(stderr, "after conversion: %zu\n", size);
 
   Player_t player_receiver = deserialize_player(data, size);
@@ -37,9 +37,9 @@ void test_game_state(void) {
   uint8_t *data = serialize_game_state(&game_state, &size);
 
   fprintf(stderr, "before conversion: %zu\n", size);
-  uint32_t size_net = htonl(size);
+  uint32_t size_net = SDL_SwapBE32(size);
 
-  size = ntohl(size_net);
+  size = SDL_SwapBE32(size_net);
   fprintf(stderr, "after conversion: %zu\n", size);
 
   GameState_t game_state_receiver = deserialize_game_state(data, size);
