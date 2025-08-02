@@ -31,13 +31,6 @@
 
 #include <SDL2/SDL_net.h>
 
-// htonl and ntohl
-#ifdef _WIN32
-#include "dc_windows.h"
-#else
-#include <arpa/inet.h>
-#endif
-
 #include "netpoker.pb-c.h"
 #include "types.h"
 
