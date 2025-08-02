@@ -77,7 +77,7 @@ static void fill_player_from_message(Player_t *dst, const Player *msg) {
   }
 }
 
-uint8_t *serialize_game_state(const GameState_t *src, size_t *size_out) {
+uint8_t *serialize_game_state(const GameState_t *src, uint32_t *size_out) {
   GameState msg = GAME_STATE__INIT;
 
   // Pot
@@ -118,7 +118,7 @@ uint8_t *serialize_game_state(const GameState_t *src, size_t *size_out) {
   return buffer;
 }
 
-GameState_t deserialize_game_state(const uint8_t *data, size_t size) {
+GameState_t deserialize_game_state(const uint8_t *data, uint32_t size) {
   GameState_t result = {0};
 
   GameState *msg = game_state__unpack(NULL, size, data);
@@ -334,7 +334,7 @@ ERecvStatus_t recv_game_state(SocketContext_t *socket_context, GameState_t *game
     return RECV_ERROR;
   }
 
-  uint32_t size = ntohl(size_net);
+  uint32_t size = SDL_SwapBE32(size_net);
   if (size == 0 || size > 65536) {
     fprintf(stderr, "[recv_game_state] Invalid game state size: %u\n", size);
     return RECV_ERROR;
@@ -452,7 +452,7 @@ ERecvStatus_t recv_game_settings(TCPsocket client_socket, SDLNet_SocketSet socke
     return RECV_ERROR;
   }
 
-  uint32_t size = ntohl(size_net);
+  uint32_t size = SDL_SwapBE32(size_net);
   if (size == 0 || size > 65536) {
     fprintf(stderr, "[recv_game_settings] Invalid game settings size: %u\n", size);
     return RECV_ERROR;

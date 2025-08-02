@@ -213,7 +213,7 @@ static void broadcast_game_state(ArgsBroadcastGameState_t *args) {
              sizeof(POKEVAL_Hand_7));
     }
 
-    size_t size = 0;
+    uint32_t size = 0;
     uint8_t *data = serialize_game_state(args->game_state, &size);
     if (!data)
       return;
@@ -221,7 +221,7 @@ static void broadcast_game_state(ArgsBroadcastGameState_t *args) {
     if (!args->game_state->winner_declared || args->game_state->player_count == 1)
       memcpy(&args->game_state->player[i].hand, &hand_tmp, sizeof(POKEVAL_Hand_7));
 
-    uint32_t size_net = htonl(size);
+    uint32_t size_net = SDL_SwapBE32(size);
 
     // fprintf(stderr, "sending to %d\n", i);
     if (send_with_retries(args->clients[i], &size_net, sizeof(size_net)) == -1 ||
@@ -239,7 +239,7 @@ static void send_game_settings(ArgsBroadcastGameState_t *args, TCPsocket sock) {
   if (!data)
     return;
 
-  uint32_t size_net = htonl(size);
+  uint32_t size_net = SDL_SwapBE32(size);
 
   // fprintf(stderr, "sending to %d\n", i);
   if (send_with_retries(sock, &size_net, sizeof(size_net)) == -1 ||
@@ -1201,7 +1201,7 @@ static int recv_and_validate_protocol_header(TCPsocket sock) {
     return -1;
   }
 
-  uint32_t version = ntohl(hdr.version);
+  uint32_t version = SDL_SwapBE16(hdr.version);
   if (version != GAME_PROTOCOL_VERSION) {
     fprintf(stderr, "Unsupported protocol version: %u\n", version);
     return -1;
@@ -1276,11 +1276,11 @@ static ELoop_t register_new_client(ArgsBroadcastGameState_t *args) {
         }
 
         // Step 2: Now convert
-        size_t len = ntohl(net_len);
+        uint16_t len = SDL_SwapBE16(net_len);
 
         // Step 3: Validate length
         if (len == 0 || len >= sizeof(player->nick)) {
-          fprintf(stderr, "Invalid nickname length: %zu\n", len);
+          fprintf(stderr, "Invalid nickname length: %d\n", len);
           do_socket_cleanup(new_client, args->socket_set, args->slot_taken, slot, player);
           return LOOP_CONTINUE;
         }

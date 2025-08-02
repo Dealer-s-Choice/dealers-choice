@@ -54,7 +54,7 @@
 
 typedef struct {
   char magic[sizeof(GAME_PROTOCOL_MAGIC)];
-  uint32_t version; // Network byte order
+  uint16_t version; // Network byte order
 }
 #ifdef _MSC_VER
 GameProtocolHeader_t;
@@ -77,12 +77,12 @@ __attribute__((packed)) GameProtocolHeader_t;
 #define MSG_WILD_REPLACEMENT 0x0007
 #define MSG_GAME_STATE_UPDATE 0x0008 // Server sends state update
 #define MSG_DRAW_PROMPT 0x0009
-#define MSG_STATUS_MESSAGE 0x0010
-#define MSG_NEW_HAND 0x0011
+#define MSG_STATUS_MESSAGE 0x000A
+#define MSG_NEW_HAND 0x000B
 // #define MSG_START_ACTION_TIMER 0x0012
-#define MSG_BET_CHECK_FOLD 0x0013
-#define MSG_CALL_RAISE_FOLD 0x0014
-#define MSG_TURN_ID 0x0015
+#define MSG_BET_CHECK_FOLD 0x000D
+#define MSG_CALL_RAISE_FOLD 0x000E
+#define MSG_TURN_ID 0x000F
 
 #define DEFAULT_PORT "22777"
 
@@ -120,8 +120,8 @@ struct player_message_builder_t {
   Card *card_ptrs[MAX_HAND_SIZE];
 };
 
-uint8_t *serialize_game_state(const GameState_t *src, size_t *size_out);
-GameState_t deserialize_game_state(const uint8_t *data, size_t size);
+uint8_t *serialize_game_state(const GameState_t *src, uint32_t *size_out);
+GameState_t deserialize_game_state(const uint8_t *data, uint32_t size);
 
 uint8_t *serialize_game_settings(const GameSettings_t *src, size_t *size_out);
 GameSettings_t deserialize_game_settings(const uint8_t *data, size_t size);

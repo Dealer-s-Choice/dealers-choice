@@ -33,14 +33,14 @@ void test_game_state(void) {
                                  .in = true,
                              }};
 
-  size_t size = 0;
+  uint32_t size = 0;
   uint8_t *data = serialize_game_state(&game_state, &size);
 
-  fprintf(stderr, "before conversion: %zu\n", size);
+  fprintf(stderr, "before conversion: %d\n", size);
   uint32_t size_net = SDL_SwapBE32(size);
 
   size = SDL_SwapBE32(size_net);
-  fprintf(stderr, "after conversion: %zu\n", size);
+  fprintf(stderr, "after conversion: %d\n", size);
 
   GameState_t game_state_receiver = deserialize_game_state(data, size);
 
