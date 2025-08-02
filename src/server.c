@@ -1265,10 +1265,10 @@ static ELoop_t register_new_client(ArgsBroadcastGameState_t *args) {
 
       if (!args->cli_args->test_mode) {
         Player_t *player = &(args->game_state->player)[slot];
-        int32_t net_len;
+        int16_t net_len;
 
         // Step 1: Recv the size first (must happen before interpreting it)
-        if (recv_all_tcp(new_client, &net_len, sizeof(int32_t)) <= 0) {
+        if (recv_all_tcp(new_client, &net_len, sizeof(net_len)) <= 0) {
           // Handle error: client disconnected or invalid
           fprintf(stderr, "Failed to receive nickname length.\n");
           do_socket_cleanup(new_client, args->socket_set, args->slot_taken, slot, player);
