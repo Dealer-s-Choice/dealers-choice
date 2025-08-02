@@ -353,6 +353,7 @@ ERecvStatus_t recv_game_state(SocketContext_t *socket_context, GameState_t *game
   }
 
   uint16_t opcode = (buffer[0] << 8) | buffer[1];
+  fprintf(stderr, "opcode: %X\n", opcode);
   switch (opcode) {
   case MSG_TURN_ID:
     client_state->turn_id = (int8_t)buffer[2];
