@@ -1082,8 +1082,8 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
         bool wild_changed = false;
         for (int card_n = 0; card_n < MAX_HAND_SIZE; card_n++) {
           if (card_context[my_id][card_n].selected) {
-            for (size_t f = 0; f < ARRAY_SIZE(card_faces); f++) {
-              int card_val = f + 1;
+            for (DH_card_face f = 0; f < (DH_card_face)ARRAY_SIZE(card_faces); f++) {
+              DH_card_face card_val = f + 1;
               if (card_val == DH_CARD_TWO)
                 continue;
               if (SDL_PointInRect(&mouse_pos, &card_faces[f].rect) &&
@@ -1094,7 +1094,7 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
                 break;
               }
             }
-            for (DH_suit s = 0; s < ARRAY_SIZE(card_suits); s++) {
+            for (DH_suit s = DH_SUIT_MAX - DH_SUIT_MAX; s < ARRAY_SIZE(card_suits); s++) {
               if (SDL_PointInRect(&mouse_pos, &card_suits[s].rect) &&
                   event.type == SDL_MOUSEBUTTONDOWN) {
                 DH_Card *card = &turn->hand.card[card_n];

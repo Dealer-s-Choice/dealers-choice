@@ -577,7 +577,8 @@ static void determine_winner(ArgsBroadcastGameState_t *args, RoundResults *resul
         for (int c = 0; c < MAX_HAND_SIZE; c++) {
           if (args->real_hand->player[ptr->id].card[c].face_val == DH_CARD_TWO) {
             args->turn_id = ptr->id;
-            broadcast_game_state(args);
+            // broadcast_game_state(args);
+            broadcast_turn_id(args);
             w = handle_wild_cards(args, args->clients[ptr->id], ptr->id);
             break;
           }
@@ -1024,13 +1025,11 @@ static void play_game(ArgsBroadcastGameState_t *args, DH_Deck *deck) {
     }
   }
 
-  /*
-     args->real_hand->player[0].card[0].face_val = 2;
-     args->real_hand->player[0].card[3].face_val = 2;
+  // args->real_hand->player[0].card[0].face_val = DH_CARD_TWO;
+  // args->real_hand->player[0].card[3].face_val = DH_CARD_TWO;
 
-     args->real_hand->player[2].card[0].face_val = 2;
-     args->real_hand->player[2].card[3].face_val = 2;
-  */
+  // args->real_hand->player[1].card[0].face_val = DH_CARD_TWO;
+  // args->real_hand->player[2].card[3].face_val = DH_CARD_TWO;
 
   args->game_state->winner_declared = false;
   args->game_state->player_count = count_active_clients(args->slot_taken);
