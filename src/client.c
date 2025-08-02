@@ -872,7 +872,6 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
       client_state.bet_check_fold = false;
       client_state.call_raise_fold = false;
       client_state.do_discard_draw = false;
-      action_button[DISCARD].enabled = false;
       client_state.do_exchange_wilds = false;
 
       if (my_turn) {
@@ -1177,7 +1176,7 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
                 fprintf(stderr, "Failed to call\n");
             }
           }
-        } else if (action_button[DISCARD].enabled &&
+        } else if (action_button[DISCARD].enabled && client_state.do_discard_draw &&
                    (SDL_PointInRect(&mouse_pos, &action_button[DISCARD].rect) ||
                     event.key.keysym.sym == SDLK_d)) {
           verbose_puts("discarding");
