@@ -31,13 +31,6 @@
 
 #include <SDL2/SDL_net.h>
 
-// htonl and ntohl
-#ifdef _WIN32
-#include "dc_windows.h"
-#else
-#include <arpa/inet.h>
-#endif
-
 #include "netpoker.pb-c.h"
 #include "types.h"
 
@@ -54,7 +47,7 @@
 
 typedef struct {
   char magic[sizeof(GAME_PROTOCOL_MAGIC)];
-  uint32_t version; // Network byte order
+  uint16_t version; // Network byte order
 }
 #ifdef _MSC_VER
 GameProtocolHeader_t;
@@ -77,9 +70,12 @@ __attribute__((packed)) GameProtocolHeader_t;
 #define MSG_WILD_REPLACEMENT 0x0007
 #define MSG_GAME_STATE_UPDATE 0x0008 // Server sends state update
 #define MSG_DRAW_PROMPT 0x0009
-#define MSG_STATUS_MESSAGE 0x0010
-#define MSG_NEW_HAND 0x0011
-#define MSG_START_ACTION_TIMER 0x0012
+#define MSG_STATUS_MESSAGE 0x000A
+#define MSG_NEW_HAND 0x000B
+// #define MSG_START_ACTION_TIMER 0x0012
+#define MSG_BET_CHECK_FOLD 0x000D
+#define MSG_CALL_RAISE_FOLD 0x000E
+#define MSG_TURN_ID 0x000F
 
 #define DEFAULT_PORT "22777"
 
@@ -95,16 +91,18 @@ typedef struct {
 } SocketContext_t;
 
 typedef struct {
+  int8_t turn_id;
+  bool turn_switch;
   bool do_discard_draw;
   bool do_exchange_wilds;
   bool has_ace;
   uint8_t n_cards_selected;
   int selected_amount;
-  bool cards_sent;
-  int8_t save_starting_turn_id;
   uint32_t timer_start;
   char server_status_str[LEN_STATUS_STR];
   bool play_coin_sound;
+  bool bet_check_fold;
+  bool call_raise_fold;
 } ClientState_t;
 
 struct player_message_builder_t {
@@ -115,8 +113,8 @@ struct player_message_builder_t {
   Card *card_ptrs[MAX_HAND_SIZE];
 };
 
-uint8_t *serialize_game_state(const GameState_t *src, size_t *size_out);
-GameState_t deserialize_game_state(const uint8_t *data, size_t size);
+uint8_t *serialize_game_state(const GameState_t *src, uint32_t *size_out);
+GameState_t deserialize_game_state(const uint8_t *data, uint32_t size);
 
 uint8_t *serialize_game_settings(const GameSettings_t *src, size_t *size_out);
 GameSettings_t deserialize_game_settings(const uint8_t *data, size_t size);

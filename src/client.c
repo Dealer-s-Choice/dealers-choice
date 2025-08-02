@@ -47,7 +47,7 @@ static int send_protocol_header(TCPsocket sock) {
   puts("Exchanging protocol information...");
   GameProtocolHeader_t hdr = {0};
   snprintf(hdr.magic, sizeof(hdr.magic), "%s", GAME_PROTOCOL_MAGIC);
-  hdr.version = htonl(GAME_PROTOCOL_VERSION);
+  hdr.version = SDL_SwapBE16(GAME_PROTOCOL_VERSION);
 
   return send_all_tcp(sock, &hdr, sizeof(hdr));
 }
@@ -59,8 +59,6 @@ static int send_protocol_header(TCPsocket sock) {
 
 // What's the max this needs to be to support the unicode suit symbol?
 #define SIZEOF_CARD_TEXT 20
-
-#define CARD_DEAL_DELAY 1
 
 #define MAX_POT_COINS 80
 
@@ -369,7 +367,8 @@ static void draw_card_back_pattern(SDL_Renderer *renderer, SDL_Rect *card_rect) 
   }
 }
 
-int8_t send_player_action(TCPsocket sock, uint8_t action, uint32_t amount) {
+int8_t send_player_action(ClientState_t *client_state, TCPsocket sock, uint8_t action,
+                          uint32_t amount) {
   uint8_t buffer[7];
 
   buffer[0] = (MSG_PLAYER_ACTION >> 8) & 0xFF;
@@ -380,6 +379,9 @@ int8_t send_player_action(TCPsocket sock, uint8_t action, uint32_t amount) {
   buffer[4] = (amount >> 16) & 0xFF;
   buffer[5] = (amount >> 8) & 0xFF;
   buffer[6] = (amount) & 0xFF;
+
+  client_state->bet_check_fold = false;
+  client_state->call_raise_fold = false;
 
   return send_all_tcp(sock, buffer, sizeof(buffer));
 }
@@ -704,7 +706,6 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
   }
 
   int running = 1;
-  bool cards_dealt = false;
   bool cards_created = false;
 
   Player_t *players_array = game_state->player;
@@ -734,11 +735,8 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
   uint8_t coins = 0;
   CoinAnimation_t coin_anim = {0};
 
-  bool turn_switch = false;
-
   client_state.timer_start = SDL_GetTicks();
-  cards_dealt = false;
-  starting_turn = &game_state->player[game_state->turn_id];
+
   client_state.selected_amount = atoi(amount[0].n_str);
 
   const int8_t my_id = game_settings->client_id;
@@ -755,6 +753,11 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
     if (game_state->at_menu)
       break;
 
+    int8_t *turn_id = &client_state.turn_id;
+
+    if (!starting_turn)
+      starting_turn = &game_state->player[*turn_id];
+
     // For cases when the client who was designated as starting_turn disconnects
     if (!starting_turn->is_connected) {
       starting_turn = get_next_player(players_array, starting_turn->id);
@@ -764,7 +767,7 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
       }
     }
 
-    turn = &game_state->player[game_state->turn_id];
+    turn = &game_state->player[*turn_id];
     // printf("turn id: %d\n", turn->id);
 
     if (strcmp(client_state.server_status_str, status_msgs[SIZEOF_STATUS_MSGS - 1]) != 0) {
@@ -849,20 +852,6 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
         render_card(&card_context[player_ptr->id][card_n], font->fonts[FONT_CARD],
                     player_ptr->id == my_id, client_state.do_exchange_wilds);
 
-        if (!cards_dealt && !card_context[player_ptr->id][card_n].is_null &&
-            game_state->player[my_id].in) {
-          Uint32 start = SDL_GetTicks();
-          while (SDL_GetTicks() - start < CARD_DEAL_DELAY) {
-            SDL_Event e;
-            while (SDL_PollEvent(&e)) {
-              if (e.type == SDL_QUIT)
-                running = false;
-            }
-            SDL_Delay(16);
-          }
-          SDL_RenderPresent(sdl_context->renderer);
-          // ma_sound_start(&sound_context->sounds[SND_CARD_DEALT].sound);
-        }
         player_ptr = get_next_connected_client(players_array, player_ptr->id);
       } while (player_ptr != starting_turn);
     }
@@ -874,20 +863,24 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
       client_state.play_coin_sound = false;
     }
 
-    bool my_turn = game_state->turn_id == my_id;
-    if (!my_turn)
-      turn_switch = false;
-    if (my_turn && !turn_switch) {
-      if (player_config->turn_notify)
-        ma_sound_start(&sound_context->sounds[SND_MY_TURN].sound);
-      turn_switch = true;
-    }
+    bool my_turn = *turn_id == my_id;
+    if (client_state.turn_switch) {
+      client_state.timer_start = SDL_GetTicks();
 
-    //// printf("%d\n", __LINE__);
-    // printf("game_state->total_bets_plus_raises: %d\n",
-    // game_state->total_bets_plus_raises == 0 && !turn->has_checked);
-    // printf("turn->has_checked: %s, turn->id: %d, my_id: %d\n\n",
-    // turn->has_checked ? "true" : "false", turn->id, my_id);
+      // Handle timeout: If there was no action by the player, one of these
+      // may be set to true
+      client_state.bet_check_fold = false;
+      client_state.call_raise_fold = false;
+      client_state.do_discard_draw = false;
+      action_button[DISCARD].enabled = false;
+      client_state.do_exchange_wilds = false;
+
+      if (my_turn) {
+        if (player_config->turn_notify)
+          ma_sound_start(&sound_context->sounds[SND_MY_TURN].sound);
+      }
+      client_state.turn_switch = false;
+    }
 
     if (game_state->winner_declared) {
       player_ptr = starting_turn;
@@ -918,13 +911,6 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
       }
 
       if (client_state.do_discard_draw) {
-        // If this condition is true, that means they didn't discard before
-        // the timer ran out and the server changed the turn id
-        if (game_state->turn_id != my_id) {
-          client_state.do_discard_draw = false;
-          continue;
-        }
-
         for (int i = 0; i < MAX_HAND_SIZE; i++)
           if (turn->hand.card[i].face_val == DH_CARD_ACE) {
             client_state.has_ace = true;
@@ -943,13 +929,6 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
         }
         render_button(&action_button[DISCARD]);
       } else if (client_state.do_exchange_wilds) {
-        // If this condition is true, that means they didn't click submit before
-        // the timer ran out and the server changed the turn id
-        if (game_state->turn_id != my_id) {
-          client_state.do_exchange_wilds = false;
-          continue;
-        }
-
         action_button[EXCHANGE].enabled = true;
         action_button[EXCHANGE].rect.x = x_begin_action_button;
         if (action_button[EXCHANGE].enabled) {
@@ -960,9 +939,9 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
                                         action_button[EXCHANGE].rect.y + card_area.h, 0, 0});
         }
         render_button(&action_button[EXCHANGE]);
-      } else if (game_state->turn_id == my_id && !client_state.cards_sent) {
+      } else if (client_state.bet_check_fold || client_state.call_raise_fold) {
         int x_offset = x_begin_action_button;
-        if (game_state->total_bets_plus_raises == 0 && !turn->has_checked) {
+        if (client_state.bet_check_fold) {
           action_button[BET].rect.x = x_offset;
           render_button(&action_button[BET]);
           x_offset = action_button[BET].rect.x + action_button[BET].rect.w + BUTTON_X_SPACING;
@@ -970,7 +949,7 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
           action_button[CHECK].rect.x = x_offset;
           render_button(&action_button[CHECK]);
           x_offset = action_button[CHECK].rect.x + action_button[CHECK].rect.w + BUTTON_X_SPACING;
-        } else if (game_state->player[my_id].total_paid != game_state->total_bets_plus_raises) {
+        } else if (client_state.call_raise_fold) {
           action_button[CALL].rect.x = x_offset;
           render_button(&action_button[CALL]);
           x_offset = action_button[CALL].rect.x + action_button[CALL].rect.w + BUTTON_X_SPACING;
@@ -982,13 +961,16 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
         }
         action_button[FOLD].rect.x = x_offset;
         render_button(&action_button[FOLD]);
-        for (size_t i = 0; i < n_bet_amounts; i++)
-          render_button(&amount_button[i]);
-      } else {
+
+        // The amount buttons won't be shown if this is true (max raises were reached
+        // if the RAISE button is not active).
+        if (client_state.call_raise_fold && action_button[RAISE].active) {
+          for (size_t i = 0; i < n_bet_amounts; i++)
+            render_button(&amount_button[i]);
+        }
       }
     }
 
-    cards_dealt = true;
     char buffer[128];
     snprintf(buffer, sizeof(buffer), "%d", game_state->pot);
     SDL_Color black = {0, 0, 0, 255};
@@ -1156,42 +1138,42 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
                  (event.key.keysym.sym == SDLK_RETURN && event.key.keysym.mod & KMOD_ALT)) {
         toggle_fullscreen(sdl_context->window);
       } else if (event.type == SDL_MOUSEBUTTONDOWN || event.type == SDL_KEYDOWN) {
-        if (game_state->turn_id == my_id && !client_state.do_discard_draw &&
-            !client_state.do_exchange_wilds) {
-          if ((game_state->total_bets_plus_raises == 0 && !turn->has_checked) ||
-              game_state->player[my_id].total_paid != game_state->total_bets_plus_raises) {
+        if (my_turn && !client_state.do_discard_draw && !client_state.do_exchange_wilds) {
+          if (client_state.bet_check_fold || client_state.call_raise_fold) {
             if (SDL_PointInRect(&mouse_pos, &action_button[FOLD].rect) ||
                 event.key.keysym.sym == SDLK_f) {
               verbose_puts("folding");
-              if (send_player_action(sock, ACTION_FOLD, 0) != 0)
+              if (send_player_action(&client_state, sock, ACTION_FOLD, 0) != 0)
                 fprintf(stderr, "Failed to fold\n");
             }
           }
-          if (game_state->total_bets_plus_raises == 0 && !turn->has_checked) {
+          if (client_state.bet_check_fold) {
             // TODO: use existing array (or modify it) to loop through each action
             if (SDL_PointInRect(&mouse_pos, &action_button[BET].rect) ||
                 event.key.keysym.sym == SDLK_b) {
               verbose_puts("sending bet");
-              if (send_player_action(sock, ACTION_BET, client_state.selected_amount) != 0)
+              if (send_player_action(&client_state, sock, ACTION_BET,
+                                     client_state.selected_amount) != 0)
                 fprintf(stderr, "Failed to send bet\n");
             } else if (SDL_PointInRect(&mouse_pos, &action_button[CHECK].rect) ||
                        event.key.keysym.sym == SDLK_c) {
               verbose_puts("checking");
-              if (send_player_action(sock, ACTION_CHECK, 0) != 0)
+              if (send_player_action(&client_state, sock, ACTION_CHECK, 0) != 0)
                 fprintf(stderr, "Failed to check\n");
             }
-          } else if (game_state->player[my_id].total_paid != game_state->total_bets_plus_raises) {
+          } else if (client_state.call_raise_fold) {
             if (action_button[RAISE].active &&
                 (SDL_PointInRect(&mouse_pos, &action_button[RAISE].rect) ||
                  event.key.keysym.sym == SDLK_r)) {
-              if (send_player_action(sock, ACTION_RAISE, client_state.selected_amount) == 0)
+              if (send_player_action(&client_state, sock, ACTION_RAISE,
+                                     client_state.selected_amount) == 0)
                 verbose_puts("raising");
               else
                 fputs("Failed to raise\n", stderr);
             } else if (SDL_PointInRect(&mouse_pos, &action_button[CALL].rect) ||
                        event.key.keysym.sym == SDLK_c) {
               verbose_puts("calling");
-              if (send_player_action(sock, ACTION_CALL, 0) != 0)
+              if (send_player_action(&client_state, sock, ACTION_CALL, 0) != 0)
                 fprintf(stderr, "Failed to call\n");
             }
           }
@@ -1214,7 +1196,6 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
 
           // Reset the flag that's used to indicate to the client it's their turn to draw
           client_state.do_discard_draw = false;
-          client_state.cards_sent = true;
 
           if (send_discards_request_new_cards(sock, discard_indices, discard_count) != 0)
             fprintf(stderr, "Failed to send discards\n");
@@ -1330,9 +1311,9 @@ SocketContext_t get_socket_context_and_run_client(PlayerConfig_t *player_config,
     GameSettings_t game_settings = {0};
     ClientState_t client_state = {0};
     char *nick = player_config->nick;
-    size_t len = strlen(nick) + 1;
-    int32_t net_len = htonl(len);
-    send_all_tcp(sock, &net_len, sizeof(int32_t));
+    uint16_t len = strlen(nick) + 1;
+    uint16_t net_len = SDL_SwapBE16(len);
+    send_all_tcp(sock, &net_len, sizeof(net_len));
     if (send_all_tcp(sock, player_config->nick, len) != 0)
       fprintf(stderr, "Failed to send player nick to server\n");
 

@@ -57,11 +57,7 @@ static void remove_disconnected_player(ArgsBroadcastGameState_t *args, const int
 
 static bool handle_disconnections(ArgsBroadcastGameState_t *args);
 
-static void init_new_round(GameState_t *game_state);
-
 static uint8_t count_active_clients(const bool *slot_taken);
-
-static void broadcast_start_action_timer_msg(const ArgsBroadcastGameState_t *args);
 
 typedef enum { LOOP_BREAK, LOOP_CONTINUE, LOOP_OK, LOOP_ERROR } ELoop_t;
 static ELoop_t register_new_client(ArgsBroadcastGameState_t *args);
@@ -88,9 +84,7 @@ ServerConfig_t init_game_state(GameState_t *game_state, Path_t *path, CliArgs_t 
         .is_connected = false,
         .coins = config.starting_coins,
         .in = false,
-        .total_paid = 0,
         .winner = false,
-        .has_checked = false,
     };
     snprintf(game_state->player[i].nick, sizeof game_state->player[i].nick, "Player %d", i);
   }
@@ -98,7 +92,6 @@ ServerConfig_t init_game_state(GameState_t *game_state, Path_t *path, CliArgs_t 
   game_state->dealer_id = 0;
   game_state->at_menu = true;
   game_state->player_count = 0;
-  game_state->total_bets_plus_raises = 0;
   game_state->raises_remaining = 0;
   game_state->winner_declared = false;
   game_state->deuces_wild = false;
@@ -123,7 +116,7 @@ static int send_new_hand(TCPsocket sock, const POKEVAL_Hand_7 *hand, uint8_t han
 
   const size_t card_bytes = hand_size * 8;        // each card is 8 bytes: 2 × 4-byte ints
   const size_t payload_size = 2 + 1 + card_bytes; // opcode + hand_size + cards
-  const uint32_t total_size = htonl(payload_size);
+  const uint32_t total_size = SDL_SwapBE32(payload_size);
 
   uint8_t buffer[4 + payload_size];
   memcpy(buffer, &total_size, 4); // size prefix
@@ -134,10 +127,10 @@ static int send_new_hand(TCPsocket sock, const POKEVAL_Hand_7 *hand, uint8_t han
 
   // Serialize each card (face_val and suit as 4-byte integers)
   for (uint8_t i = 0; i < hand_size; ++i) {
-    uint32_t fv = htonl(hand->card[i].face_val);
-    uint32_t s = htonl(hand->card[i].suit);
-    memcpy(&buffer[7 + i * 8], &fv, 4);
-    memcpy(&buffer[7 + i * 8 + 4], &s, 4);
+    int8_t fv = hand->card[i].face_val;
+    int8_t s = hand->card[i].suit;
+    memcpy(&buffer[7 + i * 2], &fv, sizeof(fv));   // writes 1 byte
+    memcpy(&buffer[7 + i * 2 + 1], &s, sizeof(s)); // writes 1 byte
   }
 
   return send_all_tcp(sock, buffer, 4 + payload_size);
@@ -220,7 +213,7 @@ static void broadcast_game_state(ArgsBroadcastGameState_t *args) {
              sizeof(POKEVAL_Hand_7));
     }
 
-    size_t size = 0;
+    uint32_t size = 0;
     uint8_t *data = serialize_game_state(args->game_state, &size);
     if (!data)
       return;
@@ -228,7 +221,7 @@ static void broadcast_game_state(ArgsBroadcastGameState_t *args) {
     if (!args->game_state->winner_declared || args->game_state->player_count == 1)
       memcpy(&args->game_state->player[i].hand, &hand_tmp, sizeof(POKEVAL_Hand_7));
 
-    uint32_t size_net = htonl(size);
+    uint32_t size_net = SDL_SwapBE32(size);
 
     // fprintf(stderr, "sending to %d\n", i);
     if (send_with_retries(args->clients[i], &size_net, sizeof(size_net)) == -1 ||
@@ -246,7 +239,7 @@ static void send_game_settings(ArgsBroadcastGameState_t *args, TCPsocket sock) {
   if (!data)
     return;
 
-  uint32_t size_net = htonl(size);
+  uint32_t size_net = SDL_SwapBE32(size);
 
   // fprintf(stderr, "sending to %d\n", i);
   if (send_with_retries(sock, &size_net, sizeof(size_net)) == -1 ||
@@ -259,16 +252,16 @@ static void send_game_settings(ArgsBroadcastGameState_t *args, TCPsocket sock) {
 
 int send_status_message(TCPsocket sock, const char *msg) {
   size_t msg_len = strlen(msg);
-  if (msg_len > 100)
-    msg_len = 100;
+  if (msg_len > LEN_STATUS_STR)
+    msg_len = LEN_STATUS_STR;
 
-  uint32_t size = htonl(2 + msg_len); // payload: 2-byte opcode + N-byte msg
-  uint8_t buffer[4 + 2 + 100];        // max: 4 bytes (size) + 2 (opcode) + 100 (msg)
+  uint32_t size = SDL_SwapBE32(2 + msg_len); // payload: 2-byte opcode + N-byte msg
+  uint8_t buffer[4 + 2 + LEN_STATUS_STR];    // max: 4 bytes (size) + 2 (opcode) + 100 (msg)
 
-  memcpy(buffer, &size, 4);
+  memcpy(buffer, &size, sizeof(size));
 
-  buffer[4] = (MSG_STATUS_MESSAGE >> 8) & 0xFF;
-  buffer[5] = MSG_STATUS_MESSAGE & 0xFF;
+  uint16_t opcode_be = SDL_SwapBE16(MSG_STATUS_MESSAGE);
+  memcpy(&buffer[4], &opcode_be, sizeof(opcode_be));
 
   memcpy(&buffer[6], msg, msg_len);
 
@@ -279,7 +272,7 @@ int send_status_message(TCPsocket sock, const char *msg) {
 static void broadcast_status_message(const ArgsBroadcastGameState_t *args, const char *msg) {
   if (count_active_clients(args->slot_taken) == 0)
     return;
-  int8_t pl_idx = args->game_state->turn_id;
+  int8_t pl_idx = args->turn_id;
   Player_t *recipient = &args->game_state->player[pl_idx];
   if (!recipient->is_connected)
     recipient = get_next_connected_client(args->game_state->player, pl_idx);
@@ -297,6 +290,35 @@ static void broadcast_status_message(const ArgsBroadcastGameState_t *args, const
 
     recipient = get_next_connected_client(args->game_state->player, pl_idx);
   } while (recipient && recipient != start);
+}
+
+static int send_turn_id(TCPsocket sock, const int8_t turn_id) {
+  uint8_t buffer[7];
+
+  uint32_t size = SDL_SwapBE32(3); // payload = 2-byte opcode + 1-byte turn_id
+  memcpy(buffer, &size, sizeof(size));
+
+  uint16_t opcode_be = SDL_SwapBE16(MSG_TURN_ID);
+  memcpy(&buffer[4], &opcode_be, sizeof(opcode_be));
+
+  buffer[6] = (uint8_t)turn_id;
+
+  return send_all_tcp(sock, buffer, sizeof(buffer));
+}
+
+void broadcast_turn_id(const ArgsBroadcastGameState_t *args) {
+  for (int i = 0; i < MAX_CLIENTS; i++) {
+    if (!args->game_state->player->is_connected)
+      continue;
+
+    TCPsocket sock = args->clients[i];
+    if (!sock)
+      continue;
+
+    if (send_turn_id(sock, args->turn_id) < 0) {
+      fprintf(stderr, "[broadcast_turn_id] Failed to send to client %d\n", i);
+    }
+  }
 }
 
 static int8_t recv_game_select(TCPsocket sock, uint8_t *out_game_type, bool *deuces_wild) {
@@ -336,72 +358,26 @@ static int recv_player_action(TCPsocket sock, PlayerActionMsg_t *out_action) {
   return n_bytes;
 }
 
-static int send_draw_prompt(TCPsocket sock) {
-  uint8_t buffer[6]; // 4 bytes size + 2 bytes opcode
+static int send_opcode(TCPsocket sock, const uint16_t opcode) {
+  uint8_t buffer[6];
 
-  uint32_t size = htonl(2); // payload is 2 bytes
-  memcpy(buffer, &size, 4);
+  uint32_t size = SDL_SwapBE32(2);
+  memcpy(buffer, &size, sizeof(size));
 
-  buffer[4] = (MSG_DRAW_PROMPT >> 8) & 0xFF;
-  buffer[5] = MSG_DRAW_PROMPT & 0xFF;
+  uint16_t opcode_be = SDL_SwapBE16(opcode);
+  memcpy(&buffer[4], &opcode_be, sizeof(opcode_be));
 
   int sent = send_all_tcp(sock, buffer, sizeof(buffer));
-  printf("Sent draw prompt: %d bytes\n", sent);
+  if (sent == 0)
+    verbose_puts("Sent opcode");
   return sent;
 }
 
-static int send_wild_prompt(TCPsocket sock) {
-  uint8_t buffer[6]; // 4 bytes size + 2 bytes opcode
-
-  uint32_t size = htonl(2); // payload is 2 bytes
-  memcpy(buffer, &size, 4);
-
-  buffer[4] = (MSG_WILD_REPLACEMENT >> 8) & 0xFF;
-  buffer[5] = MSG_WILD_REPLACEMENT & 0xFF;
-
-  int sent = send_all_tcp(sock, buffer, sizeof(buffer));
-  printf("Sent wild prompt: %d bytes\n", sent);
-  return sent;
-}
-
-static int send_start_action_timeout_msg(TCPsocket sock) {
-  uint8_t buffer[6]; // 4 bytes size + 2 bytes opcode
-
-  uint32_t size = htonl(2); // payload is 2 bytes
-  memcpy(buffer, &size, 4);
-
-  buffer[4] = (MSG_START_ACTION_TIMER >> 8) & 0xFF;
-  buffer[5] = MSG_START_ACTION_TIMER & 0xFF;
-
-  int sent = send_all_tcp(sock, buffer, sizeof(buffer));
-  return sent;
-}
-
-static void broadcast_start_action_timer_msg(const ArgsBroadcastGameState_t *args) {
-  int8_t pl_idx = args->game_state->turn_id;
-  Player_t *recipient = &args->game_state->player[pl_idx];
-  if (!recipient->is_connected)
-    recipient = get_next_connected_client(args->game_state->player, pl_idx);
-  Player_t *start = recipient;
-
-  do {
-    pl_idx = recipient->id;
-    TCPsocket sock = args->clients[pl_idx];
-    if (!sock)
-      continue;
-
-    if (send_start_action_timeout_msg(sock) < 0) {
-      fprintf(stderr, "[broadcast_start_action_timer_message] Failed to send to client %d\n",
-              pl_idx);
-    }
-    recipient = get_next_connected_client(args->game_state->player, pl_idx);
-  } while (recipient && recipient != start);
-}
-
-static void server_handle_call(GameState_t *game_state, const uint8_t turn_id) {
-  uint32_t owed = game_state->total_bets_plus_raises - game_state->player[turn_id].total_paid;
+static void server_handle_call(GameState_t *game_state, uint32_t *total_paid, const uint8_t turn_id,
+                               uint32_t *total_bets_plus_raises) {
+  uint32_t owed = *total_bets_plus_raises - *total_paid;
   game_state->player[turn_id].coins -= owed;
-  game_state->player[turn_id].total_paid += owed;
+  *total_paid += owed;
   game_state->pot += owed;
 }
 
@@ -417,31 +393,31 @@ static void server_handle_ante(GameState_t *game_state, const uint32_t amount) {
   } while (turn && turn != dealer);
 }
 
-static void server_handle_bet(GameState_t *game_state, const uint8_t turn_id,
-                              const uint32_t amount) {
+static void server_handle_bet(GameState_t *game_state, uint32_t *total_paid, const uint8_t turn_id,
+                              const uint32_t amount, uint32_t *total_bets_plus_raises) {
   game_state->player[turn_id].coins -= amount;
-  game_state->player[turn_id].total_paid += amount;
-  game_state->total_bets_plus_raises += amount;
+  *total_paid += amount;
+  *total_bets_plus_raises += amount;
   game_state->pot += amount;
 }
 
 // On Ubuntu 24.04 arm64: error: conflicting types for ‘raise’; so I've given
 // this a more unique name now
-static void server_handle_raise(GameState_t *game_state, const uint8_t turn_id,
-                                const uint32_t amount) {
-  server_handle_call(game_state, turn_id);
-  server_handle_bet(game_state, turn_id, amount);
+static void server_handle_raise(GameState_t *game_state, uint32_t *total_paid,
+                                const uint8_t turn_id, const uint32_t amount,
+                                uint32_t *total_bets_plus_raises) {
+  server_handle_call(game_state, total_paid, turn_id, total_bets_plus_raises);
+  server_handle_bet(game_state, total_paid, turn_id, amount, total_bets_plus_raises);
   game_state->raises_remaining--;
 }
 
 static ELoop_t handle_draw(ArgsBroadcastGameState_t *args, TCPsocket sock, const int id,
                            DH_Deck *deck) {
   puts("sending draw prompt");
-  if (send_draw_prompt(sock) != 0) {
+  if (send_opcode(sock, MSG_DRAW_PROMPT) != 0) {
     fputs("Failed to send draw prompt\n", stderr);
     return LOOP_ERROR;
   }
-  broadcast_start_action_timer_msg(args);
 
   DrawRequestMsg_t req;
   uint8_t buffer[7] = {0};
@@ -506,12 +482,10 @@ static ELoop_t handle_draw(ArgsBroadcastGameState_t *args, TCPsocket sock, const
 
 static ELoop_t handle_wild_cards(ArgsBroadcastGameState_t *args, TCPsocket sock, const int id) {
   puts("sending submit wild prompt");
-  if (send_wild_prompt(sock) != 0) {
+  if (send_opcode(sock, MSG_WILD_REPLACEMENT) != 0) {
     fputs("Failed to send submit wild prompt\n", stderr);
     return LOOP_ERROR;
   }
-
-  broadcast_start_action_timer_msg(args);
 
   const uint32_t wait_ms = args->game_settings->action_timeout_ms;
   const uint32_t start = SDL_GetTicks();
@@ -569,8 +543,7 @@ static ELoop_t handle_wild_cards(ArgsBroadcastGameState_t *args, TCPsocket sock,
   return LOOP_OK;
 }
 
-static EPlayerAction_t handle_check(Player_t *turn, PlayerActionMsg_t *action) {
-  turn->has_checked = true;
+static EPlayerAction_t handle_check(PlayerActionMsg_t *action) {
   action->str = _("checked");
   return ACTION_CHECK;
 }
@@ -585,8 +558,8 @@ static EPlayerAction_t handle_fold(GameState_t *game_state, Player_t *turn,
   return ACTION_FOLD;
 }
 
-static bool has_paid_all_bets(const GameState_t *game_state, const Player_t *player) {
-  return player->total_paid == game_state->total_bets_plus_raises;
+static bool has_paid_all_bets(const uint16_t total_paid, const uint32_t total_bets_plus_raises) {
+  return total_paid == total_bets_plus_raises;
 }
 
 static void determine_winner(ArgsBroadcastGameState_t *args, RoundResults *results) {
@@ -603,7 +576,7 @@ static void determine_winner(ArgsBroadcastGameState_t *args, RoundResults *resul
       if (ptr->in) {
         for (int c = 0; c < MAX_HAND_SIZE; c++) {
           if (args->real_hand->player[ptr->id].card[c].face_val == DH_CARD_TWO) {
-            args->game_state->turn_id = ptr->id;
+            args->turn_id = ptr->id;
             broadcast_game_state(args);
             w = handle_wild_cards(args, args->clients[ptr->id], ptr->id);
             break;
@@ -708,19 +681,25 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args) {
 
   Player_t *round_starting_turn = *args->starting_turn;
   turn = round_starting_turn;
+  uint32_t total_bets_plus_raises = 0;
+  uint32_t player_total_paid[MAX_PLAYERS] = {0};
 
   do {
-    args->game_state->turn_id = turn->id;
+    args->turn_id = turn->id;
+    broadcast_turn_id(args);
     broadcast_game_state(args);
-    broadcast_start_action_timer_msg(args);
 
     uint32_t wait_ms = args->game_settings->action_timeout_ms;
     uint32_t start = SDL_GetTicks();
     PlayerActionMsg_t action = {0};
 
+    uint16_t opcode = total_bets_plus_raises == 0 ? MSG_BET_CHECK_FOLD : MSG_CALL_RAISE_FOLD;
+    if (send_opcode(args->clients[turn->id], opcode) != 0)
+      fputs("Error sending action prompt", stderr);
+
     while (SDL_GetTicks() - start < wait_ms) {
       register_new_client(args);
-      // fprintf(stderr, "Waiting for action from %d\n", args->game_state->turn_id);
+      // fprintf(stderr, "Waiting for action from %d\n", args->turn_id);
       int n_ready = SDLNet_CheckSockets(args->socket_set, 100); // wait up to 100ms
       if (n_ready > 0) {
         // If this socket is ready (the player who's turn it is), they either
@@ -729,13 +708,14 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args) {
           // puts("socket ready");
           // char tmp[sizeof args->game_state->status_str];
           if (recv_player_action(args->clients[turn->id], &action) > 0) {
-            if (args->game_state->total_bets_plus_raises == 0) {
+            if (opcode == MSG_BET_CHECK_FOLD) {
               switch (action.action) {
               case ACTION_CHECK:
-                handle_check(turn, &action);
+                handle_check(&action);
                 break;
               case ACTION_BET:
-                server_handle_bet(args->game_state, turn->id, action.amount);
+                server_handle_bet(args->game_state, &player_total_paid[turn->id], turn->id,
+                                  action.amount, &total_bets_plus_raises);
                 action.str = _("bet ");
                 break;
               case ACTION_FOLD:
@@ -748,12 +728,14 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args) {
             } else {
               switch (action.action) {
               case ACTION_CALL:
-                server_handle_call(args->game_state, turn->id);
+                server_handle_call(args->game_state, &player_total_paid[turn->id], turn->id,
+                                   &total_bets_plus_raises);
                 action.str = _("called");
                 break;
               case ACTION_RAISE:
                 if (args->game_state->raises_remaining > 0) {
-                  server_handle_raise(args->game_state, turn->id, action.amount);
+                  server_handle_raise(args->game_state, &player_total_paid[turn->id], turn->id,
+                                      action.amount, &total_bets_plus_raises);
                   action.str = _("raised ");
                 } else
                   fputs("Raise received; however, max raises has been reached. The client should "
@@ -771,7 +753,7 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args) {
               }
             }
           } else {
-            remove_disconnected_player(args, args->game_state->turn_id);
+            remove_disconnected_player(args, args->turn_id);
             break;
           }
           break;
@@ -790,10 +772,10 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args) {
     if (args->game_state->player_count > 1) {
       if (turn->is_connected) {
         if (action.action == 0) {
-          if (!has_paid_all_bets(args->game_state, turn)) {
+          if (!has_paid_all_bets(player_total_paid[turn->id], total_bets_plus_raises)) {
             action.action = handle_fold(args->game_state, turn, args->starting_turn, &action);
-          } else if (args->game_state->total_bets_plus_raises == 0) {
-            action.action = handle_check(turn, &action);
+          } else if (total_bets_plus_raises == 0) {
+            action.action = handle_check(&action);
           }
         }
 
@@ -814,10 +796,10 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args) {
       }
 
       turn = get_next_player(args->game_state->player, turn->id);
-      if (args->game_state->total_bets_plus_raises == 0) {
+      if (total_bets_plus_raises == 0) {
         if (turn == round_starting_turn)
           break;
-      } else if (has_paid_all_bets(args->game_state, turn)) {
+      } else if (has_paid_all_bets(player_total_paid[turn->id], total_bets_plus_raises)) {
         break; // Everyone either checked or paid all bets and raises
       }
 
@@ -834,7 +816,6 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args) {
     }
   } while (true);
 
-  init_new_round(args->game_state);
   return results;
 }
 
@@ -844,20 +825,8 @@ static void reset_players(GameState_t *game_state) {
     if (!player->is_connected)
       continue;
     player->in = true;
-    player->total_paid = 0;
     player->winner = false;
-    player->has_checked = false;
     memset(&player->hand, 0, sizeof(player->hand));
-  }
-}
-
-static void init_new_round(GameState_t *game_state) {
-  game_state->total_bets_plus_raises = 0;
-  for (int i = 0; i < MAX_PLAYERS; i++) {
-    if (!game_state->player[i].is_connected)
-      continue;
-    game_state->player[i].total_paid = 0;
-    game_state->player[i].has_checked = false;
   }
 }
 
@@ -875,9 +844,7 @@ static void remove_disconnected_player(ArgsBroadcastGameState_t *args, const int
 
   // Reset player info
   p->coins = args->config->starting_coins;
-  p->total_paid = 0;
   p->winner = false;
-  p->has_checked = false;
   p->in = false;
   p->is_connected = false;
 
@@ -963,18 +930,14 @@ void game_five_card_draw(GAME_ARGS) {
     if (results.n_winners > 0 || i == choice->n_draws)
       break;
 
+    broadcast_game_state(args);
     turn = *args->starting_turn;
 
     do {
-      args->game_state->turn_id = turn->id;
+      args->turn_id = turn->id;
       fprintf(stderr, "turn->id: %d\n", turn->id);
 
-      // The player's new cards are sent to them in handle_draw(), but
-      // the clients use game_state.turn_id to decide which buttons to display.
-      // It would be better if that behavior were changed so that broadcasting the
-      // entire game state wasn't required here (the only info that needs updating
-      // at this point is turn_id).
-      broadcast_game_state(args);
+      broadcast_turn_id(args);
 
       ELoop_t d = handle_draw(args, args->clients[turn->id], turn->id, deck);
       if (d == LOOP_BREAK) {
@@ -1072,7 +1035,6 @@ static void play_game(ArgsBroadcastGameState_t *args, DH_Deck *deck) {
   args->game_state->winner_declared = false;
   args->game_state->player_count = count_active_clients(args->slot_taken);
   fprintf(stderr, "player count: %d\n", args->game_state->player_count);
-  args->game_state->total_bets_plus_raises = 0;
   args->game_state->winner_declared = false;
 
   Player_t *turn = get_next_player(players_array, args->game_state->dealer_id);
@@ -1239,7 +1201,7 @@ static int recv_and_validate_protocol_header(TCPsocket sock) {
     return -1;
   }
 
-  uint32_t version = ntohl(hdr.version);
+  uint32_t version = SDL_SwapBE16(hdr.version);
   if (version != GAME_PROTOCOL_VERSION) {
     fprintf(stderr, "Unsupported protocol version: %u\n", version);
     return -1;
@@ -1303,10 +1265,10 @@ static ELoop_t register_new_client(ArgsBroadcastGameState_t *args) {
 
       if (!args->cli_args->test_mode) {
         Player_t *player = &(args->game_state->player)[slot];
-        int32_t net_len;
+        int16_t net_len;
 
         // Step 1: Recv the size first (must happen before interpreting it)
-        if (recv_all_tcp(new_client, &net_len, sizeof(int32_t)) <= 0) {
+        if (recv_all_tcp(new_client, &net_len, sizeof(net_len)) <= 0) {
           // Handle error: client disconnected or invalid
           fprintf(stderr, "Failed to receive nickname length.\n");
           do_socket_cleanup(new_client, args->socket_set, args->slot_taken, slot, player);
@@ -1314,11 +1276,11 @@ static ELoop_t register_new_client(ArgsBroadcastGameState_t *args) {
         }
 
         // Step 2: Now convert
-        size_t len = ntohl(net_len);
+        uint16_t len = SDL_SwapBE16(net_len);
 
         // Step 3: Validate length
         if (len == 0 || len >= sizeof(player->nick)) {
-          fprintf(stderr, "Invalid nickname length: %zu\n", len);
+          fprintf(stderr, "Invalid nickname length: %d\n", len);
           do_socket_cleanup(new_client, args->socket_set, args->slot_taken, slot, player);
           return LOOP_CONTINUE;
         }
@@ -1435,6 +1397,7 @@ int run_server(CliArgs_t *cli_args, Path_t *path) {
         .config = &config,
         .game_type = 0,
         .starting_turn = NULL,
+        .turn_id = 0,
     };
 
     uint8_t active_clients = count_active_clients(slot_taken);

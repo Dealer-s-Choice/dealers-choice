@@ -12,31 +12,34 @@ _RECEIVE_GAME_STATE()
 _RECEIVE_GAME_STATE()
 _RECEIVE_GAME_STATE()
 
-int8_t *turn_id = &game_state[0].turn_id;
+int8_t *turn_id = &client_state[0].turn_id;
 
 SDL_Delay(n_ms);
 
 if (game == 0) {
 
   assert(*turn_id == 1);
-  assert(send_player_action(socket_context[*turn_id].sock, ACTION_CHECK, 0) == 0);
+  assert(send_player_action(client_state, socket_context[*turn_id].sock, ACTION_CHECK, 0) == 0);
 
+  _RECEIVE_GAME_STATE()
   _RECEIVE_GAME_STATE()
   _RECEIVE_GAME_STATE()
   _RECEIVE_GAME_STATE()
 
   assert(*turn_id == 2);
-  assert(send_player_action(socket_context[*turn_id].sock, ACTION_CHECK, 0) == 0);
+  assert(send_player_action(client_state, socket_context[*turn_id].sock, ACTION_CHECK, 0) == 0);
   SDL_Delay(n_ms);
 
+  _RECEIVE_GAME_STATE()
   _RECEIVE_GAME_STATE()
   _RECEIVE_GAME_STATE()
   _RECEIVE_GAME_STATE()
 
   assert(*turn_id == 0);
-  assert(send_player_action(socket_context[*turn_id].sock, ACTION_CHECK, 0) == 0);
+  assert(send_player_action(client_state, socket_context[*turn_id].sock, ACTION_CHECK, 0) == 0);
   SDL_Delay(n_ms);
 
+  _RECEIVE_GAME_STATE()
   _RECEIVE_GAME_STATE()
   _RECEIVE_GAME_STATE()
   _RECEIVE_GAME_STATE()
@@ -47,15 +50,16 @@ if (game == 0) {
 } else {
 
   assert(*turn_id == 2);
-  assert(send_player_action(socket_context[*turn_id].sock, ACTION_CHECK, 0) == 0);
+  assert(send_player_action(client_state, socket_context[*turn_id].sock, ACTION_CHECK, 0) == 0);
   SDL_Delay(n_ms);
 
   _RECEIVE_GAME_STATE()
   _RECEIVE_GAME_STATE()
   _RECEIVE_GAME_STATE()
+  _RECEIVE_GAME_STATE()
 
   assert(*turn_id == 0);
-  assert(send_player_action(socket_context[*turn_id].sock, ACTION_BET, 500) == 0);
+  assert(send_player_action(client_state, socket_context[*turn_id].sock, ACTION_BET, 500) == 0);
   SDL_Delay(n_ms);
 
   for (i = 0; i < N_PLAYERS; i++) {
@@ -66,17 +70,19 @@ if (game == 0) {
   _RECEIVE_GAME_STATE()
   _RECEIVE_GAME_STATE()
   _RECEIVE_GAME_STATE()
+  _RECEIVE_GAME_STATE()
 
   assert(*turn_id == 1);
-  assert(send_player_action(socket_context[*turn_id].sock, ACTION_CALL, 0) == 0);
+  assert(send_player_action(client_state, socket_context[*turn_id].sock, ACTION_CALL, 0) == 0);
   SDL_Delay(n_ms);
 
   _RECEIVE_GAME_STATE()
   _RECEIVE_GAME_STATE()
   _RECEIVE_GAME_STATE()
+  _RECEIVE_GAME_STATE()
 
   assert(*turn_id == 2);
-  assert(send_player_action(socket_context[*turn_id].sock, ACTION_CALL, 0) == 0);
+  assert(send_player_action(client_state, socket_context[*turn_id].sock, ACTION_CALL, 0) == 0);
   SDL_Delay(n_ms);
 
   _RECEIVE_GAME_STATE()

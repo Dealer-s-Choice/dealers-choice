@@ -39,9 +39,7 @@ static void fill_player_message(struct player_message_builder_t *builder, const 
   builder->msg.id = src->id;
   builder->msg.coins = src->coins;
   builder->msg.in = src->in;
-  builder->msg.total_paid = src->total_paid;
   builder->msg.winner = src->winner;
-  builder->msg.has_checked = src->has_checked;
   builder->msg.is_connected = src->is_connected;
 
   // Hand
@@ -67,9 +65,7 @@ static void fill_player_from_message(Player_t *dst, const Player *msg) {
   dst->id = msg->id;
   dst->coins = msg->coins;
   dst->in = msg->in;
-  dst->total_paid = msg->total_paid;
   dst->winner = msg->winner;
-  dst->has_checked = msg->has_checked;
   dst->is_connected = msg->is_connected;
 
   if (msg->hand) {
@@ -81,15 +77,13 @@ static void fill_player_from_message(Player_t *dst, const Player *msg) {
   }
 }
 
-uint8_t *serialize_game_state(const GameState_t *src, size_t *size_out) {
+uint8_t *serialize_game_state(const GameState_t *src, uint32_t *size_out) {
   GameState msg = GAME_STATE__INIT;
 
   // Pot
   msg.pot = src->pot;
   msg.dealer_id = src->dealer_id;
-  msg.turn_id = src->turn_id;
   msg.at_menu = src->at_menu;
-  msg.total_bets_plus_raises = src->total_bets_plus_raises;
   msg.raises_remaining = src->raises_remaining;
   msg.player_count = src->player_count;
   msg.winner_declared = src->winner_declared;
@@ -124,7 +118,7 @@ uint8_t *serialize_game_state(const GameState_t *src, size_t *size_out) {
   return buffer;
 }
 
-GameState_t deserialize_game_state(const uint8_t *data, size_t size) {
+GameState_t deserialize_game_state(const uint8_t *data, uint32_t size) {
   GameState_t result = {0};
 
   GameState *msg = game_state__unpack(NULL, size, data);
@@ -135,9 +129,7 @@ GameState_t deserialize_game_state(const uint8_t *data, size_t size) {
 
   result.pot = msg->pot;
   result.dealer_id = msg->dealer_id;
-  result.turn_id = msg->turn_id;
   result.at_menu = msg->at_menu;
-  result.total_bets_plus_raises = msg->total_bets_plus_raises;
   result.raises_remaining = msg->raises_remaining;
   result.player_count = msg->player_count;
   result.winner_declared = msg->winner_declared;
@@ -342,7 +334,7 @@ ERecvStatus_t recv_game_state(SocketContext_t *socket_context, GameState_t *game
     return RECV_ERROR;
   }
 
-  uint32_t size = ntohl(size_net);
+  uint32_t size = SDL_SwapBE32(size_net);
   if (size == 0 || size > 65536) {
     fprintf(stderr, "[recv_game_state] Invalid game state size: %u\n", size);
     return RECV_ERROR;
@@ -360,9 +352,21 @@ ERecvStatus_t recv_game_state(SocketContext_t *socket_context, GameState_t *game
     return RECV_ERROR;
   }
 
-  // fprintf(stderr, "[recv_game_state] size: %d\n", size);
-  uint16_t opcode = (buffer[0] << 8) | buffer[1];
+  uint16_t opcode_be;
+  memcpy(&opcode_be, buffer, sizeof(opcode_be));
+  uint16_t opcode = SDL_SwapBE16(opcode_be);
+  // fprintf(stderr, "opcode: %04X\n", opcode);
   switch (opcode) {
+  case MSG_TURN_ID:
+    client_state->turn_id = (int8_t)buffer[2];
+    client_state->turn_switch = true;
+    break;
+  case MSG_BET_CHECK_FOLD:
+    client_state->bet_check_fold = true;
+    break;
+  case MSG_CALL_RAISE_FOLD:
+    client_state->call_raise_fold = true;
+    break;
   case MSG_DRAW_PROMPT:
     if (size != 2) {
       fprintf(stderr, "[recv_game_state] Invalid size for MSG_DRAW_PROMPT: %u\n", size);
@@ -381,15 +385,6 @@ ERecvStatus_t recv_game_state(SocketContext_t *socket_context, GameState_t *game
     client_state->do_exchange_wilds = true;
     // client_state->n_cards_selected = 0;
     // printf("[recv_game_state] Received %u bytes, server wants wilds...\n", size);
-    break;
-
-  case MSG_START_ACTION_TIMER:
-    if (size != 2) {
-      fprintf(stderr, "[recv_game_state] Invalid size for MSG_START_ACTION_TIMER: %u\n", size);
-      break;
-    }
-    client_state->timer_start = SDL_GetTicks();
-    // printf("[recv_game_state] Received %u bytes, starting action timer\n", size);
     break;
 
   case MSG_STATUS_MESSAGE: {
@@ -416,11 +411,10 @@ ERecvStatus_t recv_game_state(SocketContext_t *socket_context, GameState_t *game
     }
 
     for (uint8_t i = 0; i < hand_size; ++i) {
-      uint32_t fv, s;
-      memcpy(&fv, &buffer[3 + i * 8], 4);
-      memcpy(&s, &buffer[3 + i * 8 + 4], 4);
-      game_state->player[id].hand.card[i].face_val = ntohl(fv);
-      game_state->player[id].hand.card[i].suit = ntohl(s);
+      int8_t fv = buffer[3 + i * 2];
+      int8_t s = buffer[3 + i * 2 + 1];
+      game_state->player[id].hand.card[i].face_val = fv;
+      game_state->player[id].hand.card[i].suit = s;
     }
 
     // printf("[recv_game_state] Received new hand with %u cards\n", hand_size);
@@ -429,9 +423,6 @@ ERecvStatus_t recv_game_state(SocketContext_t *socket_context, GameState_t *game
   default:
     // printf("[recv_game_state] Received %u bytes, deserializing...\n", size);
     *game_state = deserialize_game_state(buffer, size);
-    if (client_state->cards_sent)
-      client_state->cards_sent = false;
-    break;
   }
 
   free(buffer);
@@ -464,9 +455,9 @@ ERecvStatus_t recv_game_settings(TCPsocket client_socket, SDLNet_SocketSet socke
     return RECV_ERROR;
   }
 
-  uint32_t size = ntohl(size_net);
+  uint32_t size = SDL_SwapBE32(size_net);
   if (size == 0 || size > 65536) {
-    fprintf(stderr, "[recv_game_settings] Invalid game state size: %u\n", size);
+    fprintf(stderr, "[recv_game_settings] Invalid game settings size: %u\n", size);
     return RECV_ERROR;
   }
 
