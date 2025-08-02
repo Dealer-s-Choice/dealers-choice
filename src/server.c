@@ -57,8 +57,6 @@ static void remove_disconnected_player(ArgsBroadcastGameState_t *args, const int
 
 static bool handle_disconnections(ArgsBroadcastGameState_t *args);
 
-static void init_new_round(GameState_t *game_state);
-
 static uint8_t count_active_clients(const bool *slot_taken);
 
 typedef enum { LOOP_BREAK, LOOP_CONTINUE, LOOP_OK, LOOP_ERROR } ELoop_t;
@@ -86,7 +84,6 @@ ServerConfig_t init_game_state(GameState_t *game_state, Path_t *path, CliArgs_t 
         .is_connected = false,
         .coins = config.starting_coins,
         .in = false,
-        .total_paid = 0,
         .winner = false,
     };
     snprintf(game_state->player[i].nick, sizeof game_state->player[i].nick, "Player %d", i);
@@ -95,7 +92,6 @@ ServerConfig_t init_game_state(GameState_t *game_state, Path_t *path, CliArgs_t 
   game_state->dealer_id = 0;
   game_state->at_menu = true;
   game_state->player_count = 0;
-  game_state->total_bets_plus_raises = 0;
   game_state->raises_remaining = 0;
   game_state->winner_declared = false;
   game_state->deuces_wild = false;
@@ -320,7 +316,7 @@ void broadcast_turn_id(const ArgsBroadcastGameState_t *args) {
       continue;
 
     if (send_turn_id(sock, args->turn_id) < 0) {
-      fprintf(stderr, "[broadcast_status_message] Failed to send to client %d\n", i);
+      fprintf(stderr, "[broadcast_turn_id] Failed to send to client %d\n", i);
     }
   }
 }
@@ -377,10 +373,11 @@ static int send_opcode(TCPsocket sock, const uint16_t opcode) {
   return sent;
 }
 
-static void server_handle_call(GameState_t *game_state, const uint8_t turn_id) {
-  uint32_t owed = game_state->total_bets_plus_raises - game_state->player[turn_id].total_paid;
+static void server_handle_call(GameState_t *game_state, uint32_t *total_paid, const uint8_t turn_id,
+                               uint32_t *total_bets_plus_raises) {
+  uint32_t owed = *total_bets_plus_raises - *total_paid;
   game_state->player[turn_id].coins -= owed;
-  game_state->player[turn_id].total_paid += owed;
+  *total_paid += owed;
   game_state->pot += owed;
 }
 
@@ -396,20 +393,21 @@ static void server_handle_ante(GameState_t *game_state, const uint32_t amount) {
   } while (turn && turn != dealer);
 }
 
-static void server_handle_bet(GameState_t *game_state, const uint8_t turn_id,
-                              const uint32_t amount) {
+static void server_handle_bet(GameState_t *game_state, uint32_t *total_paid, const uint8_t turn_id,
+                              const uint32_t amount, uint32_t *total_bets_plus_raises) {
   game_state->player[turn_id].coins -= amount;
-  game_state->player[turn_id].total_paid += amount;
-  game_state->total_bets_plus_raises += amount;
+  *total_paid += amount;
+  *total_bets_plus_raises += amount;
   game_state->pot += amount;
 }
 
 // On Ubuntu 24.04 arm64: error: conflicting types for ‘raise’; so I've given
 // this a more unique name now
-static void server_handle_raise(GameState_t *game_state, const uint8_t turn_id,
-                                const uint32_t amount) {
-  server_handle_call(game_state, turn_id);
-  server_handle_bet(game_state, turn_id, amount);
+static void server_handle_raise(GameState_t *game_state, uint32_t *total_paid,
+                                const uint8_t turn_id, const uint32_t amount,
+                                uint32_t *total_bets_plus_raises) {
+  server_handle_call(game_state, total_paid, turn_id, total_bets_plus_raises);
+  server_handle_bet(game_state, total_paid, turn_id, amount, total_bets_plus_raises);
   game_state->raises_remaining--;
 }
 
@@ -560,8 +558,8 @@ static EPlayerAction_t handle_fold(GameState_t *game_state, Player_t *turn,
   return ACTION_FOLD;
 }
 
-static bool has_paid_all_bets(const GameState_t *game_state, const Player_t *player) {
-  return player->total_paid == game_state->total_bets_plus_raises;
+static bool has_paid_all_bets(const uint16_t total_paid, const uint32_t total_bets_plus_raises) {
+  return total_paid == total_bets_plus_raises;
 }
 
 static void determine_winner(ArgsBroadcastGameState_t *args, RoundResults *results) {
@@ -683,6 +681,8 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args) {
 
   Player_t *round_starting_turn = *args->starting_turn;
   turn = round_starting_turn;
+  uint32_t total_bets_plus_raises = 0;
+  uint32_t player_total_paid[MAX_PLAYERS] = {0};
 
   do {
     args->turn_id = turn->id;
@@ -693,8 +693,7 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args) {
     uint32_t start = SDL_GetTicks();
     PlayerActionMsg_t action = {0};
 
-    uint16_t opcode =
-        args->game_state->total_bets_plus_raises == 0 ? MSG_BET_CHECK_FOLD : MSG_CALL_RAISE_FOLD;
+    uint16_t opcode = total_bets_plus_raises == 0 ? MSG_BET_CHECK_FOLD : MSG_CALL_RAISE_FOLD;
     if (send_opcode(args->clients[turn->id], opcode) != 0)
       fputs("Error sending action prompt", stderr);
 
@@ -715,7 +714,8 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args) {
                 handle_check(&action);
                 break;
               case ACTION_BET:
-                server_handle_bet(args->game_state, turn->id, action.amount);
+                server_handle_bet(args->game_state, &player_total_paid[turn->id], turn->id,
+                                  action.amount, &total_bets_plus_raises);
                 action.str = _("bet ");
                 break;
               case ACTION_FOLD:
@@ -728,12 +728,14 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args) {
             } else {
               switch (action.action) {
               case ACTION_CALL:
-                server_handle_call(args->game_state, turn->id);
+                server_handle_call(args->game_state, &player_total_paid[turn->id], turn->id,
+                                   &total_bets_plus_raises);
                 action.str = _("called");
                 break;
               case ACTION_RAISE:
                 if (args->game_state->raises_remaining > 0) {
-                  server_handle_raise(args->game_state, turn->id, action.amount);
+                  server_handle_raise(args->game_state, &player_total_paid[turn->id], turn->id,
+                                      action.amount, &total_bets_plus_raises);
                   action.str = _("raised ");
                 } else
                   fputs("Raise received; however, max raises has been reached. The client should "
@@ -770,9 +772,9 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args) {
     if (args->game_state->player_count > 1) {
       if (turn->is_connected) {
         if (action.action == 0) {
-          if (!has_paid_all_bets(args->game_state, turn)) {
+          if (!has_paid_all_bets(player_total_paid[turn->id], total_bets_plus_raises)) {
             action.action = handle_fold(args->game_state, turn, args->starting_turn, &action);
-          } else if (args->game_state->total_bets_plus_raises == 0) {
+          } else if (total_bets_plus_raises == 0) {
             action.action = handle_check(&action);
           }
         }
@@ -794,10 +796,10 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args) {
       }
 
       turn = get_next_player(args->game_state->player, turn->id);
-      if (args->game_state->total_bets_plus_raises == 0) {
+      if (total_bets_plus_raises == 0) {
         if (turn == round_starting_turn)
           break;
-      } else if (has_paid_all_bets(args->game_state, turn)) {
+      } else if (has_paid_all_bets(player_total_paid[turn->id], total_bets_plus_raises)) {
         break; // Everyone either checked or paid all bets and raises
       }
 
@@ -814,7 +816,6 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args) {
     }
   } while (true);
 
-  init_new_round(args->game_state);
   return results;
 }
 
@@ -824,18 +825,8 @@ static void reset_players(GameState_t *game_state) {
     if (!player->is_connected)
       continue;
     player->in = true;
-    player->total_paid = 0;
     player->winner = false;
     memset(&player->hand, 0, sizeof(player->hand));
-  }
-}
-
-static void init_new_round(GameState_t *game_state) {
-  game_state->total_bets_plus_raises = 0;
-  for (int i = 0; i < MAX_PLAYERS; i++) {
-    if (!game_state->player[i].is_connected)
-      continue;
-    game_state->player[i].total_paid = 0;
   }
 }
 
@@ -853,7 +844,6 @@ static void remove_disconnected_player(ArgsBroadcastGameState_t *args, const int
 
   // Reset player info
   p->coins = args->config->starting_coins;
-  p->total_paid = 0;
   p->winner = false;
   p->in = false;
   p->is_connected = false;
@@ -1045,7 +1035,6 @@ static void play_game(ArgsBroadcastGameState_t *args, DH_Deck *deck) {
   args->game_state->winner_declared = false;
   args->game_state->player_count = count_active_clients(args->slot_taken);
   fprintf(stderr, "player count: %d\n", args->game_state->player_count);
-  args->game_state->total_bets_plus_raises = 0;
   args->game_state->winner_declared = false;
 
   Player_t *turn = get_next_player(players_array, args->game_state->dealer_id);

@@ -39,7 +39,6 @@ static void fill_player_message(struct player_message_builder_t *builder, const 
   builder->msg.id = src->id;
   builder->msg.coins = src->coins;
   builder->msg.in = src->in;
-  builder->msg.total_paid = src->total_paid;
   builder->msg.winner = src->winner;
   builder->msg.is_connected = src->is_connected;
 
@@ -66,7 +65,6 @@ static void fill_player_from_message(Player_t *dst, const Player *msg) {
   dst->id = msg->id;
   dst->coins = msg->coins;
   dst->in = msg->in;
-  dst->total_paid = msg->total_paid;
   dst->winner = msg->winner;
   dst->is_connected = msg->is_connected;
 
@@ -86,7 +84,6 @@ uint8_t *serialize_game_state(const GameState_t *src, size_t *size_out) {
   msg.pot = src->pot;
   msg.dealer_id = src->dealer_id;
   msg.at_menu = src->at_menu;
-  msg.total_bets_plus_raises = src->total_bets_plus_raises;
   msg.raises_remaining = src->raises_remaining;
   msg.player_count = src->player_count;
   msg.winner_declared = src->winner_declared;
@@ -133,7 +130,6 @@ GameState_t deserialize_game_state(const uint8_t *data, size_t size) {
   result.pot = msg->pot;
   result.dealer_id = msg->dealer_id;
   result.at_menu = msg->at_menu;
-  result.total_bets_plus_raises = msg->total_bets_plus_raises;
   result.raises_remaining = msg->raises_remaining;
   result.player_count = msg->player_count;
   result.winner_declared = msg->winner_declared;
@@ -459,7 +455,7 @@ ERecvStatus_t recv_game_settings(TCPsocket client_socket, SDLNet_SocketSet socke
 
   uint32_t size = ntohl(size_net);
   if (size == 0 || size > 65536) {
-    fprintf(stderr, "[recv_game_settings] Invalid game state size: %u\n", size);
+    fprintf(stderr, "[recv_game_settings] Invalid game settings size: %u\n", size);
     return RECV_ERROR;
   }
 

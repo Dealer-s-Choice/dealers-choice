@@ -58,7 +58,6 @@ typedef struct {
   POKEVAL_Hand_7 hand;
   int32_t coins;
   bool in; // Used for spectators or when someone has folded
-  uint32_t total_paid;
   bool winner;
   bool is_connected;
 } Player_t;
@@ -68,7 +67,6 @@ typedef struct {
   int8_t dealer_id;
   bool at_menu;
   uint8_t player_count;
-  uint32_t total_bets_plus_raises;
   uint32_t raises_remaining;
   bool winner_declared;
   bool deuces_wild;
