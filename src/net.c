@@ -352,8 +352,10 @@ ERecvStatus_t recv_game_state(SocketContext_t *socket_context, GameState_t *game
     return RECV_ERROR;
   }
 
-  uint16_t opcode = (buffer[0] << 8) | buffer[1];
-  fprintf(stderr, "opcode: %X\n", opcode);
+  uint16_t opcode_be;
+  memcpy(&opcode_be, buffer, sizeof(opcode_be));
+  uint16_t opcode = SDL_SwapBE16(opcode_be);
+  // fprintf(stderr, "opcode: %04X\n", opcode);
   switch (opcode) {
   case MSG_TURN_ID:
     client_state->turn_id = (int8_t)buffer[2];

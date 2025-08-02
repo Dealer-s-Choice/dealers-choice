@@ -252,11 +252,11 @@ static void send_game_settings(ArgsBroadcastGameState_t *args, TCPsocket sock) {
 
 int send_status_message(TCPsocket sock, const char *msg) {
   size_t msg_len = strlen(msg);
-  if (msg_len > 100)
-    msg_len = 100;
+  if (msg_len > LEN_STATUS_STR)
+    msg_len = LEN_STATUS_STR;
 
   uint32_t size = SDL_SwapBE32(2 + msg_len); // payload: 2-byte opcode + N-byte msg
-  uint8_t buffer[4 + 2 + 100];               // max: 4 bytes (size) + 2 (opcode) + 100 (msg)
+  uint8_t buffer[4 + 2 + LEN_STATUS_STR];    // max: 4 bytes (size) + 2 (opcode) + 100 (msg)
 
   memcpy(buffer, &size, sizeof(size));
 
