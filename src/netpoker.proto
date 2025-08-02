@@ -15,9 +15,8 @@ message Player {
   Hand hand = 3;
   int32 coins = 4;
   bool in = 5;
-  uint32 total_paid = 6;
-  bool winner = 7;
-  bool is_connected = 8;
+  bool winner = 6;
+  bool is_connected = 7;
 }
 
 message GameState {
@@ -25,11 +24,10 @@ message GameState {
   int32 dealer_id = 2;
   bool at_menu = 3;
   uint32 player_count = 4;
-  uint32 total_bets_plus_raises = 5;
-  uint32 raises_remaining = 6;
-  bool winner_declared = 7;
-  bool deuces_wild = 8;
-  repeated Player player = 9;
+  uint32 raises_remaining = 5;
+  bool winner_declared = 6;
+  bool deuces_wild = 7;
+  repeated Player player = 8;
 }
 
 message GameSettings {
