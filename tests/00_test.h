@@ -53,6 +53,7 @@ extern int n_passes;
   GameState_t game_state[N_PLAYERS] = {0};                                                         \
   ClientState_t client_state[N_PLAYERS] = {0};                                                     \
   PlayerConfig_t player_config = get_player_config();                                              \
+  CliArgs_t cli_args = {0};                                                                        \
                                                                                                    \
   const bool test_mode = true;                                                                     \
   SocketContext_t socket_context[N_PLAYERS] = {0};                                                 \
@@ -62,8 +63,8 @@ extern int n_passes;
   ERecvStatus_t recv_status;                                                                       \
                                                                                                    \
   for (int i = 0; i < N_PLAYERS; i++) {                                                            \
-    socket_context[i] = get_socket_context_and_run_client(&player_config, "127.0.0.1", NULL, NULL, \
-                                                          &path, test_mode);                       \
+    socket_context[i] = get_socket_context_and_run_client(&player_config, &cli_args, "127.0.0.1",  \
+                                                          NULL, NULL, &path, test_mode);           \
     assert(socket_context[i].sock != NULL);                                                        \
     recv_game_settings(socket_context[i].sock, socket_context[i].set, &game_settings[i]);          \
     SDL_Delay(n_ms);                                                                               \

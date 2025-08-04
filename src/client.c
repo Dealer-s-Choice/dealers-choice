@@ -1263,9 +1263,9 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
 }
 
 SocketContext_t get_socket_context_and_run_client(PlayerConfig_t *player_config,
-                                                  const char *host_str, SdlContext_t *sdl_context,
-                                                  Font_t *font, Path_t *path,
-                                                  const bool test_mode) {
+                                                  CliArgs_t *cli_args, const char *host_str,
+                                                  SdlContext_t *sdl_context, Font_t *font,
+                                                  Path_t *path, const bool test_mode) {
   IPaddress server_ip;
   SocketContext_t socket_context = {0};
 
@@ -1371,7 +1371,7 @@ SocketContext_t get_socket_context_and_run_client(PlayerConfig_t *player_config,
       exit(EXIT_FAILURE);
 
     SoundContext_t sound_context = {0};
-    if (player_config->volume == 0) {
+    if (player_config->volume == 0 || cli_args->disable_audio) {
       ma_engine_config_init();
       sound_context.engineConfig.noDevice = MA_TRUE;
       sound_context.engineConfig.channels = 2;       // Must be set when not using a device.

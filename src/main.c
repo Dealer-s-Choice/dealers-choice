@@ -147,7 +147,6 @@ int main(int argc, char *argv[]) {
   bindtextdomain(DEALERSCHOICE_NAME, locale_dir);
   textdomain(DEALERSCHOICE_NAME);
 #endif
-
   CliArgs_t cli_args = init_cli_args();
   Path_t path = {0};
   get_data_dir(&path);
@@ -160,7 +159,8 @@ int main(int argc, char *argv[]) {
     OPT_BIND,
     OPT_HOST,
     OPT_VERSION,
-    OPT_VERBOSE
+    OPT_VERBOSE,
+    OPT_DISABLE_AUDIO,
   };
 
   static const glopt_option_t options[] = {
@@ -172,6 +172,7 @@ int main(int argc, char *argv[]) {
       {"host", GLOPT_REQUIRED_ARG, OPT_HOST},
       {"version", GLOPT_NO_ARG, OPT_VERSION},
       {"verbose", GLOPT_NO_ARG, OPT_VERBOSE},
+      {"disable-audio", GLOPT_NO_ARG, OPT_DISABLE_AUDIO},
       {NULL, 0, 0}};
 
   glopt_parser_t parser;
@@ -205,6 +206,9 @@ int main(int argc, char *argv[]) {
     case OPT_VERBOSE:
       verbose = true;
       break;
+    case OPT_DISABLE_AUDIO:
+      cli_args.disable_audio = true;
+      break;
     case '?':
     default:
       print_version();
@@ -214,6 +218,7 @@ int main(int argc, char *argv[]) {
             "  --server-log-game-results [path/to/file]\n"
             "  --server-conf [Path to alternate server config file]\n"
             "  --host IP\n"
+            "  --disable-audio\n"
             "  --version\n",
             stderr);
       return EXIT_FAILURE;
@@ -290,8 +295,8 @@ int main(int argc, char *argv[]) {
                       &(SDL_Rect){SCALE_X(10), sdl_context.win_center.y, 0, 0});
     SDL_RenderPresent(sdl_context.renderer);
 
-    get_socket_context_and_run_client(&player_config, host_str, &sdl_context, &font, &path,
-                                      cli_args.test_mode);
+    get_socket_context_and_run_client(&player_config, &cli_args, host_str, &sdl_context, &font,
+                                      &path, cli_args.test_mode);
   }
 
   for (int i = 0; i < NUM_FONTS; ++i)

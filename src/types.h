@@ -31,6 +31,8 @@
 
 #include <pokeval.h>
 
+#include "main.h"
+
 #define MAX_PLAYERS 5
 #define MAX_CLIENTS 5
 #define SIZEOF_NICK 15
@@ -82,12 +84,6 @@ typedef struct {
 typedef struct {
   POKEVAL_Hand_7 player[MAX_PLAYERS];
 } RealHand_t;
-
-typedef struct {
-  const char *host, *server_conf, *bind_address;
-  const char *server_log_game_results_file;
-  bool test_mode, run_server_flag;
-} CliArgs_t;
 
 // A forward declaration
 struct ServerConfig_t;
