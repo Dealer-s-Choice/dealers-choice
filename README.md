@@ -3,20 +3,6 @@
 [![Windows](https://github.com/Dealer-s-Choice/dealers_choice/actions/workflows/windows.yml/badge.svg)](https://github.com/Dealer-s-Choice/dealers_choice/actions/workflows/windows.yml)
 [![CodeQL Advanced](https://github.com/Dealer-s-Choice/dealers_choice/actions/workflows/codeql.yml/badge.svg)](https://github.com/Dealer-s-Choice/dealers_choice/actions/workflows/codeql.yml)
 
-- [Dealer's Choice](#dealer's-choice)
-  - [License](#license)
-  - [Project Links](#project-links)
-  - [Current state](#current-state)
-    - [Games available](#games-available)
-    - [Computer Opponents](#computer-opponents)
-  - [Server](#server)
-  - [Client](#client)
-  - [Player Config](#player-config)
-  - [Dedicated Servers](#dedicated-servers)
-  - [Building](#building)
-  - [Translating](#translating)
-  - [Note on AppImages](#note-on-appimages)
-
 # Dealer's Choice
 
 Dealer's Choice is a cross-platform, networked multiplayer poker game that
@@ -100,3 +86,14 @@ See [docs/TRANSLATE.md](docs/TRANSLATE.md)
 If you're a Linux user, you can download the AppImage from the [Releases
 page](https://github.com/Dealer-s-Choice/dealers_choice/releases), or install
 it with [AppMan](https://github.com/ivan-hc/AM).
+
+## Libraries
+
+These are some of the libraries used by Dealer's Choice. The source code is
+bundled with this project and there is no need to install these dependencies.
+
+* [miniaudio](https://miniaud.io/)
+* [Pokeval](https://github.com/Dealer-s-Choice/pokeval)
+* [deckhandler](https://github.com/Dealer-s-Choice/deckhandler)
+* [pcg-c-basic](https://www.pcg-random.org/using-pcg-c-basic.html)
+* [canfigger](https://github.com/andy5995/canfigger/)

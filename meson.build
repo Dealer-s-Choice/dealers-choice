@@ -159,6 +159,19 @@ install_data(
 
 install_subdir('docs', install_dir: get_option('docdir'))
 
+# licensedir was added as a core directory option in 1.1.0
+# https://mesonbuild.com/Release-notes-for-1-1-0.html#a-new-core-directory-option-licensedir-is-available
+
+# On systems using meson >= 1.1.0, adding it to meson_option.txt results in
+# ../meson_options.txt:7:0: ERROR: Option name licensedir is reserved.
+#
+#license_dir = get_option('licensedir')
+#if license_dir == ''
+#  license_dir = get_option('docdir')
+#endif
+
+#install_data(files('LICENSE'), install_dir: license_dir)
+
 install_data(
   'packaging/dealers-choice.desktop',
   install_dir: join_paths(get_option('datadir'), 'applications'),
@@ -191,5 +204,7 @@ install_data(
   ),
 )
 
+# Third-party licenses
+install_subdir('licenses', install_dir: get_option('docdir'))
 
 subdir('tests')
