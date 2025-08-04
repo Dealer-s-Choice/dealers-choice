@@ -6,7 +6,7 @@ concurrency:
 on:
   push:
     branches: [ trunk ]
-    paths:
+    paths: &shared_paths
     - '**'
     - '!**.yml'
     - '!**.md'
@@ -14,11 +14,7 @@ on:
 
   pull_request:
     branches: [ trunk ]
-    paths:
-    - '**'
-    - '!**.yml'
-    - '!**.md'
-    - '**/macos.yml'
+    paths: *shared_paths
 
 jobs:
   MacOS:
