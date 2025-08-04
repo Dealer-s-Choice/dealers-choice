@@ -6,19 +6,16 @@ concurrency:
 on:
   push:
     branches: [ trunk ]
-    paths:
-    - '**'
-    - '!**.yml'
-    - '!**.md'
-    - '**/linux.yml'
+    paths: &shared_paths
+      - '**'
+      - '!**.yml'
+      - '!**.md'
+      - '**/linux.yml'
 
   pull_request:
     branches: [ trunk ]
-    paths:
-    - '**'
-    - '!**.yml'
-    - '!**.md'
-    - '**/linux.yml'
+    paths: *shared_paths
+
 
 jobs:
   Ubuntu:
