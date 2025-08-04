@@ -963,7 +963,7 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
 
         // The amount buttons won't be shown if this is true (max raises were reached
         // if the RAISE button is not active).
-        if (client_state.call_raise_fold && action_button[RAISE].active) {
+        if (client_state.bet_check_fold || (client_state.call_raise_fold && action_button[RAISE].active)) {
           for (size_t i = 0; i < n_bet_amounts; i++)
             render_button(&amount_button[i]);
         }
