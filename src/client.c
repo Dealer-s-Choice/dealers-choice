@@ -87,7 +87,7 @@ int8_t send_game_select(TCPsocket sock, uint8_t game_type, const bool deuces_wil
 // they'll be merged, and some of the values, such as the colors, will be passed
 // as arguments.
 static Button_t create_button(const char *text, SDL_Renderer *renderer, const int y, TTF_Font *font,
-                              SDL_Keycode hotkey) {
+                              SDL_Keycode key, const bool secondary) {
   Button_t button = {
       .text = text,
       .renderer = renderer,
@@ -99,10 +99,19 @@ static Button_t create_button(const char *text, SDL_Renderer *renderer, const in
       .enabled = true,
       .selected = false,
       .active = true,
-      .hotkey = hotkey,
+      .hotkey = key,
   };
+
+  // This should help avoid the button acidentally being clicked when someone double-clicks
+  // on the previous action button
+  if (secondary) {
+    TTF_SizeUTF8(font, text, &button.rect.w, &button.rect.h);
+    button.rect.y += button.rect.h + SCALE_Y(10);
+  }
+
   if (TTF_SizeUTF8(font, text, &button.rect.w, &button.rect.h) != 0)
     fprintf(stderr, "TTF_SizeUTF8 error: %s\n", TTF_GetError());
+
   button.rect.w += SCALE_X(20);
   button.rect.h += SCALE_Y(10);
   return button;
@@ -626,15 +635,25 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
 #define SIZEOF_STATUS_MSGS 16
   char status_msgs[SIZEOF_STATUS_MSGS][LEN_STATUS_STR] = {0};
 
-  const char *action[] = {
-      [CHECK] = _("Check"), [BET] = _("Bet"),         [FOLD] = _("Fold"),        [CALL] = _("Call"),
-      [RAISE] = _("Raise"), [DISCARD] = _("Discard"), [EXCHANGE] = _("Exchange")};
+  typedef struct {
+    const char *text;
+    SDL_Keycode key;
+    bool secondary;
+  } ActionButtonAttrs;
+
+  ActionButtonAttrs action_button_attrs[MAX_ACTIONS] = {
+      [CHECK] = {_("Check"), SDLK_c, false},      [BET] = {_("Bet"), SDLK_b, false},
+      [FOLD] = {_("Fold"), SDLK_f, false},        [CALL] = {_("Call"), SDLK_c, false},
+      [RAISE] = {_("Raise"), SDLK_r, false},      [DISCARD] = {_("Discard"), SDLK_d, true},
+      [EXCHANGE] = {_("Exchange"), SDLK_x, true},
+  };
 
   const int action_button_y = sdl_context->window_height - (card_area.h * 4);
   Button_t action_button[MAX_ACTIONS];
   for (int i = 0; i < MAX_ACTIONS; i++) {
-    action_button[i] = create_button(action[i], sdl_context->renderer, action_button_y,
-                                     font->fonts[FONT_BOLD], (SDL_KeyCode)0);
+    action_button[i] = create_button(action_button_attrs[i].text, sdl_context->renderer,
+                                     action_button_y, font->fonts[FONT_BOLD],
+                                     action_button_attrs[i].key, action_button_attrs[i].secondary);
   }
 
   const struct Amount_t {
@@ -963,7 +982,8 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
 
         // The amount buttons won't be shown if this is true (max raises were reached
         // if the RAISE button is not active).
-        if (client_state.bet_check_fold || (client_state.call_raise_fold && action_button[RAISE].active)) {
+        if (client_state.bet_check_fold ||
+            (client_state.call_raise_fold && action_button[RAISE].active)) {
           for (size_t i = 0; i < n_bet_amounts; i++)
             render_button(&amount_button[i]);
         }
@@ -1140,7 +1160,7 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
         if (my_turn && !client_state.do_discard_draw && !client_state.do_exchange_wilds) {
           if (client_state.bet_check_fold || client_state.call_raise_fold) {
             if (SDL_PointInRect(&mouse_pos, &action_button[FOLD].rect) ||
-                event.key.keysym.sym == SDLK_f) {
+                event.key.keysym.sym == action_button[FOLD].hotkey) {
               verbose_puts("folding");
               if (send_player_action(&client_state, sock, ACTION_FOLD, 0) != 0)
                 fprintf(stderr, "Failed to fold\n");
@@ -1149,13 +1169,13 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
           if (client_state.bet_check_fold) {
             // TODO: use existing array (or modify it) to loop through each action
             if (SDL_PointInRect(&mouse_pos, &action_button[BET].rect) ||
-                event.key.keysym.sym == SDLK_b) {
+                event.key.keysym.sym == action_button[BET].hotkey) {
               verbose_puts("sending bet");
               if (send_player_action(&client_state, sock, ACTION_BET,
                                      client_state.selected_amount) != 0)
                 fprintf(stderr, "Failed to send bet\n");
             } else if (SDL_PointInRect(&mouse_pos, &action_button[CHECK].rect) ||
-                       event.key.keysym.sym == SDLK_c) {
+                       event.key.keysym.sym == action_button[CHECK].hotkey) {
               verbose_puts("checking");
               if (send_player_action(&client_state, sock, ACTION_CHECK, 0) != 0)
                 fprintf(stderr, "Failed to check\n");
@@ -1163,14 +1183,14 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
           } else if (client_state.call_raise_fold) {
             if (action_button[RAISE].active &&
                 (SDL_PointInRect(&mouse_pos, &action_button[RAISE].rect) ||
-                 event.key.keysym.sym == SDLK_r)) {
+                 event.key.keysym.sym == action_button[RAISE].hotkey)) {
               if (send_player_action(&client_state, sock, ACTION_RAISE,
                                      client_state.selected_amount) == 0)
                 verbose_puts("raising");
               else
                 fputs("Failed to raise\n", stderr);
             } else if (SDL_PointInRect(&mouse_pos, &action_button[CALL].rect) ||
-                       event.key.keysym.sym == SDLK_c) {
+                       event.key.keysym.sym == action_button[CALL].hotkey) {
               verbose_puts("calling");
               if (send_player_action(&client_state, sock, ACTION_CALL, 0) != 0)
                 fprintf(stderr, "Failed to call\n");
@@ -1178,8 +1198,8 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
           }
         } else if (action_button[DISCARD].enabled && client_state.do_discard_draw &&
                    (SDL_PointInRect(&mouse_pos, &action_button[DISCARD].rect) ||
-                    event.key.keysym.sym == SDLK_d)) {
-          verbose_puts("discarding");
+                    event.key.keysym.sym == action_button[DISCARD].hotkey)) {
+
           // Although the maximum allowed discards for 5 card draw can never
           // exceed 4, we need an array size of MAX_HAND_SIZE in case they select
           // all 5. However, the player will be required to have < 5 selected
@@ -1203,7 +1223,7 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
           }
         } else if (action_button[EXCHANGE].enabled &&
                    (SDL_PointInRect(&mouse_pos, &action_button[EXCHANGE].rect) ||
-                    event.key.keysym.sym == SDLK_x)) {
+                    event.key.keysym.sym == action_button[EXCHANGE].hotkey)) {
           verbose_puts("exchanging wilds");
           POKEVAL_Hand_7 hand = {0};
 
