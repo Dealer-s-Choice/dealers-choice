@@ -136,21 +136,7 @@ static void print_version(void) {
   putchar('\n');
 }
 
-int main(int argc, char *argv[]) {
-#ifdef ENABLE_NLS
-  static char *locale_dir;
-  locale_dir = getenv("DEALERSCHOICE_LOCALEDIR");
-  if (!locale_dir)
-    locale_dir = DEALERSCHOICE_LOCALEDIR;
-
-  setlocale(LC_ALL, "");
-  bindtextdomain(DEALERSCHOICE_NAME, locale_dir);
-  textdomain(DEALERSCHOICE_NAME);
-#endif
-  CliArgs_t cli_args = init_cli_args();
-  Path_t path = {0};
-  get_data_dir(&path);
-
+static CliArgs_t parse_cli_args(int argc, char *argv[]) {
   enum {
     OPT_SERVER = 1,
     OPT_SERVER_LOG_GAME_RESULTS,
@@ -177,6 +163,7 @@ int main(int argc, char *argv[]) {
 
   glopt_parser_t parser;
   glopt_init(&parser, options);
+  CliArgs_t cli_args = {0};
 
   int opt;
   while ((opt = glopt_next(&parser, argc, argv)) != -1) {
@@ -221,9 +208,27 @@ int main(int argc, char *argv[]) {
             "  --disable-audio\n"
             "  --version\n",
             stderr);
-      return EXIT_FAILURE;
+      exit(EXIT_FAILURE);
     }
   }
+  return cli_args;
+}
+
+int main(int argc, char *argv[]) {
+#ifdef ENABLE_NLS
+  static char *locale_dir;
+  locale_dir = getenv("DEALERSCHOICE_LOCALEDIR");
+  if (!locale_dir)
+    locale_dir = DEALERSCHOICE_LOCALEDIR;
+
+  setlocale(LC_ALL, "");
+  bindtextdomain(DEALERSCHOICE_NAME, locale_dir);
+  textdomain(DEALERSCHOICE_NAME);
+#endif
+  Path_t path = {0};
+  get_data_dir(&path);
+
+  const CliArgs_t cli_args = parse_cli_args(argc, argv);
 
   pcg_srand_auto();
 

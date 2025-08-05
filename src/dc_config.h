@@ -95,7 +95,7 @@ static const ConfigEntry server_config_entries[] = {
 
 static const size_t server_config_entry_count = ARRAY_SIZE(server_config_entries);
 
-ServerConfig_t get_server_config(Path_t *path, CliArgs_t *cli_args);
+ServerConfig_t get_server_config(Path_t *path, const CliArgs_t *cli_args);
 
 PlayerConfig_t get_player_config(void);
 
