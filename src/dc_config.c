@@ -67,7 +67,7 @@ static void player_config_set_from_string(PlayerConfig_t *cfg, const ConfigEntry
   config_set_from_string_real(cfg, entry, val);
 }
 
-ServerConfig_t get_server_config(Path_t *path, CliArgs_t *cli_args) {
+ServerConfig_t get_server_config(Path_t *path, const CliArgs_t *cli_args) {
   ServerConfig_t config = {0};
 
   PathconfLimits_t limits = {0};

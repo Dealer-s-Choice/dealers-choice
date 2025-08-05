@@ -94,7 +94,7 @@ typedef struct {
   GameState_t *game_state;
   RealHand_t *real_hand;
   bool *slot_taken;
-  CliArgs_t *cli_args;
+  const CliArgs_t *cli_args;
   TCPsocket *server_sock;
   GameSettings_t *game_settings;
   struct ServerConfig_t *config;
