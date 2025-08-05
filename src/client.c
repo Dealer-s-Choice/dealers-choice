@@ -547,7 +547,7 @@ static void create_card_context(CardContext_t card_context[MAX_PLAYERS][MAX_HAND
 }
 
 typedef struct {
-  const char *front, *back;
+  const char *front;
 } Coin_t;
 
 static SDL_Texture *load_coin_texture(SDL_Renderer *renderer, const char *base_path,
@@ -732,22 +732,21 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
   Player_t *starting_turn = NULL;
 
   Coin_t coin[] = {
-      {"48x48_front_1907_Saint_Gaudens_gold_coin.png",
-       "48x48_back_1907_Saint_Gaudens_gold_coin.png"},
-      {"48x48_Hammurabi.png", "48x48_Hammurabi.png"},
-      {"48x48_front_Gaius-Julius-Caesar-denarius-44-BC-RRC-480-3.png",
-       "48x48_back_Gaius-Julius-Caesar-denarius-44-BC-RRC-480-3.png"},
+      {
+          "48x48_front_1907_Saint_Gaudens_gold_coin.png",
+      },
+      {"48x48_Hammurabi.png"},
+      {
+          "48x48_front_Gaius-Julius-Caesar-denarius-44-BC-RRC-480-3.png",
+      },
   };
   size_t num_coins = ARRAY_SIZE(coin);
   const int which_coin = pcg32_boundedrand_r(&rng, num_coins);
   SDL_Texture *coin_tex_front =
       load_coin_texture(sdl_context->renderer, path->data, coin[which_coin].front);
-  SDL_Texture *coin_tex_back =
-      load_coin_texture(sdl_context->renderer, path->data, coin[which_coin].back);
 
   typedef struct {
     SDL_Point pt[MAX_POT_COINS];
-    SDL_Texture *side[MAX_POT_COINS];
   } PotCoin_t;
 
   PotCoin_t pot_coin = {0};
@@ -821,7 +820,6 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
     if (game_state->pot > coins * 100 && coins < MAX_POT_COINS) {
       pot_coin.pt[coins].x = pot_pos.x + pcg32_boundedrand_r(&rng, POT_BOUNDARY) - SCALE_X(150);
       pot_coin.pt[coins].y = pot_pos.y + pcg32_boundedrand_r(&rng, POT_BOUNDARY) - SCALE_Y(150);
-      pot_coin.side[coins] = (pcg32_boundedrand_r(&rng, 2) == 0) ? coin_tex_front : coin_tex_back;
       coins++;
       new_coin = true;
     } else if (game_state->pot == 0)
@@ -836,13 +834,13 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
           .h = SCALE_Y(48),
       };
       if (p < coins - 1)
-        SDL_RenderCopy(sdl_context->renderer, pot_coin.side[p], NULL, &coin_rect);
+        SDL_RenderCopy(sdl_context->renderer, coin_tex_front, NULL, &coin_rect);
     }
 
     p--;
     if (new_coin) {
       coin_anim = (CoinAnimation_t){
-          .texture = pot_coin.side[p],
+          .texture = coin_tex_front,
           .start = (SDL_Point){player_pos[turn->id].x, player_pos[turn->id].y},
           .end = (SDL_Point){pot_coin.pt[p].x, pot_coin.pt[p].y},
           .start_time = SDL_GetTicks(),
@@ -1258,7 +1256,6 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
     } // End Poll event
   }
   SDL_DestroyTexture(coin_tex_front);
-  SDL_DestroyTexture(coin_tex_back);
   return running;
 }
 
