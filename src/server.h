@@ -36,7 +36,7 @@
 #define GAME_ARGS                                                                                  \
   ArgsBroadcastGameState_t *args, Player_t *players_array, DH_Deck *deck, const GameChoice_t *choice
 
-ServerConfig_t init_game_state(GameState_t *game_state, Path_t *path, CliArgs_t *cli_args);
+ServerConfig_t init_game_state(GameState_t *game_state, Path_t *path, const CliArgs_t *cli_args);
 
 RealHand_t deal_cards_to_players(GameState_t *game_state, DH_Deck *deck, const uint8_t game_type);
 
@@ -44,6 +44,6 @@ void game_five_card_draw(GAME_ARGS);
 
 void game_stud(GAME_ARGS);
 
-int run_server(CliArgs_t *cli_args, Path_t *path);
+int run_server(const CliArgs_t *cli_args, Path_t *path);
 
 #endif

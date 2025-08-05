@@ -70,7 +70,7 @@ typedef struct {
 extern const GameChoice_t game_choices[];
 
 SocketContext_t get_socket_context_and_run_client(PlayerConfig_t *player_config,
-                                                  CliArgs_t *cli_args, const char *host_str,
+                                                  const CliArgs_t *cli_args, const char *host_str,
                                                   SdlContext_t *sdl_context, Font_t *font,
                                                   Path_t *path, const bool test_mode);
 

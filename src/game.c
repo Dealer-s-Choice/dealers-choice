@@ -87,18 +87,6 @@ Player_t *get_next_connected_client_(Player_t *players_array, int cur, const cha
   return get_next_player_real(players_array, cur, want_all_clients, file, line);
 }
 
-CliArgs_t init_cli_args(void) {
-  CliArgs_t cli_args = {
-      .host = NULL,
-      .server_conf = NULL,
-      .server_log_game_results_file = NULL,
-      .bind_address = NULL,
-      .test_mode = false,
-      .run_server_flag = false,
-  };
-  return cli_args;
-}
-
 pcg32_random_t rng;
 void pcg_srand_auto(void) {
   uint64_t initstate = time(NULL) ^ (intptr_t)&printf;

@@ -76,7 +76,7 @@ static void print_ipaddress(const IPaddress *ip) {
   printf("%s:%u\n", ipaddr, SDL_SwapBE16(ip->port));
 }
 
-ServerConfig_t init_game_state(GameState_t *game_state, Path_t *path, CliArgs_t *cli_args) {
+ServerConfig_t init_game_state(GameState_t *game_state, Path_t *path, const CliArgs_t *cli_args) {
   ServerConfig_t config = get_server_config(path, cli_args);
   for (int i = 0; i < MAX_PLAYERS; i++) {
     game_state->player[i] = (Player_t){
@@ -1309,7 +1309,7 @@ static ELoop_t register_new_client(ArgsBroadcastGameState_t *args) {
   return LOOP_OK;
 }
 
-int run_server(CliArgs_t *cli_args, Path_t *path) {
+int run_server(const CliArgs_t *cli_args, Path_t *path) {
   GameState_t game_state = {0};
   ServerConfig_t config = init_game_state(&game_state, path, cli_args);
   GameSettings_t game_settings = init_game_settings(&config, cli_args);

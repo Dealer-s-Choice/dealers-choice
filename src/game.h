@@ -71,8 +71,6 @@ Player_t *get_next_player_(Player_t *players_array, int cur, const char *file, c
 Player_t *get_next_connected_client_(Player_t *players_array, int cur, const char *file,
                                      const int line);
 
-CliArgs_t init_cli_args(void);
-
 extern pcg32_random_t rng;
 void pcg_srand_auto(void);
 
