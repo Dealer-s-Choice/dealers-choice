@@ -153,7 +153,7 @@ install_subdir(
 )
 
 install_data(
-  files('ChangeLog', 'LICENSE', 'README.md', 'ReleaseNotes'),
+  files('ChangeLog', 'LICENSE', 'README.md'),
   install_dir: get_option('docdir'),
 )
 
