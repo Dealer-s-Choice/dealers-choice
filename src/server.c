@@ -621,7 +621,7 @@ static void determine_winner(ArgsBroadcastGameState_t *args, RoundResults *resul
     winner->winner = true;
 
     char status_str[LEN_STATUS_STR];
-    snprintf(status_str, sizeof status_str, "%s wins with %s", winner->nick,
+    snprintf(status_str, sizeof status_str, "%s wins %d with %s", winner->nick, share,
              POKEVAL_rank[POKEVAL_evaluate_hand(need_comparing[i].hand_5)]);
     broadcast_status_message(args, status_str);
 
@@ -631,8 +631,7 @@ static void determine_winner(ArgsBroadcastGameState_t *args, RoundResults *resul
         perror("fopen");
       else {
         fprintf(fp, "pot: %u<br>\n", pot);
-        fprintf(fp, "%s wins with %s\n\n", winner->nick,
-                POKEVAL_rank[POKEVAL_evaluate_hand(need_comparing[i].hand_5)]);
+        fprintf(fp, "%s\n\n", status_str);
         fclose(fp);
       }
     }
@@ -650,7 +649,7 @@ static void award_last_player_in_game(ArgsBroadcastGameState_t *args, Player_t *
   }
   turn->winner = true;
   char status_str[LEN_STATUS_STR] = {0};
-  snprintf(status_str, sizeof(status_str), "%s wins", turn->nick);
+  snprintf(status_str, sizeof(status_str), "%s wins %d", turn->nick, args->game_state->pot);
   broadcast_status_message(args, status_str);
   if (args->cli_args->server_log_game_results_file) {
     FILE *fp = fopen(args->cli_args->server_log_game_results_file, "a");
@@ -658,7 +657,7 @@ static void award_last_player_in_game(ArgsBroadcastGameState_t *args, Player_t *
       perror("fopen");
     else {
       fprintf(fp, "pot: %d<br>\n", args->game_state->pot);
-      fprintf(fp, "%s wins\n\n", turn->nick);
+      fprintf(fp, "%s\n\n", status_str);
       fclose(fp);
     }
   }
