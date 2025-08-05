@@ -1,3 +1,6 @@
+2025-08-05
+
+- dealers-choice 0.0.7:
   + Set default maximum raises per round to 3 (config option)
   * Fix discard button being clickable when disabled
   * Increase player action timeout from 20 to 30 seconds
