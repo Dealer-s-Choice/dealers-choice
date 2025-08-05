@@ -439,10 +439,12 @@ static ELoop_t handle_draw(ArgsBroadcastGameState_t *args, TCPsocket sock, const
           break;
         else {
           remove_disconnected_player(args, id);
+          broadcast_game_state(args);
           return LOOP_BREAK;
         }
       } else {
-        handle_disconnections(args);
+        if (handle_disconnections(args))
+          broadcast_game_state(args);
         if (args->game_state->player_count == 1)
           return LOOP_BREAK;
       }
@@ -508,10 +510,12 @@ static ELoop_t handle_wild_cards(ArgsBroadcastGameState_t *args, TCPsocket sock,
           break;
         } else {
           remove_disconnected_player(args, id);
+          broadcast_game_state(args);
           return LOOP_BREAK;
         }
       } else {
-        handle_disconnections(args);
+        if (handle_disconnections(args))
+          broadcast_game_state(args);
         if (args->game_state->player_count == 1)
           return LOOP_BREAK;
       }
@@ -1027,7 +1031,8 @@ static void play_game(ArgsBroadcastGameState_t *args, DH_Deck *deck) {
   // args->real_hand->player[0].card[0].face_val = DH_CARD_TWO;
   // args->real_hand->player[0].card[3].face_val = DH_CARD_TWO;
 
-  // args->real_hand->player[1].card[0].face_val = DH_CARD_TWO;
+  // args->real_hand->player[0].card[3].face_val = DH_CARD_TWO;
+  // args->real_hand->player[1].card[3].face_val = DH_CARD_TWO;
   // args->real_hand->player[2].card[3].face_val = DH_CARD_TWO;
 
   args->game_state->winner_declared = false;
