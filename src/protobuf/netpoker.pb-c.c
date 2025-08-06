@@ -232,6 +232,186 @@ void   game_settings__free_unpacked
   assert(message->base.descriptor == &game_settings__descriptor);
   protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
 }
+void   ping_request__init
+                     (PingRequest         *message)
+{
+  static const PingRequest init_value = PING_REQUEST__INIT;
+  *message = init_value;
+}
+size_t ping_request__get_packed_size
+                     (const PingRequest *message)
+{
+  assert(message->base.descriptor == &ping_request__descriptor);
+  return protobuf_c_message_get_packed_size ((const ProtobufCMessage*)(message));
+}
+size_t ping_request__pack
+                     (const PingRequest *message,
+                      uint8_t       *out)
+{
+  assert(message->base.descriptor == &ping_request__descriptor);
+  return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
+}
+size_t ping_request__pack_to_buffer
+                     (const PingRequest *message,
+                      ProtobufCBuffer *buffer)
+{
+  assert(message->base.descriptor == &ping_request__descriptor);
+  return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
+}
+PingRequest *
+       ping_request__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data)
+{
+  return (PingRequest *)
+     protobuf_c_message_unpack (&ping_request__descriptor,
+                                allocator, len, data);
+}
+void   ping_request__free_unpacked
+                     (PingRequest *message,
+                      ProtobufCAllocator *allocator)
+{
+  if(!message)
+    return;
+  assert(message->base.descriptor == &ping_request__descriptor);
+  protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
+}
+void   ping_response__init
+                     (PingResponse         *message)
+{
+  static const PingResponse init_value = PING_RESPONSE__INIT;
+  *message = init_value;
+}
+size_t ping_response__get_packed_size
+                     (const PingResponse *message)
+{
+  assert(message->base.descriptor == &ping_response__descriptor);
+  return protobuf_c_message_get_packed_size ((const ProtobufCMessage*)(message));
+}
+size_t ping_response__pack
+                     (const PingResponse *message,
+                      uint8_t       *out)
+{
+  assert(message->base.descriptor == &ping_response__descriptor);
+  return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
+}
+size_t ping_response__pack_to_buffer
+                     (const PingResponse *message,
+                      ProtobufCBuffer *buffer)
+{
+  assert(message->base.descriptor == &ping_response__descriptor);
+  return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
+}
+PingResponse *
+       ping_response__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data)
+{
+  return (PingResponse *)
+     protobuf_c_message_unpack (&ping_response__descriptor,
+                                allocator, len, data);
+}
+void   ping_response__free_unpacked
+                     (PingResponse *message,
+                      ProtobufCAllocator *allocator)
+{
+  if(!message)
+    return;
+  assert(message->base.descriptor == &ping_response__descriptor);
+  protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
+}
+void   ping_entry__init
+                     (PingEntry         *message)
+{
+  static const PingEntry init_value = PING_ENTRY__INIT;
+  *message = init_value;
+}
+size_t ping_entry__get_packed_size
+                     (const PingEntry *message)
+{
+  assert(message->base.descriptor == &ping_entry__descriptor);
+  return protobuf_c_message_get_packed_size ((const ProtobufCMessage*)(message));
+}
+size_t ping_entry__pack
+                     (const PingEntry *message,
+                      uint8_t       *out)
+{
+  assert(message->base.descriptor == &ping_entry__descriptor);
+  return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
+}
+size_t ping_entry__pack_to_buffer
+                     (const PingEntry *message,
+                      ProtobufCBuffer *buffer)
+{
+  assert(message->base.descriptor == &ping_entry__descriptor);
+  return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
+}
+PingEntry *
+       ping_entry__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data)
+{
+  return (PingEntry *)
+     protobuf_c_message_unpack (&ping_entry__descriptor,
+                                allocator, len, data);
+}
+void   ping_entry__free_unpacked
+                     (PingEntry *message,
+                      ProtobufCAllocator *allocator)
+{
+  if(!message)
+    return;
+  assert(message->base.descriptor == &ping_entry__descriptor);
+  protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
+}
+void   ping_broadcast__init
+                     (PingBroadcast         *message)
+{
+  static const PingBroadcast init_value = PING_BROADCAST__INIT;
+  *message = init_value;
+}
+size_t ping_broadcast__get_packed_size
+                     (const PingBroadcast *message)
+{
+  assert(message->base.descriptor == &ping_broadcast__descriptor);
+  return protobuf_c_message_get_packed_size ((const ProtobufCMessage*)(message));
+}
+size_t ping_broadcast__pack
+                     (const PingBroadcast *message,
+                      uint8_t       *out)
+{
+  assert(message->base.descriptor == &ping_broadcast__descriptor);
+  return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
+}
+size_t ping_broadcast__pack_to_buffer
+                     (const PingBroadcast *message,
+                      ProtobufCBuffer *buffer)
+{
+  assert(message->base.descriptor == &ping_broadcast__descriptor);
+  return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
+}
+PingBroadcast *
+       ping_broadcast__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data)
+{
+  return (PingBroadcast *)
+     protobuf_c_message_unpack (&ping_broadcast__descriptor,
+                                allocator, len, data);
+}
+void   ping_broadcast__free_unpacked
+                     (PingBroadcast *message,
+                      ProtobufCAllocator *allocator)
+{
+  if(!message)
+    return;
+  assert(message->base.descriptor == &ping_broadcast__descriptor);
+  protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
+}
 static const ProtobufCFieldDescriptor card__field_descriptors[2] =
 {
   {
@@ -629,4 +809,199 @@ const ProtobufCMessageDescriptor game_settings__descriptor =
   1,  game_settings__number_ranges,
   (ProtobufCMessageInit) game_settings__init,
   NULL,NULL,NULL    /* reserved[123] */
+};
+static const ProtobufCFieldDescriptor ping_request__field_descriptors[1] =
+{
+  {
+    "timestamp",
+    1,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_UINT32,
+    0,   /* quantifier_offset */
+    offsetof(PingRequest, timestamp),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+};
+static const unsigned ping_request__field_indices_by_name[] = {
+  0,   /* field[0] = timestamp */
+};
+static const ProtobufCIntRange ping_request__number_ranges[1 + 1] =
+{
+  { 1, 0 },
+  { 0, 1 }
+};
+const ProtobufCMessageDescriptor ping_request__descriptor =
+{
+  PROTOBUF_C__MESSAGE_DESCRIPTOR_MAGIC,
+  "PingRequest",
+  "PingRequest",
+  "PingRequest",
+  "",
+  sizeof(PingRequest),
+  1,
+  ping_request__field_descriptors,
+  ping_request__field_indices_by_name,
+  1,  ping_request__number_ranges,
+  (ProtobufCMessageInit) ping_request__init,
+  NULL,NULL,NULL    /* reserved[123] */
+};
+static const ProtobufCFieldDescriptor ping_response__field_descriptors[1] =
+{
+  {
+    "timestamp",
+    1,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_UINT32,
+    0,   /* quantifier_offset */
+    offsetof(PingResponse, timestamp),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+};
+static const unsigned ping_response__field_indices_by_name[] = {
+  0,   /* field[0] = timestamp */
+};
+static const ProtobufCIntRange ping_response__number_ranges[1 + 1] =
+{
+  { 1, 0 },
+  { 0, 1 }
+};
+const ProtobufCMessageDescriptor ping_response__descriptor =
+{
+  PROTOBUF_C__MESSAGE_DESCRIPTOR_MAGIC,
+  "PingResponse",
+  "PingResponse",
+  "PingResponse",
+  "",
+  sizeof(PingResponse),
+  1,
+  ping_response__field_descriptors,
+  ping_response__field_indices_by_name,
+  1,  ping_response__number_ranges,
+  (ProtobufCMessageInit) ping_response__init,
+  NULL,NULL,NULL    /* reserved[123] */
+};
+static const ProtobufCFieldDescriptor ping_entry__field_descriptors[2] =
+{
+  {
+    "player_id",
+    1,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_UINT32,
+    0,   /* quantifier_offset */
+    offsetof(PingEntry, player_id),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "ping_ms",
+    2,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_UINT32,
+    0,   /* quantifier_offset */
+    offsetof(PingEntry, ping_ms),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+};
+static const unsigned ping_entry__field_indices_by_name[] = {
+  1,   /* field[1] = ping_ms */
+  0,   /* field[0] = player_id */
+};
+static const ProtobufCIntRange ping_entry__number_ranges[1 + 1] =
+{
+  { 1, 0 },
+  { 0, 2 }
+};
+const ProtobufCMessageDescriptor ping_entry__descriptor =
+{
+  PROTOBUF_C__MESSAGE_DESCRIPTOR_MAGIC,
+  "PingEntry",
+  "PingEntry",
+  "PingEntry",
+  "",
+  sizeof(PingEntry),
+  2,
+  ping_entry__field_descriptors,
+  ping_entry__field_indices_by_name,
+  1,  ping_entry__number_ranges,
+  (ProtobufCMessageInit) ping_entry__init,
+  NULL,NULL,NULL    /* reserved[123] */
+};
+static const ProtobufCFieldDescriptor ping_broadcast__field_descriptors[1] =
+{
+  {
+    "entries",
+    1,
+    PROTOBUF_C_LABEL_REPEATED,
+    PROTOBUF_C_TYPE_MESSAGE,
+    offsetof(PingBroadcast, n_entries),
+    offsetof(PingBroadcast, entries),
+    &ping_entry__descriptor,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+};
+static const unsigned ping_broadcast__field_indices_by_name[] = {
+  0,   /* field[0] = entries */
+};
+static const ProtobufCIntRange ping_broadcast__number_ranges[1 + 1] =
+{
+  { 1, 0 },
+  { 0, 1 }
+};
+const ProtobufCMessageDescriptor ping_broadcast__descriptor =
+{
+  PROTOBUF_C__MESSAGE_DESCRIPTOR_MAGIC,
+  "PingBroadcast",
+  "PingBroadcast",
+  "PingBroadcast",
+  "",
+  sizeof(PingBroadcast),
+  1,
+  ping_broadcast__field_descriptors,
+  ping_broadcast__field_indices_by_name,
+  1,  ping_broadcast__number_ranges,
+  (ProtobufCMessageInit) ping_broadcast__init,
+  NULL,NULL,NULL    /* reserved[123] */
+};
+static const ProtobufCEnumValue message_type__enum_values_by_number[3] =
+{
+  { "MSG_PING_REQUEST", "MESSAGE_TYPE__MSG_PING_REQUEST", 0 },
+  { "MSG_PING_RESPONSE", "MESSAGE_TYPE__MSG_PING_RESPONSE", 1 },
+  { "MSG_PING_BROADCAST", "MESSAGE_TYPE__MSG_PING_BROADCAST", 2 },
+};
+static const ProtobufCIntRange message_type__value_ranges[] = {
+{0, 0},{0, 3}
+};
+static const ProtobufCEnumValueIndex message_type__enum_values_by_name[3] =
+{
+  { "MSG_PING_BROADCAST", 2 },
+  { "MSG_PING_REQUEST", 0 },
+  { "MSG_PING_RESPONSE", 1 },
+};
+const ProtobufCEnumDescriptor message_type__descriptor =
+{
+  PROTOBUF_C__ENUM_DESCRIPTOR_MAGIC,
+  "MessageType",
+  "MessageType",
+  "MessageType",
+  "",
+  3,
+  message_type__enum_values_by_number,
+  3,
+  message_type__enum_values_by_name,
+  1,
+  message_type__value_ranges,
+  NULL,NULL,NULL,NULL   /* reserved[1234] */
 };

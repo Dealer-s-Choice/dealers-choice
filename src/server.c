@@ -321,22 +321,6 @@ void broadcast_turn_id(const ArgsBroadcastGameState_t *args) {
   }
 }
 
-static int8_t recv_game_select(TCPsocket sock, uint8_t *out_game_type, bool *deuces_wild) {
-  uint8_t buffer[4];
-
-  int bytes_n;
-  if ((bytes_n = recv_all_tcp(sock, buffer, sizeof(buffer))) <= 0)
-    return bytes_n;
-
-  uint16_t opcode = (buffer[0] << 8) | buffer[1];
-  if (opcode != MSG_GAME_SELECT)
-    return -1;
-
-  *out_game_type = buffer[2];
-  *deuces_wild = buffer[3] != 0;
-  return bytes_n;
-}
-
 static int recv_player_action(TCPsocket sock, PlayerActionMsg_t *out_action) {
   uint8_t buffer[7];
 
@@ -371,6 +355,62 @@ static int send_opcode(TCPsocket sock, const uint16_t opcode) {
   if (sent == 0)
     verbose_puts("Sent opcode");
   return sent;
+}
+
+static int send_ping_request(TCPsocket sock) {
+  PingRequest req = PING_REQUEST__INIT;
+  req.timestamp = SDL_GetTicks(); // current server tick
+
+  size_t len = ping_request__get_packed_size(&req);
+  uint8_t *buf = malloc(len);
+  if (!buf)
+    return -1;
+
+  ping_request__pack(&req, buf);
+
+  int result = send_message(sock, MSG_PING_REQUEST, buf, len);
+
+  free(buf);
+  return result;
+}
+
+static int broadcast_ping_times(ArgsBroadcastGameState_t *args, const uint32_t ping_times[]) {
+  for (int i = 0; i < MAX_CLIENTS; i++) {
+    if (!args->slot_taken[i] || !args->clients[i])
+      continue;
+
+    PingBroadcast pb = PING_BROADCAST__INIT;
+    PingEntry entries[MAX_CLIENTS];
+    PingEntry *entry_ptrs[MAX_CLIENTS];
+
+    size_t count = 0;
+    for (int j = 0; j < MAX_CLIENTS; j++) {
+      if (!args->slot_taken[j])
+        continue;
+      ping_entry__init(&entries[count]);
+      entries[count].player_id = j;
+      entries[count].ping_ms = ping_times[j];
+      entry_ptrs[count] = &entries[count];
+      count++;
+    }
+
+    pb.n_entries = count;
+    pb.entries = entry_ptrs;
+
+    size_t len = ping_broadcast__get_packed_size(&pb);
+    uint8_t *buf = malloc(len);
+    if (!buf)
+      return -1;
+
+    ping_broadcast__pack(&pb, buf);
+    int result = send_message(args->clients[i], MSG_PING_BROADCAST, buf, len);
+    free(buf);
+
+    if (result < 0) {
+      fprintf(stderr, "[PING] Failed to broadcast to client %d\n", i);
+    }
+  }
+  return 0;
 }
 
 static void server_handle_call(GameState_t *game_state, uint32_t *total_paid, const uint8_t turn_id,
@@ -1142,20 +1182,9 @@ static void ensure_unique_nick(GameState_t *game_state, Player_t *player, const 
   fprintf(stderr, "Could not find a unique nickname after %d attempts\n", suffix_limit);
 }
 
-static EReturnCode_t receive_game_type_and_run_game(ArgsBroadcastGameState_t *args, DH_Deck *deck) {
-  uint8_t game_type = 0;
+static EReturnCode_t init_game(ArgsBroadcastGameState_t *args, DH_Deck *deck) {
+
   int8_t *dealer_id = &args->game_state->dealer_id;
-  if (recv_game_select(args->clients[*dealer_id], &game_type, &args->game_state->deuces_wild) ==
-      SIZE_MESSAGE_GAME_SELECT) {
-    args->game_type = game_type;
-    printf("Client chose game type: 0x%02x\n", game_type);
-  } else {
-    fprintf(stderr, "Dealer failed to send valid game type or disconnected.\n");
-    remove_disconnected_player(args, *dealer_id);
-    broadcast_game_state(args);
-    SDL_Delay(10);
-    return RC_ERR;
-  }
 
   printf("All %d players are ready. Starting game.\n", count_active_clients(args->slot_taken));
   args->game_state->at_menu = false;
@@ -1387,6 +1416,10 @@ int run_server(const CliArgs_t *cli_args, Path_t *path) {
 
   bool slot_taken[MAX_CLIENTS] = {false};
   uint32_t dealer_timeout_start = 0;
+
+  uint32_t last_ping_time = SDL_GetTicks();
+  uint32_t ping_times[MAX_CLIENTS] = {0};
+
   while (!game_started) {
     ArgsBroadcastGameState_t args_broadcast_game_state = {
         .clients = clients,
@@ -1405,18 +1438,6 @@ int run_server(const CliArgs_t *cli_args, Path_t *path) {
 
     uint8_t active_clients = count_active_clients(slot_taken);
     int8_t *dealer_id = &game_state.dealer_id;
-    int num_ready = SDLNet_CheckSockets(socket_set, 0);
-    if (num_ready > 0) {
-      if (active_clients > 1 && SDLNet_SocketReady(clients[*dealer_id]) &&
-          game_state.player[*dealer_id].id != -1) {
-        EReturnCode_t status = receive_game_type_and_run_game(&args_broadcast_game_state, &deck);
-        dealer_timeout_start = 0;
-        if (status == RC_ERR)
-          continue;
-      } else {
-        handle_disconnections(&args_broadcast_game_state);
-      }
-    }
 
     ELoop_t ret = register_new_client(&args_broadcast_game_state);
     if (ret == LOOP_CONTINUE)
@@ -1438,6 +1459,114 @@ int run_server(const CliArgs_t *cli_args, Path_t *path) {
     if (active_clients == 0)
       continue;
 
+    if (active_clients > 0) {
+      uint32_t now = SDL_GetTicks();
+      if (now - last_ping_time >= 5000) {
+        // Send ping requests
+        for (int i = 0; i < MAX_CLIENTS; i++) {
+          if (!slot_taken[i] || !clients[i])
+            continue;
+          if (send_ping_request(clients[i]) < 0) {
+            fprintf(stderr, "[PING] Failed to send ping request to client %d\n", i);
+          }
+        }
+
+        // Broadcast ping times
+        broadcast_ping_times(&args_broadcast_game_state, ping_times);
+
+        last_ping_time = now;
+      }
+      if (SDLNet_CheckSockets(socket_set, 50) == -1) {
+        fputs(SDLNet_GetError(), stderr);
+        continue;
+      }
+      for (int i = 0; i < MAX_CLIENTS; i++) {
+        if (!clients[i] || !slot_taken[i])
+          continue;
+
+        if (!SDLNet_SocketReady(clients[i]))
+          continue;
+
+        // Read the message size first (4 bytes)
+        uint32_t size_net = 0;
+        if (recv_all_tcp(clients[i], &size_net, sizeof(size_net)) <= 0) {
+          fprintf(stderr, "[NET] Disconnection while reading size from client %d\n", i);
+          remove_disconnected_player(&args_broadcast_game_state, i);
+          continue;
+        }
+
+        uint32_t size = SDL_SwapBE32(size_net);
+        if (size == 0 || size > 65536) {
+          fprintf(stderr, "[NET] Invalid message size from client %d: %u\n", i, size);
+          continue;
+        }
+
+        // Read the payload (size bytes)
+        uint8_t *buffer = malloc(size);
+        if (!buffer) {
+          fprintf(stderr, "[NET] Memory allocation failed for client %d\n", i);
+          continue;
+        }
+
+        if (recv_all_tcp(clients[i], buffer, size) <= 0) {
+          fprintf(stderr, "[NET] Disconnection while reading payload from client %d\n", i);
+          free(buffer);
+          continue;
+        }
+
+        uint16_t opcode = (buffer[0] << 8) | buffer[1];
+
+        switch (opcode) {
+        case MSG_PING_RESPONSE: {
+          PingResponse *resp = ping_response__unpack(NULL, size - 2, buffer + 2);
+          if (!resp) {
+            fprintf(stderr, "[PING] Failed to unpack PingResponse from client %d\n", i);
+          } else {
+            now = SDL_GetTicks();
+            ping_times[i] = now - resp->timestamp;
+            ping_response__free_unpacked(resp, NULL);
+          }
+          break;
+        }
+
+        case MSG_GAME_SELECT: {
+          if (active_clients == 1) {
+            fputs("The dealer sent a game but this option should be\ndisabled when there is only "
+                  "one active client\n",
+                  stderr);
+            break;
+          }
+          if (size < 4) {
+            fprintf(stderr, "[NET] Invalid MSG_GAME_SELECT size from client %d\n", i);
+          } else {
+            uint8_t *game_type = &args_broadcast_game_state.game_type;
+            *game_type = buffer[2];
+            bool *deuces_wild = &game_state.deuces_wild;
+            *deuces_wild = buffer[3] != 0;
+
+            // ✅ If this client is the dealer, process immediately
+            if (i == *dealer_id) {
+              fprintf(stderr, "Dealer selected game: %d (deuces wild: %d)\n", *game_type,
+                      *deuces_wild);
+              init_game(&args_broadcast_game_state, &deck);
+            } else {
+              // ✅ Otherwise, you might queue or ignore it
+              fprintf(stderr, "Non-dealer client %d sent MSG_GAME_SELECT (ignored)\n", i);
+            }
+          }
+          break;
+        }
+
+        default:
+          // Ignore or log
+          fprintf(stderr, "[NET] Unknown opcode %04X from client %d\n", opcode, i);
+          break;
+        }
+
+        free(buffer);
+      }
+    }
+
     if (active_clients > 1) {
       if (dealer_timeout_start == 0) {
         dealer_timeout_start = SDL_GetTicks();
@@ -1446,17 +1575,11 @@ int run_server(const CliArgs_t *cli_args, Path_t *path) {
         dealer_timeout_start = 0;
         broadcast_game_state(&args_broadcast_game_state);
       }
-      if (SDLNet_CheckSockets(socket_set, 50) == -1) {
-        fputs(SDLNet_GetError(), stderr);
-        continue;
-      }
     } else if (active_clients == 1)
       dealer_timeout_start = 0;
 
     if (reassign_dealer_if_needed(&game_state, slot_taken))
       broadcast_game_state(&args_broadcast_game_state);
-
-    SDL_Delay(50);
   }
 
   for (int i = 0; i < MAX_CLIENTS; i++) {

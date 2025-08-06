@@ -35,3 +35,26 @@ message GameSettings {
   uint32 action_timeout_ms = 2;
   uint32 end_of_game_timeout_ms = 3;
 }
+
+enum MessageType {
+  MSG_PING_REQUEST = 0;
+  MSG_PING_RESPONSE = 1;
+  MSG_PING_BROADCAST = 2;
+}
+
+message PingRequest {
+  uint32 timestamp = 1; // SDL_GetTicks() when sent
+}
+
+message PingResponse {
+  uint32 timestamp = 1; // Echo timestamp from request
+}
+
+message PingEntry {
+  uint32 player_id = 1;
+  uint32 ping_ms = 2;
+}
+
+message PingBroadcast {
+  repeated PingEntry entries = 1;
+}

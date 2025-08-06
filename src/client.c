@@ -65,17 +65,16 @@ static int send_protocol_header(TCPsocket sock) {
 SDL_Rect card_area = {0};
 
 int8_t send_game_select(TCPsocket sock, uint8_t game_type, const bool deuces_wild) {
-  uint8_t buffer[4];
-  buffer[0] = (MSG_GAME_SELECT >> 8) & 0xFF;
-  buffer[1] = (MSG_GAME_SELECT) & 0xFF;
-  buffer[2] = game_type;
-  buffer[3] = deuces_wild ? 1 : 0;
+  uint8_t payload[2];
+  payload[0] = game_type;
+  payload[1] = deuces_wild ? 1 : 0;
 
   const GameChoice_t *choice = find_game_choice_by_type(game_type);
-  int r = send_all_tcp(sock, buffer, sizeof(buffer));
-  if (r == 0) {
+
+  int r = send_message(sock, MSG_GAME_SELECT, payload, sizeof(payload));
+  if (r >= 0) {
     printf("Game type sent: %s (Deuces wild: %s)\n", choice->str, deuces_wild ? "Yes" : "No");
-    return r;
+    return 0;
   }
 
   fprintf(stderr, "Game type failed to send: %s\n", choice->str);
@@ -312,14 +311,35 @@ static bool menu_display_game_choices(const PlayerConfig_t *player_config,
 
     n_clients = 0;
     do {
-      // fprintf(stderr, "%d\n", __LINE__);
+      int ping_column_x = sdl_context->win_center.x - SCALE_X(100); // fixed right edge for ping
       offset_y += SCALE_Y(40);
-      char tmp[sizeof(client->nick) + 20] = {0};
-      snprintf(tmp, sizeof tmp, "%s%s", client->nick,
+
+      // Build nickname + dealer label
+      char nick_buf[SIZEOF_NICK + sizeof(" (Dealer)")];
+      snprintf(nick_buf, sizeof nick_buf, "%s%s", client->nick,
                game_state->dealer_id == client->id ? " (Dealer)" : "");
-      SDL_Rect text_pos = {offset_x, offset_y, 0, 0};
-      render_text_plain(sdl_context->renderer, font->fonts[FONT_BOLD], tmp, get_color(COLOR_WHITE),
-                        &text_pos);
+
+      // Build ping text
+      char ping_buf[32];
+      snprintf(ping_buf, sizeof ping_buf, "ping %dms", client_state->ping_times[client->id]);
+
+      // Render nick left-aligned
+      SDL_Rect nick_pos = {offset_x, offset_y, 0, 0};
+      render_text_plain(sdl_context->renderer, font->fonts[FONT_BOLD], nick_buf,
+                        get_color(COLOR_WHITE), &nick_pos);
+
+      // Measure ping text width
+      int ping_w = 0, ping_h = 0;
+      if (TTF_SizeUTF8(font->fonts[FONT_BOLD], ping_buf, &ping_w, &ping_h) != 0) {
+        fprintf(stderr, "TTF_SizeUTF8 failed: %s\n", TTF_GetError());
+        ping_w = 0;
+      }
+
+      // Render ping right-aligned at ping_column_x
+      SDL_Rect ping_pos = {ping_column_x - ping_w, offset_y, 0, 0};
+      render_text_plain(sdl_context->renderer, font->fonts[FONT_BOLD], ping_buf,
+                        get_color(COLOR_WHITE), &ping_pos);
+
       n_clients++;
       client = get_next_connected_client(game_state->player, client->id);
     } while (client && client != start);
