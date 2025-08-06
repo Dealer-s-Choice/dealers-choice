@@ -308,7 +308,7 @@ static int send_turn_id(TCPsocket sock, const int8_t turn_id) {
 
 void broadcast_turn_id(const ArgsBroadcastGameState_t *args) {
   for (int i = 0; i < MAX_CLIENTS; i++) {
-    if (!args->game_state->player->is_connected)
+    if (!args->clients[i])
       continue;
 
     TCPsocket sock = args->clients[i];
