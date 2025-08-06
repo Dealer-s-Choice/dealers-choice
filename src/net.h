@@ -39,7 +39,7 @@
 #endif
 
 #define GAME_PROTOCOL_MAGIC "DCPROTO"
-#define GAME_PROTOCOL_VERSION 4
+#define GAME_PROTOCOL_VERSION 5
 
 #ifdef _MSC_VER
 #pragma pack(push, 1)
@@ -64,18 +64,18 @@ __attribute__((packed)) GameProtocolHeader_t;
 
 #define MSG_GAME_SELECT 0x0001   // Player_t chooses a game variant
 #define MSG_PLAYER_ACTION 0x0002 // Player_t bets, folds, etc.
-#define MSG_GAME_START 0x0004    // Game begins
-#define MSG_DEAL_CARDS 0x0005    // Cards sent to player
-#define MSG_DRAW_REQUEST 0x0006  // Player_t discards cards for draw
-#define MSG_WILD_REPLACEMENT 0x0007
-#define MSG_GAME_STATE_UPDATE 0x0008 // Server sends state update
+#define MSG_PING_BROADCAST 0x0003
+#define MSG_PING_REQUEST 0x0004
+#define MSG_PING_RESPONSE 0x0005
+#define MSG_DEAL_CARDS 0x0006   // Cards sent to player
+#define MSG_DRAW_REQUEST 0x0007 // Player_t discards cards for draw
+#define MSG_WILD_REPLACEMENT 0x0008
 #define MSG_DRAW_PROMPT 0x0009
 #define MSG_STATUS_MESSAGE 0x000A
 #define MSG_NEW_HAND 0x000B
-// #define MSG_START_ACTION_TIMER 0x0012
-#define MSG_BET_CHECK_FOLD 0x000D
-#define MSG_CALL_RAISE_FOLD 0x000E
-#define MSG_TURN_ID 0x000F
+#define MSG_BET_CHECK_FOLD 0x000C
+#define MSG_CALL_RAISE_FOLD 0x000D
+#define MSG_TURN_ID 0x000E
 
 #define DEFAULT_PORT "22777"
 
@@ -103,6 +103,7 @@ typedef struct {
   bool play_coin_sound;
   bool bet_check_fold;
   bool call_raise_fold;
+  uint32_t ping_times[MAX_CLIENTS];
 } ClientState_t;
 
 struct player_message_builder_t {
@@ -136,5 +137,7 @@ ERecvStatus_t recv_game_settings(TCPsocket client_socket, SDLNet_SocketSet socke
                                  GameSettings_t *game_settings);
 
 void socket_cleanup(SocketContext_t *socket_context);
+
+int send_message(TCPsocket sock, uint16_t opcode, const uint8_t *payload, size_t payload_len);
 
 #endif

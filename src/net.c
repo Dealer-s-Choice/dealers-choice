@@ -27,6 +27,7 @@
 */
 
 #include "net.h"
+#include "util.h"
 
 static void fill_player_message(struct player_message_builder_t *builder, const Player_t *src) {
   player__init(&builder->msg);
@@ -308,7 +309,7 @@ int recv_all_tcp(TCPsocket sock, void *data, int length) {
 ERecvStatus_t recv_game_state(SocketContext_t *socket_context, GameState_t *game_state,
                               ClientState_t *client_state, const int8_t id) {
   // printf("[recv_game_state] Waiting for game state...\n");
-  int result = SDLNet_CheckSockets(socket_context->set, 100);
+  int result = SDLNet_CheckSockets(socket_context->set, 0);
   // printf("[recv_game_state] CheckSockets returned: %d\n", result);
   if (result == -1) {
     fputs(SDLNet_GetError(), stderr);
@@ -376,6 +377,54 @@ ERecvStatus_t recv_game_state(SocketContext_t *socket_context, GameState_t *game
     client_state->n_cards_selected = 0;
     // printf("[recv_game_state] Received %u bytes, server wants discards...\n", size);
     break;
+
+  case MSG_PING_REQUEST: {
+    PingRequest *req = ping_request__unpack(NULL, size - 2, buffer + 2);
+    if (!req) {
+      fprintf(stderr, "[PING] Failed to unpack PingRequest\n");
+      break;
+    }
+
+    // Prepare PingResponse with same timestamp
+    PingResponse resp = PING_RESPONSE__INIT;
+    resp.timestamp = req->timestamp;
+
+    size_t len = ping_response__get_packed_size(&resp);
+    uint8_t *buf = malloc(len);
+    if (!buf) {
+      ping_request__free_unpacked(req, NULL);
+      break;
+    }
+
+    ping_response__pack(&resp, buf);
+
+    // Send back response to server
+    if (send_message(sock, MSG_PING_RESPONSE, buf, len) < 0) {
+      fprintf(stderr, "[PING] Failed to send PingResponse\n");
+    }
+
+    free(buf);
+    ping_request__free_unpacked(req, NULL);
+  } break;
+
+  case MSG_PING_BROADCAST: {
+    PingBroadcast *pb = ping_broadcast__unpack(NULL, size - 2, buffer + 2);
+    if (!pb) {
+      fprintf(stderr, "[PING] Failed to unpack PingBroadcast\n");
+      break;
+    }
+
+    // Store ping times by player ID
+    for (size_t i = 0; i < pb->n_entries; i++) {
+      int player_id = pb->entries[i]->player_id;
+      if (player_id >= 0 && player_id < MAX_CLIENTS) {
+        client_state->ping_times[player_id] = pb->entries[i]->ping_ms;
+        verbose_printf("Player %d ping: %u ms\n", player_id, pb->entries[i]->ping_ms);
+      }
+    }
+
+    ping_broadcast__free_unpacked(pb, NULL);
+  } break;
 
   case MSG_WILD_REPLACEMENT:
     if (size != 2) {
@@ -473,9 +522,7 @@ ERecvStatus_t recv_game_settings(TCPsocket client_socket, SDLNet_SocketSet socke
     return RECV_ERROR;
   }
 
-  fprintf(stderr, "[recv_game_settings] size: %d\n", size);
-
-  printf("[recv_game_settings] Received %u bytes, deserializing...\n", size);
+  verbose_printf("[recv_game_settings] Received %u bytes, deserializing...\n", size);
   *game_settings = deserialize_game_settings(buffer, size);
 
   free(buffer);
@@ -487,4 +534,19 @@ void socket_cleanup(SocketContext_t *socket_context) {
     fputs(SDLNet_GetError(), stderr);
   SDLNet_FreeSocketSet(socket_context->set);
   SDLNet_TCP_Close(socket_context->sock);
+}
+
+int send_message(TCPsocket sock, uint16_t opcode, const uint8_t *payload, size_t payload_len) {
+  uint32_t total_size = SDL_SwapBE32(2 + payload_len); // opcode + payload
+  uint16_t opcode_be = SDL_SwapBE16(opcode);
+
+  uint8_t header[6];
+  memcpy(header, &total_size, 4);
+  memcpy(header + 4, &opcode_be, 2);
+
+  if (send_all_tcp(sock, header, sizeof(header)) < 0)
+    return -1;
+  if (send_all_tcp(sock, payload, payload_len) < 0)
+    return -1;
+  return 0;
 }

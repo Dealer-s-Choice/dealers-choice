@@ -20,10 +20,20 @@ typedef struct Hand Hand;
 typedef struct Player Player;
 typedef struct GameState GameState;
 typedef struct GameSettings GameSettings;
+typedef struct PingRequest PingRequest;
+typedef struct PingResponse PingResponse;
+typedef struct PingEntry PingEntry;
+typedef struct PingBroadcast PingBroadcast;
 
 
 /* --- enums --- */
 
+typedef enum _MessageType {
+  MESSAGE_TYPE__MSG_PING_REQUEST = 0,
+  MESSAGE_TYPE__MSG_PING_RESPONSE = 1,
+  MESSAGE_TYPE__MSG_PING_BROADCAST = 2
+    PROTOBUF_C__FORCE_ENUM_TO_BE_INT_SIZE(MESSAGE_TYPE)
+} MessageType;
 
 /* --- messages --- */
 
@@ -93,6 +103,54 @@ struct  GameSettings
 #define GAME_SETTINGS__INIT \
  { PROTOBUF_C_MESSAGE_INIT (&game_settings__descriptor) \
 , 0, 0, 0 }
+
+
+struct  PingRequest
+{
+  ProtobufCMessage base;
+  /*
+   * SDL_GetTicks() when sent
+   */
+  uint32_t timestamp;
+};
+#define PING_REQUEST__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&ping_request__descriptor) \
+, 0 }
+
+
+struct  PingResponse
+{
+  ProtobufCMessage base;
+  /*
+   * Echo timestamp from request
+   */
+  uint32_t timestamp;
+};
+#define PING_RESPONSE__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&ping_response__descriptor) \
+, 0 }
+
+
+struct  PingEntry
+{
+  ProtobufCMessage base;
+  uint32_t player_id;
+  uint32_t ping_ms;
+};
+#define PING_ENTRY__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&ping_entry__descriptor) \
+, 0, 0 }
+
+
+struct  PingBroadcast
+{
+  ProtobufCMessage base;
+  size_t n_entries;
+  PingEntry **entries;
+};
+#define PING_BROADCAST__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&ping_broadcast__descriptor) \
+, 0,NULL }
 
 
 /* Card methods */
@@ -190,6 +248,82 @@ GameSettings *
 void   game_settings__free_unpacked
                      (GameSettings *message,
                       ProtobufCAllocator *allocator);
+/* PingRequest methods */
+void   ping_request__init
+                     (PingRequest         *message);
+size_t ping_request__get_packed_size
+                     (const PingRequest   *message);
+size_t ping_request__pack
+                     (const PingRequest   *message,
+                      uint8_t             *out);
+size_t ping_request__pack_to_buffer
+                     (const PingRequest   *message,
+                      ProtobufCBuffer     *buffer);
+PingRequest *
+       ping_request__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   ping_request__free_unpacked
+                     (PingRequest *message,
+                      ProtobufCAllocator *allocator);
+/* PingResponse methods */
+void   ping_response__init
+                     (PingResponse         *message);
+size_t ping_response__get_packed_size
+                     (const PingResponse   *message);
+size_t ping_response__pack
+                     (const PingResponse   *message,
+                      uint8_t             *out);
+size_t ping_response__pack_to_buffer
+                     (const PingResponse   *message,
+                      ProtobufCBuffer     *buffer);
+PingResponse *
+       ping_response__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   ping_response__free_unpacked
+                     (PingResponse *message,
+                      ProtobufCAllocator *allocator);
+/* PingEntry methods */
+void   ping_entry__init
+                     (PingEntry         *message);
+size_t ping_entry__get_packed_size
+                     (const PingEntry   *message);
+size_t ping_entry__pack
+                     (const PingEntry   *message,
+                      uint8_t             *out);
+size_t ping_entry__pack_to_buffer
+                     (const PingEntry   *message,
+                      ProtobufCBuffer     *buffer);
+PingEntry *
+       ping_entry__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   ping_entry__free_unpacked
+                     (PingEntry *message,
+                      ProtobufCAllocator *allocator);
+/* PingBroadcast methods */
+void   ping_broadcast__init
+                     (PingBroadcast         *message);
+size_t ping_broadcast__get_packed_size
+                     (const PingBroadcast   *message);
+size_t ping_broadcast__pack
+                     (const PingBroadcast   *message,
+                      uint8_t             *out);
+size_t ping_broadcast__pack_to_buffer
+                     (const PingBroadcast   *message,
+                      ProtobufCBuffer     *buffer);
+PingBroadcast *
+       ping_broadcast__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   ping_broadcast__free_unpacked
+                     (PingBroadcast *message,
+                      ProtobufCAllocator *allocator);
 /* --- per-message closures --- */
 
 typedef void (*Card_Closure)
@@ -207,17 +341,34 @@ typedef void (*GameState_Closure)
 typedef void (*GameSettings_Closure)
                  (const GameSettings *message,
                   void *closure_data);
+typedef void (*PingRequest_Closure)
+                 (const PingRequest *message,
+                  void *closure_data);
+typedef void (*PingResponse_Closure)
+                 (const PingResponse *message,
+                  void *closure_data);
+typedef void (*PingEntry_Closure)
+                 (const PingEntry *message,
+                  void *closure_data);
+typedef void (*PingBroadcast_Closure)
+                 (const PingBroadcast *message,
+                  void *closure_data);
 
 /* --- services --- */
 
 
 /* --- descriptors --- */
 
+extern const ProtobufCEnumDescriptor    message_type__descriptor;
 extern const ProtobufCMessageDescriptor card__descriptor;
 extern const ProtobufCMessageDescriptor hand__descriptor;
 extern const ProtobufCMessageDescriptor player__descriptor;
 extern const ProtobufCMessageDescriptor game_state__descriptor;
 extern const ProtobufCMessageDescriptor game_settings__descriptor;
+extern const ProtobufCMessageDescriptor ping_request__descriptor;
+extern const ProtobufCMessageDescriptor ping_response__descriptor;
+extern const ProtobufCMessageDescriptor ping_entry__descriptor;
+extern const ProtobufCMessageDescriptor ping_broadcast__descriptor;
 
 PROTOBUF_C__END_DECLS
 
