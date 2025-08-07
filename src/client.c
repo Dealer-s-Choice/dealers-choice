@@ -43,6 +43,8 @@ const uint8_t MAX_CONNECTION_ATTEMPTS = 12;
 
 #define x_begin_action_button SCALE_X(500);
 
+#define ma_sound_start_checked(pSound) ma_sound_start_wrap((pSound), __FILE__, __LINE__)
+
 static int send_protocol_header(TCPsocket sock) {
   puts("Exchanging protocol information...");
   GameProtocolHeader_t hdr = {0};
@@ -167,6 +169,13 @@ void render_link(Link_t *link) {
   SDL_RenderCopy(link->renderer, texture, NULL, &link->rect);
   SDL_DestroyTexture(texture);
   TTF_SetFontStyle(link->font, TTF_STYLE_NORMAL);
+}
+
+static void ma_sound_start_wrap(ma_sound *pSound, const char *file, const int line) {
+  ma_result result = ma_sound_start(pSound);
+  if (result != MA_SUCCESS) {
+    fprintf(stderr, "[ma_sound_start] Failed (%s:%d) -> result = %d\n", file, line, result);
+  }
 }
 
 static bool menu_display_game_choices(const PlayerConfig_t *player_config,
@@ -343,11 +352,9 @@ static bool menu_display_game_choices(const PlayerConfig_t *player_config,
       n_clients++;
       client = get_next_connected_client(game_state->player, client->id);
     } while (client && client != start);
-    if (saved_n_clients < n_clients && saved_n_clients != 0) {
-      ma_sound_start(&sound_context->sounds[SND_SERVER_JOIN].sound);
-    }
+    if (saved_n_clients < n_clients && saved_n_clients != 0)
+      ma_sound_start_checked(&sound_context->sounds[SND_SERVER_JOIN].sound);
     saved_n_clients = n_clients;
-    // fprintf(stderr, "%d\n", __LINE__);
 
     if (n_clients == 1)
       render_text_plain(
@@ -916,7 +923,7 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
 
       if (my_turn) {
         if (player_config->turn_notify)
-          ma_sound_start(&sound_context->sounds[SND_MY_TURN].sound);
+          ma_sound_start_checked(&sound_context->sounds[SND_MY_TURN].sound);
       }
       client_state.turn_switch = false;
     }
