@@ -1514,8 +1514,14 @@ int run_server(const CliArgs_t *cli_args, Path_t *path) {
           continue;
         }
 
-        uint16_t opcode = (buffer[0] << 8) | buffer[1];
-
+        // This breaks on FreeBSD, for example, the server will
+        // incorrectly receive 0100 instead of the correct 0001
+        // uint16_t opcode = (buffer[0] << 8) | buffer[1];
+        //
+        // Use this instead (also used in net.c).
+        uint16_t opcode_be;
+        memcpy(&opcode_be, buffer, sizeof(opcode_be));
+        uint16_t opcode = SDL_SwapBE16(opcode_be);
         switch (opcode) {
         case MSG_PING_RESPONSE: {
           PingResponse *resp = ping_response__unpack(NULL, size - 2, buffer + 2);
