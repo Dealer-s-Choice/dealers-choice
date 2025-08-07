@@ -446,29 +446,35 @@ ERecvStatus_t recv_game_state(SocketContext_t *socket_context, GameState_t *game
         strstr(client_state->server_status_str, "raise"))
       client_state->play_coin_sound = true;
   } break;
+
   case MSG_NEW_HAND: {
-    if (size < 3) {
+    if (size < OPCODE_SIZE + 1) { // minimal valid payload: at least opcode + 1 byte of data
       fputs("Invalid MSG_NEW_HAND payload (too short)\n", stderr);
       break;
     }
 
-    uint8_t hand_size = buffer[2];
-    uint8_t expected_size = 3 + hand_size * 8;
-    if (hand_size == 0 || hand_size > MAX_HAND_SIZE || size != expected_size) {
-      fprintf(stderr, "Invalid hand size or message length: %u\n", hand_size);
+    // Unpack protobuf starting after the opcode
+    Hand *pb_hand = hand__unpack(NULL, size - OPCODE_SIZE, buffer + OPCODE_SIZE);
+    if (!pb_hand) {
+      fputs("Failed to unpack Hand protobuf\n", stderr);
       break;
     }
 
-    for (uint8_t i = 0; i < hand_size; ++i) {
-      int8_t fv = buffer[3 + i * 2];
-      int8_t s = buffer[3 + i * 2 + 1];
-      game_state->player[id].hand.card[i].face_val = fv;
-      game_state->player[id].hand.card[i].suit = s;
+    if (pb_hand->n_card == 0 || pb_hand->n_card > MAX_HAND_SIZE) {
+      fprintf(stderr, "Invalid hand size: %zu\n", pb_hand->n_card);
+      hand__free_unpacked(pb_hand, NULL);
+      break;
     }
 
-    // printf("[recv_game_state] Received new hand with %u cards\n", hand_size);
+    for (uint32_t i = 0; i < pb_hand->n_card; ++i) {
+      game_state->player[id].hand.card[i].face_val = pb_hand->card[i]->face_val;
+      game_state->player[id].hand.card[i].suit = pb_hand->card[i]->suit;
+    }
+
+    hand__free_unpacked(pb_hand, NULL);
     break;
-  } break;
+  }
+
   default:
     // printf("[recv_game_state] Received %u bytes, deserializing...\n", size);
     *game_state = deserialize_game_state(buffer, size);
