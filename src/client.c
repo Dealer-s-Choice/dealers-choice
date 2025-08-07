@@ -759,9 +759,12 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
       {
           "48x48_front_Gaius-Julius-Caesar-denarius-44-BC-RRC-480-3.png",
       },
+      {
+          "48x48-1984_rv_marie_curie.png",
+      },
   };
-  size_t num_coins = ARRAY_SIZE(coin);
-  const int which_coin = pcg32_boundedrand_r(&rng, num_coins);
+
+  const int which_coin = pcg32_boundedrand_r(&rng, ARRAY_SIZE(coin));
   SDL_Texture *coin_tex_front =
       load_coin_texture(sdl_context->renderer, path->data, coin[which_coin].front);
 

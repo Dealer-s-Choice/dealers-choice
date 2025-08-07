@@ -20,6 +20,14 @@ Classical Numismatic Group, Inc. http://www.cngcoins.com, CC BY-SA 2.5 <https://
 
 [Sculpture by Thomas Hudson Jones; photo by the Architect of the Capitol](https://commons.wikimedia.org/wiki/File:Hammurabi_bas-relief_in_the_U.S._House_of_Representatives_chamber.jpg), Public domain, via Wikimedia Commons
 
+
+48x48-1984_rv_marie_curie.png
+
+[Seherr and  Prométhée33  (retrait
+fond)](https://commons.wikimedia.org/wiki/File:1984_rv_marie_curie.png), [CC
+BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0), via Wikimedia
+Commons
+
 ## Fonts
 
 * LiberationSans-Bold.ttf
