@@ -1549,6 +1549,7 @@ int run_server(const CliArgs_t *cli_args, Path_t *path) {
               fprintf(stderr, "Dealer selected game: %d (deuces wild: %d)\n", *game_type,
                       *deuces_wild);
               init_game(&args_broadcast_game_state, &deck);
+              dealer_timeout_start = 0;
             } else {
               // ✅ Otherwise, you might queue or ignore it
               fprintf(stderr, "Non-dealer client %d sent MSG_GAME_SELECT (ignored)\n", i);
