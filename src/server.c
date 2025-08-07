@@ -112,28 +112,37 @@ static int send_new_hand(TCPsocket sock, const POKEVAL_Hand_7 *hand, uint8_t han
   if (hand_size == 0 || hand_size > MAX_HAND_SIZE)
     return -1;
 
-  // TODO: Can this be simplified via protobuf-c (already being used to serialize game_state)?
+  Hand pb_hand = HAND__INIT;
+  Card *cards[MAX_HAND_SIZE];
 
-  const size_t card_bytes = hand_size * 8;        // each card is 8 bytes: 2 × 4-byte ints
-  const size_t payload_size = 2 + 1 + card_bytes; // opcode + hand_size + cards
-  const uint32_t total_size = SDL_SwapBE32(payload_size);
-
-  uint8_t buffer[4 + payload_size];
-  memcpy(buffer, &total_size, 4); // size prefix
-
-  buffer[4] = (MSG_NEW_HAND >> 8) & 0xFF;
-  buffer[5] = MSG_NEW_HAND & 0xFF;
-  buffer[6] = hand_size;
-
-  // Serialize each card (face_val and suit as 4-byte integers)
   for (uint8_t i = 0; i < hand_size; ++i) {
-    int8_t fv = hand->card[i].face_val;
-    int8_t s = hand->card[i].suit;
-    memcpy(&buffer[7 + i * 2], &fv, sizeof(fv));   // writes 1 byte
-    memcpy(&buffer[7 + i * 2 + 1], &s, sizeof(s)); // writes 1 byte
+    cards[i] = calloc_wrap(sizeof(Card), 1);
+    *cards[i] = (Card)CARD__INIT;
+    cards[i]->face_val = hand->card[i].face_val;
+    cards[i]->suit = hand->card[i].suit;
   }
 
-  return send_all_tcp(sock, buffer, 4 + payload_size);
+  pb_hand.n_card = hand_size;
+  pb_hand.card = cards;
+
+  size_t packed_size = hand__get_packed_size(&pb_hand);
+  uint32_t payload_size = OPCODE_SIZE + packed_size;
+  uint32_t total_size = SDL_SwapBE32(payload_size);
+
+  uint8_t *buffer = malloc(LENGTH_PREFIX_SIZE + payload_size);
+  memcpy(buffer, &total_size, LENGTH_PREFIX_SIZE);
+  buffer[LENGTH_PREFIX_SIZE] = (MSG_NEW_HAND >> 8) & 0xFF;
+  buffer[LENGTH_PREFIX_SIZE + 1] = MSG_NEW_HAND & 0xFF;
+
+  hand__pack(&pb_hand, buffer + LENGTH_PREFIX_SIZE + OPCODE_SIZE);
+
+  int result = send_all_tcp(sock, buffer, LENGTH_PREFIX_SIZE + payload_size);
+
+  free(buffer);
+  for (uint8_t i = 0; i < hand_size; ++i)
+    free(cards[i]);
+
+  return result;
 }
 
 RealHand_t deal_cards_to_players(GameState_t *game_state, DH_Deck *deck, const uint8_t game_type) {

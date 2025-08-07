@@ -62,6 +62,9 @@ __attribute__((packed)) GameProtocolHeader_t;
 #define INET6_ADDRSTRLEN 46
 #endif
 
+#define OPCODE_SIZE 2
+#define LENGTH_PREFIX_SIZE sizeof(uint32_t)
+
 #define MSG_GAME_SELECT 0x0001   // Player_t chooses a game variant
 #define MSG_PLAYER_ACTION 0x0002 // Player_t bets, folds, etc.
 #define MSG_PING_BROADCAST 0x0003
