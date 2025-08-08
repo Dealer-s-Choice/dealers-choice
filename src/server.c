@@ -462,7 +462,7 @@ static void server_handle_raise(GameState_t *game_state, uint32_t *total_paid,
 
 static ELoop_t handle_draw(ArgsBroadcastGameState_t *args, TCPsocket sock, const int id,
                            DH_Deck *deck) {
-  puts("sending draw prompt");
+  verbose_puts("sending draw prompt");
   if (send_opcode(sock, MSG_DRAW_PROMPT) != 0) {
     fputs("Failed to send draw prompt\n", stderr);
     return LOOP_ERROR;
@@ -802,7 +802,7 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args) {
                 fputs("Invalid Action received\nThe client is writing checks their body "
                       "can't cash.\n",
                       stderr);
-                exit(EXIT_FAILURE);
+                remove_disconnected_player(args, turn->id);
               }
             }
           } else {
@@ -839,7 +839,7 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args) {
       }
 
       broadcast_status_message(args, status_str);
-      puts(status_str);
+      verbose_puts(status_str);
 
       // player_count might be 1 now, if a player folded due to an action timeout
       if (args->game_state->player_count == 1) {
@@ -988,7 +988,7 @@ void game_five_card_draw(GAME_ARGS) {
 
     do {
       args->turn_id = turn->id;
-      fprintf(stderr, "turn->id: %d\n", turn->id);
+      verbose_printf("turn->id: %d\n", turn->id);
 
       broadcast_turn_id(args);
 
@@ -1086,7 +1086,7 @@ static void play_game(ArgsBroadcastGameState_t *args, DH_Deck *deck) {
 
   args->game_state->winner_declared = false;
   args->game_state->player_count = count_active_clients(args->slot_taken);
-  fprintf(stderr, "player count: %d\n", args->game_state->player_count);
+  verbose_printf("player count: %d\n", args->game_state->player_count);
   args->game_state->winner_declared = false;
 
   Player_t *turn = get_next_player(players_array, args->game_state->dealer_id);
@@ -1195,7 +1195,8 @@ static EReturnCode_t init_game(ArgsBroadcastGameState_t *args, DH_Deck *deck) {
 
   int8_t *dealer_id = &args->game_state->dealer_id;
 
-  printf("All %d players are ready. Starting game.\n", count_active_clients(args->slot_taken));
+  verbose_printf("All %d players are ready. Starting game.\n",
+                 count_active_clients(args->slot_taken));
   args->game_state->at_menu = false;
 
   play_game(args, deck);
@@ -1220,7 +1221,7 @@ static EReturnCode_t init_game(ArgsBroadcastGameState_t *args, DH_Deck *deck) {
   if (next_dealer != -1) {
     *dealer_id = next_dealer;
     broadcast_game_state(args);
-    fprintf(stderr, "Dealer rotated to player %d\n", next_dealer);
+    verbose_printf("Dealer rotated to player %d\n", next_dealer);
   } else {
     printf("No valid dealer found after rotation\n");
     *dealer_id = -1;
@@ -1230,7 +1231,7 @@ static EReturnCode_t init_game(ArgsBroadcastGameState_t *args, DH_Deck *deck) {
 }
 
 static int recv_and_validate_protocol_header(TCPsocket sock) {
-  puts("Exchanging protocol information...");
+  verbose_puts("Exchanging protocol information...");
   GameProtocolHeader_t hdr = {0};
   if (recv_all_tcp(sock, &hdr, sizeof(hdr)) <= 0) {
     fprintf(stderr, "Failed to receive protocol header\n");
@@ -1336,7 +1337,7 @@ static ELoop_t register_new_client(ArgsBroadcastGameState_t *args) {
 
         // Step 5: Null terminate
         player->nick[len] = '\0';
-        printf("received nick: %s\n", player->nick);
+        verbose_printf("received nick: %s\n", player->nick);
         ensure_unique_nick(args->game_state, player, slot);
       }
 
@@ -1372,7 +1373,7 @@ int run_server(const CliArgs_t *cli_args, Path_t *path) {
       host = NULL;
   } else
     host = (char *)cli_args->bind_address;
-  fprintf(stderr, "Resolving host: %s\n", (host) ? host : "NULL");
+  verbose_printf("Resolving host: %s\n", (host) ? host : "NULL");
   if (SDLNet_ResolveHost(&ip, host, atoi(DEFAULT_PORT)) == -1) {
     fprintf(stderr, "SDLNet_ResolveHost: %s\n", SDLNet_GetError());
     SDLNet_Quit();
@@ -1561,8 +1562,8 @@ int run_server(const CliArgs_t *cli_args, Path_t *path) {
 
             // ✅ If this client is the dealer, process immediately
             if (i == *dealer_id) {
-              fprintf(stderr, "Dealer selected game: %d (deuces wild: %d)\n", *game_type,
-                      *deuces_wild);
+              verbose_printf("Dealer selected game: %d (deuces wild: %d)\n", *game_type,
+                             *deuces_wild);
               init_game(&args_broadcast_game_state, &deck);
               dealer_timeout_start = 0;
             } else {

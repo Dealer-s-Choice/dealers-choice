@@ -46,7 +46,7 @@ const uint8_t MAX_CONNECTION_ATTEMPTS = 12;
 #define ma_sound_start_checked(pSound) ma_sound_start_wrap((pSound), __FILE__, __LINE__)
 
 static int send_protocol_header(TCPsocket sock) {
-  puts("Exchanging protocol information...");
+  verbose_puts("Exchanging protocol information...");
   GameProtocolHeader_t hdr = {0};
   snprintf(hdr.magic, sizeof(hdr.magic), "%s", GAME_PROTOCOL_MAGIC);
   hdr.version = SDL_SwapBE16(GAME_PROTOCOL_VERSION);
@@ -75,7 +75,8 @@ int8_t send_game_select(TCPsocket sock, uint8_t game_type, const bool deuces_wil
 
   int r = send_message(sock, MSG_GAME_SELECT, payload, sizeof(payload));
   if (r >= 0) {
-    printf("Game type sent: %s (Deuces wild: %s)\n", choice->str, deuces_wild ? "Yes" : "No");
+    verbose_printf("Game type sent: %s (Deuces wild: %s)\n", choice->str,
+                   deuces_wild ? "Yes" : "No");
     return 0;
   }
 
