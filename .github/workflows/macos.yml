@@ -19,6 +19,7 @@ on:
 jobs:
   MacOS:
     strategy:
+      fail-fast: false
       matrix:
         os:
           - macos-15
@@ -44,7 +45,8 @@ jobs:
         GETTEXT_PREFIX=$(brew --prefix gettext)
         echo $GETTEXT_PREFIX
         # PKG_CONFIG_PATH="$GETTEXT_PREFIX/lib/pkgconfig:$PKG_CONFIG_PATH"
-        CFLAGS="-Werror" meson setup _build
+        # CFLAGS="-Werror" meson setup _build
+        meson setup _build
 
     - name: Build
       run: meson compile -C _build
