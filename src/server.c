@@ -1511,129 +1511,130 @@ int run_server(const CliArgs_t *cli_args, Path_t *path) {
         // Broadcast ping times
         broadcast_ping_times(&args_broadcast_game_state, ping_times);
       }
-      if (SDLNet_CheckSockets(socket_set, 50) == -1) {
+      int recv_pings = SDLNet_CheckSockets(socket_set, 50);
+      if (recv_pings == -1)
         fputs(SDLNet_GetError(), stderr);
-        continue;
-      }
-      bool break_loop = false;
-      for (int i = 0; i < MAX_CLIENTS; i++) {
-        if (!clients[i])
-          continue;
+      else if (recv_pings != 0) {
+        bool break_loop = false;
+        for (int i = 0; i < MAX_CLIENTS; i++) {
+          if (!clients[i])
+            continue;
 
-        if (!SDLNet_SocketReady(clients[i]))
-          continue;
+          if (!SDLNet_SocketReady(clients[i]))
+            continue;
 
-        // Read the message size first (4 bytes)
-        uint32_t size_net = 0;
-        if (recv_all_tcp(clients[i], &size_net, sizeof(size_net)) <= 0) {
-          fprintf(stderr, "[NET] Disconnection while reading size from client %d\n", i);
-          remove_disconnected_player(&args_broadcast_game_state, i);
-          continue;
-        }
-
-        uint32_t size = SDL_SwapBE32(size_net);
-        if (size == 0 || size > 65536) {
-          fprintf(stderr, "[NET] Invalid message size from client %d: %u\n", i, size);
-          continue;
-        }
-
-        // Read the payload (size bytes)
-        uint8_t *buffer = malloc(size);
-        if (!buffer) {
-          fprintf(stderr, "[NET] Memory allocation failed for client %d\n", i);
-          continue;
-        }
-
-        if (recv_all_tcp(clients[i], buffer, size) <= 0) {
-          fprintf(stderr, "[NET] Disconnection while reading payload from client %d\n", i);
-          free(buffer);
-          continue;
-        }
-
-        // This breaks on FreeBSD, for example, the server will
-        // incorrectly receive 0100 instead of the correct 0001
-        // uint16_t opcode = (buffer[0] << 8) | buffer[1];
-        //
-        // Use this instead (also used in net.c).
-        uint16_t opcode_be;
-        memcpy(&opcode_be, buffer, sizeof(opcode_be));
-        uint16_t opcode = SDL_SwapBE16(opcode_be);
-        switch (opcode) {
-        case MSG_PING_RESPONSE: {
-          PingResponse *resp = ping_response__unpack(NULL, size - 2, buffer + 2);
-          if (!resp) {
-            fprintf(stderr, "[PING] Failed to unpack PingResponse from client %d\n", i);
-          } else {
-            now = SDL_GetTicks();
-            ping_times[i] = now - resp->timestamp;
-            ping_response__free_unpacked(resp, NULL);
+          // Read the message size first (4 bytes)
+          uint32_t size_net = 0;
+          if (recv_all_tcp(clients[i], &size_net, sizeof(size_net)) <= 0) {
+            fprintf(stderr, "[NET] Disconnection while reading size from client %d\n", i);
+            remove_disconnected_player(&args_broadcast_game_state, i);
+            continue;
           }
-          break;
-        }
 
-        case MSG_GAME_SELECT: {
-          if (active_clients == 1) {
-            fputs("The dealer sent a game but this option should be\n"
-                  "disabled when there is only one active client\n",
-                  stderr);
+          uint32_t size = SDL_SwapBE32(size_net);
+          if (size == 0 || size > 65536) {
+            fprintf(stderr, "[NET] Invalid message size from client %d: %u\n", i, size);
+            continue;
+          }
+
+          // Read the payload (size bytes)
+          uint8_t *buffer = malloc(size);
+          if (!buffer) {
+            fprintf(stderr, "[NET] Memory allocation failed for client %d\n", i);
+            continue;
+          }
+
+          if (recv_all_tcp(clients[i], buffer, size) <= 0) {
+            fprintf(stderr, "[NET] Disconnection while reading payload from client %d\n", i);
+            free(buffer);
+            continue;
+          }
+
+          // This breaks on FreeBSD, for example, the server will
+          // incorrectly receive 0100 instead of the correct 0001
+          // uint16_t opcode = (buffer[0] << 8) | buffer[1];
+          //
+          // Use this instead (also used in net.c).
+          uint16_t opcode_be;
+          memcpy(&opcode_be, buffer, sizeof(opcode_be));
+          uint16_t opcode = SDL_SwapBE16(opcode_be);
+          switch (opcode) {
+          case MSG_PING_RESPONSE: {
+            PingResponse *resp = ping_response__unpack(NULL, size - 2, buffer + 2);
+            if (!resp) {
+              fprintf(stderr, "[PING] Failed to unpack PingResponse from client %d\n", i);
+            } else {
+              now = SDL_GetTicks();
+              ping_times[i] = now - resp->timestamp;
+              ping_response__free_unpacked(resp, NULL);
+            }
             break;
           }
 
-          // Size check — includes opcode in this context
-          if (size != OPCODE_SIZE + sizeof(GameSelectPayload_t)) {
-            fprintf(stderr,
-                    "[NET] Invalid MSG_GAME_SELECT size from client %d "
-                    "(got %zu, expected %zu)\n",
-                    i, (size_t)size, (size_t)(OPCODE_SIZE + sizeof(GameSelectPayload_t)));
-            break;
-          }
-
-          // Read payload directly after the opcode
-          GameSelectPayload_t payload;
-          memcpy(&payload, buffer + OPCODE_SIZE, sizeof(payload));
-
-          args_broadcast_game_state.game_type = payload.game_type;
-          game_state.deuces_wild = (payload.deuces_wild != 0);
-
-          if (i == *dealer_id) {
-            verbose_printf("Dealer selected game: %d (deuces wild: %d)\n", payload.game_type,
-                           payload.deuces_wild);
-
-            break_loop = true;
-            if (!cli_args->test_mode) {
-              int ping_discards;
-              while ((ping_discards = SDLNet_CheckSockets(socket_set, PING_THRESHOLD)) != 0) {
-                if (ping_discards == -1) {
-                  fputs(SDLNet_GetError(), stderr);
-                  break;
-                }
-
-                for (int d = 0; d < MAX_CLIENTS; d++) {
-                  if (!clients[d])
-                    continue;
-                  flush_client_socket(clients[d]);
-                  // fprintf(stderr, "%d\n", __LINE__);
-                }
-              }
+          case MSG_GAME_SELECT: {
+            if (active_clients == 1) {
+              fputs("The dealer sent a game but this option should be\n"
+                    "disabled when there is only one active client\n",
+                    stderr);
+              break;
             }
 
-            init_game(&args_broadcast_game_state, &deck);
-            dealer_timeout_start = 0;
-          } else {
-            fprintf(stderr, "Non-dealer client %d sent MSG_GAME_SELECT (ignored)\n", i);
+            // Size check — includes opcode in this context
+            if (size != OPCODE_SIZE + sizeof(GameSelectPayload_t)) {
+              fprintf(stderr,
+                      "[NET] Invalid MSG_GAME_SELECT size from client %d "
+                      "(got %zu, expected %zu)\n",
+                      i, (size_t)size, (size_t)(OPCODE_SIZE + sizeof(GameSelectPayload_t)));
+              break;
+            }
+
+            // Read payload directly after the opcode
+            GameSelectPayload_t payload;
+            memcpy(&payload, buffer + OPCODE_SIZE, sizeof(payload));
+
+            args_broadcast_game_state.game_type = payload.game_type;
+            game_state.deuces_wild = (payload.deuces_wild != 0);
+
+            if (i == *dealer_id) {
+              verbose_printf("Dealer selected game: %d (deuces wild: %d)\n", payload.game_type,
+                             payload.deuces_wild);
+
+              break_loop = true;
+              if (!cli_args->test_mode) {
+                int ping_discards;
+                while ((ping_discards = SDLNet_CheckSockets(socket_set, PING_THRESHOLD)) != 0) {
+                  if (ping_discards == -1) {
+                    fputs(SDLNet_GetError(), stderr);
+                    break;
+                  }
+
+                  for (int d = 0; d < MAX_CLIENTS; d++) {
+                    if (!clients[d])
+                      continue;
+                    flush_client_socket(clients[d]);
+                    // fprintf(stderr, "%d\n", __LINE__);
+                  }
+                }
+              }
+
+              init_game(&args_broadcast_game_state, &deck);
+              dealer_timeout_start = 0;
+            } else {
+              fprintf(stderr, "Non-dealer client %d sent MSG_GAME_SELECT (ignored)\n", i);
+            }
+            break;
           }
-          break;
-        }
 
-        default:
-          // Ignore or log
-          fprintf(stderr, "[NET] Unknown opcode %04X from client %d\n", opcode, i);
-          break;
-        }
+          default:
+            // Ignore or log
+            fprintf(stderr, "[NET] Unknown opcode %04X from client %d\n", opcode, i);
+            break;
+          }
 
-        free(buffer);
-        if (break_loop)
-          break;
+          free(buffer);
+          if (break_loop)
+            break;
+        }
       }
     }
 
