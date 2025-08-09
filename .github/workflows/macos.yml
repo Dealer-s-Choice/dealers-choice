@@ -18,7 +18,13 @@ on:
 
 jobs:
   MacOS:
-    runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - macos-15
+          - macos-14
+    runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v4
     - name: Install Dependencies
@@ -39,10 +45,10 @@ jobs:
         GETTEXT_PREFIX=$(brew --prefix gettext)
         echo $GETTEXT_PREFIX
         # PKG_CONFIG_PATH="$GETTEXT_PREFIX/lib/pkgconfig:$PKG_CONFIG_PATH"
-        CFLAGS="-Werror" meson setup _build
+        CFLAGS="-Werror -Wno-c2x-extensions" meson setup _build
 
     - name: Build
-      run: meson compile -C _build
+      run: meson compile -v -C _build
 
     - name: Test
       run: meson test -v -C _build
