@@ -66,22 +66,36 @@ static int send_protocol_header(TCPsocket sock) {
 
 SDL_Rect card_area = {0};
 
-int8_t send_game_select(TCPsocket sock, uint8_t game_type, const bool deuces_wild) {
-  uint8_t payload[2];
-  payload[0] = game_type;
-  payload[1] = deuces_wild ? 1 : 0;
+int8_t send_game_select(TCPsocket sock, uint8_t game_type, bool deuces_wild) {
+  GameSelectPayload_t payload = {game_type, deuces_wild ? 1 : 0};
+
+  const uint32_t payload_size = OPCODE_SIZE + sizeof(payload);
+  const uint32_t total_size_be = SDL_SwapBE32(payload_size);
+
+  uint8_t buffer[LENGTH_PREFIX_SIZE + payload_size];
+
+  // Write length prefix
+  memcpy(buffer, &total_size_be, LENGTH_PREFIX_SIZE);
+
+  // Write opcode (portable big-endian)
+  uint16_t opcode_be = SDL_SwapBE16(MSG_GAME_SELECT);
+  memcpy(buffer + LENGTH_PREFIX_SIZE, &opcode_be, sizeof(opcode_be));
+
+  // Write payload
+  memcpy(buffer + LENGTH_PREFIX_SIZE + OPCODE_SIZE, &payload, sizeof(payload));
+
+  // Send all
+  int result = send_all_tcp(sock, buffer, sizeof(buffer));
 
   const GameChoice_t *choice = find_game_choice_by_type(game_type);
-
-  int r = send_message(sock, MSG_GAME_SELECT, payload, sizeof(payload));
-  if (r >= 0) {
-    verbose_printf("Game type sent: %s (Deuces wild: %s)\n", choice->str,
+  if (result == 0) {
+    verbose_printf("Game type sent: %s (Deuces wild: %s)\n", choice ? choice->str : "Unknown",
                    deuces_wild ? "Yes" : "No");
     return 0;
   }
 
-  fprintf(stderr, "Game type failed to send: %s\n", choice->str);
-  return r;
+  fprintf(stderr, "Game type failed to send: %s\n", choice ? choice->str : "Unknown");
+  return result;
 }
 
 // These two buttons for creating the buttons are mostly identical. In the future,

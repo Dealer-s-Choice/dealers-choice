@@ -64,6 +64,11 @@ typedef struct {
   const char *str;
 } PlayerActionMsg_t;
 
+typedef struct {
+  uint8_t game_type;
+  uint8_t deuces_wild;
+} GameSelectPayload_t;
+
 const GameChoice_t *find_game_choice_by_type(const uint8_t type);
 
 Player_t *get_next_player_(Player_t *players_array, int cur, const char *file, const int line);
