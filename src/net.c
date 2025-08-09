@@ -90,12 +90,6 @@ uint8_t *serialize_game_state(const GameState_t *src, uint32_t *size_out) {
   msg.winner_declared = src->winner_declared;
   msg.deuces_wild = src->deuces_wild;
 
-  // static Card wild_msg;
-  // card__init(&wild_msg);
-  // wild_msg.face_val = src->wild.face_val;
-  // wild_msg.suit = src->wild.suit;
-  // msg.wild = &wild_msg;
-
   Player *player_msgs[MAX_PLAYERS];
   struct player_message_builder_t builders[MAX_PLAYERS];
 
@@ -135,13 +129,6 @@ GameState_t deserialize_game_state(const uint8_t *data, uint32_t size) {
   result.player_count = msg->player_count;
   result.winner_declared = msg->winner_declared;
   result.deuces_wild = msg->deuces_wild;
-
-  // if (msg->wild) {
-  // result.wild.face_val = msg->wild->face_val;
-  // result.wild.suit = msg->wild->suit;
-  //} else {
-  // result.wild = DH_card_null;
-  //}
 
   size_t n = msg->n_player < MAX_PLAYERS ? msg->n_player : MAX_PLAYERS;
   for (size_t i = 0; i < n; ++i) {
@@ -288,50 +275,47 @@ int send_all_tcp(TCPsocket sock, const void *data, size_t length) {
   return 0;
 }
 
-int recv_all_tcp(TCPsocket sock, void *data, int length) {
-  uint8_t *buf = (uint8_t *)data;
-  int total_received = 0;
+/* Return: number of bytes read on success (== requested len),
+           -1 on error/connection closed. */
+int recv_all_tcp(TCPsocket sock, void *buf, size_t len) {
+  uint8_t *p = (uint8_t *)buf;
+  size_t total = 0;
 
-  while (total_received < length) {
-    int received = SDLNet_TCP_Recv(sock, buf + total_received, (int)(length - total_received));
-    if (received <= 0) {
-      fprintf(stderr, "SDLNet_TCP_Recv failed or connection closed: %s\n", SDLNet_GetError());
-      return received;
+  while (total < len) {
+    int r = SDLNet_TCP_Recv(sock, p + total, (int)(len - total));
+    if (r <= 0) {
+      /* r == 0 means connection closed, r < 0 is error.
+         SDL_net doesn't use errno; use SDLNet_GetError() when logging. */
+      return -1;
     }
-    total_received += received;
+    total += (size_t)r;
   }
 
-  return total_received;
+  return (int)total;
 }
 
 // Eventually some, or most, of the data in the game state struct will be sent
 // via opcodes, like what's done for the discard/draw request
 ERecvStatus_t recv_game_state(SocketContext_t *socket_context, GameState_t *game_state,
                               ClientState_t *client_state, const int8_t id) {
-  // printf("[recv_game_state] Waiting for game state...\n");
   int result = SDLNet_CheckSockets(socket_context->set, 0);
-  // printf("[recv_game_state] CheckSockets returned: %d\n", result);
   if (result == -1) {
     fputs(SDLNet_GetError(), stderr);
     return RECV_ERROR;
   }
-
-  if (result == 0) {
-    // This output can be particularly useful for debugging tests
-    // fputs("[recv_game_state] No activity on socket\n", stderr);
+  if (result == 0)
     return RECV_NOTHING;
-  }
 
   TCPsocket sock = socket_context->sock;
   if (!SDLNet_SocketReady(sock)) {
-    printf("[recv_game_state] sock not ready\n");
+    fprintf(stderr, "[recv_game_state] sock not ready\n");
     return RECV_ERROR;
   }
 
   uint32_t size_net = 0;
   int r_size = recv_all_tcp(sock, &size_net, sizeof(size_net));
-  if (r_size <= 0) {
-    fprintf(stderr, "[recv_game_state] Disconnected while reading game state size %d\n", r_size);
+  if (r_size != (int)sizeof(size_net)) {
+    fprintf(stderr, "[recv_game_state] Disconnected while reading game state size (%d).\n", r_size);
     return RECV_ERROR;
   }
 
@@ -347,8 +331,12 @@ ERecvStatus_t recv_game_state(SocketContext_t *socket_context, GameState_t *game
     return RECV_ERROR;
   }
 
-  if (recv_all_tcp(sock, buffer, size) <= 0) {
-    fprintf(stderr, "[recv_game_state] Disconnected while reading game state payload\n");
+  int r_payload = recv_all_tcp(sock, buffer, size);
+  if (r_payload != (int)size) {
+    fprintf(stderr,
+            "[recv_game_state] Disconnected while reading game state payload (got %d, expected "
+            "%u). SDLNet_GetError(): %s\n",
+            r_payload, size, SDLNet_GetError());
     free(buffer);
     return RECV_ERROR;
   }

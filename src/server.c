@@ -336,19 +336,21 @@ static int recv_player_action(TCPsocket sock, PlayerActionMsg_t *out_action) {
 
   int n_bytes;
   if ((n_bytes = recv_all_tcp(sock, buffer, sizeof(buffer))) <= 0) {
-    fprintf(stderr, "Failed to receive player action\n");
+    fputs("Failed to receive player action\n", stderr);
     return n_bytes;
   }
 
   uint16_t opcode = (buffer[0] << 8) | buffer[1];
-  if (opcode != MSG_PLAYER_ACTION)
+  if (opcode != MSG_PLAYER_ACTION) {
+    fprintf(stderr, "[%s] Incorrect opcode\n", __func__);
     return -1;
+  }
 
   out_action->action = buffer[2];
   out_action->amount = ((uint32_t)buffer[3] << 24) | ((uint32_t)buffer[4] << 16) |
                        ((uint32_t)buffer[5] << 8) | ((uint32_t)buffer[6]);
 
-  fprintf(stderr, "Received action %u with amount %u\n", out_action->action, out_action->amount);
+  verbose_printf("Received action %u with amount %u\n", out_action->action, out_action->amount);
   return n_bytes;
 }
 
@@ -385,41 +387,39 @@ static int send_ping_request(TCPsocket sock) {
 }
 
 static int broadcast_ping_times(ArgsBroadcastGameState_t *args, const uint32_t ping_times[]) {
-  for (int i = 0; i < MAX_CLIENTS; i++) {
-    if (!args->slot_taken[i] || !args->clients[i])
+  PingBroadcast pb = PING_BROADCAST__INIT;
+  PingEntry entries[MAX_CLIENTS];
+  PingEntry *entry_ptrs[MAX_CLIENTS];
+
+  size_t count = 0;
+  for (int j = 0; j < MAX_CLIENTS; j++) {
+    if (!args->clients[j])
       continue;
+    ping_entry__init(&entries[count]);
+    entries[count].player_id = j;
+    entries[count].ping_ms = ping_times[j];
+    entry_ptrs[count] = &entries[count];
+    count++;
+  }
 
-    PingBroadcast pb = PING_BROADCAST__INIT;
-    PingEntry entries[MAX_CLIENTS];
-    PingEntry *entry_ptrs[MAX_CLIENTS];
+  pb.n_entries = count;
+  pb.entries = entry_ptrs;
 
-    size_t count = 0;
-    for (int j = 0; j < MAX_CLIENTS; j++) {
-      if (!args->slot_taken[j])
-        continue;
-      ping_entry__init(&entries[count]);
-      entries[count].player_id = j;
-      entries[count].ping_ms = ping_times[j];
-      entry_ptrs[count] = &entries[count];
-      count++;
-    }
+  size_t len = ping_broadcast__get_packed_size(&pb);
+  uint8_t *buf = malloc(len);
+  if (!buf)
+    return -1;
+  ping_broadcast__pack(&pb, buf);
 
-    pb.n_entries = count;
-    pb.entries = entry_ptrs;
-
-    size_t len = ping_broadcast__get_packed_size(&pb);
-    uint8_t *buf = malloc(len);
-    if (!buf)
-      return -1;
-
-    ping_broadcast__pack(&pb, buf);
+  for (int i = 0; i < MAX_CLIENTS; i++) {
+    if (!args->clients[i])
+      continue;
     int result = send_message(args->clients[i], MSG_PING_BROADCAST, buf, len);
-    free(buf);
-
     if (result < 0) {
       fprintf(stderr, "[PING] Failed to broadcast to client %d\n", i);
     }
   }
+  free(buf);
   return 0;
 }
 
@@ -533,7 +533,7 @@ static ELoop_t handle_draw(ArgsBroadcastGameState_t *args, TCPsocket sock, const
 }
 
 static ELoop_t handle_wild_cards(ArgsBroadcastGameState_t *args, TCPsocket sock, const int id) {
-  puts("sending submit wild prompt");
+  verbose_puts("sending submit wild prompt");
   if (send_opcode(sock, MSG_WILD_REPLACEMENT) != 0) {
     fputs("Failed to send submit wild prompt\n", stderr);
     return LOOP_ERROR;
@@ -817,9 +817,9 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args) {
           handle_disconnections(args);
           if (args->game_state->player_count == 1)
             break;
+          continue;
         }
       }
-      SDL_Delay(50); // avoid busy-waiting
     }
 
     char status_str[LEN_STATUS_STR] = {0};
@@ -1500,24 +1500,24 @@ int run_server(const CliArgs_t *cli_args, Path_t *path) {
       if (now - last_ping_time >= 5000) {
         // Send ping requests
         for (int i = 0; i < MAX_CLIENTS; i++) {
-          if (!slot_taken[i] || !clients[i])
+          if (!clients[i])
             continue;
           if (send_ping_request(clients[i]) < 0) {
             fprintf(stderr, "[PING] Failed to send ping request to client %d\n", i);
-          }
+          } else
+            verbose_printf("[PING] sent to %d\n", i);
         }
-
+        last_ping_time = now;
         // Broadcast ping times
         broadcast_ping_times(&args_broadcast_game_state, ping_times);
-
-        last_ping_time = now;
       }
       if (SDLNet_CheckSockets(socket_set, 50) == -1) {
         fputs(SDLNet_GetError(), stderr);
         continue;
       }
+      bool break_loop = false;
       for (int i = 0; i < MAX_CLIENTS; i++) {
-        if (!clients[i] || !slot_taken[i])
+        if (!clients[i])
           continue;
 
         if (!SDLNet_SocketReady(clients[i]))

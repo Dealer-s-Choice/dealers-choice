@@ -62,7 +62,7 @@ __attribute__((packed)) GameProtocolHeader_t;
 #define INET6_ADDRSTRLEN 46
 #endif
 
-#define OPCODE_SIZE 2
+#define OPCODE_SIZE sizeof(uint16_t)
 #define LENGTH_PREFIX_SIZE sizeof(uint32_t)
 
 #define MSG_GAME_SELECT 0x0001   // Player_t chooses a game variant
@@ -131,7 +131,7 @@ Player_t deserialize_player(const uint8_t *data, size_t size);
 
 int send_all_tcp(TCPsocket sock, const void *data, size_t length);
 
-int recv_all_tcp(TCPsocket sock, void *data, int32_t length);
+int recv_all_tcp(TCPsocket sock, void *buf, size_t len);
 
 ERecvStatus_t recv_game_state(SocketContext_t *socket_context, GameState_t *game_state,
                               ClientState_t *client_state, const int8_t id);
