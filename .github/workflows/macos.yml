@@ -18,7 +18,12 @@ on:
 
 jobs:
   MacOS:
-    runs-on: macos-latest
+    strategy:
+      matrix:
+        os:
+          - macos-15
+          - macos-14
+    runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v4
     - name: Install Dependencies
