@@ -40,6 +40,7 @@
 
 #define SEND_RETRY_COUNT 3
 #define SEND_RETRY_DELAY_MS 500
+#define PING_THRESHOLD 1000
 
 #define handle_round() handle_round_real(args)
 
@@ -1263,6 +1264,31 @@ static void do_socket_cleanup(TCPsocket sock, SDLNet_SocketSet socket_set, bool 
   }
 }
 
+static void flush_client_socket(TCPsocket sock) {
+  if (!SDLNet_SocketReady(sock))
+    return;
+  char buffer[512]; // Temp buffer to discard data
+  int len;
+  SDLNet_SocketSet tmp_set = SDLNet_AllocSocketSet(1);
+  SDLNet_TCP_AddSocket(tmp_set, sock);
+
+  // Loop until no more data available (non-blocking read)
+  for (;;) {
+    if (SDLNet_CheckSockets(tmp_set, 0) <= 0)
+      break;
+
+    if (!SDLNet_SocketReady(sock))
+      break;
+
+    len = SDLNet_TCP_Recv(sock, buffer, sizeof(buffer));
+    if (len <= 0)
+      break;
+
+    // fprintf(stderr, "%d\n", __LINE__);
+  }
+  SDLNet_FreeSocketSet(tmp_set);
+}
+
 static ELoop_t register_new_client(ArgsBroadcastGameState_t *args) {
   // checks for and accepts incoming connections
   TCPsocket new_client = SDLNet_TCP_Accept(*args->server_sock);
@@ -1547,29 +1573,54 @@ int run_server(const CliArgs_t *cli_args, Path_t *path) {
 
         case MSG_GAME_SELECT: {
           if (active_clients == 1) {
-            fputs("The dealer sent a game but this option should be\ndisabled when there is only "
-                  "one active client\n",
+            fputs("The dealer sent a game but this option should be\n"
+                  "disabled when there is only one active client\n",
                   stderr);
             break;
           }
-          if (size < 4) {
-            fprintf(stderr, "[NET] Invalid MSG_GAME_SELECT size from client %d\n", i);
-          } else {
-            uint8_t *game_type = &args_broadcast_game_state.game_type;
-            *game_type = buffer[2];
-            bool *deuces_wild = &game_state.deuces_wild;
-            *deuces_wild = buffer[3] != 0;
 
-            // ✅ If this client is the dealer, process immediately
-            if (i == *dealer_id) {
-              verbose_printf("Dealer selected game: %d (deuces wild: %d)\n", *game_type,
-                             *deuces_wild);
-              init_game(&args_broadcast_game_state, &deck);
-              dealer_timeout_start = 0;
-            } else {
-              // ✅ Otherwise, you might queue or ignore it
-              fprintf(stderr, "Non-dealer client %d sent MSG_GAME_SELECT (ignored)\n", i);
+          // Size check — includes opcode in this context
+          if (size != OPCODE_SIZE + sizeof(GameSelectPayload_t)) {
+            fprintf(stderr,
+                    "[NET] Invalid MSG_GAME_SELECT size from client %d "
+                    "(got %zu, expected %zu)\n",
+                    i, (size_t)size, (size_t)(OPCODE_SIZE + sizeof(GameSelectPayload_t)));
+            break;
+          }
+
+          // Read payload directly after the opcode
+          GameSelectPayload_t payload;
+          memcpy(&payload, buffer + OPCODE_SIZE, sizeof(payload));
+
+          args_broadcast_game_state.game_type = payload.game_type;
+          game_state.deuces_wild = (payload.deuces_wild != 0);
+
+          if (i == *dealer_id) {
+            verbose_printf("Dealer selected game: %d (deuces wild: %d)\n", payload.game_type,
+                           payload.deuces_wild);
+
+            break_loop = true;
+            if (!cli_args->test_mode) {
+              int ping_discards;
+              while ((ping_discards = SDLNet_CheckSockets(socket_set, PING_THRESHOLD)) != 0) {
+                if (ping_discards == -1) {
+                  fputs(SDLNet_GetError(), stderr);
+                  break;
+                }
+
+                for (int d = 0; d < MAX_CLIENTS; d++) {
+                  if (!clients[d])
+                    continue;
+                  flush_client_socket(clients[d]);
+                  // fprintf(stderr, "%d\n", __LINE__);
+                }
+              }
             }
+
+            init_game(&args_broadcast_game_state, &deck);
+            dealer_timeout_start = 0;
+          } else {
+            fprintf(stderr, "Non-dealer client %d sent MSG_GAME_SELECT (ignored)\n", i);
           }
           break;
         }
@@ -1581,6 +1632,8 @@ int run_server(const CliArgs_t *cli_args, Path_t *path) {
         }
 
         free(buffer);
+        if (break_loop)
+          break;
       }
     }
 
