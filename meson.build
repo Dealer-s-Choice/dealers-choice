@@ -67,14 +67,9 @@ pokeval_dep = dependency('pokeval', default_options: 'default_library=static')
 protobuf_dep = dependency('libprotobuf-c')
 
 cmake = import('cmake')
+sub_proj = cmake.subproject('miniaudio')
 
-cmake_opts = cmake.subproject_options()
-cmake_opts.add_cmake_defines({
-    'CMAKE_CXX_STANDARD': '17',
-    'CMAKE_C_STANDARD': '17', # Optional — ensures C code is still fine
-})
-
-sub_proj = cmake.subproject('miniaudio', options: cmake_opts)
+# Fetch the dependency object
 miniaudio_dep = sub_proj.dependency('miniaudio')
 
 shared_dep = [
