@@ -927,49 +927,36 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
 
     bool my_turn = *turn_id == my_id;
     if (client_state.turn_switch || game_state->winner_declared) {
-      client_state.timer_start = SDL_GetTicks();
+      if (!client_state.end_game_timer_set) {
+        client_state.timer_start = SDL_GetTicks();
 
-      // Handle timeout: If there was no action by the player, one of these
-      // may be set to true
-      client_state.bet_check_fold = false;
-      client_state.call_raise_fold = false;
-      client_state.do_discard_draw = false;
-      client_state.do_exchange_wilds = false;
+        if (game_state->winner_declared)
+          client_state.end_game_timer_set = true;
 
-      if (my_turn && !game_state->winner_declared) {
-        if (player_config->turn_notify)
-          ma_sound_start_checked(&sound_context->sounds[SND_MY_TURN].sound);
+        // Handle timeout: If there was no action by the player, one of these
+        // may be set to true
+        client_state.bet_check_fold = false;
+        client_state.call_raise_fold = false;
+        client_state.do_discard_draw = false;
+        client_state.do_exchange_wilds = false;
+
+        if (my_turn && !game_state->winner_declared) {
+          if (player_config->turn_notify)
+            ma_sound_start_checked(&sound_context->sounds[SND_MY_TURN].sound);
+        }
+        client_state.turn_switch = false;
       }
-      client_state.turn_switch = false;
     }
 
+    uint32_t now = SDL_GetTicks();
+    int32_t remaining_ms;
     if (game_state->winner_declared) {
-      player_ptr = starting_turn;
-      do {
-        // printf("%d\n", __LINE__);
-        if (player_ptr->winner == true) {
-          break;
-        }
-
-        player_ptr = get_next_connected_client(players_array, player_ptr->id);
-      } while (player_ptr && player_ptr != starting_turn);
-
-      // printf("%d\n", __LINE__);
-
+      remaining_ms = (int32_t)(client_state.timer_start + game_settings->end_of_game_timeout_ms) -
+                     (int32_t)now;
     } else {
-      Uint32 now = SDL_GetTicks();
-      int32_t remaining_ms =
+
+      remaining_ms =
           (int32_t)(client_state.timer_start + game_settings->action_timeout_ms) - (int32_t)now;
-
-      if (remaining_ms > 0) {
-        int elapsed = remaining_ms / 1000;
-        char elapsed_str[8] = {0};
-        snprintf(elapsed_str, sizeof(elapsed_str), "%d", elapsed);
-
-        render_text_plain(
-            sdl_context->renderer, font->fonts[FONT_BOLD], elapsed_str, get_color(COLOR_WHITE),
-            &(SDL_Rect){sdl_context->window_width - 60, sdl_context->window_height - 60, 0, 0});
-      }
 
       if (client_state.do_discard_draw) {
         for (int i = 0; i < MAX_HAND_SIZE; i++)
@@ -1031,6 +1018,16 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
             render_button(&amount_button[i]);
         }
       }
+    }
+
+    if (remaining_ms > 0) {
+      int elapsed = remaining_ms / 1000;
+      char elapsed_str[8] = {0};
+      snprintf(elapsed_str, sizeof(elapsed_str), "%d", elapsed);
+
+      render_text_plain(
+          sdl_context->renderer, font->fonts[FONT_BOLD], elapsed_str, get_color(COLOR_WHITE),
+          &(SDL_Rect){sdl_context->window_width - 60, sdl_context->window_height - 60, 0, 0});
     }
 
     char buffer[128];
