@@ -1303,12 +1303,13 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
 
 SocketContext_t get_socket_context_and_run_client(PlayerConfig_t *player_config,
                                                   const CliArgs_t *cli_args, const char *host_str,
-                                                  SdlContext_t *sdl_context, Font_t *font,
-                                                  Path_t *path, const bool test_mode) {
+                                                  const uint16_t port, SdlContext_t *sdl_context,
+                                                  Font_t *font, Path_t *path,
+                                                  const bool test_mode) {
   IPaddress server_ip;
   SocketContext_t socket_context = {0};
 
-  if (SDLNet_ResolveHost(&server_ip, host_str, player_config->port) == -1) {
+  if (SDLNet_ResolveHost(&server_ip, host_str, port) == -1) {
     fprintf(stderr, "Failed to resolve server: %s\n", SDLNet_GetError());
     return socket_context;
   }

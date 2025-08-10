@@ -26,6 +26,7 @@
 
 */
 
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h> // For setenv()
 #include <string.h>
@@ -40,7 +41,7 @@
 
 enum { RUN_CLIENT = 20 };
 
-static int menu_display_connect(PlayerConfig_t *player_config, char *host_str,
+static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, const uint16_t port,
                                 SdlContext_t *sdl_context, Font_t *font) {
   Button_t button_connect = {
       .text = _("Connect"),
@@ -108,6 +109,12 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str,
     render_text(sdl_context->renderer, font->fonts[FONT_DEFAULT], host_str, get_color(COLOR_WHITE),
                 &input_text_pos);
 
+    char port_str[24] = {0};
+    snprintf(port_str, sizeof(port_str), _("port: %d"), port);
+    render_text_plain(sdl_context->renderer, font->fonts[FONT_DEFAULT], port_str,
+                      get_color(COLOR_BLACK),
+                      &(SDL_Rect){input_box.x, input_box.y + SCALE_Y(50), 0, 0});
+
     SDL_Rect input_nick_pos = {input_nick.x, input_nick.y, 0, 0};
     render_text_plain(sdl_context->renderer, font->fonts[FONT_DEFAULT], player_config->nick,
                       get_color(COLOR_BLACK), &input_nick_pos);
@@ -144,6 +151,7 @@ static CliArgs_t parse_cli_args(int argc, char *argv[]) {
     OPT_TEST,
     OPT_BIND,
     OPT_HOST,
+    OPT_PORT,
     OPT_VERSION,
     OPT_VERBOSE,
     OPT_DISABLE_AUDIO,
@@ -156,6 +164,7 @@ static CliArgs_t parse_cli_args(int argc, char *argv[]) {
       {"-test", GLOPT_NO_ARG, OPT_TEST},
       {"bind-address", GLOPT_REQUIRED_ARG, OPT_BIND},
       {"host", GLOPT_REQUIRED_ARG, OPT_HOST},
+      {"port", GLOPT_REQUIRED_ARG, OPT_PORT},
       {"version", GLOPT_NO_ARG, OPT_VERSION},
       {"verbose", GLOPT_NO_ARG, OPT_VERBOSE},
       {"disable-audio", GLOPT_NO_ARG, OPT_DISABLE_AUDIO},
@@ -186,6 +195,12 @@ static CliArgs_t parse_cli_args(int argc, char *argv[]) {
     case OPT_HOST:
       cli_args.host = parser.optarg;
       break;
+    case OPT_PORT: {
+      unsigned long port_val;
+      parse_unsigned(parser.optarg, UINT16_MAX, &port_val);
+      cli_args.port = (uint16_t)port_val;
+      break;
+    }
     case OPT_VERSION:
       print_version();
       exit(EXIT_SUCCESS);
@@ -204,7 +219,8 @@ static CliArgs_t parse_cli_args(int argc, char *argv[]) {
             "  --server [--bind-address IP]\n"
             "  --server-log-game-results [path/to/file]\n"
             "  --server-conf [Path to alternate server config file]\n"
-            "  --host IP\n"
+            "  --host [IP]\n"
+            "  --port [port]\n"
             "  --disable-audio\n"
             "  --version\n",
             stderr);
@@ -293,15 +309,16 @@ int main(int argc, char *argv[]) {
   char host_str[MAX_INPUT_LENGTH] = {0};
   snprintf(host_str, sizeof(host_str), "%s", (cli_args.host) ? cli_args.host : player_config.host);
 
-  if (menu_display_connect(&player_config, host_str, &sdl_context, &font) == RUN_CLIENT) {
+  uint16_t port = (cli_args.port != 0) ? cli_args.port : player_config.port;
+  if (menu_display_connect(&player_config, host_str, port, &sdl_context, &font) == RUN_CLIENT) {
     char tmp[256] = {0};
     snprintf(tmp, sizeof(tmp), "Attempting to connect to: %s...", host_str);
     render_text_plain(sdl_context.renderer, font.fonts[FONT_DEFAULT], tmp, get_color(COLOR_WHITE),
                       &(SDL_Rect){SCALE_X(10), sdl_context.win_center.y, 0, 0});
     SDL_RenderPresent(sdl_context.renderer);
 
-    get_socket_context_and_run_client(&player_config, &cli_args, host_str, &sdl_context, &font,
-                                      &path, cli_args.test_mode);
+    get_socket_context_and_run_client(&player_config, &cli_args, host_str, port, &sdl_context,
+                                      &font, &path, cli_args.test_mode);
   }
 
   for (int i = 0; i < NUM_FONTS; ++i)

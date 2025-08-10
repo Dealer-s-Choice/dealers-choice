@@ -37,6 +37,7 @@
 
 typedef struct ServerConfig_t {
   char bind_address[INET6_ADDRSTRLEN];
+  uint16_t port;
   uint32_t end_of_game_timeout_ms;
   uint32_t action_timeout_ms;
   uint32_t dealer_timeout_ms;
@@ -49,13 +50,19 @@ typedef struct {
   bool loaded;
   char nick[SIZEOF_NICK];
   char host[MAX_INPUT_LENGTH];
-  int port;
+  uint16_t port;
   char language[6];
   int volume;
   bool turn_notify;
 } PlayerConfig_t;
 
-typedef enum { CFG_TYPE_STRING, CFG_TYPE_INT, CFG_TYPE_UINT32, CFG_TYPE_BOOL } ConfigType;
+typedef enum {
+  CFG_TYPE_STRING,
+  CFG_TYPE_INT,
+  CFG_TYPE_UINT16,
+  CFG_TYPE_UINT32,
+  CFG_TYPE_BOOL
+} ConfigType;
 
 typedef struct {
   const char *key;
@@ -70,7 +77,7 @@ static const ConfigEntry player_config_entries[] = {
      sizeof(((PlayerConfig_t *)0)->nick)},
     {"host", CFG_TYPE_STRING, "127.0.0.1", offsetof(PlayerConfig_t, host),
      sizeof(((PlayerConfig_t *)0)->host)},
-    {"port", CFG_TYPE_INT, DEFAULT_PORT, offsetof(PlayerConfig_t, port), sizeof(int)},
+    {"port", CFG_TYPE_UINT16, DEFAULT_PORT, offsetof(PlayerConfig_t, port), sizeof(uint16_t)},
     {"language", CFG_TYPE_STRING, "", offsetof(PlayerConfig_t, language),
      sizeof(((PlayerConfig_t *)0)->language)},
     {"sound.volume", CFG_TYPE_INT, "5", offsetof(PlayerConfig_t, volume), sizeof(int)},
@@ -82,6 +89,7 @@ static const size_t player_config_entry_count = ARRAY_SIZE(player_config_entries
 static const ConfigEntry server_config_entries[] = {
     {"bind_address", CFG_TYPE_STRING, "127.0.0.1", offsetof(ServerConfig_t, bind_address),
      sizeof(((ServerConfig_t *)0)->bind_address)},
+    {"port", CFG_TYPE_UINT16, DEFAULT_PORT, offsetof(ServerConfig_t, port), sizeof(uint16_t)},
     {"end_of_game_timeout_ms", CFG_TYPE_UINT32, "15000",
      offsetof(ServerConfig_t, end_of_game_timeout_ms), sizeof(uint32_t)},
     {"action_timeout_ms", CFG_TYPE_UINT32, "20000", offsetof(ServerConfig_t, action_timeout_ms),
