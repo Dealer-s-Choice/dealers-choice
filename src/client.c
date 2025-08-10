@@ -926,7 +926,7 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
     }
 
     bool my_turn = *turn_id == my_id;
-    if (client_state.turn_switch) {
+    if (client_state.turn_switch || game_state->winner_declared) {
       client_state.timer_start = SDL_GetTicks();
 
       // Handle timeout: If there was no action by the player, one of these
@@ -936,7 +936,7 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
       client_state.do_discard_draw = false;
       client_state.do_exchange_wilds = false;
 
-      if (my_turn) {
+      if (my_turn && !game_state->winner_declared) {
         if (player_config->turn_notify)
           ma_sound_start_checked(&sound_context->sounds[SND_MY_TURN].sound);
       }
