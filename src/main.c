@@ -41,7 +41,7 @@
 
 enum { RUN_CLIENT = 20 };
 
-static int menu_display_connect(PlayerConfig_t *player_config, char *host_str,
+static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, const uint16_t port,
                                 SdlContext_t *sdl_context, Font_t *font) {
   Button_t button_connect = {
       .text = _("Connect"),
@@ -108,6 +108,12 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str,
     // TTF_SetFontStyle(font->fonts[FONT_BOLD], TTF_STYLE_BOLD);
     render_text(sdl_context->renderer, font->fonts[FONT_DEFAULT], host_str, get_color(COLOR_WHITE),
                 &input_text_pos);
+
+    char port_str[24] = {0};
+    snprintf(port_str, sizeof(port_str), _("port: %d"), port);
+    render_text_plain(sdl_context->renderer, font->fonts[FONT_DEFAULT], port_str,
+                      get_color(COLOR_BLACK),
+                      &(SDL_Rect){input_box.x, input_box.y + SCALE_Y(50), 0, 0});
 
     SDL_Rect input_nick_pos = {input_nick.x, input_nick.y, 0, 0};
     render_text_plain(sdl_context->renderer, font->fonts[FONT_DEFAULT], player_config->nick,
@@ -303,15 +309,16 @@ int main(int argc, char *argv[]) {
   char host_str[MAX_INPUT_LENGTH] = {0};
   snprintf(host_str, sizeof(host_str), "%s", (cli_args.host) ? cli_args.host : player_config.host);
 
-  if (menu_display_connect(&player_config, host_str, &sdl_context, &font) == RUN_CLIENT) {
+  uint16_t port = (cli_args.port != 0) ? cli_args.port : player_config.port;
+  if (menu_display_connect(&player_config, host_str, port, &sdl_context, &font) == RUN_CLIENT) {
     char tmp[256] = {0};
     snprintf(tmp, sizeof(tmp), "Attempting to connect to: %s...", host_str);
     render_text_plain(sdl_context.renderer, font.fonts[FONT_DEFAULT], tmp, get_color(COLOR_WHITE),
                       &(SDL_Rect){SCALE_X(10), sdl_context.win_center.y, 0, 0});
     SDL_RenderPresent(sdl_context.renderer);
 
-    get_socket_context_and_run_client(&player_config, &cli_args, host_str, &sdl_context, &font,
-                                      &path, cli_args.test_mode);
+    get_socket_context_and_run_client(&player_config, &cli_args, host_str, port, &sdl_context,
+                                      &font, &path, cli_args.test_mode);
   }
 
   for (int i = 0; i < NUM_FONTS; ++i)

@@ -71,8 +71,8 @@ extern const GameChoice_t game_choices[];
 
 SocketContext_t get_socket_context_and_run_client(PlayerConfig_t *player_config,
                                                   const CliArgs_t *cli_args, const char *host_str,
-                                                  SdlContext_t *sdl_context, Font_t *font,
-                                                  Path_t *path, const bool test_mode);
+                                                  const uint16_t port, SdlContext_t *sdl_context,
+                                                  Font_t *font, Path_t *path, const bool test_mode);
 
 void render_link(Link_t *link);
 
