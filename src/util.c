@@ -287,3 +287,29 @@ void verbose_puts(const char *s) {
   if (verbose && s)
     puts(s);
 }
+
+void parse_signed(const char *s, long minv, long maxv, long *out) {
+  errno = 0;
+  char *endptr;
+  long v = strtol(s, &endptr, 0);
+
+  if (errno == ERANGE || *endptr != '\0' || v < minv || v > maxv) {
+    fprintf(stderr, "Invalid signed integer value: '%s'\n", s);
+    exit(EXIT_FAILURE);
+  }
+
+  *out = v;
+}
+
+void parse_unsigned(const char *s, unsigned long maxv, unsigned long *out) {
+  errno = 0;
+  char *endptr;
+  unsigned long v = strtoul(s, &endptr, 0);
+
+  if (errno == ERANGE || *endptr != '\0' || v > maxv) {
+    fprintf(stderr, "Invalid unsigned integer value: '%s'\n", s);
+    exit(EXIT_FAILURE);
+  }
+
+  *out = v;
+}

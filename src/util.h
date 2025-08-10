@@ -71,4 +71,8 @@ void verbose_printf(const char *fmt, ...);
 
 void verbose_puts(const char *s);
 
+void parse_signed(const char *s, long minv, long maxv, long *out);
+
+void parse_unsigned(const char *s, unsigned long maxv, unsigned long *out);
+
 #endif

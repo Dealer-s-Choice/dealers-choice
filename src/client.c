@@ -1308,7 +1308,9 @@ SocketContext_t get_socket_context_and_run_client(PlayerConfig_t *player_config,
   IPaddress server_ip;
   SocketContext_t socket_context = {0};
 
-  if (SDLNet_ResolveHost(&server_ip, host_str, player_config->port) == -1) {
+  uint16_t port = (cli_args->port != 0) ? cli_args->port : player_config->port;
+
+  if (SDLNet_ResolveHost(&server_ip, host_str, port) == -1) {
     fprintf(stderr, "Failed to resolve server: %s\n", SDLNet_GetError());
     return socket_context;
   }

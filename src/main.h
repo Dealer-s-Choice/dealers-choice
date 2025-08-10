@@ -31,6 +31,7 @@
 
 typedef struct {
   const char *host, *server_conf, *bind_address;
+  uint16_t port;
   const char *server_log_game_results_file;
   bool test_mode, run_server_flag;
   bool disable_audio;

@@ -1400,7 +1400,8 @@ int run_server(const CliArgs_t *cli_args, Path_t *path) {
   } else
     host = (char *)cli_args->bind_address;
   verbose_printf("Resolving host: %s\n", (host) ? host : "NULL");
-  if (SDLNet_ResolveHost(&ip, host, atoi(DEFAULT_PORT)) == -1) {
+  uint16_t port = (cli_args->port != 0) ? cli_args->port : config.port;
+  if (SDLNet_ResolveHost(&ip, host, port) == -1) {
     fprintf(stderr, "SDLNet_ResolveHost: %s\n", SDLNet_GetError());
     SDLNet_Quit();
     SDL_Quit();

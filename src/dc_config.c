@@ -41,12 +41,24 @@ static void config_set_from_string_real(void *cfg, const ConfigEntry *entry, con
   case CFG_TYPE_STRING:
     snprintf((char *)field, entry->size, "%s", val);
     break;
-  case CFG_TYPE_INT:
-    *(int *)field = atoi(val);
+  case CFG_TYPE_INT: {
+    long v;
+    parse_signed(val, INT_MIN, INT_MAX, &v);
+    *(int *)field = (int)v;
     break;
-  case CFG_TYPE_UINT32:
-    *(uint32_t *)field = strtol(val, NULL, 0);
+  }
+  case CFG_TYPE_UINT16: {
+    unsigned long v;
+    parse_unsigned(val, UINT16_MAX, &v);
+    *(uint16_t *)field = (uint16_t)v;
     break;
+  }
+  case CFG_TYPE_UINT32: {
+    unsigned long v;
+    parse_unsigned(val, UINT32_MAX, &v);
+    *(uint32_t *)field = (uint32_t)v;
+    break;
+  }
   case CFG_TYPE_BOOL:
     if (strcasecmp(val, "yes") == 0 || strcasecmp(val, "true") == 0 || strcmp(val, "1") == 0) {
       *(bool *)field = true;

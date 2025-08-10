@@ -26,6 +26,7 @@
 
 */
 
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h> // For setenv()
 #include <string.h>
@@ -144,6 +145,7 @@ static CliArgs_t parse_cli_args(int argc, char *argv[]) {
     OPT_TEST,
     OPT_BIND,
     OPT_HOST,
+    OPT_PORT,
     OPT_VERSION,
     OPT_VERBOSE,
     OPT_DISABLE_AUDIO,
@@ -156,6 +158,7 @@ static CliArgs_t parse_cli_args(int argc, char *argv[]) {
       {"-test", GLOPT_NO_ARG, OPT_TEST},
       {"bind-address", GLOPT_REQUIRED_ARG, OPT_BIND},
       {"host", GLOPT_REQUIRED_ARG, OPT_HOST},
+      {"port", GLOPT_REQUIRED_ARG, OPT_PORT},
       {"version", GLOPT_NO_ARG, OPT_VERSION},
       {"verbose", GLOPT_NO_ARG, OPT_VERBOSE},
       {"disable-audio", GLOPT_NO_ARG, OPT_DISABLE_AUDIO},
@@ -186,6 +189,12 @@ static CliArgs_t parse_cli_args(int argc, char *argv[]) {
     case OPT_HOST:
       cli_args.host = parser.optarg;
       break;
+    case OPT_PORT: {
+      unsigned long port_val;
+      parse_unsigned(parser.optarg, UINT16_MAX, &port_val);
+      cli_args.port = (uint16_t)port_val;
+      break;
+    }
     case OPT_VERSION:
       print_version();
       exit(EXIT_SUCCESS);
@@ -204,7 +213,8 @@ static CliArgs_t parse_cli_args(int argc, char *argv[]) {
             "  --server [--bind-address IP]\n"
             "  --server-log-game-results [path/to/file]\n"
             "  --server-conf [Path to alternate server config file]\n"
-            "  --host IP\n"
+            "  --host [IP]\n"
+            "  --port [port]\n"
             "  --disable-audio\n"
             "  --version\n",
             stderr);
