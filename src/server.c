@@ -79,6 +79,13 @@ static void print_ipaddress(const IPaddress *ip) {
 
 ServerConfig_t init_game_state(GameState_t *game_state, Path_t *path, const CliArgs_t *cli_args) {
   ServerConfig_t config = get_server_config(path, cli_args);
+
+  const int max_starting_coins = 99999999;
+  if (config.starting_coins > max_starting_coins) {
+    fprintf(stderr, "Error: starting_coins too high (max %d)\n", max_starting_coins);
+    exit(EXIT_FAILURE);
+  }
+
   for (int i = 0; i < MAX_PLAYERS; i++) {
     game_state->player[i] = (Player_t){
         .id = i,
@@ -100,6 +107,13 @@ ServerConfig_t init_game_state(GameState_t *game_state, Path_t *path, const CliA
 }
 
 GameSettings_t init_game_settings(const ServerConfig_t *config, const CliArgs_t *cli_args) {
+  const unsigned int max_bet_amounts = 9999999;
+  if (config->bet_minimum > max_bet_amounts || config->bet_median > max_bet_amounts ||
+      config->bet_maximum > max_bet_amounts) {
+    fprintf(stderr, "Bet amounts must be <= %d.\n", max_bet_amounts);
+    exit(EXIT_FAILURE);
+  }
+
   GameSettings_t game_settings = {
       .action_timeout_ms = config->action_timeout_ms,
       .end_of_game_timeout_ms = (cli_args->test_mode) ? 500 : config->end_of_game_timeout_ms,
