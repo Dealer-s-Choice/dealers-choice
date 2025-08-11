@@ -79,6 +79,7 @@ typedef struct {
   int8_t client_id;
   uint32_t action_timeout_ms;
   uint32_t end_of_game_timeout_ms;
+  uint32_t bet_minimum, bet_median, bet_maximum;
 } GameSettings_t;
 
 typedef struct {

@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: dealers-choice\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-08-10 14:46-0500\n"
+"POT-Creation-Date: 2025-08-10 23:03-0500\n"
 "PO-Revision-Date: 2025-06-19 21:52-0500\n"
 "Last-Translator: Andy <andy@prometheus.localhost.localdomain>\n"
 "Language-Team: German <translation-team-de@lists.sourceforge.net>\n"
@@ -57,7 +57,7 @@ msgstr "Ablegen"
 msgid "Exchange"
 msgstr ""
 
-#: src/client.c:983
+#: src/client.c:999
 msgid "Click a 2, then choose value and suit to assign."
 msgstr ""
 
@@ -65,9 +65,9 @@ msgstr ""
 msgid "Connect"
 msgstr "verbinden"
 
-#: src/main.c:114
+#: src/main.c:113
 #, c-format
-msgid "port: %d"
+msgid "port: %<PRIu16>"
 msgstr ""
 
 #~ msgid "folded"

@@ -110,7 +110,7 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, c
                 &input_text_pos);
 
     char port_str[24] = {0};
-    snprintf(port_str, sizeof(port_str), _("port: %d"), port);
+    snprintf(port_str, sizeof(port_str), _("port: %" PRIu16), port);
     render_text_plain(sdl_context->renderer, font->fonts[FONT_DEFAULT], port_str,
                       get_color(COLOR_BLACK),
                       &(SDL_Rect){input_box.x, input_box.y + SCALE_Y(50), 0, 0});

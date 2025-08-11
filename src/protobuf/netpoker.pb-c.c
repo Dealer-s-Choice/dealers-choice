@@ -746,7 +746,7 @@ const ProtobufCMessageDescriptor game_state__descriptor =
   (ProtobufCMessageInit) game_state__init,
   NULL,NULL,NULL    /* reserved[123] */
 };
-static const ProtobufCFieldDescriptor game_settings__field_descriptors[3] =
+static const ProtobufCFieldDescriptor game_settings__field_descriptors[6] =
 {
   {
     "client_id",
@@ -784,16 +784,55 @@ static const ProtobufCFieldDescriptor game_settings__field_descriptors[3] =
     0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
+  {
+    "bet_minimum",
+    4,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_UINT32,
+    0,   /* quantifier_offset */
+    offsetof(GameSettings, bet_minimum),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "bet_median",
+    5,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_UINT32,
+    0,   /* quantifier_offset */
+    offsetof(GameSettings, bet_median),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "bet_maximum",
+    6,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_UINT32,
+    0,   /* quantifier_offset */
+    offsetof(GameSettings, bet_maximum),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
 };
 static const unsigned game_settings__field_indices_by_name[] = {
   1,   /* field[1] = action_timeout_ms */
+  5,   /* field[5] = bet_maximum */
+  4,   /* field[4] = bet_median */
+  3,   /* field[3] = bet_minimum */
   0,   /* field[0] = client_id */
   2,   /* field[2] = end_of_game_timeout_ms */
 };
 static const ProtobufCIntRange game_settings__number_ranges[1 + 1] =
 {
   { 1, 0 },
-  { 0, 3 }
+  { 0, 6 }
 };
 const ProtobufCMessageDescriptor game_settings__descriptor =
 {
@@ -803,7 +842,7 @@ const ProtobufCMessageDescriptor game_settings__descriptor =
   "GameSettings",
   "",
   sizeof(GameSettings),
-  3,
+  6,
   game_settings__field_descriptors,
   game_settings__field_indices_by_name,
   1,  game_settings__number_ranges,

@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: dealers-choice\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-08-10 14:46-0500\n"
+"POT-Creation-Date: 2025-08-10 23:03-0500\n"
 "PO-Revision-Date: 2025-07-02 00:18-0500\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -57,7 +57,7 @@ msgstr "Défausser"
 msgid "Exchange"
 msgstr ""
 
-#: src/client.c:983
+#: src/client.c:999
 msgid "Click a 2, then choose value and suit to assign."
 msgstr ""
 
@@ -65,7 +65,7 @@ msgstr ""
 msgid "Connect"
 msgstr "Se connecter"
 
-#: src/main.c:114
+#: src/main.c:113
 #, c-format
-msgid "port: %d"
+msgid "port: %<PRIu16>"
 msgstr ""

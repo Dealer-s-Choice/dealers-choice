@@ -34,6 +34,9 @@ message GameSettings {
   int32 client_id = 1;
   uint32 action_timeout_ms = 2;
   uint32 end_of_game_timeout_ms = 3;
+  uint32 bet_minimum = 4;
+  uint32 bet_median = 5;
+  uint32 bet_maximum = 6;
 }
 
 enum MessageType {
