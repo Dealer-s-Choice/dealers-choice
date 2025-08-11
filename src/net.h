@@ -107,7 +107,7 @@ typedef struct {
   bool play_coin_sound;
   bool bet_check_fold;
   bool call_raise_fold;
-  uint32_t ping_times[MAX_CLIENTS];
+  unsigned int ping_times[MAX_CLIENTS];
 } ClientState_t;
 
 struct player_message_builder_t {

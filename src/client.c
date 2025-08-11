@@ -345,7 +345,7 @@ static bool menu_display_game_choices(const PlayerConfig_t *player_config,
 
       // Build ping text
       char ping_buf[32];
-      snprintf(ping_buf, sizeof ping_buf, "ping %dms", client_state->ping_times[client->id]);
+      snprintf(ping_buf, sizeof ping_buf, "ping %ums", client_state->ping_times[client->id]);
 
       // Render nick left-aligned
       SDL_Rect nick_pos = {offset_x, offset_y, 0, 0};
@@ -1047,7 +1047,7 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
     }
 
     char buffer[128];
-    snprintf(buffer, sizeof(buffer), "%d", game_state->pot);
+    snprintf(buffer, sizeof(buffer), "%" PRIu32, game_state->pot);
     SDL_Color black = {0, 0, 0, 255};
     render_text_centered(sdl_context->renderer, font->fonts[FONT_DEFAULT_BOLD], buffer, black,
                          pot_pos);
@@ -1071,7 +1071,7 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
           .x = name_rect.x + name_rect.w + 10, .y = name_rect.y, SCALE_X(48), SCALE_Y(48)};
       SDL_RenderCopy(sdl_context->renderer, coin_tex_front, NULL, &coin_rect);
       char coins_text[24] = {0};
-      snprintf(coins_text, sizeof coins_text, "%d", player_ptr->coins);
+      snprintf(coins_text, sizeof coins_text, "%" PRId32, player_ptr->coins);
       SDL_Rect coin_text_rect = {coin_rect.x + coin_rect.w * 1.2, name_rect.y, 0, 0};
       render_text_plain(sdl_context->renderer, font->fonts[FONT_BOLD], coins_text,
                         get_color(COLOR_BLACK), &coin_text_rect);
