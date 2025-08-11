@@ -44,6 +44,9 @@ typedef struct ServerConfig_t {
   uint32_t ante;
   int32_t starting_coins;
   uint32_t max_raises;
+  uint32_t bet_minimum;
+  uint32_t bet_median;
+  uint32_t bet_maximum;
 } ServerConfig_t;
 
 typedef struct {
@@ -99,7 +102,12 @@ static const ConfigEntry server_config_entries[] = {
     {"ante", CFG_TYPE_UINT32, "50", offsetof(ServerConfig_t, ante), sizeof(uint32_t)},
     {"starting_coins", CFG_TYPE_INT, "20000", offsetof(ServerConfig_t, starting_coins),
      sizeof(int32_t)},
-    {"max_raises", CFG_TYPE_UINT32, "3", offsetof(ServerConfig_t, max_raises), sizeof(uint32_t)}};
+    {"max_raises", CFG_TYPE_UINT32, "3", offsetof(ServerConfig_t, max_raises), sizeof(uint32_t)},
+    {"bet_minimum", CFG_TYPE_UINT32, "100", offsetof(ServerConfig_t, bet_minimum),
+     sizeof(uint32_t)},
+    {"bet_median", CFG_TYPE_UINT32, "250", offsetof(ServerConfig_t, bet_median), sizeof(uint32_t)},
+    {"bet_maximum", CFG_TYPE_UINT32, "500", offsetof(ServerConfig_t, bet_maximum),
+     sizeof(uint32_t)}};
 
 static const size_t server_config_entry_count = ARRAY_SIZE(server_config_entries);
 

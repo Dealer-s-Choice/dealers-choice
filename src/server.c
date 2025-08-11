@@ -103,6 +103,9 @@ GameSettings_t init_game_settings(const ServerConfig_t *config, const CliArgs_t 
   GameSettings_t game_settings = {
       .action_timeout_ms = config->action_timeout_ms,
       .end_of_game_timeout_ms = (cli_args->test_mode) ? 500 : config->end_of_game_timeout_ms,
+      .bet_minimum = config->bet_minimum,
+      .bet_median = config->bet_median,
+      .bet_maximum = config->bet_maximum,
   };
   return game_settings;
 }
@@ -350,7 +353,8 @@ static int recv_player_action(TCPsocket sock, PlayerActionMsg_t *out_action) {
   out_action->amount = ((uint32_t)buffer[3] << 24) | ((uint32_t)buffer[4] << 16) |
                        ((uint32_t)buffer[5] << 8) | ((uint32_t)buffer[6]);
 
-  verbose_printf("Received action %u with amount %u\n", out_action->action, out_action->amount);
+  verbose_printf("Received action %u with amount %" PRIu32 "\n", out_action->action,
+                 out_action->amount);
   return n_bytes;
 }
 
@@ -612,7 +616,7 @@ static EPlayerAction_t handle_fold(GameState_t *game_state, Player_t *turn,
   return ACTION_FOLD;
 }
 
-static bool has_paid_all_bets(const uint16_t total_paid, const uint32_t total_bets_plus_raises) {
+static bool has_paid_all_bets(const uint32_t total_paid, const uint32_t total_bets_plus_raises) {
   return total_paid == total_bets_plus_raises;
 }
 
@@ -675,8 +679,9 @@ static void determine_winner(ArgsBroadcastGameState_t *args, RoundResults *resul
     winner->winner = true;
 
     char status_str[LEN_STATUS_STR];
-    snprintf(status_str, sizeof status_str, "%s wins %d with %s", winner->nick, share,
+    snprintf(status_str, sizeof status_str, "%s wins %" PRIu32 " with %s", winner->nick, share,
              POKEVAL_rank[POKEVAL_evaluate_hand(need_comparing[i].hand_5)]);
+
     broadcast_status_message(args, status_str);
 
     if (args->cli_args->server_log_game_results_file) {

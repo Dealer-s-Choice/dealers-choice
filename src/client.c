@@ -41,7 +41,7 @@ const uint8_t MAX_CONNECTION_ATTEMPTS = 12;
 
 #define POT_BOUNDARY SCALE_Y(250)
 
-#define x_begin_action_button SCALE_X(500);
+#define x_begin_action_button SCALE_X(500)
 
 #define ma_sound_start_checked(pSound) ma_sound_start_wrap((pSound), __FILE__, __LINE__)
 
@@ -699,23 +699,36 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
   }
 
   const struct Amount_t {
-    const char *n_str;
+    const uint32_t value;
     const SDL_Keycode hotkey;
-    // TODO: Make a struct type like this (containing the hotkeys) for the action buttons
-  } amount[] = {{"100", SDLK_1}, {"250", SDLK_2}, {"500", SDLK_3}};
+  } amount[] = {{game_settings->bet_minimum, SDLK_1},
+                {game_settings->bet_median, SDLK_2},
+                {game_settings->bet_maximum, SDLK_3}};
+
   const size_t n_bet_amounts = ARRAY_SIZE(amount);
   Button_t amount_button[n_bet_amounts];
+
+  char amount_str[n_bet_amounts][16];    // enough for uint32_t
+  int current_x = x_begin_action_button; // Start position for first button
+
   for (size_t i = 0; i < n_bet_amounts; i++) {
-    const int x_begin = x_begin_action_button;
-    const uint8_t w = SCALE_X(60);
-    const uint8_t space = SCALE_X(10);
+    snprintf(amount_str[i], sizeof(amount_str[i]), "%" PRIu32, amount[i].value);
+
+    int text_w = 0, text_h = 0;
+    if (TTF_SizeText(font->fonts[FONT_BOLD], amount_str[i], &text_w, &text_h) != 0) {
+      fprintf(stderr, "TTF_SizeText failed: %s\n", TTF_GetError());
+      text_w = SCALE_X(60); // fallback width
+    }
+
+    int button_w = text_w + SCALE_X(20);
+    int button_h = text_h + SCALE_Y(10);
+
     amount_button[i] = (Button_t){
-        amount[i].n_str,
+        amount_str[i],
         sdl_context->renderer,
         get_color(COLOR_WHITE),
         get_color(COLOR_BROWN),
-        (SDL_Rect){x_begin + SCALE_X(25) + (i * (w + space)), action_button_y + card_area.w, w,
-                   SCALE_Y(40)},
+        (SDL_Rect){current_x, action_button_y + card_area.w, button_w, button_h},
         font->fonts[FONT_BOLD],
         false,
         true,
@@ -723,7 +736,10 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
         true,
         amount[i].hotkey,
     };
+
+    current_x += button_w + SCALE_X(10); // Move right for next button with spacing
   }
+
   amount_button[0].selected = true;
 
   CardContext_t card_context[MAX_PLAYERS][MAX_HAND_SIZE];
@@ -800,7 +816,7 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
 
   client_state.timer_start = SDL_GetTicks();
 
-  client_state.selected_amount = atoi(amount[0].n_str);
+  client_state.selected_amount = amount[0].value;
 
   const int8_t my_id = game_settings->client_id;
   TCPsocket sock = socket_context->sock;
@@ -862,7 +878,7 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
     bool new_coin = false;
     SDL_Point pot_pos = {player_pos[4].x - POT_BOUNDARY + card_area.h,
                          sdl_context->win_center.y + card_area.h};
-    if (game_state->pot > coins * 100 && coins < MAX_POT_COINS) {
+    if (game_state->pot > coins * game_settings->bet_minimum && coins < MAX_POT_COINS) {
       pot_coin.pt[coins].x = pot_pos.x + pcg32_boundedrand_r(&rng, POT_BOUNDARY) - SCALE_X(150);
       pot_coin.pt[coins].y = pot_pos.y + pcg32_boundedrand_r(&rng, POT_BOUNDARY) - SCALE_Y(150);
       coins++;
