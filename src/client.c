@@ -657,16 +657,19 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
   card_area.h = SCALE_Y(50);
 
   const SDL_Point player_pos[MAX_PLAYERS] = {
-      // P0: bottom center
-      {.x = SCALE_X(20), .y = card_area.h},
-
-      // P1: left, 1/3 down
+      // P0: left, 1/3 down
       {.x = SCALE_X(20), .y = card_area.h * 4},
 
+      // P1: Top left
+      {.x = SCALE_X(20), .y = card_area.h},
+
+      // P2: Top right
       {.x = sdl_context->win_center.x, .y = card_area.h},
 
+      // P3: Right, 1/3 down
       {.x = sdl_context->win_center.x, .y = card_area.h * 4},
 
+      // P4: Right, 2/3 down
       {.x = sdl_context->win_center.x, .y = card_area.h * 7},
   };
 
