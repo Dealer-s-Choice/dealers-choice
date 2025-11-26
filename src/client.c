@@ -219,7 +219,7 @@ static bool menu_display_game_choices(const PlayerConfig_t *player_config,
     y_offset += button_height;
   }
 
-  bool running = true;
+  bool game_loading = true;
 
   const int link_column = sdl_context->win_center.x + card_area.h;
   Link_t link[] = {
@@ -256,7 +256,7 @@ static bool menu_display_game_choices(const PlayerConfig_t *player_config,
   static uint8_t saved_n_clients = 0;
   TCPsocket sock = socket_context->sock;
 
-  while (running && game_state->at_menu) {
+  while (game_state->at_menu) {
     ERecvStatus_t recv_status = recv_game_state(socket_context, game_state, client_state, my_id);
     if (recv_status == RECV_ERROR)
       return false;
@@ -295,7 +295,7 @@ static bool menu_display_game_choices(const PlayerConfig_t *player_config,
           if (SDL_PointInRect(&mouse_pos, &game_choice_button[i].rect) &&
               game_state->dealer_id == my_id) {
             if (send_game_select(sock, game_choices[i].game_type, deuces_wild.selected) == 0) {
-              running = false;
+              game_loading = false;
               break;
             } else {
               return false;
@@ -313,78 +313,82 @@ static bool menu_display_game_choices(const PlayerConfig_t *player_config,
     }
 
     clear_screen(sdl_context->renderer);
+    if (game_loading == true) {
+      for (int i = 0; i < MAX_CHOICES; i++)
+        render_button(&game_choice_button[i]);
 
-    for (int i = 0; i < MAX_CHOICES; i++)
-      render_button(&game_choice_button[i]);
+      render_button(&deuces_wild);
 
-    render_button(&deuces_wild);
+      SDL_Point status_pos = {
+          sdl_context->window_width * .1,
+          sdl_context->window_height / 2,
+      };
+      int offset_x = status_pos.x, offset_y = status_pos.y;
 
-    SDL_Point status_pos = {
-        sdl_context->window_width * .1,
-        sdl_context->window_height / 2,
-    };
-    int offset_x = status_pos.x, offset_y = status_pos.y;
+      SDL_Rect text_connected = {offset_x, offset_y, 0, 0};
+      render_text_plain(sdl_context->renderer, font->fonts[FONT_BOLD], _("Connected players:"),
+                        get_color(COLOR_BLACK), &text_connected);
+      offset_x += SCALE_X(10);
 
-    SDL_Rect text_connected = {offset_x, offset_y, 0, 0};
-    render_text_plain(sdl_context->renderer, font->fonts[FONT_BOLD], _("Connected players:"),
-                      get_color(COLOR_BLACK), &text_connected);
-    offset_x += SCALE_X(10);
+      Player_t *client = &game_state->player[my_id];
+      Player_t *start = client;
 
-    Player_t *client = &game_state->player[my_id];
-    Player_t *start = client;
+      n_clients = 0;
+      do {
+        int ping_column_x = sdl_context->win_center.x - SCALE_X(100); // fixed right edge for ping
+        offset_y += SCALE_Y(40);
 
-    n_clients = 0;
-    do {
-      int ping_column_x = sdl_context->win_center.x - SCALE_X(100); // fixed right edge for ping
-      offset_y += SCALE_Y(40);
+        // Build nickname + dealer label
+        char nick_buf[SIZEOF_NICK + sizeof(" (Dealer)")];
+        snprintf(nick_buf, sizeof nick_buf, "%s%s", client->nick,
+                game_state->dealer_id == client->id ? " (Dealer)" : "");
 
-      // Build nickname + dealer label
-      char nick_buf[SIZEOF_NICK + sizeof(" (Dealer)")];
-      snprintf(nick_buf, sizeof nick_buf, "%s%s", client->nick,
-               game_state->dealer_id == client->id ? " (Dealer)" : "");
+        // Build ping text
+        char ping_buf[32];
+        snprintf(ping_buf, sizeof ping_buf, "ping %ums", client_state->ping_times[client->id]);
 
-      // Build ping text
-      char ping_buf[32];
-      snprintf(ping_buf, sizeof ping_buf, "ping %ums", client_state->ping_times[client->id]);
+        // Render nick left-aligned
+        SDL_Rect nick_pos = {offset_x, offset_y, 0, 0};
+        render_text_plain(sdl_context->renderer, font->fonts[FONT_BOLD], nick_buf,
+                          get_color(COLOR_WHITE), &nick_pos);
 
-      // Render nick left-aligned
-      SDL_Rect nick_pos = {offset_x, offset_y, 0, 0};
-      render_text_plain(sdl_context->renderer, font->fonts[FONT_BOLD], nick_buf,
-                        get_color(COLOR_WHITE), &nick_pos);
+        // Measure ping text width
+        int ping_w = 0, ping_h = 0;
+        if (TTF_SizeUTF8(font->fonts[FONT_BOLD], ping_buf, &ping_w, &ping_h) != 0) {
+          fprintf(stderr, "TTF_SizeUTF8 failed: %s\n", TTF_GetError());
+          ping_w = 0;
+        }
 
-      // Measure ping text width
-      int ping_w = 0, ping_h = 0;
-      if (TTF_SizeUTF8(font->fonts[FONT_BOLD], ping_buf, &ping_w, &ping_h) != 0) {
-        fprintf(stderr, "TTF_SizeUTF8 failed: %s\n", TTF_GetError());
-        ping_w = 0;
-      }
+        // Render ping right-aligned at ping_column_x
+        SDL_Rect ping_pos = {ping_column_x - ping_w, offset_y, 0, 0};
+        render_text_plain(sdl_context->renderer, font->fonts[FONT_BOLD], ping_buf,
+                          get_color(COLOR_WHITE), &ping_pos);
 
-      // Render ping right-aligned at ping_column_x
-      SDL_Rect ping_pos = {ping_column_x - ping_w, offset_y, 0, 0};
-      render_text_plain(sdl_context->renderer, font->fonts[FONT_BOLD], ping_buf,
-                        get_color(COLOR_WHITE), &ping_pos);
+        n_clients++;
+        client = get_next_connected_client(game_state->player, client->id);
+      } while (client && client != start);
+      if (saved_n_clients < n_clients && saved_n_clients != 0)
+        ma_sound_start_checked(&sound_context->sounds[SND_SERVER_JOIN].sound);
+      saved_n_clients = n_clients;
 
-      n_clients++;
-      client = get_next_connected_client(game_state->player, client->id);
-    } while (client && client != start);
-    if (saved_n_clients < n_clients && saved_n_clients != 0)
-      ma_sound_start_checked(&sound_context->sounds[SND_SERVER_JOIN].sound);
-    saved_n_clients = n_clients;
+      if (n_clients == 1)
+        render_text_plain(
+            sdl_context->renderer, font->fonts[FONT_DEFAULT], "Waiting for more players...",
+            get_color(COLOR_WHITE),
+            &(SDL_Rect){sdl_context->win_center.x, sdl_context->window_height - 200, 0, 0});
+      if (game_state->dealer_id != my_id)
+        render_text_plain(
+            sdl_context->renderer, font->fonts[FONT_DEFAULT], "Waiting for dealer to select game...",
+            get_color(COLOR_WHITE),
+            &(SDL_Rect){sdl_context->win_center.x, sdl_context->window_height - 200, 0, 0});
 
-    if (n_clients == 1)
-      render_text_plain(
-          sdl_context->renderer, font->fonts[FONT_DEFAULT], "Waiting for more players...",
-          get_color(COLOR_WHITE),
-          &(SDL_Rect){sdl_context->win_center.x, sdl_context->window_height - 200, 0, 0});
-    if (game_state->dealer_id != my_id)
-      render_text_plain(
-          sdl_context->renderer, font->fonts[FONT_DEFAULT], "Waiting for dealer to select game...",
-          get_color(COLOR_WHITE),
-          &(SDL_Rect){sdl_context->win_center.x, sdl_context->window_height - 200, 0, 0});
-
-    for (size_t i = 0; i < ARRAY_SIZE(link); i++)
-      render_link(&link[i]);
-
+      for (size_t i = 0; i < ARRAY_SIZE(link); i++)
+        render_link(&link[i]);
+    }
+    else {
+      // Show loading screen immediately after click
+      show_loading_screen(sdl_context->renderer, font->fonts[FONT_TITLE], "Loading game...");
+    }
     SDL_RenderPresent(sdl_context->renderer);
     SDL_Delay(16);
   }

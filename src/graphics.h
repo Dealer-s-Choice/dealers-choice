@@ -139,4 +139,7 @@ SDL_Texture *load_texture(SDL_Renderer *renderer, const char *path);
 
 void toggle_fullscreen(SDL_Window *window);
 
+// Transitional loading screen
+void show_loading_screen(SDL_Renderer *renderer, TTF_Font *font, const char *message);
+
 #endif

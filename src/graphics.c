@@ -29,6 +29,24 @@
 #include "graphics.h"
 #include "game.h"
 
+void show_loading_screen(SDL_Renderer *renderer, TTF_Font *font, const char *message) {
+  SDL_Color color = get_color(COLOR_WHITE);
+  SDL_Rect rect = {0, 0, 0, 0};
+  int w = 0, h = 0;
+  if (TTF_SizeUTF8(font, message, &w, &h) == 0) {
+    rect.x = 640 - w / 2;
+    rect.y = 360 - h / 2;
+    rect.w = w;
+    rect.h = h;
+  } else {
+    rect.x = 640;
+    rect.y = 360;
+    rect.w = 0;
+    rect.h = 0;
+  }
+  render_text_plain(renderer, font, message, color, &rect);
+}
+
 UiScale_t ui_scale = {0};
 
 static const SDL_Color color_table[COLOR_COUNT] = {
