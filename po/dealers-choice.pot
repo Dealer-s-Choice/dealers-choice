@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: dealers-choice\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-08-11 15:01-0500\n"
+"POT-Creation-Date: 2025-11-27 05:30-0600\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -29,35 +29,39 @@ msgstr ""
 msgid "Connected players:"
 msgstr ""
 
-#: src/client.c:687
+#: src/client.c:390
+msgid "Loading game..."
+msgstr ""
+
+#: src/client.c:694
 msgid "Check"
 msgstr ""
 
-#: src/client.c:687
+#: src/client.c:694
 msgid "Bet"
 msgstr ""
 
-#: src/client.c:688
+#: src/client.c:695
 msgid "Fold"
 msgstr ""
 
-#: src/client.c:688
+#: src/client.c:695
 msgid "Call"
 msgstr ""
 
-#: src/client.c:689
+#: src/client.c:696
 msgid "Raise"
 msgstr ""
 
-#: src/client.c:689
+#: src/client.c:696
 msgid "Discard"
 msgstr ""
 
-#: src/client.c:690
+#: src/client.c:697
 msgid "Exchange"
 msgstr ""
 
-#: src/client.c:999
+#: src/client.c:1006
 msgid "Click a 2, then choose value and suit to assign."
 msgstr ""
 
