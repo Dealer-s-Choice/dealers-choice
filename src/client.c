@@ -387,7 +387,7 @@ static bool menu_display_game_choices(const PlayerConfig_t *player_config,
     }
     else {
       // Show loading screen immediately after click
-      show_loading_screen(sdl_context->renderer, font->fonts[FONT_TITLE], "Loading game...");
+      show_loading_screen(sdl_context->renderer, font->fonts[FONT_TITLE], _("Loading game..."));
     }
     SDL_RenderPresent(sdl_context->renderer);
     SDL_Delay(16);
