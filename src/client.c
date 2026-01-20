@@ -407,9 +407,9 @@ typedef struct {
 static CardBackStyle_t card_back_styles[] = {
     {{0, 0, 128, 255}, {255, 255, 255, 255}, {200, 200, 255, 255}, 0},   // blue crosshatch
     {{128, 0, 0, 255}, {255, 255, 255, 255}, {255, 200, 200, 255}, 1},   // red dots
-    {{0, 128, 0, 255}, {255, 255, 255, 255}, {200, 255, 200, 255}, 2},   // green diagonal stripes
+    {{120, 220, 120, 255}, {255, 255, 255, 255}, {0, 0, 0, 255}, 2},   // light green diagonal stripes
     {{128, 128, 0, 255}, {255, 255, 255, 255}, {255, 255, 200, 255}, 3}, // yellow grid
-    {{64, 0, 128, 255}, {255, 255, 255, 255}, {200, 200, 255, 255}, 0},  // purple crosshatch
+    {{128, 0, 128, 255}, {255, 255, 255, 255}, {255, 200, 255, 255}, 4},  // purple with light stripes
 };
 
 static int selected_card_back = -1;
@@ -460,12 +460,23 @@ static void draw_card_back_pattern(SDL_Renderer *renderer, SDL_Rect *card_rect) 
       }
     }
     break;
-  case 2: // diagonal stripes
-    for (int y = 0; y < card_rect->h; y += spacing) {
-      SDL_RenderDrawLine(renderer, card_rect->x, card_rect->y + y, card_rect->x + card_rect->w,
-                         card_rect->y + y - card_rect->w);
+  case 2: { // light green diagonal stripes (strictly inside border)
+    // Offset by 1 to stay inside the border
+    int left = card_rect->x + 1;
+    int top = card_rect->y + 1;
+    int right = card_rect->x + card_rect->w - 2;
+    int bottom = card_rect->y + card_rect->h - 2;
+    int w = right - left;
+    int h = bottom - top;
+    for (int x = -h; x <= w; x += spacing) {
+      int x1 = left + (x < 0 ? 0 : x);
+      int y1 = top + (x < 0 ? -x : 0);
+      int x2 = left + (x + h <= w ? x + h : w);
+      int y2 = top + (x + h <= w ? h : h - (x + h - w));
+      SDL_RenderDrawLine(renderer, x1, y1, x2, y2);
     }
     break;
+  }
   case 3: // grid
     for (int y = 0; y < card_rect->h; y += spacing) {
       SDL_RenderDrawLine(renderer, card_rect->x, card_rect->y + y, card_rect->x + card_rect->w,
@@ -474,6 +485,11 @@ static void draw_card_back_pattern(SDL_Renderer *renderer, SDL_Rect *card_rect) 
     for (int x = 0; x < card_rect->w; x += spacing) {
       SDL_RenderDrawLine(renderer, card_rect->x + x, card_rect->y, card_rect->x + x,
                          card_rect->y + card_rect->h);
+    }
+    break;
+  case 4: // purple with light stripes (vertical stripes)
+    for (int x = spacing; x < card_rect->w; x += spacing) {
+      SDL_RenderDrawLine(renderer, card_rect->x + x, card_rect->y, card_rect->x + x, card_rect->y + card_rect->h);
     }
     break;
   default:
