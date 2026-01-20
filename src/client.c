@@ -487,11 +487,31 @@ static void draw_card_back_pattern(SDL_Renderer *renderer, SDL_Rect *card_rect) 
                          card_rect->y + card_rect->h);
     }
     break;
-  case 4: // purple with light stripes (vertical stripes)
-    for (int x = spacing; x < card_rect->w; x += spacing) {
-      SDL_RenderDrawLine(renderer, card_rect->x + x, card_rect->y, card_rect->x + x, card_rect->y + card_rect->h);
+  case 4: { // purple with diamond grid (criss-cross)
+    int left = card_rect->x + 1;
+    int top = card_rect->y + 1;
+    int right = card_rect->x + card_rect->w - 2;
+    int bottom = card_rect->y + card_rect->h - 2;
+    int w = right - left;
+    int h = bottom - top;
+    // Diagonal lines: top-left to bottom-right
+    for (int x = -h; x <= w; x += spacing) {
+      int x1 = left + (x < 0 ? 0 : x);
+      int y1 = top + (x < 0 ? -x : 0);
+      int x2 = left + (x + h <= w ? x + h : w);
+      int y2 = top + (x + h <= w ? h : h - (x + h - w));
+      SDL_RenderDrawLine(renderer, x1, y1, x2, y2);
+    }
+    // Diagonal lines: top-right to bottom-left
+    for (int x = 0; x <= w + h; x += spacing) {
+      int x1 = left + (x <= w ? x : w);
+      int y1 = top + (x <= w ? 0 : x - w);
+      int x2 = left + (x - h >= 0 ? x - h : 0);
+      int y2 = top + (x - h >= 0 ? h : x);
+      SDL_RenderDrawLine(renderer, x1, y1, x2, y2);
     }
     break;
+  }
   default:
     break;
   }
