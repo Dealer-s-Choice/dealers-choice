@@ -341,7 +341,7 @@ static bool menu_display_game_choices(const PlayerConfig_t *player_config,
         // Build nickname + dealer label
         char nick_buf[SIZEOF_NICK + sizeof(" (Dealer)")];
         snprintf(nick_buf, sizeof nick_buf, "%s%s", client->nick,
-                game_state->dealer_id == client->id ? " (Dealer)" : "");
+                 game_state->dealer_id == client->id ? " (Dealer)" : "");
 
         // Build ping text
         char ping_buf[32];
@@ -378,14 +378,13 @@ static bool menu_display_game_choices(const PlayerConfig_t *player_config,
             &(SDL_Rect){sdl_context->win_center.x, sdl_context->window_height - 200, 0, 0});
       if (game_state->dealer_id != my_id)
         render_text_plain(
-            sdl_context->renderer, font->fonts[FONT_DEFAULT], "Waiting for dealer to select game...",
-            get_color(COLOR_WHITE),
+            sdl_context->renderer, font->fonts[FONT_DEFAULT],
+            "Waiting for dealer to select game...", get_color(COLOR_WHITE),
             &(SDL_Rect){sdl_context->win_center.x, sdl_context->window_height - 200, 0, 0});
 
       for (size_t i = 0; i < ARRAY_SIZE(link); i++)
         render_link(&link[i]);
-    }
-    else {
+    } else {
       // Show loading screen immediately after click
       show_loading_screen(sdl_context->renderer, font->fonts[FONT_TITLE], _("Loading game..."));
     }
@@ -395,30 +394,131 @@ static bool menu_display_game_choices(const PlayerConfig_t *player_config,
   return true;
 }
 
+// Card back pattern/color selection
+typedef struct {
+  SDL_Color base_color;
+  SDL_Color border_color;
+  SDL_Color pattern_color;
+  int pattern_type; // 0: crosshatch, 1: dots, 2: diagonal stripes, 3: grid
+} CardBackStyle_t;
+
+#include "game.h" // for rng
+
+static CardBackStyle_t card_back_styles[] = {
+    {{0, 0, 128, 255}, {255, 255, 255, 255}, {200, 200, 255, 255}, 0},   // blue crosshatch
+    {{128, 0, 0, 255}, {255, 255, 255, 255}, {255, 200, 200, 255}, 0},   // red crosshatch
+    {{128, 0, 0, 255}, {255, 255, 255, 255}, {255, 200, 200, 255}, 1},   // red dots
+    {{128, 128, 0, 255}, {255, 255, 255, 255}, {255, 255, 200, 255}, 1}, // yellow dots
+    {{0, 0, 128, 255}, {255, 255, 255, 255}, {200, 200, 255, 255}, 2},   // blue diagonal stripes
+    {{128, 64, 0, 255}, {255, 255, 255, 255}, {255, 200, 128, 255}, 2},  // orange diagonal stripes
+    {{128, 128, 0, 255}, {255, 255, 255, 255}, {255, 255, 200, 255}, 3}, // yellow grid
+    {{128, 0, 128, 255},
+     {255, 255, 255, 255},
+     {255, 200, 255, 255},
+     4}, // purple with light stripes
+};
+
+static int selected_card_back = -1;
+
+static void select_card_back_for_game(void) {
+  selected_card_back =
+      pcg32_boundedrand_r(&rng, sizeof(card_back_styles) / sizeof(card_back_styles[0]));
+}
+
 static void draw_card_back_pattern(SDL_Renderer *renderer, SDL_Rect *card_rect) {
+  int style_idx = selected_card_back >= 0 ? selected_card_back : 0;
+  CardBackStyle_t style = card_back_styles[style_idx];
+
   // Fill card with base color
-  SDL_SetRenderDrawColor(renderer, 0, 0, 128, 255); // Dark blue
+  SDL_SetRenderDrawColor(renderer, style.base_color.r, style.base_color.g, style.base_color.b,
+                         style.base_color.a);
   SDL_RenderFillRect(renderer, card_rect);
 
   // Draw border
-  SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255); // White border
+  SDL_SetRenderDrawColor(renderer, style.border_color.r, style.border_color.g, style.border_color.b,
+                         style.border_color.a);
   SDL_RenderDrawRect(renderer, card_rect);
 
-  // Draw pattern (e.g., diagonal crosshatch lines)
-  SDL_SetRenderDrawColor(renderer, 200, 200, 255, 255); // Light blue
-
+  SDL_SetRenderDrawColor(renderer, style.pattern_color.r, style.pattern_color.g,
+                         style.pattern_color.b, style.pattern_color.a);
   int spacing = 8;
-  for (int y = 0; y < card_rect->h; y += spacing) {
-    for (int x = 0; x < card_rect->w; x += spacing) {
-      SDL_RenderDrawLine(renderer, card_rect->x + x, card_rect->y, card_rect->x, card_rect->y + y);
+  switch (style.pattern_type) {
+  case 0: // crosshatch
+    for (int y = 0; y < card_rect->h; y += spacing) {
+      for (int x = 0; x < card_rect->w; x += spacing) {
+        SDL_RenderDrawLine(renderer, card_rect->x + x, card_rect->y, card_rect->x,
+                           card_rect->y + y);
+      }
     }
+    for (int y = 0; y < card_rect->h; y += spacing) {
+      for (int x = 0; x < card_rect->w; x += spacing) {
+        SDL_RenderDrawLine(renderer, card_rect->x + x, card_rect->y + card_rect->h,
+                           card_rect->x + card_rect->w, card_rect->y + y);
+      }
+    }
+    break;
+  case 1: // dots
+    for (int y = spacing; y < card_rect->h; y += spacing) {
+      for (int x = spacing; x < card_rect->w; x += spacing) {
+        SDL_Rect dot = {card_rect->x + x, card_rect->y + y, 2, 2};
+        SDL_RenderFillRect(renderer, &dot);
+      }
+    }
+    break;
+  case 2: { // light green diagonal stripes (strictly inside border)
+    // Offset by 1 to stay inside the border
+    int left = card_rect->x + 1;
+    int top = card_rect->y + 1;
+    int right = card_rect->x + card_rect->w - 2;
+    int bottom = card_rect->y + card_rect->h - 2;
+    int w = right - left;
+    int h = bottom - top;
+    for (int x = -h; x <= w; x += spacing) {
+      int x1 = left + (x < 0 ? 0 : x);
+      int y1 = top + (x < 0 ? -x : 0);
+      int x2 = left + (x + h <= w ? x + h : w);
+      int y2 = top + (x + h <= w ? h : h - (x + h - w));
+      SDL_RenderDrawLine(renderer, x1, y1, x2, y2);
+    }
+    break;
   }
-
-  for (int y = 0; y < card_rect->h; y += spacing) {
-    for (int x = 0; x < card_rect->w; x += spacing) {
-      SDL_RenderDrawLine(renderer, card_rect->x + x, card_rect->y + card_rect->h,
-                         card_rect->x + card_rect->w, card_rect->y + y);
+  case 3: // grid
+    for (int y = 0; y < card_rect->h; y += spacing) {
+      SDL_RenderDrawLine(renderer, card_rect->x, card_rect->y + y, card_rect->x + card_rect->w,
+                         card_rect->y + y);
     }
+    for (int x = 0; x < card_rect->w; x += spacing) {
+      SDL_RenderDrawLine(renderer, card_rect->x + x, card_rect->y, card_rect->x + x,
+                         card_rect->y + card_rect->h);
+    }
+    break;
+  case 4: { // purple with diamond grid (criss-cross)
+    int left = card_rect->x + 1;
+    int top = card_rect->y + 1;
+    int right = card_rect->x + card_rect->w - 2;
+    int bottom = card_rect->y + card_rect->h - 2;
+    int w = right - left;
+    int h = bottom - top;
+    // Diagonal lines: top-left to bottom-right
+    for (int x = -h; x <= w; x += spacing) {
+      int x1 = left + (x < 0 ? 0 : x);
+      int y1 = top + (x < 0 ? -x : 0);
+      int x2 = left + (x + h <= w ? x + h : w);
+      int y2 = top + (x + h <= w ? h : h - (x + h - w));
+      SDL_RenderDrawLine(renderer, x1, y1, x2, y2);
+    }
+    // Diagonal lines: top-right to bottom-left
+    for (int x = 0; x <= w + h; x += spacing) {
+      int x1 = left + (x <= w ? x : w);
+      int y1 = top + (x <= w ? 0 : x - w);
+      int x2 = left + (x - h >= 0 ? x - h : 0);
+      int y2 = top + (x - h >= 0 ? h : x);
+      SDL_RenderDrawLine(renderer, x1, y1, x2, y2);
+    }
+    break;
+  }
+  default:
+    break;
   }
 }
 
@@ -655,7 +755,8 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
                           const GameSettings_t *game_settings, GameState_t *game_state,
                           SdlContext_t *sdl_context, const Font_t *font, Path_t *path,
                           const SoundContext_t *sound_context) {
-  // This will likely get used later. For now, suppress the warning about "unused parameter"
+  select_card_back_for_game();
+
   ClientState_t client_state = {0};
   card_area.w = SCALE_X(80);
   card_area.h = SCALE_Y(50);

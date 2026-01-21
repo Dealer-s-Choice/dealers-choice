@@ -140,8 +140,8 @@ __inline
 inline
 #endif
 #endif
-    static const char *
-    pgettext_aux(const char *domain, const char *msg_ctxt_id, const char *msgid, int category) {
+    static const char *pgettext_aux(const char *domain, const char *msg_ctxt_id, const char *msgid,
+                                    int category) {
   const char *translation = dcgettext(domain, msg_ctxt_id, category);
   if (translation == msg_ctxt_id)
     return msgid;
@@ -156,9 +156,8 @@ __inline
 inline
 #endif
 #endif
-    static const char *
-    npgettext_aux(const char *domain, const char *msg_ctxt_id, const char *msgid,
-                  const char *msgid_plural, unsigned long int n, int category) {
+    static const char *npgettext_aux(const char *domain, const char *msg_ctxt_id, const char *msgid,
+                                     const char *msgid_plural, unsigned long int n, int category) {
   const char *translation = dcngettext(domain, msg_ctxt_id, msgid_plural, n, category);
   if (translation == msg_ctxt_id || translation == msgid_plural)
     return (n == 1 ? msgid : msgid_plural);
@@ -203,8 +202,8 @@ __inline
 inline
 #endif
 #endif
-    static const char *
-    dcpgettext_expr(const char *domain, const char *msgctxt, const char *msgid, int category) {
+    static const char *dcpgettext_expr(const char *domain, const char *msgctxt, const char *msgid,
+                                       int category) {
   size_t msgctxt_len = strlen(msgctxt) + 1;
   size_t msgid_len = strlen(msgid) + 1;
   const char *translation;
@@ -245,9 +244,9 @@ __inline
 inline
 #endif
 #endif
-    static const char *
-    dcnpgettext_expr(const char *domain, const char *msgctxt, const char *msgid,
-                     const char *msgid_plural, unsigned long int n, int category) {
+    static const char *dcnpgettext_expr(const char *domain, const char *msgctxt, const char *msgid,
+                                        const char *msgid_plural, unsigned long int n,
+                                        int category) {
   size_t msgctxt_len = strlen(msgctxt) + 1;
   size_t msgid_len = strlen(msgid) + 1;
   const char *translation;
