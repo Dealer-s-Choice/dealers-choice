@@ -406,18 +406,20 @@ typedef struct {
 
 static CardBackStyle_t card_back_styles[] = {
     {{0, 0, 128, 255}, {255, 255, 255, 255}, {200, 200, 255, 255}, 0},   // blue crosshatch
+    {{128, 0, 0, 255}, {255, 255, 255, 255}, {255, 200, 200, 255}, 0},   // red crosshatch
     {{128, 0, 0, 255}, {255, 255, 255, 255}, {255, 200, 200, 255}, 1},   // red dots
-    {{120, 220, 120, 255}, {255, 255, 255, 255}, {0, 0, 0, 255}, 2},   // light green diagonal stripes
+    {{128, 128, 0, 255}, {255, 255, 255, 255}, {255, 255, 200, 255}, 1}, // yellow dots
+    {{0, 0, 128, 255}, {255, 255, 255, 255}, {200, 200, 255, 255}, 2},   // blue diagonal stripes
+    {{128, 64, 0, 255}, {255, 255, 255, 255}, {255, 200, 128, 255}, 2},   // orange diagonal stripes
     {{128, 128, 0, 255}, {255, 255, 255, 255}, {255, 255, 200, 255}, 3}, // yellow grid
     {{128, 0, 128, 255}, {255, 255, 255, 255}, {255, 200, 255, 255}, 4},  // purple with light stripes
 };
 
 static int selected_card_back = -1;
 
-void select_card_back_for_game(void) {
+static void select_card_back_for_game(void) {
   selected_card_back =
       pcg32_boundedrand_r(&rng, sizeof(card_back_styles) / sizeof(card_back_styles[0]));
-  printf("Selected card back style index: %d\n", selected_card_back);
 }
 
 static void draw_card_back_pattern(SDL_Renderer *renderer, SDL_Rect *card_rect) {
@@ -751,7 +753,7 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
                           SdlContext_t *sdl_context, const Font_t *font, Path_t *path,
                           const SoundContext_t *sound_context) {
   select_card_back_for_game();
-  // This will likely get used later. For now, suppress the warning about "unused parameter"
+
   ClientState_t client_state = {0};
   card_area.w = SCALE_X(80);
   card_area.h = SCALE_Y(50);
