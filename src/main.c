@@ -182,9 +182,11 @@ static CliArgs_t parse_cli_args(int argc, char *argv[]) {
       break;
     case OPT_SERVER_LOG_GAME_RESULTS:
       cli_args.server_log_game_results_file = parser.optarg;
+      cli_args.run_server_flag = true;
       break;
     case OPT_SERVER_CONF:
       cli_args.server_conf = parser.optarg;
+      cli_args.run_server_flag = true;
       break;
     case OPT_TEST:
       cli_args.test_mode = true;
