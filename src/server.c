@@ -101,6 +101,7 @@ ServerConfig_t init_game_state(GameState_t *game_state, Path_t *path, const CliA
   game_state->at_menu = true;
   game_state->player_count = 0;
   game_state->raises_remaining = 0;
+  game_state->prev_bet_amount = 0;
   game_state->winner_declared = false;
   game_state->deuces_wild = false;
   return config;
@@ -466,6 +467,7 @@ static void server_handle_bet(GameState_t *game_state, uint32_t *total_paid, con
   game_state->player[turn_id].coins -= amount;
   *total_paid += amount;
   *total_bets_plus_raises += amount;
+  game_state->prev_bet_amount = amount;
   game_state->pot += amount;
 }
 
@@ -1105,6 +1107,7 @@ static void play_game(ArgsBroadcastGameState_t *args, DH_Deck *deck) {
   // args->real_hand->player[2].card[3].face_val = DH_CARD_TWO;
 
   args->game_state->winner_declared = false;
+  args->game_state->prev_bet_amount = 0;
   args->game_state->player_count = count_active_clients(args->slot_taken);
   verbose_printf("player count: %d\n", args->game_state->player_count);
   args->game_state->winner_declared = false;

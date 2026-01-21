@@ -1138,8 +1138,15 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
         // if the RAISE button is not active).
         if (client_state.bet_check_fold ||
             (client_state.call_raise_fold && action_button[RAISE].active)) {
-          for (size_t i = 0; i < n_bet_amounts; i++)
+          for (size_t i = 0; i < n_bet_amounts; i++) {
+            verbose_printf("action_button[RAISE].active: %d\n", action_button[RAISE].active);
+            verbose_printf("game_state->prev_bet_amount: %d\n", game_state->prev_bet_amount);
+            if (game_state->prev_bet_amount > amount[i].value && action_button[RAISE].active) {
+              amount_button[i + 1].selected = true;
+              continue;
+            }
             render_button(&amount_button[i]);
+          }
         }
       }
     }

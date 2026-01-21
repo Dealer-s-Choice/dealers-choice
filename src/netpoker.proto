@@ -25,9 +25,10 @@ message GameState {
   bool at_menu = 3;
   uint32 player_count = 4;
   uint32 raises_remaining = 5;
-  bool winner_declared = 6;
-  bool deuces_wild = 7;
-  repeated Player player = 8;
+  uint32 prev_bet_amount = 6;
+  bool winner_declared = 7;
+  bool deuces_wild = 8;
+  repeated Player player = 9;
 }
 
 message GameSettings {
