@@ -748,6 +748,7 @@ static void award_last_player_in_game(ArgsBroadcastGameState_t *args, Player_t *
 
 static RoundResults handle_round_real(ArgsBroadcastGameState_t *args) {
   args->game_state->raises_remaining = args->config->max_raises;
+  args->game_state->prev_bet_amount = 0;
 
   Player_t *turn;
   // printf("%s:turn->id: %d\n", __func__, turn->id);
