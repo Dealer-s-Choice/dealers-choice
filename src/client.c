@@ -4,7 +4,7 @@
 
  MIT License
 
- Copyright (c) 2025 Andy Alt
+ Copyright (c) 2025,2026 Andy Alt
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -1311,8 +1311,9 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
 
         amount_button[i].hovered = SDL_PointInRect(&mouse_pos, &amount_button[i].rect);
         amount_selected =
-            (amount_button[i].enabled && ((amount_button[i].hovered && event.type == SDL_MOUSEBUTTONDOWN) ||
-             (event.type == SDL_KEYDOWN && event.key.keysym.sym == amount_button[i].hotkey)));
+            (amount_button[i].enabled &&
+             ((amount_button[i].hovered && event.type == SDL_MOUSEBUTTONDOWN) ||
+              (event.type == SDL_KEYDOWN && event.key.keysym.sym == amount_button[i].hotkey)));
         if (amount_selected) {
           if (!amount_button[i].selected) {
             for (size_t j = 0; j < n_bet_amounts; j++) {
