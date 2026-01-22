@@ -4,7 +4,7 @@
 
  MIT License
 
- Copyright (c) 2025 Andy Alt
+ Copyright (c) 2025,2026 Andy Alt
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -39,7 +39,7 @@
 #endif
 
 #define GAME_PROTOCOL_MAGIC "DCPROTO"
-#define GAME_PROTOCOL_VERSION 5
+#define GAME_PROTOCOL_VERSION 6
 
 #ifdef _MSC_VER
 #pragma pack(push, 1)

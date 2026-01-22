@@ -4,7 +4,7 @@
 
  MIT License
 
- Copyright (c) 2025 Andy Alt
+ Copyright (c) 2025,2026 Andy Alt
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -847,8 +847,8 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
 
     current_x += button_w + SCALE_X(10); // Move right for next button with spacing
   }
-
   amount_button[0].selected = true;
+  client_state.selected_amount = amount[0].value;
 
   CardContext_t card_context[MAX_PLAYERS][MAX_HAND_SIZE];
 
@@ -924,8 +924,6 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
 
   client_state.timer_start = SDL_GetTicks();
 
-  client_state.selected_amount = amount[0].value;
-
   const int8_t my_id = game_settings->client_id;
   TCPsocket sock = socket_context->sock;
 
@@ -982,6 +980,10 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
     // printf("%d\n", __LINE__);
 
     clear_screen(sdl_context->renderer);
+
+    if (game_state->prev_bet_amount == 0)
+      for (size_t i = 0; i < n_bet_amounts; i++)
+        amount_button[i].enabled = true;
 
     bool new_coin = false;
     SDL_Point pot_pos = {player_pos[4].x - POT_BOUNDARY + card_area.h,
@@ -1138,8 +1140,11 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
         // if the RAISE button is not active).
         if (client_state.bet_check_fold ||
             (client_state.call_raise_fold && action_button[RAISE].active)) {
-          for (size_t i = 0; i < n_bet_amounts; i++)
+          for (size_t i = 0; i < n_bet_amounts; i++) {
+            if (game_state->prev_bet_amount > amount[i].value && action_button[RAISE].active)
+              amount_button[i].enabled = false;
             render_button(&amount_button[i]);
+          }
         }
       }
     }
@@ -1298,10 +1303,17 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
       }
       bool amount_selected = false;
       for (size_t i = 0; i < n_bet_amounts; i++) {
+        if (!amount_button[i].enabled && amount_button[i].selected) {
+          amount_button[i].selected = false;
+          amount_button[i + 1].selected = true;
+          client_state.selected_amount = atoi(amount_button[i + 1].text);
+        }
+
         amount_button[i].hovered = SDL_PointInRect(&mouse_pos, &amount_button[i].rect);
         amount_selected =
-            ((amount_button[i].hovered && event.type == SDL_MOUSEBUTTONDOWN) ||
-             (event.type == SDL_KEYDOWN && event.key.keysym.sym == amount_button[i].hotkey));
+            (amount_button[i].enabled &&
+             ((amount_button[i].hovered && event.type == SDL_MOUSEBUTTONDOWN) ||
+              (event.type == SDL_KEYDOWN && event.key.keysym.sym == amount_button[i].hotkey)));
         if (amount_selected) {
           if (!amount_button[i].selected) {
             for (size_t j = 0; j < n_bet_amounts; j++) {
@@ -1334,7 +1346,7 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
             // TODO: use existing array (or modify it) to loop through each action
             if (SDL_PointInRect(&mouse_pos, &action_button[BET].rect) ||
                 event.key.keysym.sym == action_button[BET].hotkey) {
-              verbose_puts("sending bet");
+              verbose_printf("betting %d\n", client_state.selected_amount);
               if (send_player_action(&client_state, sock, ACTION_BET,
                                      client_state.selected_amount) != 0)
                 fprintf(stderr, "Failed to send bet\n");
@@ -1350,7 +1362,7 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
                  event.key.keysym.sym == action_button[RAISE].hotkey)) {
               if (send_player_action(&client_state, sock, ACTION_RAISE,
                                      client_state.selected_amount) == 0)
-                verbose_puts("raising");
+                verbose_printf("raising %d\n", client_state.selected_amount);
               else
                 fputs("Failed to raise\n", stderr);
             } else if (SDL_PointInRect(&mouse_pos, &action_button[CALL].rect) ||
