@@ -678,7 +678,8 @@ static void determine_winner(ArgsBroadcastGameState_t *args, RoundResults *resul
     ptr = get_next_player(args->game_state->player, ptr->id);
   }
 
-  results->n_winners = POKEVAL_compare_hands(need_comparing, pl_count);
+  results->n_winners = POKEVAL_compare_hands(
+      need_comparing, pl_count, args->game_type == game_choices[CALIFORNIA_LOWBALL].game_type);
   uint8_t winners = 0;
 
   uint32_t pot = args->game_state->pot;

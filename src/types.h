@@ -51,6 +51,7 @@ typedef enum {
   FIVE_CARD_STUD,
   SEVEN_CARD_STUD,
   FIVE_CARD_SHOWDOWN,
+  CALIFORNIA_LOWBALL,
   MAX_CHOICES,
 } EMenuOption_t;
 
