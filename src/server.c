@@ -1108,6 +1108,33 @@ static void play_game(ArgsBroadcastGameState_t *args, DH_Deck *deck) {
   // args->real_hand->player[1].card[3].face_val = DH_CARD_TWO;
   // args->real_hand->player[2].card[3].face_val = DH_CARD_TWO;
 
+  // Lowball setups
+  //
+  //args->real_hand->player[0].card[0].face_val = DH_CARD_ACE;
+  //args->real_hand->player[0].card[1].face_val = DH_CARD_TWO;
+  //args->real_hand->player[0].card[2].face_val = DH_CARD_THREE;
+  //args->real_hand->player[0].card[3].face_val = DH_CARD_FOUR;
+  //args->real_hand->player[0].card[4].face_val = DH_CARD_SIX;
+
+  //args->real_hand->player[1].card[0].face_val = DH_CARD_TWO;
+  //args->real_hand->player[1].card[1].face_val = DH_CARD_THREE;
+  //args->real_hand->player[1].card[2].face_val = DH_CARD_FOUR;
+  //args->real_hand->player[1].card[3].face_val = DH_CARD_FIVE;
+  //args->real_hand->player[1].card[4].face_val = DH_CARD_SIX;
+  //
+  // In lowball, 8-5-4-3-2 defeats 9-7-6-4-3
+  //args->real_hand->player[0].card[0].face_val = DH_CARD_EIGHT;
+  //args->real_hand->player[0].card[1].face_val = DH_CARD_FIVE;
+  //args->real_hand->player[0].card[2].face_val = DH_CARD_FOUR;
+  //args->real_hand->player[0].card[3].face_val = DH_CARD_THREE;
+  //args->real_hand->player[0].card[4].face_val = DH_CARD_TWO;
+
+  //args->real_hand->player[1].card[0].face_val = DH_CARD_NINE;
+  //args->real_hand->player[1].card[1].face_val = DH_CARD_SEVEN;
+  //args->real_hand->player[1].card[2].face_val = DH_CARD_SIX;
+  //args->real_hand->player[1].card[3].face_val = DH_CARD_FOUR;
+  //args->real_hand->player[1].card[4].face_val = DH_CARD_THREE;
+
   args->game_state->winner_declared = false;
   args->game_state->prev_bet_amount = 0;
   args->game_state->player_count = count_active_clients(args->slot_taken);
