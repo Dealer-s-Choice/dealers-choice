@@ -854,7 +854,8 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args) {
       if (turn->is_connected) {
         if (action.action == 0) {
           if (!has_paid_all_bets(player_total_paid[turn->id], total_bets_plus_raises)) {
-            action.action = handle_fold(args->game_state, args->real_hand, turn, args->starting_turn, &action);
+            action.action =
+                handle_fold(args->game_state, args->real_hand, turn, args->starting_turn, &action);
           } else if (total_bets_plus_raises == 0) {
             action.action = handle_check(&action);
           }
@@ -1114,30 +1115,30 @@ static void play_game(ArgsBroadcastGameState_t *args, DH_Deck *deck) {
 
   // Lowball setups
   //
-  //args->real_hand->player[0].card[0].face_val = DH_CARD_ACE;
-  //args->real_hand->player[0].card[1].face_val = DH_CARD_TWO;
-  //args->real_hand->player[0].card[2].face_val = DH_CARD_THREE;
-  //args->real_hand->player[0].card[3].face_val = DH_CARD_FOUR;
-  //args->real_hand->player[0].card[4].face_val = DH_CARD_SIX;
+  // args->real_hand->player[0].card[0].face_val = DH_CARD_ACE;
+  // args->real_hand->player[0].card[1].face_val = DH_CARD_TWO;
+  // args->real_hand->player[0].card[2].face_val = DH_CARD_THREE;
+  // args->real_hand->player[0].card[3].face_val = DH_CARD_FOUR;
+  // args->real_hand->player[0].card[4].face_val = DH_CARD_SIX;
 
-  //args->real_hand->player[1].card[0].face_val = DH_CARD_TWO;
-  //args->real_hand->player[1].card[1].face_val = DH_CARD_THREE;
-  //args->real_hand->player[1].card[2].face_val = DH_CARD_FOUR;
-  //args->real_hand->player[1].card[3].face_val = DH_CARD_FIVE;
-  //args->real_hand->player[1].card[4].face_val = DH_CARD_SIX;
+  // args->real_hand->player[1].card[0].face_val = DH_CARD_TWO;
+  // args->real_hand->player[1].card[1].face_val = DH_CARD_THREE;
+  // args->real_hand->player[1].card[2].face_val = DH_CARD_FOUR;
+  // args->real_hand->player[1].card[3].face_val = DH_CARD_FIVE;
+  // args->real_hand->player[1].card[4].face_val = DH_CARD_SIX;
   //
-  // In lowball, 8-5-4-3-2 defeats 9-7-6-4-3
-  //args->real_hand->player[0].card[0].face_val = DH_CARD_EIGHT;
-  //args->real_hand->player[0].card[1].face_val = DH_CARD_FIVE;
-  //args->real_hand->player[0].card[2].face_val = DH_CARD_FOUR;
-  //args->real_hand->player[0].card[3].face_val = DH_CARD_THREE;
-  //args->real_hand->player[0].card[4].face_val = DH_CARD_TWO;
+  //  In lowball, 8-5-4-3-2 defeats 9-7-6-4-3
+  // args->real_hand->player[0].card[0].face_val = DH_CARD_EIGHT;
+  // args->real_hand->player[0].card[1].face_val = DH_CARD_FIVE;
+  // args->real_hand->player[0].card[2].face_val = DH_CARD_FOUR;
+  // args->real_hand->player[0].card[3].face_val = DH_CARD_THREE;
+  // args->real_hand->player[0].card[4].face_val = DH_CARD_TWO;
 
-  //args->real_hand->player[1].card[0].face_val = DH_CARD_NINE;
-  //args->real_hand->player[1].card[1].face_val = DH_CARD_SEVEN;
-  //args->real_hand->player[1].card[2].face_val = DH_CARD_SIX;
-  //args->real_hand->player[1].card[3].face_val = DH_CARD_FOUR;
-  //args->real_hand->player[1].card[4].face_val = DH_CARD_THREE;
+  // args->real_hand->player[1].card[0].face_val = DH_CARD_NINE;
+  // args->real_hand->player[1].card[1].face_val = DH_CARD_SEVEN;
+  // args->real_hand->player[1].card[2].face_val = DH_CARD_SIX;
+  // args->real_hand->player[1].card[3].face_val = DH_CARD_FOUR;
+  // args->real_hand->player[1].card[4].face_val = DH_CARD_THREE;
 
   args->game_state->winner_declared = false;
   args->game_state->prev_bet_amount = 0;
