@@ -622,9 +622,13 @@ static EPlayerAction_t handle_check(PlayerActionMsg_t *action) {
   return ACTION_CHECK;
 }
 
-static EPlayerAction_t handle_fold(GameState_t *game_state, Player_t *turn,
+static EPlayerAction_t handle_fold(GameState_t *game_state, RealHand_t *real_hand, Player_t *turn,
                                    Player_t **starting_turn, PlayerActionMsg_t *action) {
   turn->in = false;
+  for (int i = 0; i < MAX_HAND_SIZE; i++) {
+    real_hand->player[turn->id].card[i] = DH_card_null;
+    turn->hand.card[i] = DH_card_null;
+  }
   game_state->player_count--;
   if (game_state->player_count > 1)
     *starting_turn = get_next_player(game_state->player, turn->id);
@@ -796,7 +800,7 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args) {
                 action.str = _("bet ");
                 break;
               case ACTION_FOLD:
-                handle_fold(args->game_state, turn, args->starting_turn, &action);
+                handle_fold(args->game_state, args->real_hand, turn, args->starting_turn, &action);
                 break;
               default:
                 fprintf(stderr, "Invalid Action received\n");
@@ -820,7 +824,7 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args) {
                         stderr);
                 break;
               case ACTION_FOLD:
-                handle_fold(args->game_state, turn, args->starting_turn, &action);
+                handle_fold(args->game_state, args->real_hand, turn, args->starting_turn, &action);
                 break;
               default:
                 fputs("Invalid Action received\nThe client is writing checks their body "
@@ -850,7 +854,7 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args) {
       if (turn->is_connected) {
         if (action.action == 0) {
           if (!has_paid_all_bets(player_total_paid[turn->id], total_bets_plus_raises)) {
-            action.action = handle_fold(args->game_state, turn, args->starting_turn, &action);
+            action.action = handle_fold(args->game_state, args->real_hand, turn, args->starting_turn, &action);
           } else if (total_bets_plus_raises == 0) {
             action.action = handle_check(&action);
           }

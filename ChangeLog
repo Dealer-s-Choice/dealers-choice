@@ -1,4 +1,5 @@
   + Implement California lowball
+  + Remove cards of player when folded
   + Add a loading screen for dealer when waiting for server to start
   + Disallow raise that is less than previous bet/raise
   + Add card back patterns
