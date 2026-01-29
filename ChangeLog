@@ -1,4 +1,4 @@
-  * bugfix: Infinite checking when first person in a >=3 person game folds first
+  * bugfix: Infinite checking when first person in a >=3 person game folds
   + Implement California lowball
   + Remove cards of player when folded
   + Add a loading screen for dealer when waiting for server to start
