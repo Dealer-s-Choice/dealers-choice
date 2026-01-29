@@ -630,7 +630,7 @@ static EPlayerAction_t handle_fold(GameState_t *game_state, RealHand_t *real_han
     turn->hand.card[i] = DH_card_null;
   }
   game_state->player_count--;
-  if (game_state->player_count > 1)
+  if (game_state->player_count > 1 && turn == *starting_turn)
     *starting_turn = get_next_player(game_state->player, turn->id);
   action->str = _("folded");
   return ACTION_FOLD;
@@ -760,10 +760,10 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args) {
 
   RoundResults results = {0};
 
-  Player_t *round_starting_turn = *args->starting_turn;
-  turn = round_starting_turn;
+  turn = *args->starting_turn;
   uint32_t total_bets_plus_raises = 0;
   uint32_t player_total_paid[MAX_PLAYERS] = {0};
+  uint8_t num_turns = 0;
 
   do {
     args->turn_id = turn->id;
@@ -878,11 +878,14 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args) {
       }
 
       turn = get_next_player(args->game_state->player, turn->id);
-      if (total_bets_plus_raises == 0) {
-        if (turn == round_starting_turn)
-          break;
-      } else if (has_paid_all_bets(player_total_paid[turn->id], total_bets_plus_raises)) {
-        break; // Everyone either checked or paid all bets and raises
+      num_turns++;
+      if (num_turns >= args->game_state->player_count) {
+        if (total_bets_plus_raises == 0) {
+          if (turn == *args->starting_turn)
+            break;
+        } else if (has_paid_all_bets(player_total_paid[turn->id], total_bets_plus_raises)) {
+          break; // Everyone either checked or paid all bets and raises
+        }
       }
 
       if (results.n_winners > 0) {

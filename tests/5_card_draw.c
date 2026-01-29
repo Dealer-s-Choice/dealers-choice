@@ -17,6 +17,7 @@ assert(expected_bet_turn[game] == *turn_id);
 
 SDL_Delay(n_ms);
 
+fprintf(stderr, "BET game: %d: turn_id %d\n", game, *turn_id);
 assert(send_player_action(client_state, socket_context[*turn_id].sock, ACTION_BET, 500) == 0);
 
 for (i = 0; i < N_PLAYERS; i++) {
@@ -30,6 +31,7 @@ _RECEIVE_GAME_STATE()
 _RECEIVE_GAME_STATE()
 
 int expected_turn[3] = {2, 0, 1};
+fprintf(stderr, "FOLD %d, %d\n", expected_turn[game], *turn_id);
 assert(expected_turn[game] == *turn_id);
 SDL_Delay(n_ms);
 
@@ -42,6 +44,7 @@ _RECEIVE_GAME_STATE()
 expected_turn[0] = 0;
 expected_turn[1] = 1;
 expected_turn[2] = 2;
+fprintf(stderr, "CALL %d, %d\n", expected_turn[game], *turn_id);
 assert(expected_turn[game] == *turn_id);
 SDL_Delay(n_ms);
 
@@ -51,16 +54,34 @@ SDL_Delay(n_ms);
 _RECEIVE_GAME_STATE()
 _RECEIVE_GAME_STATE()
 _RECEIVE_GAME_STATE()
+_RECEIVE_GAME_STATE()
 
 uint8_t discard_indices[MAX_HAND_SIZE] = {0};
 const uint8_t discard_count = 2;
 discard_indices[0] = 0;
 discard_indices[1] = 3;
 
+expected_turn[0] = 1;
+expected_turn[1] = 2;
+expected_turn[2] = 0;
+fprintf(stderr, "DISCARD %d, %d\n", expected_turn[game], *turn_id);
+assert(expected_turn[game] == *turn_id);
+
+send_discards_request_new_cards(socket_context[*turn_id].sock, discard_indices, discard_count);
+SDL_Delay(n_ms);
+
+_RECEIVE_GAME_STATE()
+_RECEIVE_GAME_STATE()
+_RECEIVE_GAME_STATE()
+_RECEIVE_GAME_STATE()
+_RECEIVE_GAME_STATE()
+
 expected_turn[0] = 0;
 expected_turn[1] = 1;
 expected_turn[2] = 2;
+fprintf(stderr, "DISCARD %d, %d\n", expected_turn[game], *turn_id);
 assert(expected_turn[game] == *turn_id);
+SDL_Delay(n_ms);
 
 send_discards_request_new_cards(socket_context[*turn_id].sock, discard_indices, discard_count);
 SDL_Delay(n_ms);
@@ -74,21 +95,7 @@ _RECEIVE_GAME_STATE()
 expected_turn[0] = 1;
 expected_turn[1] = 2;
 expected_turn[2] = 0;
-assert(expected_turn[game] == *turn_id);
-SDL_Delay(n_ms);
-
-send_discards_request_new_cards(socket_context[*turn_id].sock, discard_indices, discard_count);
-SDL_Delay(n_ms);
-
-_RECEIVE_GAME_STATE()
-_RECEIVE_GAME_STATE()
-_RECEIVE_GAME_STATE()
-_RECEIVE_GAME_STATE()
-_RECEIVE_GAME_STATE()
-
-expected_turn[0] = 0;
-expected_turn[1] = 1;
-expected_turn[2] = 2;
+fprintf(stderr, "BET %d, %d\n", expected_turn[game], *turn_id);
 assert(expected_turn[game] == *turn_id);
 SDL_Delay(n_ms);
 
@@ -99,9 +106,10 @@ _RECEIVE_GAME_STATE()
 _RECEIVE_GAME_STATE()
 _RECEIVE_GAME_STATE()
 
-expected_turn[0] = 1;
-expected_turn[1] = 2;
-expected_turn[2] = 0;
+expected_turn[0] = 0;
+expected_turn[1] = 1;
+expected_turn[2] = 2;
+fprintf(stderr, "game: %d: %d, %d\n", game, expected_turn[game], *turn_id);
 assert(expected_turn[game] == *turn_id);
 SDL_Delay(n_ms);
 
@@ -114,9 +122,9 @@ _RECEIVE_GAME_STATE()
 _RECEIVE_GAME_STATE()
 _RECEIVE_GAME_STATE()
 
-expected_turn[0] = 0;
-expected_turn[1] = 1;
-expected_turn[2] = 2;
+expected_turn[0] = 1;
+expected_turn[1] = 2;
+expected_turn[2] = 0;
 assert(expected_turn[game] == *turn_id);
 SDL_Delay(n_ms);
 
@@ -141,7 +149,7 @@ for (i = 0; i < N_PLAYERS; i++) {
 }
 
 const int expected_coins[][3] = {
-    {18450, 21600, 19950}, {18400, 20050, 21550}, {20000, 20000, 20000}};
+    {18450, 21600, 19950}, {18400, 20050, 21550}, {16850, 20000, 23150}};
 
 for (i = 0; i < N_PLAYERS; i++)
   assert(game_state[0].player[i].coins == expected_coins[game][i]);
