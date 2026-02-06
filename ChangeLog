@@ -1,10 +1,11 @@
-  * bugfix: Infinite checking when first person in a >=3 person game folds
   + Implement California lowball
+  + Automatically sort hands
   + Remove cards of player when folded
   + Add a loading screen for dealer when waiting for server to start
   + Disallow raise that is less than previous bet/raise
   + Add card back patterns
   * Bump game protocol to v6
+  * bugfix: Infinite checking when first person in a >=3 person game folds
 
 2025-08-11
 

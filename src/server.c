@@ -481,6 +481,21 @@ static void server_handle_raise(GameState_t *game_state, uint32_t *total_paid,
   game_state->raises_remaining--;
 }
 
+static void handle_sort_hand(POKEVAL_Hand_7 *real_hand, const bool is_lowball) {
+  POKEVAL_Hand_5 tmp_hand = POKEVAL_hand5_from_hand7(real_hand);
+  if (!is_lowball)
+    POKEVAL_sort_hand(&tmp_hand);
+  else
+    POKEVAL_sort_hand_lowball(&tmp_hand);
+  memcpy(&real_hand->card[0], &tmp_hand.card[0], sizeof(tmp_hand.card));
+
+  /* Step 4: ensure last two cards are NULL */
+  // This will remove the last two cards from a 7-card stud hand, otherwise they show up
+  // even if they are duplicates of cards among the best 5 cards in that player's hand
+  real_hand->card[5] = DH_card_null;
+  real_hand->card[6] = DH_card_null;
+}
+
 static ELoop_t handle_draw(ArgsBroadcastGameState_t *args, TCPsocket sock, const int id,
                            DH_Deck *deck) {
   verbose_puts("sending draw prompt");
@@ -546,8 +561,11 @@ static ELoop_t handle_draw(ArgsBroadcastGameState_t *args, TCPsocket sock, const
            req.discard_count);
   broadcast_status_message(args, status_str);
 
-  if (req.discard_count > 0)
+  if (req.discard_count > 0) {
+    handle_sort_hand(&args->real_hand->player[id],
+                     args->game_type == game_choices[CALIFORNIA_LOWBALL].game_type);
     send_new_hand(sock, &args->real_hand->player[id], MAX_HAND_SIZE);
+  }
 
   return LOOP_OK;
 }
@@ -668,6 +686,13 @@ static void determine_winner(ArgsBroadcastGameState_t *args, RoundResults *resul
       ptr = get_next_player(args->game_state->player, ptr->id);
     }
   }
+
+  ptr = *args->starting_turn;
+  do {
+    handle_sort_hand(&args->real_hand->player[ptr->id],
+                     args->game_type == game_choices[CALIFORNIA_LOWBALL].game_type);
+    ptr = get_next_player(args->game_state->player, ptr->id);
+  } while (ptr && ptr != *args->starting_turn);
 
   // When set to true, the opponents` cards will be revealed to all the players the next
   // time broadcast_game_state is called
@@ -1007,7 +1032,13 @@ static int get_next_dealer(int current, const bool *slot_taken) {
 void game_five_card_draw(GAME_ARGS) {
   server_handle_ante(args->game_state, args->config->ante);
 
-  Player_t *turn;
+  Player_t *turn = *args->starting_turn;
+  do {
+    handle_sort_hand(&args->real_hand->player[turn->id],
+                     args->game_type == game_choices[CALIFORNIA_LOWBALL].game_type);
+    turn = get_next_player(players_array, turn->id);
+  } while (turn && turn != *args->starting_turn);
+
   RoundResults results = {0};
 
   for (int i = 0; i < choice->n_betting_rounds; i++) {
