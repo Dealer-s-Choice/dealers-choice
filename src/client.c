@@ -1086,7 +1086,8 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
 
       if (client_state.do_discard_draw) {
         for (int i = 0; i < MAX_HAND_SIZE; i++)
-          if (turn->hand.card[i].face_val == DH_CARD_ACE) {
+          if (turn->hand.card[i].face_val == DH_CARD_ACE ||
+              turn->hand.card[i].face_val == DH_CARD_ACE_HIGH) {
             client_state.has_ace = true;
             break;
           }
