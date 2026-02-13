@@ -385,8 +385,8 @@ static bool menu_display_game_choices(const PlayerConfig_t *player_config,
       for (size_t i = 0; i < ARRAY_SIZE(link); i++)
         render_link(&link[i]);
     } else {
-      // Show loading screen immediately after click
-      show_loading_screen(sdl_context->renderer, font->fonts[FONT_TITLE], _("Loading game..."));
+      // Show dealing screen immediately after click
+      show_loading_screen(sdl_context->renderer, font->fonts[FONT_TITLE], _("Dealing..."));
     }
     SDL_RenderPresent(sdl_context->renderer);
     SDL_Delay(16);

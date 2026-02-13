@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: dealers-choice\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-11-27 05:30-0600\n"
+"POT-Creation-Date: 2026-02-13 17:37-0600\n"
 "PO-Revision-Date: 2025-07-02 00:18-0500\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -30,39 +30,39 @@ msgstr ""
 msgid "Connected players:"
 msgstr "Підключені гравці:"
 
-#: src/client.c:390
-msgid "Loading game..."
+#: src/client.c:389
+msgid "Dealing..."
 msgstr ""
 
-#: src/client.c:694
+#: src/client.c:795
 msgid "Check"
 msgstr "Чек"
 
-#: src/client.c:694
+#: src/client.c:795
 msgid "Bet"
 msgstr "Ставка"
 
-#: src/client.c:695
+#: src/client.c:796
 msgid "Fold"
 msgstr "Пас"
 
-#: src/client.c:695
+#: src/client.c:796
 msgid "Call"
 msgstr "Кол"
 
-#: src/client.c:696
+#: src/client.c:797
 msgid "Raise"
 msgstr "Рейз"
 
-#: src/client.c:696
+#: src/client.c:797
 msgid "Discard"
 msgstr "Скинути"
 
-#: src/client.c:697
+#: src/client.c:798
 msgid "Exchange"
 msgstr ""
 
-#: src/client.c:1006
+#: src/client.c:1109
 msgid "Click a 2, then choose value and suit to assign."
 msgstr ""
 

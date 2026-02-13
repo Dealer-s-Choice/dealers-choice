@@ -1,7 +1,7 @@
   + Implement California lowball
   + Automatically sort hands
   + Remove cards of player when folded
-  + Add a loading screen for dealer when waiting for server to start
+  + Add a "Dealing" message for dealer when waiting for server to start
   + Disallow raise that is less than previous bet/raise
   + Add card back patterns
   * Bump game protocol to v6
