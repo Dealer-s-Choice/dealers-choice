@@ -19,31 +19,29 @@ on:
 jobs:
   MSYS2:
     runs-on: windows-latest
+    strategy:
+      matrix:
+        platform: ['UCRT64', 'CLANG64']
     steps:
     - uses: actions/checkout@v6
     - uses: msys2/setup-msys2@v2
       with:
-        msystem: mingw64
+        msystem: ${{matrix.platform}}
         install: >-
           git
         pacboy: >-
-          gcc:p
+          cc:p
+          cmake:p
+          gettext:p
           meson:p
           ninja:p
           pkgconf:p
+          protobuf-c:p
+          SDL2:p
+          SDL2_image:p
+          SDL2_net:p
+          SDL2_ttf:p
         update: true
-
-    - name: Install dependencies
-      shell: msys2 {0}
-      run: |
-        pacman --noconfirm --needed -S \
-          mingw-w64-x86_64-cmake \
-          mingw-w64-x86_64-gettext \
-          mingw-w64-x86_64-protobuf-c \
-          mingw-w64-x86_64-SDL2 \
-          mingw-w64-x86_64-SDL2_image \
-          mingw-w64-x86_64-SDL2_net \
-          mingw-w64-x86_64-SDL2_ttf
 
     - name: Meson setup
       shell: msys2 {0}
