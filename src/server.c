@@ -1103,6 +1103,18 @@ void game_stud(GAME_ARGS) {
     } while (turn && turn != *args->starting_turn);
     broadcast_game_state(args);
   }
+
+  // 7-card stud setup (for testing)
+  /*
+  args->real_hand->player[0].card[0].face_val = DH_CARD_KING;
+  args->real_hand->player[0].card[1].face_val = DH_CARD_KING;
+  args->real_hand->player[0].card[2].face_val = DH_CARD_KING;
+  args->real_hand->player[0].card[3].face_val = DH_CARD_ACE;
+  args->real_hand->player[0].card[4].face_val = DH_CARD_THREE;
+  args->real_hand->player[0].card[5].face_val = DH_CARD_JACK;
+  args->real_hand->player[0].card[6].face_val = DH_CARD_TWO;
+  */
+
   determine_winner(args, &results);
 }
 
