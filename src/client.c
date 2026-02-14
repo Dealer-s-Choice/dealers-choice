@@ -203,11 +203,15 @@ static bool menu_display_game_choices(const PlayerConfig_t *player_config,
 
   uint8_t n_clients = 0;
 
-  int y_offset = 160;
+  int x_offset = SCALE_X(100), y_offset = SCALE_Y(160);
   Button_t game_choice_button[MAX_CHOICES];
   for (int i = 0; i < MAX_CHOICES; i++) {
     // TODO: Figure out alignment/justification
-    SDL_Rect rect = {100, y_offset, 0, 0};
+    if (i == 4) {
+      x_offset += SCALE_X(400);
+      y_offset = SCALE_Y(160);
+    }
+    SDL_Rect rect = {x_offset, y_offset, 0, 0};
     if (TTF_SizeUTF8(font->fonts[FONT_BOLD], game_choices[i].str, &rect.w, &rect.h) != 0)
       fprintf(stderr, "TTF_SizeUTF8 error: %s\n", TTF_GetError());
     rect.w += 30;

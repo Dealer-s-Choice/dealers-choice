@@ -1,4 +1,5 @@
   + Implement California lowball
+  + Implement Six-card stud (partially complete)
   + Automatically sort hands
   + Remove cards of player when folded
   + Add a "Dealing" message for dealer when waiting for server to start

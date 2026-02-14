@@ -174,8 +174,7 @@ RealHand_t deal_cards_to_players(GameState_t *game_state, DH_Deck *deck, const u
 
   size_t i = 0;
   do {
-    if (game_type != game_choices[FIVE_CARD_STUD].game_type &&
-        game_type != game_choices[SEVEN_CARD_STUD].game_type) {
+    if (choice->n_stud_new_cards == 0) {
       for (i = 0; i < MAX_HAND_SIZE; ++i) {
         if (i >= choice->hand_size) {
           real_hand.player[turn->id].card[i] = DH_card_null;

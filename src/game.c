@@ -38,9 +38,10 @@ const GameChoice_t game_choices[] = {
     {FIVE_CARD_DRAW, "5-card draw", 0x01, game_five_card_draw, 5, 2, 1, 0},
     {FIVE_CARD_DOUBLE_DRAW, "5-card double draw", 0x02, game_five_card_draw, 5, 3, 2, 0},
     {FIVE_CARD_STUD, "5-card stud", 0x03, game_stud, 5, 4, 0, 3},
-    {SEVEN_CARD_STUD, "7-card stud", 0x04, game_stud, 7, 5, 0, 4},
-    {FIVE_CARD_SHOWDOWN, "5-card showdown", 0x05, game_five_card_draw, 5, 1, 0, 0},
-    {CALIFORNIA_LOWBALL, "California lowball", 0x06, game_five_card_draw, 5, 2, 1, 0}};
+    {SIX_CARD_STUD, "6-card stud", 0x04, game_stud, 6, 4, 0, 3},
+    {SEVEN_CARD_STUD, "7-card stud", 0x05, game_stud, 7, 5, 0, 4},
+    {FIVE_CARD_SHOWDOWN, "5-card showdown", 0x06, game_five_card_draw, 5, 1, 0, 0},
+    {CALIFORNIA_LOWBALL, "California lowball", 0x07, game_five_card_draw, 5, 2, 1, 0}};
 
 const GameChoice_t *find_game_choice_by_type(const uint8_t type) {
   for (size_t i = 0; i < sizeof(game_choices) / sizeof(game_choices[0]); ++i) {
