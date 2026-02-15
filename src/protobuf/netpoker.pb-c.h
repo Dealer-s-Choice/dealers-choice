@@ -99,6 +99,7 @@ struct  GameSettings
   ProtobufCMessage base;
   int32_t client_id;
   uint32_t action_timeout_ms;
+  uint32_t wild_exchange_timeout_ms;
   uint32_t end_of_game_timeout_ms;
   uint32_t bet_minimum;
   uint32_t bet_median;
@@ -106,7 +107,7 @@ struct  GameSettings
 };
 #define GAME_SETTINGS__INIT \
  { PROTOBUF_C_MESSAGE_INIT (&game_settings__descriptor) \
-, 0, 0, 0, 0, 0, 0 }
+, 0, 0, 0, 0, 0, 0, 0 }
 
 
 struct  PingRequest

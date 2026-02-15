@@ -117,6 +117,7 @@ GameSettings_t init_game_settings(const ServerConfig_t *config, const CliArgs_t 
 
   GameSettings_t game_settings = {
       .action_timeout_ms = config->action_timeout_ms,
+      .wild_exchange_timeout_ms = config->wild_exchange_timeout_ms,
       .end_of_game_timeout_ms = (cli_args->test_mode) ? 500 : config->end_of_game_timeout_ms,
       .bet_minimum = config->bet_minimum,
       .bet_median = config->bet_median,
@@ -576,7 +577,7 @@ static ELoop_t handle_wild_cards(ArgsBroadcastGameState_t *args, TCPsocket sock,
     return LOOP_ERROR;
   }
 
-  const uint32_t wait_ms = args->game_settings->action_timeout_ms;
+  const uint32_t wait_ms = args->game_settings->wild_exchange_timeout_ms;
   const uint32_t start = SDL_GetTicks();
 
   POKEVAL_Hand_7 received_hand = {0};

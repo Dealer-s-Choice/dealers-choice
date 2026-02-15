@@ -759,7 +759,7 @@ const ProtobufCMessageDescriptor game_state__descriptor =
   (ProtobufCMessageInit) game_state__init,
   NULL,NULL,NULL    /* reserved[123] */
 };
-static const ProtobufCFieldDescriptor game_settings__field_descriptors[6] =
+static const ProtobufCFieldDescriptor game_settings__field_descriptors[7] =
 {
   {
     "client_id",
@@ -786,8 +786,20 @@ static const ProtobufCFieldDescriptor game_settings__field_descriptors[6] =
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
   {
-    "end_of_game_timeout_ms",
+    "wild_exchange_timeout_ms",
     3,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_UINT32,
+    0,   /* quantifier_offset */
+    offsetof(GameSettings, wild_exchange_timeout_ms),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "end_of_game_timeout_ms",
+    4,
     PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_UINT32,
     0,   /* quantifier_offset */
@@ -799,7 +811,7 @@ static const ProtobufCFieldDescriptor game_settings__field_descriptors[6] =
   },
   {
     "bet_minimum",
-    4,
+    5,
     PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_UINT32,
     0,   /* quantifier_offset */
@@ -811,7 +823,7 @@ static const ProtobufCFieldDescriptor game_settings__field_descriptors[6] =
   },
   {
     "bet_median",
-    5,
+    6,
     PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_UINT32,
     0,   /* quantifier_offset */
@@ -823,7 +835,7 @@ static const ProtobufCFieldDescriptor game_settings__field_descriptors[6] =
   },
   {
     "bet_maximum",
-    6,
+    7,
     PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_UINT32,
     0,   /* quantifier_offset */
@@ -836,16 +848,17 @@ static const ProtobufCFieldDescriptor game_settings__field_descriptors[6] =
 };
 static const unsigned game_settings__field_indices_by_name[] = {
   1,   /* field[1] = action_timeout_ms */
-  5,   /* field[5] = bet_maximum */
-  4,   /* field[4] = bet_median */
-  3,   /* field[3] = bet_minimum */
+  6,   /* field[6] = bet_maximum */
+  5,   /* field[5] = bet_median */
+  4,   /* field[4] = bet_minimum */
   0,   /* field[0] = client_id */
-  2,   /* field[2] = end_of_game_timeout_ms */
+  3,   /* field[3] = end_of_game_timeout_ms */
+  2,   /* field[2] = wild_exchange_timeout_ms */
 };
 static const ProtobufCIntRange game_settings__number_ranges[1 + 1] =
 {
   { 1, 0 },
-  { 0, 6 }
+  { 0, 7 }
 };
 const ProtobufCMessageDescriptor game_settings__descriptor =
 {
@@ -855,7 +868,7 @@ const ProtobufCMessageDescriptor game_settings__descriptor =
   "GameSettings",
   "",
   sizeof(GameSettings),
-  6,
+  7,
   game_settings__field_descriptors,
   game_settings__field_indices_by_name,
   1,  game_settings__number_ranges,
