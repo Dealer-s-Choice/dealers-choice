@@ -203,13 +203,14 @@ static bool menu_display_game_choices(const PlayerConfig_t *player_config,
 
   uint8_t n_clients = 0;
 
-  int x_offset = SCALE_X(100), y_offset = SCALE_Y(160);
+  const int top_margin = 25, left_margin = 25;
+  int x_offset = SCALE_X(left_margin), y_offset = SCALE_Y(top_margin);
   Button_t game_choice_button[MAX_CHOICES];
   for (int i = 0; i < MAX_CHOICES; i++) {
     // TODO: Figure out alignment/justification
     if (i == 4) {
       x_offset += SCALE_X(400);
-      y_offset = SCALE_Y(160);
+      y_offset = SCALE_Y(top_margin);
     }
     SDL_Rect rect = {x_offset, y_offset, 0, 0};
     if (TTF_SizeUTF8(font->fonts[FONT_BOLD], game_choices[i].str, &rect.w, &rect.h) != 0)
@@ -276,8 +277,10 @@ static bool menu_display_game_choices(const PlayerConfig_t *player_config,
       game_choice_button[i].hovered = SDL_PointInRect(&mouse_pos, &game_choice_button[i].rect);
     }
 
-    deuces_wild.rect = (SDL_Rect){sdl_context->win_center.x, sdl_context->win_center.y / 2, 0, 0};
+    deuces_wild.rect = (SDL_Rect){0, 0, 0, 0};
     TTF_SizeUTF8(deuces_wild.font, deuces_wild.text, &deuces_wild.rect.w, &deuces_wild.rect.h);
+    deuces_wild.rect.x = sdl_context->win_center.x - deuces_wild.rect.w / 2;
+    deuces_wild.rect.y = sdl_context->win_center.y / 2;
     deuces_wild.rect.w += SCALE_X(10);
     deuces_wild.rect.h += SCALE_Y(10);
     deuces_wild.hovered = SDL_PointInRect(&mouse_pos, &deuces_wild.rect) && deuces_wild.enabled;
