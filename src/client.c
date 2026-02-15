@@ -277,7 +277,6 @@ static bool menu_display_game_choices(const PlayerConfig_t *player_config,
       game_choice_button[i].hovered = SDL_PointInRect(&mouse_pos, &game_choice_button[i].rect);
     }
 
-    deuces_wild.rect = (SDL_Rect){0, 0, 0, 0};
     TTF_SizeUTF8(deuces_wild.font, deuces_wild.text, &deuces_wild.rect.w, &deuces_wild.rect.h);
     deuces_wild.rect.x = sdl_context->win_center.x - deuces_wild.rect.w / 2;
     deuces_wild.rect.y = sdl_context->win_center.y / 2;
