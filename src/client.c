@@ -193,6 +193,8 @@ static void ma_sound_start_wrap(ma_sound *pSound, const char *file, const int li
   }
 }
 
+static const int NUM_COLUMNS = 3;
+
 static bool menu_display_game_choices(const PlayerConfig_t *player_config,
                                       SocketContext_t *socket_context, const int8_t my_id,
                                       GameState_t *game_state, ClientState_t *client_state,
@@ -203,26 +205,68 @@ static bool menu_display_game_choices(const PlayerConfig_t *player_config,
 
   uint8_t n_clients = 0;
 
-  const int top_margin = 25, left_margin = 25;
-  int x_offset = SCALE_X(left_margin), y_offset = SCALE_Y(top_margin);
+  const int top_margin = 25;
+  const int left_margin = 25;
+  const int column_spacing = 400;
+  const float row_spacing_factor = 1.2f;
+
   Button_t game_choice_button[MAX_CHOICES];
+
   for (int i = 0; i < MAX_CHOICES; i++) {
-    // TODO: Figure out alignment/justification
-    if (i == 4) {
-      x_offset += SCALE_X(400);
-      y_offset = SCALE_Y(top_margin);
-    }
+    int column = i % NUM_COLUMNS;
+    int row = i / NUM_COLUMNS;
+
+    int x_offset = SCALE_X(left_margin + column * column_spacing);
+    int y_offset = SCALE_Y(top_margin);
+
     SDL_Rect rect = {x_offset, y_offset, 0, 0};
-    if (TTF_SizeUTF8(font->fonts[FONT_BOLD], game_choices[i].str, &rect.w, &rect.h) != 0)
+
+    if (TTF_SizeUTF8(font->fonts[FONT_BOLD], game_choices[i].str, &rect.w, &rect.h) != 0) {
       fprintf(stderr, "TTF_SizeUTF8 error: %s\n", TTF_GetError());
+    }
+
+    /* Padding — unscaled, matches font metrics */
     rect.w += 30;
-    rect.h += rect.h * 0.1;
+    rect.h += rect.h * 0.1f;
+
+    /* Vertical placement uses already-scaled rect.h */
+    int button_height = (int)(rect.h * row_spacing_factor);
+    rect.y += row * button_height;
+
     game_choice_button[i] = create_game_choice_button(game_choices[i].str, sdl_context->renderer,
                                                       rect, font->fonts[FONT_BOLD], (SDL_Keycode)0);
-
-    int button_height = rect.h + (rect.h * 0.2);
-    y_offset += button_height;
   }
+
+  Button_t deuces_wild = {
+      _("Deuces Wild"),
+      sdl_context->renderer,
+      get_color(COLOR_WHITE),
+      get_color(COLOR_BROWN),
+      {0, 0, 0, 0},
+      font->fonts[FONT_BOLD],
+      false,
+      true,
+      false,
+      true,
+      0,
+  };
+
+  /* measure text */
+  TTF_SizeUTF8(deuces_wild.font, deuces_wild.text, &deuces_wild.rect.w, &deuces_wild.rect.h);
+
+  /* padding */
+  deuces_wild.rect.w += SCALE_X(10);
+  deuces_wild.rect.h += SCALE_Y(10);
+
+  /* align X to second column */
+  deuces_wild.rect.x = SCALE_X(left_margin + 1 * column_spacing);
+
+  /* compute grid height */
+  int rows = (MAX_CHOICES + NUM_COLUMNS - 1) / NUM_COLUMNS;
+  int button_height = (int)(deuces_wild.rect.h * row_spacing_factor);
+
+  /* place below the grid */
+  deuces_wild.rect.y = SCALE_Y(top_margin) + rows * button_height;
 
   bool game_loading = true;
 
@@ -244,20 +288,6 @@ static bool menu_display_game_choices(const PlayerConfig_t *player_config,
                      (i * (link[i].rect.h * 0.2));
   }
 
-  Button_t deuces_wild = {
-      _("Deuces Wild"),
-      sdl_context->renderer,
-      get_color(COLOR_WHITE),
-      get_color(COLOR_BROWN),
-      {0, 0, 0, 0},
-      font->fonts[FONT_BOLD],
-      false,
-      true,
-      false,
-      true,
-      0,
-  };
-
   static uint8_t saved_n_clients = 0;
   TCPsocket sock = socket_context->sock;
 
@@ -277,11 +307,6 @@ static bool menu_display_game_choices(const PlayerConfig_t *player_config,
       game_choice_button[i].hovered = SDL_PointInRect(&mouse_pos, &game_choice_button[i].rect);
     }
 
-    TTF_SizeUTF8(deuces_wild.font, deuces_wild.text, &deuces_wild.rect.w, &deuces_wild.rect.h);
-    deuces_wild.rect.x = sdl_context->win_center.x - deuces_wild.rect.w / 2;
-    deuces_wild.rect.y = sdl_context->win_center.y / 2;
-    deuces_wild.rect.w += SCALE_X(10);
-    deuces_wild.rect.h += SCALE_Y(10);
     deuces_wild.hovered = SDL_PointInRect(&mouse_pos, &deuces_wild.rect) && deuces_wild.enabled;
 
     SDL_Event e;
