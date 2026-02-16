@@ -268,7 +268,7 @@ static bool menu_display_game_choices(const PlayerConfig_t *player_config,
   /* place below the grid */
   deuces_wild.rect.y = SCALE_Y(top_margin) + rows * button_height;
 
-  bool game_loading = true;
+  bool dealing = true;
 
   const int link_column = sdl_context->win_center.x + card_area.h;
   Link_t link[] = {
@@ -326,7 +326,7 @@ static bool menu_display_game_choices(const PlayerConfig_t *player_config,
           if (SDL_PointInRect(&mouse_pos, &game_choice_button[i].rect) &&
               game_state->dealer_id == my_id) {
             if (send_game_select(sock, game_choices[i].game_type, deuces_wild.selected) == 0) {
-              game_loading = false;
+              dealing = false;
               break;
             } else {
               return false;
@@ -344,7 +344,7 @@ static bool menu_display_game_choices(const PlayerConfig_t *player_config,
     }
 
     clear_screen(sdl_context->renderer);
-    if (game_loading == true) {
+    if (dealing == true) {
       for (int i = 0; i < MAX_CHOICES; i++)
         render_button(&game_choice_button[i]);
 
