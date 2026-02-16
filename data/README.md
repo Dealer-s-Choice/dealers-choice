@@ -16,17 +16,25 @@ Adapted from
 Classical Numismatic Group, Inc. http://www.cngcoins.com, CC BY-SA 2.5 <https://creativecommons.org/licenses/by-sa/2.5>, via Wikimedia Commons
 
 
-48x48_Hammurabi.png
 
-[Sculpture by Thomas Hudson Jones; photo by the Architect of the Capitol](https://commons.wikimedia.org/wiki/File:Hammurabi_bas-relief_in_the_U.S._House_of_Representatives_chamber.jpg), Public domain, via Wikimedia Commons
-
-
-48x48-1984_rv_marie_curie.png
+96x96-1984_rv_marie_curie.png
 
 [Seherr and  Prométhée33  (retrait
 fond)](https://commons.wikimedia.org/wiki/File:1984_rv_marie_curie.png), [CC
 BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0), via Wikimedia
 Commons
+
+
+96x96-head_of_Aphrodite_with_turreted_crown.png
+
+[File:Salamis - king Pnytagoras - 351-332 BC - gold stater - head of Aphrodite with turreted crown - head of Aphrodite with diadem - München SMS.jpg](https://commons.wikimedia.org/wiki/File:Salamis_-_king_Pnytagoras_-_351-332_BC_-_gold_stater_-_head_of_Aphrodite_with_turreted_crown_-_head_of_Aphrodite_with_diadem_-_M%C3%BCnchen_SMS.jpg)
+
+
+* 96x96-Marcus Antonius - Cleopatra 32 BC 90020163_front.png
+* 96x96-Marcus Antonius - Cleopatra 32 BC 90020163_back.png
+
+[https://commons.wikimedia.org/wiki/File:Marcus_Antonius_-_Cleopatra_32_BC_90020163.jpg](File:Marcus Antonius - Cleopatra 32 BC 90020163)
+
 
 ## Fonts
 

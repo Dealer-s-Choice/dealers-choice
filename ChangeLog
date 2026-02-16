@@ -5,6 +5,7 @@
   + Add a "Dealing" message for dealer when waiting for server to start
   + Disallow raise that is less than previous bet/raise
   + Add server config option: wild_exchange_timeout_ms
+  * Increase coin size
   + Add card back patterns
   * Bump game protocol to v6
   * bugfix: Infinite checking when first person in a >=3 person game folds

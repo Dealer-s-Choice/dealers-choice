@@ -38,6 +38,7 @@
 #include "util.h"
 
 const uint8_t MAX_CONNECTION_ATTEMPTS = 12;
+static const uint8_t coin_px = 96;
 
 #define POT_BOUNDARY SCALE_Y(250)
 
@@ -752,7 +753,7 @@ typedef struct {
 void render_coin_animation(SDL_Renderer *renderer, CoinAnimation_t *anim) {
   if (!anim->active) {
     SDL_RenderCopy(renderer, anim->texture, NULL,
-                   &(SDL_Rect){anim->end.x, anim->end.y, SCALE_X(48), SCALE_Y(48)});
+                   &(SDL_Rect){anim->end.x, anim->end.y, SCALE_X(coin_px), SCALE_Y(coin_px)});
     return;
   }
 
@@ -767,7 +768,7 @@ void render_coin_animation(SDL_Renderer *renderer, CoinAnimation_t *anim) {
   int x = anim->start.x + (int)((anim->end.x - anim->start.x) * progress);
   int y = anim->start.y + (int)((anim->end.y - anim->start.y) * progress);
 
-  SDL_Rect dst = {x, y, SCALE_X(48), SCALE_Y(48)};
+  SDL_Rect dst = {x, y, SCALE_X(coin_px), SCALE_Y(coin_px)};
   SDL_RenderCopy(renderer, anim->texture, NULL, &dst);
 }
 
@@ -932,12 +933,20 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
       {
           "48x48_front_1907_Saint_Gaudens_gold_coin.png",
       },
-      {"48x48_Hammurabi.png"},
       {
           "48x48_front_Gaius-Julius-Caesar-denarius-44-BC-RRC-480-3.png",
       },
       {
-          "48x48-1984_rv_marie_curie.png",
+          "96x96-1984_rv_marie_curie.png",
+      },
+      {
+          "96x96-head_of_Aphrodite_with_turreted_crown.png",
+      },
+      {
+          "96x96-Marcus Antonius - Cleopatra 32 BC 90020163_front.png",
+      },
+      {
+          "96x96-Marcus Antonius - Cleopatra 32 BC 90020163_back.png",
       },
   };
 
@@ -1032,8 +1041,8 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
       SDL_Rect coin_rect = {
           .x = pot_coin.pt[p].x,
           .y = pot_coin.pt[p].y,
-          .w = SCALE_X(48),
-          .h = SCALE_Y(48),
+          .w = SCALE_X(coin_px),
+          .h = SCALE_Y(coin_px),
       };
       if (p < coins - 1)
         SDL_RenderCopy(sdl_context->renderer, coin_tex_front, NULL, &coin_rect);
@@ -1213,8 +1222,10 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
 
       if (TTF_SizeUTF8(font->fonts[FONT_BOLD], name_text, &name_rect.w, &name_rect.h) != 0)
         fprintf(stderr, "TTF_SizeUTF8 error: %s\n", TTF_GetError());
-      SDL_Rect coin_rect = {
-          .x = name_rect.x + name_rect.w + 10, .y = name_rect.y, SCALE_X(48), SCALE_Y(48)};
+      SDL_Rect coin_rect = {.x = name_rect.x + name_rect.w + 10,
+                            .y = name_rect.y,
+                            SCALE_X(coin_px / 2),
+                            SCALE_Y(coin_px / 2)};
       SDL_RenderCopy(sdl_context->renderer, coin_tex_front, NULL, &coin_rect);
       char coins_text[24] = {0};
       snprintf(coins_text, sizeof coins_text, "%" PRId32, player_ptr->coins);
