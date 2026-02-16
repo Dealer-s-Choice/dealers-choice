@@ -104,6 +104,7 @@ ServerConfig_t init_game_state(GameState_t *game_state, Path_t *path, const CliA
   game_state->prev_bet_amount = 0;
   game_state->winner_declared = false;
   game_state->deuces_wild = false;
+  game_state->player_exchanging = false;
   return config;
 }
 
@@ -117,6 +118,7 @@ GameSettings_t init_game_settings(const ServerConfig_t *config, const CliArgs_t 
 
   GameSettings_t game_settings = {
       .action_timeout_ms = config->action_timeout_ms,
+      .wild_exchange_timeout_ms = config->wild_exchange_timeout_ms,
       .end_of_game_timeout_ms = (cli_args->test_mode) ? 500 : config->end_of_game_timeout_ms,
       .bet_minimum = config->bet_minimum,
       .bet_median = config->bet_median,
@@ -576,7 +578,7 @@ static ELoop_t handle_wild_cards(ArgsBroadcastGameState_t *args, TCPsocket sock,
     return LOOP_ERROR;
   }
 
-  const uint32_t wait_ms = args->game_settings->action_timeout_ms;
+  const uint32_t wait_ms = args->game_settings->wild_exchange_timeout_ms;
   const uint32_t start = SDL_GetTicks();
 
   POKEVAL_Hand_7 received_hand = {0};
@@ -666,6 +668,8 @@ static void determine_winner(ArgsBroadcastGameState_t *args, RoundResults *resul
   Player_t *ptr = *args->starting_turn;
 
   if (args->game_state->deuces_wild) {
+    args->game_state->player_exchanging = true;
+    broadcast_game_state(args);
     ELoop_t w = LOOP_OK;
     for (uint8_t i = 0; i < pl_count; i++) {
       if (ptr->in) {

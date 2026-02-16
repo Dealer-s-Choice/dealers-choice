@@ -40,6 +40,7 @@ typedef struct ServerConfig_t {
   uint16_t port;
   uint32_t end_of_game_timeout_ms;
   uint32_t action_timeout_ms;
+  uint32_t wild_exchange_timeout_ms;
   uint32_t dealer_timeout_ms;
   uint32_t ante;
   int32_t starting_coins;
@@ -95,8 +96,10 @@ static const ConfigEntry server_config_entries[] = {
     {"port", CFG_TYPE_UINT16, DEFAULT_PORT, offsetof(ServerConfig_t, port), sizeof(uint16_t)},
     {"end_of_game_timeout_ms", CFG_TYPE_UINT32, "15000",
      offsetof(ServerConfig_t, end_of_game_timeout_ms), sizeof(uint32_t)},
-    {"action_timeout_ms", CFG_TYPE_UINT32, "20000", offsetof(ServerConfig_t, action_timeout_ms),
+    {"action_timeout_ms", CFG_TYPE_UINT32, "30000", offsetof(ServerConfig_t, action_timeout_ms),
      sizeof(uint32_t)},
+    {"wild_exchange_timeout_ms", CFG_TYPE_UINT32, "40000",
+     offsetof(ServerConfig_t, wild_exchange_timeout_ms), sizeof(uint32_t)},
     {"dealer_timeout_ms", CFG_TYPE_UINT32, "60000", offsetof(ServerConfig_t, dealer_timeout_ms),
      sizeof(uint32_t)},
     {"ante", CFG_TYPE_UINT32, "50", offsetof(ServerConfig_t, ante), sizeof(uint32_t)},

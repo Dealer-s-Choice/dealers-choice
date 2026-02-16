@@ -90,6 +90,7 @@ uint8_t *serialize_game_state(const GameState_t *src, uint32_t *size_out) {
   msg.player_count = src->player_count;
   msg.winner_declared = src->winner_declared;
   msg.deuces_wild = src->deuces_wild;
+  msg.player_exchanging = src->player_exchanging;
 
   Player *player_msgs[MAX_PLAYERS];
   struct player_message_builder_t builders[MAX_PLAYERS];
@@ -131,6 +132,7 @@ GameState_t deserialize_game_state(const uint8_t *data, uint32_t size) {
   result.player_count = msg->player_count;
   result.winner_declared = msg->winner_declared;
   result.deuces_wild = msg->deuces_wild;
+  result.player_exchanging = msg->player_exchanging;
 
   size_t n = msg->n_player < MAX_PLAYERS ? msg->n_player : MAX_PLAYERS;
   for (size_t i = 0; i < n; ++i) {
@@ -150,6 +152,7 @@ uint8_t *serialize_game_settings(const GameSettings_t *src, size_t *size_out) {
 
   msg.client_id = src->client_id;
   msg.action_timeout_ms = src->action_timeout_ms;
+  msg.wild_exchange_timeout_ms = src->wild_exchange_timeout_ms;
   msg.end_of_game_timeout_ms = src->end_of_game_timeout_ms;
   msg.bet_minimum = src->bet_minimum;
   msg.bet_median = src->bet_median;
@@ -178,6 +181,7 @@ GameSettings_t deserialize_game_settings(const uint8_t *data, size_t size) {
 
   result.client_id = msg->client_id;
   result.action_timeout_ms = msg->action_timeout_ms;
+  result.wild_exchange_timeout_ms = msg->wild_exchange_timeout_ms;
   result.end_of_game_timeout_ms = msg->end_of_game_timeout_ms;
   result.bet_minimum = msg->bet_minimum;
   result.bet_median = msg->bet_median;

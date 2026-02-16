@@ -1106,14 +1106,15 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
     }
 
     uint32_t now = SDL_GetTicks();
-    int32_t remaining_ms;
+    int32_t remaining_ms = 0;
     if (game_state->winner_declared) {
       remaining_ms = (int32_t)(client_state.timer_start + game_settings->end_of_game_timeout_ms) -
                      (int32_t)now;
     } else {
+      uint32_t timeout_ms = game_state->player_exchanging ? game_settings->wild_exchange_timeout_ms
+                                                          : game_settings->action_timeout_ms;
 
-      remaining_ms =
-          (int32_t)(client_state.timer_start + game_settings->action_timeout_ms) - (int32_t)now;
+      remaining_ms = (int32_t)((client_state.timer_start + timeout_ms) - now);
 
       if (client_state.do_discard_draw) {
         for (int i = 0; i < MAX_HAND_SIZE; i++)

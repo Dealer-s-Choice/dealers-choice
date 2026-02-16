@@ -34,6 +34,8 @@
 
 #include "game.h"
 
+// If changing game type (e.g. 0x04), or adding a new game,
+// the game protocol version must also be changed.
 const GameChoice_t game_choices[] = {
     {FIVE_CARD_DRAW, "5-card draw", 0x01, game_five_card_draw, 5, 2, 1, 0},
     {FIVE_CARD_DOUBLE_DRAW, "5-card double draw", 0x02, game_five_card_draw, 5, 3, 2, 0},
