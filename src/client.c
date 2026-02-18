@@ -295,7 +295,15 @@ static bool menu_display_game_choices(const PlayerConfig_t *player_config,
         return false;
       } else if (e.type == SDL_KEYDOWN &&
                  (e.key.keysym.sym == SDLK_RETURN && e.key.keysym.mod & KMOD_ALT)) {
-        toggle_fullscreen(sdl_context->window);
+        toggle_fullscreen(sdl_context);
+      } else if (e.type == SDL_WINDOWEVENT && e.window.event == SDL_WINDOWEVENT_RESIZED) {
+        // Handle window resize here
+        int new_width = e.window.data1;
+        int new_height = e.window.data2;
+        // Update your context, layout, or rendering as needed
+        sdl_context->window_width = new_width;
+        sdl_context->window_height = new_height;
+        // Optionally, trigger a redraw or re-layout
       } else if (e.type == SDL_MOUSEBUTTONDOWN) {
         for (int i = 0; i < MAX_CHOICES; i++) {
           if (SDL_PointInRect(&mouse_pos, &game_choice_button[i].rect) &&
@@ -1370,8 +1378,25 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
         running = false;
       } else if (event.type == SDL_KEYDOWN &&
                  (event.key.keysym.sym == SDLK_RETURN && event.key.keysym.mod & KMOD_ALT)) {
-        toggle_fullscreen(sdl_context->window);
-      } else if (event.type == SDL_MOUSEBUTTONDOWN || event.type == SDL_KEYDOWN) {
+        toggle_fullscreen(sdl_context);
+        // Handle window resize here
+        int new_width = event.window.data1;
+        int new_height = event.window.data2;
+        // Update your context, layout, or rendering as needed
+        sdl_context->window_width = new_width;
+        sdl_context->window_height = new_height;
+        // Optionally, trigger a redraw or re-layout
+      }
+      else if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_RESIZED) {
+        // Handle window resize here
+        int new_width = event.window.data1;
+        int new_height = event.window.data2;
+        // Update your context, layout, or rendering as needed
+        sdl_context->window_width = new_width;
+        sdl_context->window_height = new_height;
+        // Optionally, trigger a redraw or re-layout
+      }
+      else if (event.type == SDL_MOUSEBUTTONDOWN || event.type == SDL_KEYDOWN) {
         if (my_turn && !client_state.do_discard_draw && !client_state.do_exchange_wilds) {
           if (client_state.bet_check_fold || client_state.call_raise_fold) {
             if (SDL_PointInRect(&mouse_pos, &action_button[FOLD].rect) ||

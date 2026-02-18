@@ -90,7 +90,7 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, c
         if (e.key.keysym.sym == SDLK_BACKSPACE && strlen(host_str) > 0) {
           host_str[strlen(host_str) - 1] = '\0';
         } else if (e.key.keysym.sym == SDLK_RETURN && e.key.keysym.mod & KMOD_ALT) {
-          toggle_fullscreen(sdl_context->window);
+          toggle_fullscreen(sdl_context);
         } else if (e.key.keysym.sym == SDLK_RETURN) {
           run_client = true;
           running = false;

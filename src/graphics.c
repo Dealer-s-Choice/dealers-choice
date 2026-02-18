@@ -97,7 +97,7 @@ void init_sdl_window(SdlContext_t *sdl_context, const char *title) {
   float h = bounds.h * factor;
 
   sdl_context->window = SDL_CreateWindow(title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, w,
-                                         h, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
+                                         h, SDL_WINDOW_SHOWN);
   if (!sdl_context->window)
     puts(SDL_GetError());
   sdl_context->renderer = SDL_CreateRenderer(sdl_context->window, -1, SDL_RENDERER_ACCELERATED);
@@ -109,8 +109,8 @@ void init_sdl_window(SdlContext_t *sdl_context, const char *title) {
   sdl_context->win_center.x = x / 2;
   sdl_context->win_center.y = y / 2;
 
-  sdl_context->window_width = w;
-  sdl_context->window_height = h;
+  sdl_context->window_width = x;
+  sdl_context->window_height = y;
 
   ui_scale.scale_x = (float)bounds.w / 1920.0f;
   ui_scale.scale_y = (float)bounds.h / 1080.0f;
@@ -375,16 +375,28 @@ SDL_Texture *load_texture(SDL_Renderer *renderer, const char *path) {
   return texture;
 }
 
-void toggle_fullscreen(SDL_Window *window) {
+void toggle_fullscreen(SdlContext_t *sdl_context) {
   int r;
-  Uint32 flags = SDL_GetWindowFlags(window);
+  Uint32 flags = SDL_GetWindowFlags(sdl_context->window);
   if (flags & SDL_WINDOW_FULLSCREEN_DESKTOP) {
     // Currently fullscreen, go back to windowed
-    r = SDL_SetWindowFullscreen(window, 0); // disable fullscreen
+    r = SDL_SetWindowFullscreen(sdl_context->window, 0); // disable fullscreen
   } else {
     // Switch to fullscreen desktop mode (borderless, scaled)
-    r = SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN_DESKTOP);
+    r = SDL_SetWindowFullscreen(sdl_context->window, SDL_WINDOW_FULLSCREEN_DESKTOP);
   }
   if (r != 0)
     fprintf(stderr, "toggle_fullscreen: %s\n", SDL_GetError());
+  else {
+    int x, y;
+    SDL_GetWindowSize(sdl_context->window, &x, &y);
+    sdl_context->win_center.x = x / 2;
+    sdl_context->win_center.y = y / 2;
+
+    sdl_context->window_width = x;
+    sdl_context->window_height = y;
+
+    ui_scale.scale_x = (float)x / 1920.0f;
+    ui_scale.scale_y = (float)y / 1080.0f;
+  }
 }
