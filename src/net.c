@@ -27,6 +27,7 @@
 */
 
 #include "net.h"
+#include "game.h"
 #include "util.h"
 
 static void fill_player_message(struct player_message_builder_t *builder, const Player_t *src) {
@@ -472,6 +473,13 @@ ERecvStatus_t recv_game_state(SocketContext_t *socket_context, GameState_t *game
     }
 
     hand__free_unpacked(pb_hand, NULL);
+    break;
+  }
+  case MSG_GAME_SELECT: {
+    GameSelectPayload_t payload = {0};
+    get_game_select_payload(buffer, size, id, &payload);
+    client_state->game_type = payload.game_type;
+    client_state->game_choice = find_game_choice_by_type(client_state->game_type);
     break;
   }
 

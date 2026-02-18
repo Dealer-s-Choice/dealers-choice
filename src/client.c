@@ -67,38 +67,6 @@ static int send_protocol_header(TCPsocket sock) {
 
 SDL_Rect card_area = {0};
 
-int8_t send_game_select(TCPsocket sock, uint8_t game_type, bool deuces_wild) {
-  GameSelectPayload_t payload = {game_type, deuces_wild ? 1 : 0};
-
-  const uint32_t payload_size = OPCODE_SIZE + sizeof(payload);
-  const uint32_t total_size_be = SDL_SwapBE32(payload_size);
-
-  uint8_t buffer[LENGTH_PREFIX_SIZE + payload_size];
-
-  // Write length prefix
-  memcpy(buffer, &total_size_be, LENGTH_PREFIX_SIZE);
-
-  // Write opcode (portable big-endian)
-  uint16_t opcode_be = SDL_SwapBE16(MSG_GAME_SELECT);
-  memcpy(buffer + LENGTH_PREFIX_SIZE, &opcode_be, sizeof(opcode_be));
-
-  // Write payload
-  memcpy(buffer + LENGTH_PREFIX_SIZE + OPCODE_SIZE, &payload, sizeof(payload));
-
-  // Send all
-  int result = send_all_tcp(sock, buffer, sizeof(buffer));
-
-  const GameChoice_t *choice = find_game_choice_by_type(game_type);
-  if (result == 0) {
-    verbose_printf("Game type sent: %s (Deuces wild: %s)\n", choice ? choice->str : "Unknown",
-                   deuces_wild ? "Yes" : "No");
-    return 0;
-  }
-
-  fprintf(stderr, "Game type failed to send: %s\n", choice ? choice->str : "Unknown");
-  return result;
-}
-
 // These two buttons for creating the buttons are mostly identical. In the future,
 // they can be changed so there are some differences if desired. Otherwise,
 // they'll be merged, and some of the values, such as the colors, will be passed
@@ -149,6 +117,10 @@ static Button_t create_game_choice_button(const char *text, SDL_Renderer *render
       .active = true,
       .hotkey = hotkey,
   };
+
+  if (TTF_SizeUTF8(font, button.text, &button.rect.w, &button.rect.h) != 0) {
+    fprintf(stderr, "TTF_SizeUTF8 error: %s\n", TTF_GetError());
+  }
   return button;
 }
 
@@ -194,6 +166,30 @@ static void ma_sound_start_wrap(ma_sound *pSound, const char *file, const int li
   }
 }
 
+static Button_t create_deuces_wild_button(SDL_Renderer *renderer, const Font_t *font) {
+  Button_t b = {
+      _("Deuces Wild"),
+      renderer,
+      get_color(COLOR_WHITE),
+      get_color(COLOR_BROWN),
+      {0, 0, 0, 0},
+      font->fonts[FONT_BOLD],
+      false,
+      true,
+      false,
+      true,
+      0,
+  };
+
+  /* measure text */
+  TTF_SizeUTF8(b.font, b.text, &b.rect.w, &b.rect.h);
+
+  /* padding */
+  b.rect.w += SCALE_X(10);
+  b.rect.h += SCALE_Y(10);
+  return b;
+}
+
 static const int NUM_COLUMNS = 3;
 
 static bool menu_display_game_choices(const PlayerConfig_t *player_config,
@@ -222,52 +218,26 @@ static bool menu_display_game_choices(const PlayerConfig_t *player_config,
 
     SDL_Rect rect = {x_offset, y_offset, 0, 0};
 
-    if (TTF_SizeUTF8(font->fonts[FONT_BOLD], game_choices[i].str, &rect.w, &rect.h) != 0) {
-      fprintf(stderr, "TTF_SizeUTF8 error: %s\n", TTF_GetError());
-    }
-
-    /* Padding — unscaled, matches font metrics */
-    rect.w += 30;
-    rect.h += rect.h * 0.1f;
-
-    /* Vertical placement uses already-scaled rect.h */
-    int button_height = (int)(rect.h * row_spacing_factor);
-    rect.y += row * button_height;
-
     game_choice_button[i] = create_game_choice_button(game_choices[i].str, sdl_context->renderer,
                                                       rect, font->fonts[FONT_BOLD], (SDL_Keycode)0);
+
+    /* Padding — unscaled, matches font metrics */
+    game_choice_button[i].rect.w += 30;
+    game_choice_button[i].rect.h += rect.h * 0.1f;
+
+    /* Vertical placement uses already-scaled rect.h */
+    int button_height = (int)(game_choice_button[i].rect.h * row_spacing_factor);
+    game_choice_button[i].rect.y += row * button_height;
   }
 
-  Button_t deuces_wild = {
-      _("Deuces Wild"),
-      sdl_context->renderer,
-      get_color(COLOR_WHITE),
-      get_color(COLOR_BROWN),
-      {0, 0, 0, 0},
-      font->fonts[FONT_BOLD],
-      false,
-      true,
-      false,
-      true,
-      0,
-  };
-
-  /* measure text */
-  TTF_SizeUTF8(deuces_wild.font, deuces_wild.text, &deuces_wild.rect.w, &deuces_wild.rect.h);
-
-  /* padding */
-  deuces_wild.rect.w += SCALE_X(10);
-  deuces_wild.rect.h += SCALE_Y(10);
-
+  Button_t button_deuces_wild = create_deuces_wild_button(sdl_context->renderer, font);
   /* align X to second column */
-  deuces_wild.rect.x = SCALE_X(left_margin + 1 * column_spacing);
-
+  button_deuces_wild.rect.x = SCALE_X(left_margin + 1 * column_spacing);
   /* compute grid height */
   int rows = (MAX_CHOICES + NUM_COLUMNS - 1) / NUM_COLUMNS;
-  int button_height = (int)(deuces_wild.rect.h * row_spacing_factor);
-
+  int button_height = (int)(button_deuces_wild.rect.h * row_spacing_factor);
   /* place below the grid */
-  deuces_wild.rect.y = SCALE_Y(top_margin) + rows * button_height;
+  button_deuces_wild.rect.y = SCALE_Y(top_margin) + rows * button_height;
 
   bool dealing = true;
 
@@ -300,7 +270,7 @@ static bool menu_display_game_choices(const PlayerConfig_t *player_config,
     for (int i = 0; i < MAX_CHOICES; i++)
       game_choice_button[i].enabled = (game_state->dealer_id == my_id && n_clients > 1);
 
-    deuces_wild.enabled = (game_state->dealer_id == my_id && n_clients > 1);
+    button_deuces_wild.enabled = (game_state->dealer_id == my_id && n_clients > 1);
 
     SDL_Point mouse_pos;
     SDL_GetMouseState(&mouse_pos.x, &mouse_pos.y);
@@ -308,7 +278,8 @@ static bool menu_display_game_choices(const PlayerConfig_t *player_config,
       game_choice_button[i].hovered = SDL_PointInRect(&mouse_pos, &game_choice_button[i].rect);
     }
 
-    deuces_wild.hovered = SDL_PointInRect(&mouse_pos, &deuces_wild.rect) && deuces_wild.enabled;
+    button_deuces_wild.hovered =
+        SDL_PointInRect(&mouse_pos, &button_deuces_wild.rect) && button_deuces_wild.enabled;
 
     SDL_Event e;
     while (SDL_PollEvent(&e)) {
@@ -326,7 +297,8 @@ static bool menu_display_game_choices(const PlayerConfig_t *player_config,
         for (int i = 0; i < MAX_CHOICES; i++) {
           if (SDL_PointInRect(&mouse_pos, &game_choice_button[i].rect) &&
               game_state->dealer_id == my_id) {
-            if (send_game_select(sock, game_choices[i].game_type, deuces_wild.selected) == 0) {
+            if (send_game_select(sock, game_choices[i].game_type, button_deuces_wild.selected) ==
+                0) {
               dealing = false;
               break;
             } else {
@@ -339,8 +311,8 @@ static bool menu_display_game_choices(const PlayerConfig_t *player_config,
             if (SDL_OpenURL(link[i].url) == -1)
               fputs(SDL_GetError(), stderr);
         }
-        if (deuces_wild.hovered)
-          deuces_wild.selected = !deuces_wild.selected;
+        if (button_deuces_wild.hovered)
+          button_deuces_wild.selected = !button_deuces_wild.selected;
       }
     }
 
@@ -349,7 +321,7 @@ static bool menu_display_game_choices(const PlayerConfig_t *player_config,
       for (int i = 0; i < MAX_CHOICES; i++)
         render_button(&game_choice_button[i]);
 
-      render_button(&deuces_wild);
+      render_button(&button_deuces_wild);
 
       SDL_Point status_pos = {
           sdl_context->window_width * .1,
@@ -922,6 +894,9 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
     };
   }
 
+  Button_t button_deuces_wild = create_deuces_wild_button(sdl_context->renderer, font);
+  Button_t button_game_name = {0};
+
   int running = 1;
   bool cards_created = false;
 
@@ -1017,7 +992,6 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
                           sdl_context->renderer, game_state->deuces_wild);
       cards_created = true;
     }
-    // printf("%d\n", __LINE__);
 
     clear_screen(sdl_context->renderer);
 
@@ -1063,6 +1037,24 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
 
     if (game_state->pot > 0)
       render_coin_animation(sdl_context->renderer, &coin_anim);
+
+    if (!button_game_name.text && client_state.game_choice) {
+      button_game_name =
+          create_game_choice_button(client_state.game_choice->str, sdl_context->renderer,
+                                    (SDL_Rect){0}, font->fonts[FONT_BOLD], (SDL_Keycode)0);
+      button_game_name.rect.x = sdl_context->window_width - button_game_name.rect.w - SCALE_X(25);
+      button_game_name.rect.y = sdl_context->window_height - SCALE_Y(300);
+      button_game_name.enabled = true;
+    }
+    if (button_game_name.text)
+      render_button(&button_game_name);
+
+    if (game_state->deuces_wild) {
+      button_deuces_wild.rect.x =
+          sdl_context->window_width - button_deuces_wild.rect.w - SCALE_X(25);
+      button_deuces_wild.rect.y = sdl_context->window_height - SCALE_Y(200);
+      render_button(&button_deuces_wild);
+    }
 
     for (int i = 0; i < SIZEOF_STATUS_MSGS; i++) {
       char tmp[sizeof(status_msgs[0])];

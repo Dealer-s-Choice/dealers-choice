@@ -54,6 +54,56 @@ const GameChoice_t *find_game_choice_by_type(const uint8_t type) {
   return NULL; // Not found
 }
 
+int8_t send_game_select(TCPsocket sock, uint8_t game_type, bool deuces_wild) {
+  GameSelectPayload_t payload = {game_type, deuces_wild ? 1 : 0};
+
+  const uint32_t payload_size = OPCODE_SIZE + sizeof(payload);
+  const uint32_t total_size_be = SDL_SwapBE32(payload_size);
+
+  uint8_t buffer[LENGTH_PREFIX_SIZE + payload_size];
+
+  // Write length prefix
+  memcpy(buffer, &total_size_be, LENGTH_PREFIX_SIZE);
+
+  // Write opcode (portable big-endian)
+  uint16_t opcode_be = SDL_SwapBE16(MSG_GAME_SELECT);
+  memcpy(buffer + LENGTH_PREFIX_SIZE, &opcode_be, sizeof(opcode_be));
+
+  // Write payload
+  memcpy(buffer + LENGTH_PREFIX_SIZE + OPCODE_SIZE, &payload, sizeof(payload));
+
+  // Send all
+  int result = send_all_tcp(sock, buffer, sizeof(buffer));
+
+  const GameChoice_t *choice = find_game_choice_by_type(game_type);
+  if (result == 0) {
+    verbose_printf("Game type sent: %s (Deuces wild: %s)\n", choice ? choice->str : "Unknown",
+                   deuces_wild ? "Yes" : "No");
+    return 0;
+  }
+
+  fprintf(stderr, "Game type failed to send: %s\n", choice ? choice->str : "Unknown");
+  return result;
+}
+
+bool get_game_select_payload(uint8_t *buffer, const uint32_t size, const int client_id,
+                             GameSelectPayload_t *out) {
+  if (!buffer || !out)
+    return false;
+
+  // Size check — includes opcode in this context
+  if (size != OPCODE_SIZE + sizeof(GameSelectPayload_t)) {
+    fprintf(stderr,
+            "[NET] Invalid MSG_GAME_SELECT size from client %d "
+            "(got %zu, expected %zu)\n",
+            client_id, (size_t)size, (size_t)(OPCODE_SIZE + sizeof(GameSelectPayload_t)));
+    return false;
+  }
+
+  memcpy(out, buffer + OPCODE_SIZE, sizeof(GameSelectPayload_t));
+  return true;
+}
+
 static bool is_valid_player(const Player_t *p, bool want_all_clients) {
   return p->is_connected && (want_all_clients || p->in);
 }

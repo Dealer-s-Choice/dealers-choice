@@ -321,6 +321,29 @@ static void broadcast_status_message(const ArgsBroadcastGameState_t *args, const
   } while (recipient && recipient != start);
 }
 
+static void broadcast_game_type(const ArgsBroadcastGameState_t *args) {
+  if (count_active_clients(args->slot_taken) == 0)
+    return;
+  int8_t pl_idx = args->turn_id;
+  Player_t *recipient = &args->game_state->player[pl_idx];
+  if (!recipient->is_connected)
+    recipient = get_next_connected_client(args->game_state->player, pl_idx);
+  Player_t *start = recipient;
+
+  do {
+    pl_idx = recipient->id;
+    TCPsocket sock = args->clients[pl_idx];
+    if (!sock)
+      continue;
+
+    if (send_game_select(sock, args->game_type, args->game_state->deuces_wild) < 0) {
+      fprintf(stderr, "[broadcast_status_message] Failed to send to client %d\n", pl_idx);
+    }
+
+    recipient = get_next_connected_client(args->game_state->player, pl_idx);
+  } while (recipient && recipient != start);
+}
+
 static int send_turn_id(TCPsocket sock, const int8_t turn_id) {
   uint8_t buffer[7];
 
@@ -1199,14 +1222,14 @@ static void play_game(ArgsBroadcastGameState_t *args, DH_Deck *deck) {
   Player_t *turn = get_next_player(players_array, args->game_state->dealer_id);
   args->starting_turn = &turn;
   broadcast_game_state(args);
+  broadcast_game_type(args);
 
   const GameChoice_t *choice = find_game_choice_by_type(args->game_type);
-  char tmp[LEN_STATUS_STR] = {0};
-  snprintf(tmp, sizeof(tmp), _("Game: %s%s"), choice->str,
-           args->game_state->deuces_wild ? _(" / Deuces Wild") : "");
-  broadcast_status_message(args, tmp);
 
   if (args->cli_args->server_log_game_results_file) {
+    char tmp[LEN_STATUS_STR] = {0};
+    snprintf(tmp, sizeof(tmp), _("Game: %s%s"), choice->str,
+             args->game_state->deuces_wild ? _(" / Deuces Wild") : "");
     FILE *fp = fopen(args->cli_args->server_log_game_results_file, "a");
     if (!fp)
       perror("fopen");
@@ -1686,19 +1709,9 @@ int run_server(const CliArgs_t *cli_args, Path_t *path) {
               break;
             }
 
-            // Size check — includes opcode in this context
-            if (size != OPCODE_SIZE + sizeof(GameSelectPayload_t)) {
-              fprintf(stderr,
-                      "[NET] Invalid MSG_GAME_SELECT size from client %d "
-                      "(got %zu, expected %zu)\n",
-                      i, (size_t)size, (size_t)(OPCODE_SIZE + sizeof(GameSelectPayload_t)));
+            GameSelectPayload_t payload = {0};
+            if (!get_game_select_payload(buffer, size, i, &payload))
               break;
-            }
-
-            // Read payload directly after the opcode
-            GameSelectPayload_t payload;
-            memcpy(&payload, buffer + OPCODE_SIZE, sizeof(payload));
-
             args_broadcast_game_state.game_type = payload.game_type;
             game_state.deuces_wild = (payload.deuces_wild != 0);
 

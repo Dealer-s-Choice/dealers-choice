@@ -108,6 +108,8 @@ typedef struct {
   bool bet_check_fold;
   bool call_raise_fold;
   unsigned int ping_times[MAX_CLIENTS];
+  uint8_t game_type;
+  const GameChoice_t *game_choice;
 } ClientState_t;
 
 struct player_message_builder_t {
