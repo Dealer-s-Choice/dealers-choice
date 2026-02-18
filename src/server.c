@@ -1194,6 +1194,7 @@ static void play_game(ArgsBroadcastGameState_t *args, DH_Deck *deck) {
   args->game_state->player_count = count_active_clients(args->slot_taken);
   verbose_printf("player count: %d\n", args->game_state->player_count);
   args->game_state->winner_declared = false;
+  args->game_state->player_exchanging = false;
 
   Player_t *turn = get_next_player(players_array, args->game_state->dealer_id);
   args->starting_turn = &turn;
