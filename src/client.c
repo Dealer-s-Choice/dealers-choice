@@ -104,7 +104,7 @@ static Button_t create_button(const char *text, SDL_Renderer *renderer, const in
 
 static Button_t create_game_choice_button(const char *text, SDL_Renderer *renderer, SDL_Rect rect,
                                           TTF_Font *font, SDL_Keycode hotkey) {
-  Button_t button = {
+  Button_t b = {
       .text = text,
       .renderer = renderer,
       .bg_color = get_color(COLOR_BLACK),
@@ -118,10 +118,17 @@ static Button_t create_game_choice_button(const char *text, SDL_Renderer *render
       .hotkey = hotkey,
   };
 
-  if (TTF_SizeUTF8(font, button.text, &button.rect.w, &button.rect.h) != 0) {
-    fprintf(stderr, "TTF_SizeUTF8 error: %s\n", TTF_GetError());
+  if (TTF_SizeUTF8(font, b.text, &b.rect.w, &b.rect.h) != 0) {
+      fprintf(stderr, "TTF_SizeUTF8 error: %s\n", TTF_GetError());
+      b.rect.w = 0;
+      b.rect.h = 0;
   }
-  return button;
+
+  /* Padding — unscaled, matches font metrics */
+  b.rect.w += 30;
+  b.rect.h += (int)(b.rect.h * 0.1f);
+
+  return b;
 }
 
 void render_link(Link_t *link) {
@@ -220,10 +227,6 @@ static bool menu_display_game_choices(const PlayerConfig_t *player_config,
 
     game_choice_button[i] = create_game_choice_button(game_choices[i].str, sdl_context->renderer,
                                                       rect, font->fonts[FONT_BOLD], (SDL_Keycode)0);
-
-    /* Padding — unscaled, matches font metrics */
-    game_choice_button[i].rect.w += 30;
-    game_choice_button[i].rect.h += rect.h * 0.1f;
 
     /* Vertical placement uses already-scaled rect.h */
     int button_height = (int)(game_choice_button[i].rect.h * row_spacing_factor);
@@ -989,7 +992,7 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
     if (!cards_created) {
       // printf("%d\n", __LINE__);
       create_card_context(card_context, starting_turn->id, players_array, player_pos,
-                          sdl_context->renderer, game_state->deuces_wild);
+                          sdl_context->renderer, client_state.deuces_wild);
       cards_created = true;
     }
 
@@ -1049,7 +1052,7 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
     if (button_game_name.text)
       render_button(&button_game_name);
 
-    if (game_state->deuces_wild) {
+    if (client_state.deuces_wild) {
       button_deuces_wild.rect.x =
           sdl_context->window_width - button_deuces_wild.rect.w - SCALE_X(25);
       button_deuces_wild.rect.y = sdl_context->window_height - SCALE_Y(200);
@@ -1228,7 +1231,7 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
       player_ptr = get_next_connected_client(players_array, player_ptr->id);
     } while (player_ptr && player_ptr != starting_turn);
 
-    if (game_state->deuces_wild && client_state.do_exchange_wilds) {
+    if (client_state.deuces_wild && client_state.do_exchange_wilds) {
       int y_offset = card_area.h * 1;
       int width, height;
       TTF_SizeUTF8(font->fonts[FONT_WILD_SELECT], " 10 ", &width, &height);

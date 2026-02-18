@@ -109,6 +109,7 @@ typedef struct {
   bool call_raise_fold;
   unsigned int ping_times[MAX_CLIENTS];
   uint8_t game_type;
+  bool deuces_wild;
   const GameChoice_t *game_choice;
 } ClientState_t;
 

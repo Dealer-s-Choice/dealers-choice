@@ -74,7 +74,7 @@ typedef struct {
   uint32_t raises_remaining;
   uint32_t prev_bet_amount;
   bool winner_declared;
-  bool deuces_wild, player_exchanging;
+  bool player_exchanging;
   Player_t player[MAX_PLAYERS];
 } GameState_t;
 
@@ -116,9 +116,9 @@ typedef struct GameChoice_t {
   const EMenuOption_t g;
   const char *str;
   const uint8_t game_type;
-  game_func_t func;
-  uint8_t hand_size;
-  uint8_t n_betting_rounds, n_draws, n_stud_new_cards;
+  const game_func_t func;
+  const uint8_t hand_size;
+  const uint8_t n_betting_rounds, n_draws, n_stud_new_cards;
 } GameChoice_t;
 
 extern const GameChoice_t game_choices[];
