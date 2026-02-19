@@ -106,6 +106,7 @@ typedef struct {
   uint8_t game_type;
   Player_t **starting_turn;
   int8_t turn_id;
+  bool deuces_wild;
 } ArgsBroadcastGameState_t;
 
 struct GameChoice_t;

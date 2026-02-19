@@ -103,7 +103,6 @@ ServerConfig_t init_game_state(GameState_t *game_state, Path_t *path, const CliA
   game_state->raises_remaining = 0;
   game_state->prev_bet_amount = 0;
   game_state->winner_declared = false;
-  game_state->deuces_wild = false;
   game_state->player_exchanging = false;
   return config;
 }
@@ -336,7 +335,7 @@ static void broadcast_game_type(const ArgsBroadcastGameState_t *args) {
     if (!sock)
       continue;
 
-    if (send_game_select(sock, args->game_type, args->game_state->deuces_wild) < 0) {
+    if (send_game_select(sock, args->game_type, args->deuces_wild) < 0) {
       fprintf(stderr, "[broadcast_status_message] Failed to send to client %d\n", pl_idx);
     }
 
@@ -690,7 +689,7 @@ static void determine_winner(ArgsBroadcastGameState_t *args, RoundResults *resul
 
   Player_t *ptr = *args->starting_turn;
 
-  if (args->game_state->deuces_wild) {
+  if (args->deuces_wild) {
     args->game_state->player_exchanging = true;
     broadcast_game_state(args);
     ELoop_t w = LOOP_OK;
@@ -1229,7 +1228,7 @@ static void play_game(ArgsBroadcastGameState_t *args, DH_Deck *deck) {
   if (args->cli_args->server_log_game_results_file) {
     char tmp[LEN_STATUS_STR] = {0};
     snprintf(tmp, sizeof(tmp), _("Game: %s%s"), choice->str,
-             args->game_state->deuces_wild ? _(" / Deuces Wild") : "");
+             args->deuces_wild ? _(" / Deuces Wild") : "");
     FILE *fp = fopen(args->cli_args->server_log_game_results_file, "a");
     if (!fp)
       perror("fopen");
@@ -1713,7 +1712,7 @@ int run_server(const CliArgs_t *cli_args, Path_t *path) {
             if (!get_game_select_payload(buffer, size, i, &payload))
               break;
             args_broadcast_game_state.game_type = payload.game_type;
-            game_state.deuces_wild = (payload.deuces_wild != 0);
+            args_broadcast_game_state.deuces_wild = (payload.deuces_wild != 0);
 
             if (i == *dealer_id) {
               verbose_printf("Dealer selected game: %d (deuces wild: %d)\n", payload.game_type,
