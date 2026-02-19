@@ -232,6 +232,41 @@ static CliArgs_t parse_cli_args(int argc, char *argv[]) {
   return cli_args;
 }
 
+static void init_sdl_window(SdlContext_t *sdl_context, const char *title) {
+  SDL_Rect bounds;
+  if (SDL_GetDisplayBounds(0, &bounds) == 0) {
+    printf("Display 0 bounds: x=%d, y=%d, w=%d, h=%d\n", bounds.x, bounds.y, bounds.w, bounds.h);
+  } else {
+    puts(SDL_GetError());
+    exit(EXIT_FAILURE);
+  }
+
+  float factor = 0.8;
+  float w = bounds.w * factor;
+  float h = bounds.h * factor;
+
+  sdl_context->window = SDL_CreateWindow(title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, w,
+                                         h, SDL_WINDOW_SHOWN);
+  if (!sdl_context->window)
+    puts(SDL_GetError());
+  sdl_context->renderer = SDL_CreateRenderer(sdl_context->window, -1, SDL_RENDERER_ACCELERATED);
+  if (!sdl_context->renderer)
+    puts(SDL_GetError());
+
+  int x, y;
+  SDL_GetWindowSize(sdl_context->window, &x, &y);
+  sdl_context->win_center.x = x / 2;
+  sdl_context->win_center.y = y / 2;
+
+  sdl_context->window_width = x;
+  sdl_context->window_height = y;
+
+  ui_scale.scale_x = (float)bounds.w / 1920.0f;
+  ui_scale.scale_y = (float)bounds.h / 1080.0f;
+
+  return;
+}
+
 int main(int argc, char *argv[]) {
 #ifdef ENABLE_NLS
   static char *locale_dir;
@@ -266,6 +301,7 @@ int main(int argc, char *argv[]) {
 
   SdlContext_t sdl_context;
   init_sdl_window(&sdl_context, DEALERSCHOICE_FORMAL_NAME);
+  g_sdl_context = &sdl_context;
 
   Font_t font;
 

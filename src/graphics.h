@@ -72,6 +72,8 @@ typedef struct {
   int window_width, window_height;
 } SdlContext_t;
 
+extern SdlContext_t *g_sdl_context;
+
 typedef struct {
   float scale_x, scale_y;
 } UiScale_t;
@@ -104,8 +106,6 @@ typedef struct {
 TTF_Font *open_font(const FontArgs_t *args);
 
 void clear_screen(SDL_Renderer *renderer);
-
-void init_sdl_window(SdlContext_t *sdl_context, const char *title);
 
 void render_text(SDL_Renderer *renderer, TTF_Font *font, const char *text, SDL_Color color,
                  SDL_Rect *dest);

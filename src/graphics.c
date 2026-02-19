@@ -4,7 +4,7 @@
 
  MIT License
 
- Copyright (c) 2025 Andy Alt
+ Copyright (c) 2025,2026 Andy Alt
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -28,6 +28,8 @@
 
 #include "graphics.h"
 #include "game.h"
+
+SdlContext_t *g_sdl_context;
 
 void show_loading_screen(SDL_Renderer *renderer, TTF_Font *font, const char *message) {
   SDL_Color color = get_color(COLOR_WHITE);
@@ -81,41 +83,6 @@ void clear_screen(SDL_Renderer *renderer) {
   SDL_SetRenderDrawColor(renderer, get_color(COLOR_GREEN_ONE).r, get_color(COLOR_GREEN_ONE).g,
                          get_color(COLOR_GREEN_ONE).b, get_color(COLOR_GREEN_ONE).a);
   SDL_RenderClear(renderer);
-}
-
-void init_sdl_window(SdlContext_t *sdl_context, const char *title) {
-  SDL_Rect bounds;
-  if (SDL_GetDisplayBounds(0, &bounds) == 0) {
-    printf("Display 0 bounds: x=%d, y=%d, w=%d, h=%d\n", bounds.x, bounds.y, bounds.w, bounds.h);
-  } else {
-    puts(SDL_GetError());
-    exit(EXIT_FAILURE);
-  }
-
-  float factor = 0.8;
-  float w = bounds.w * factor;
-  float h = bounds.h * factor;
-
-  sdl_context->window = SDL_CreateWindow(title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, w,
-                                         h, SDL_WINDOW_SHOWN);
-  if (!sdl_context->window)
-    puts(SDL_GetError());
-  sdl_context->renderer = SDL_CreateRenderer(sdl_context->window, -1, SDL_RENDERER_ACCELERATED);
-  if (!sdl_context->renderer)
-    puts(SDL_GetError());
-
-  int x, y;
-  SDL_GetWindowSize(sdl_context->window, &x, &y);
-  sdl_context->win_center.x = x / 2;
-  sdl_context->win_center.y = y / 2;
-
-  sdl_context->window_width = x;
-  sdl_context->window_height = y;
-
-  ui_scale.scale_x = (float)bounds.w / 1920.0f;
-  ui_scale.scale_y = (float)bounds.h / 1080.0f;
-
-  return;
 }
 
 TTF_Font *open_font(const FontArgs_t *args) {

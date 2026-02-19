@@ -197,6 +197,15 @@ static Button_t create_deuces_wild_button(SDL_Renderer *renderer, const Font_t *
   return b;
 }
 
+static void layout_links(Link_t *link, const size_t count) {
+  for (size_t i = 0; i < count; i++) {
+    link[i].rect.x = g_sdl_context->win_center.x + card_area.h;
+    ;
+    link[i].rect.y = (g_sdl_context->window_height - (link[i].rect.h * 2)) - (i * link[i].rect.h) -
+                     (i * (link[i].rect.h * 0.2));
+  }
+}
+
 static const int NUM_COLUMNS = 3;
 
 static bool menu_display_game_choices(const PlayerConfig_t *player_config,
@@ -244,23 +253,20 @@ static bool menu_display_game_choices(const PlayerConfig_t *player_config,
 
   bool dealing = true;
 
-  const int link_column = sdl_context->win_center.x + card_area.h;
-  Link_t link[] = {
-      /* TRANSLATORS: "Discord", "Lazarus Project" should not be translated */
-      {_(" Discord Channel (on Lazarus Project Server) "),
-       "https://discord.com/channels/1295630985429516299/1385298664192217138",
-       font->fonts[FONT_LINK], sdl_context->renderer, (SDL_Rect){link_column, 0, 0, 0}, false},
-      {" Matrix ", "https://matrix.to/#/#dealers-choice:matrix.org", font->fonts[FONT_LINK],
-       sdl_context->renderer, (SDL_Rect){link_column, 0, 0, 0}, false},
-      {" Website ", DEALERSCHOICE_URL, font->fonts[FONT_LINK], sdl_context->renderer,
-       (SDL_Rect){link_column, 0, 0, 0}, false}};
+  Link_t link[] = {/* TRANSLATORS: "Discord", "Lazarus Project" should not be translated */
+                   {_(" Discord Channel (on Lazarus Project Server) "),
+                    "https://discord.com/channels/1295630985429516299/1385298664192217138",
+                    font->fonts[FONT_LINK], sdl_context->renderer, (SDL_Rect){0}, false},
+                   {" Matrix ", "https://matrix.to/#/#dealers-choice:matrix.org",
+                    font->fonts[FONT_LINK], sdl_context->renderer, (SDL_Rect){0}, false},
+                   {" Website ", DEALERSCHOICE_URL, font->fonts[FONT_LINK], sdl_context->renderer,
+                    (SDL_Rect){0}, false}};
 
-  for (size_t i = 0; i < ARRAY_SIZE(link); i++) {
+  for (size_t i = 0; i < ARRAY_SIZE(link); i++)
     if (TTF_SizeUTF8(link[i].font, link[i].text, &link[i].rect.w, &link[i].rect.h) != 0)
       fprintf(stderr, "TTF_SizeUTF8 error: %s\n", TTF_GetError());
-    link[i].rect.y = (sdl_context->window_height - (link[i].rect.h * 2)) - (i * link[i].rect.h) -
-                     (i * (link[i].rect.h * 0.2));
-  }
+
+  layout_links(link, ARRAY_SIZE(link));
 
   static uint8_t saved_n_clients = 0;
   TCPsocket sock = socket_context->sock;
@@ -284,6 +290,7 @@ static bool menu_display_game_choices(const PlayerConfig_t *player_config,
     button_deuces_wild.hovered =
         SDL_PointInRect(&mouse_pos, &button_deuces_wild.rect) && button_deuces_wild.enabled;
 
+    bool fullscreen_toggled = false;
     SDL_Event e;
     while (SDL_PollEvent(&e)) {
       // SDL_Point mouse_pos = {e.button.x, e.button.y};
@@ -296,14 +303,7 @@ static bool menu_display_game_choices(const PlayerConfig_t *player_config,
       } else if (e.type == SDL_KEYDOWN &&
                  (e.key.keysym.sym == SDLK_RETURN && e.key.keysym.mod & KMOD_ALT)) {
         toggle_fullscreen(sdl_context);
-      } else if (e.type == SDL_WINDOWEVENT && e.window.event == SDL_WINDOWEVENT_RESIZED) {
-        // Handle window resize here
-        int new_width = e.window.data1;
-        int new_height = e.window.data2;
-        // Update your context, layout, or rendering as needed
-        sdl_context->window_width = new_width;
-        sdl_context->window_height = new_height;
-        // Optionally, trigger a redraw or re-layout
+        fullscreen_toggled = true;
       } else if (e.type == SDL_MOUSEBUTTONDOWN) {
         for (int i = 0; i < MAX_CHOICES; i++) {
           if (SDL_PointInRect(&mouse_pos, &game_choice_button[i].rect) &&
@@ -334,11 +334,8 @@ static bool menu_display_game_choices(const PlayerConfig_t *player_config,
 
       render_button(&button_deuces_wild);
 
-      SDL_Point status_pos = {
-          sdl_context->window_width * .1,
-          sdl_context->window_height / 2,
-      };
-      int offset_x = status_pos.x, offset_y = status_pos.y;
+      int offset_x = sdl_context->window_width * .1;
+      int offset_y = sdl_context->window_height / 2;
 
       SDL_Rect text_connected = {offset_x, offset_y, 0, 0};
       render_text_plain(sdl_context->renderer, font->fonts[FONT_BOLD], _("Connected players:"),
@@ -397,8 +394,11 @@ static bool menu_display_game_choices(const PlayerConfig_t *player_config,
             "Waiting for dealer to select game...", get_color(COLOR_WHITE),
             &(SDL_Rect){sdl_context->win_center.x, sdl_context->window_height - 200, 0, 0});
 
-      for (size_t i = 0; i < ARRAY_SIZE(link); i++)
+      if (fullscreen_toggled)
+        layout_links(link, ARRAY_SIZE(link));
+      for (size_t i = 0; i < ARRAY_SIZE(link); i++) {
         render_link(&link[i]);
+      }
     } else {
       // Show dealing screen immediately after click
       show_loading_screen(sdl_context->renderer, font->fonts[FONT_TITLE], _("Dealing..."));
@@ -1379,21 +1379,6 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
       } else if (event.type == SDL_KEYDOWN &&
                  (event.key.keysym.sym == SDLK_RETURN && event.key.keysym.mod & KMOD_ALT)) {
         toggle_fullscreen(sdl_context);
-        // Handle window resize here
-        int new_width = event.window.data1;
-        int new_height = event.window.data2;
-        // Update your context, layout, or rendering as needed
-        sdl_context->window_width = new_width;
-        sdl_context->window_height = new_height;
-        // Optionally, trigger a redraw or re-layout
-      } else if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_RESIZED) {
-        // Handle window resize here
-        int new_width = event.window.data1;
-        int new_height = event.window.data2;
-        // Update your context, layout, or rendering as needed
-        sdl_context->window_width = new_width;
-        sdl_context->window_height = new_height;
-        // Optionally, trigger a redraw or re-layout
       } else if (event.type == SDL_MOUSEBUTTONDOWN || event.type == SDL_KEYDOWN) {
         if (my_turn && !client_state.do_discard_draw && !client_state.do_exchange_wilds) {
           if (client_state.bet_check_fold || client_state.call_raise_fold) {
