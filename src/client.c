@@ -119,9 +119,9 @@ static Button_t create_game_choice_button(const char *text, SDL_Renderer *render
   };
 
   if (TTF_SizeUTF8(font, b.text, &b.rect.w, &b.rect.h) != 0) {
-      fprintf(stderr, "TTF_SizeUTF8 error: %s\n", TTF_GetError());
-      b.rect.w = 0;
-      b.rect.h = 0;
+    fprintf(stderr, "TTF_SizeUTF8 error: %s\n", TTF_GetError());
+    b.rect.w = 0;
+    b.rect.h = 0;
   }
 
   /* Padding — unscaled, matches font metrics */
@@ -1386,8 +1386,7 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
         sdl_context->window_width = new_width;
         sdl_context->window_height = new_height;
         // Optionally, trigger a redraw or re-layout
-      }
-      else if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_RESIZED) {
+      } else if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_RESIZED) {
         // Handle window resize here
         int new_width = event.window.data1;
         int new_height = event.window.data2;
@@ -1395,8 +1394,7 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
         sdl_context->window_width = new_width;
         sdl_context->window_height = new_height;
         // Optionally, trigger a redraw or re-layout
-      }
-      else if (event.type == SDL_MOUSEBUTTONDOWN || event.type == SDL_KEYDOWN) {
+      } else if (event.type == SDL_MOUSEBUTTONDOWN || event.type == SDL_KEYDOWN) {
         if (my_turn && !client_state.do_discard_draw && !client_state.do_exchange_wilds) {
           if (client_state.bet_check_fold || client_state.call_raise_fold) {
             if (SDL_PointInRect(&mouse_pos, &action_button[FOLD].rect) ||
