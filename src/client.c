@@ -246,8 +246,7 @@ static bool menu_display_game_choices(const PlayerConfig_t *player_config,
         return false;
       } else if (e.type == SDL_KEYDOWN &&
                  (e.key.keysym.sym == SDLK_RETURN && e.key.keysym.mod & KMOD_ALT)) {
-        toggle_fullscreen(sdl_context);
-        fullscreen_toggled = true;
+        fullscreen_toggled = toggle_fullscreen(sdl_context);
       } else if (e.type == SDL_MOUSEBUTTONDOWN) {
         for (int i = 0; i < MAX_CHOICES; i++) {
           if (SDL_PointInRect(&mouse_pos, &game_choice_button[i].rect) &&
@@ -708,6 +707,21 @@ enum {
   MAX_ACTIONS,
 };
 
+static void layout_amount_buttons(Button_t *b, const size_t count) {
+  int left_margin = SCALE_X(500);
+  for (size_t i = 0; i < count; i++) {
+    b[i].rect.x = left_margin;
+    b[i].rect.y = g_sdl_context->window_height - (b[i].rect.h * 3);
+    left_margin += b[i].rect.w + SCALE_X(10);
+  }
+}
+
+static void layout_action_buttons(Button_t *b) {
+  for (int i = 0; i < MAX_ACTIONS; i++) {
+    b[i].rect.y = g_sdl_context->window_height - (b[i].rect.h * 5);
+  }
+}
+
 static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *socket_context,
                           const GameSettings_t *game_settings, GameState_t *game_state,
                           SdlContext_t *sdl_context, const Font_t *font, Path_t *path,
@@ -755,13 +769,13 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
       [EXCHANGE] = {_("Exchange"), SDLK_x, true},
   };
 
-  const int action_button_y = sdl_context->window_height - (card_area.h * 4);
   Button_t action_button[MAX_ACTIONS];
   for (int i = 0; i < MAX_ACTIONS; i++) {
-    action_button[i] = create_button(action_button_attrs[i].text, sdl_context->renderer,
-                                     action_button_y, font->fonts[FONT_BOLD],
-                                     action_button_attrs[i].key, action_button_attrs[i].secondary);
+    action_button[i] =
+        create_button(action_button_attrs[i].text, sdl_context->renderer, 0, font->fonts[FONT_BOLD],
+                      action_button_attrs[i].key, action_button_attrs[i].secondary);
   }
+  layout_action_buttons(action_button);
 
   const struct Amount_t {
     const uint32_t value;
@@ -773,8 +787,7 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
   const size_t n_bet_amounts = ARRAY_SIZE(amount);
   Button_t amount_button[n_bet_amounts];
 
-  char amount_str[n_bet_amounts][16];    // enough for uint32_t
-  int current_x = x_begin_action_button; // Start position for first button
+  char amount_str[n_bet_amounts][16]; // enough for uint32_t
 
   for (size_t i = 0; i < n_bet_amounts; i++) {
     snprintf(amount_str[i], sizeof(amount_str[i]), "%" PRIu32, amount[i].value);
@@ -793,7 +806,7 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
         sdl_context->renderer,
         get_color(COLOR_WHITE),
         get_color(COLOR_BROWN),
-        (SDL_Rect){current_x, action_button_y + card_area.w, button_w, button_h},
+        (SDL_Rect){0, 0, button_w, button_h},
         font->fonts[FONT_BOLD],
         false,
         true,
@@ -801,11 +814,10 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
         true,
         amount[i].hotkey,
     };
-
-    current_x += button_w + SCALE_X(10); // Move right for next button with spacing
   }
   amount_button[0].selected = true;
   client_state.selected_amount = amount[0].value;
+  layout_amount_buttons(amount_button, n_bet_amounts);
 
   CardContext_t card_context[MAX_PLAYERS][MAX_HAND_SIZE];
 
@@ -947,6 +959,7 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
     }
 
     clear_screen(sdl_context->renderer);
+    // bool fullscreen_toggled = false;
 
     if (game_state->prev_bet_amount == 0)
       for (size_t i = 0; i < n_bet_amounts; i++)
@@ -1316,11 +1329,15 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
       }
       if (amount_selected)
         break;
+
       if (event.type == SDL_QUIT) {
         running = false;
       } else if (event.type == SDL_KEYDOWN &&
                  (event.key.keysym.sym == SDLK_RETURN && event.key.keysym.mod & KMOD_ALT)) {
-        toggle_fullscreen(sdl_context);
+        if (toggle_fullscreen(sdl_context)) {
+          layout_amount_buttons(amount_button, n_bet_amounts);
+          layout_action_buttons(action_button);
+        }
       } else if (event.type == SDL_MOUSEBUTTONDOWN || event.type == SDL_KEYDOWN) {
         if (my_turn && !client_state.do_discard_draw && !client_state.do_exchange_wilds) {
           if (client_state.bet_check_fold || client_state.call_raise_fold) {

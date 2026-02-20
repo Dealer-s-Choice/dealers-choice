@@ -338,7 +338,7 @@ SDL_Texture *load_texture(SDL_Renderer *renderer, const char *path) {
   return texture;
 }
 
-void toggle_fullscreen(SdlContext_t *sdl_context) {
+bool toggle_fullscreen(SdlContext_t *sdl_context) {
   int r;
   Uint32 flags = SDL_GetWindowFlags(sdl_context->window);
   if (flags & SDL_WINDOW_FULLSCREEN_DESKTOP) {
@@ -348,9 +348,7 @@ void toggle_fullscreen(SdlContext_t *sdl_context) {
     // Switch to fullscreen desktop mode (borderless, scaled)
     r = SDL_SetWindowFullscreen(sdl_context->window, SDL_WINDOW_FULLSCREEN_DESKTOP);
   }
-  if (r != 0)
-    fprintf(stderr, "toggle_fullscreen: %s\n", SDL_GetError());
-  else {
+  if (r == 0) {
     int x, y;
     SDL_GetWindowSize(sdl_context->window, &x, &y);
     sdl_context->win_center.x = x / 2;
@@ -361,5 +359,9 @@ void toggle_fullscreen(SdlContext_t *sdl_context) {
 
     ui_scale.scale_x = (float)x / 1920.0f;
     ui_scale.scale_y = (float)y / 1080.0f;
+
+    return true;
   }
+  fprintf(stderr, "toggle_fullscreen: %s\n", SDL_GetError());
+  return false;
 }
