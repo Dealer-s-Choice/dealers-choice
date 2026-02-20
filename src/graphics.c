@@ -28,7 +28,6 @@
 
 #include "graphics.h"
 #include "game.h"
-#include "globals.h"
 
 void show_loading_screen(SDL_Renderer *renderer, TTF_Font *font, const char *message) {
   SDL_Color color = get_color(COLOR_WHITE);

@@ -71,10 +71,12 @@ typedef struct {
   SDL_Point win_center;
   int window_width, window_height;
 } SdlContext_t;
+extern SdlContext_t *g_sdl_context;
 
 typedef struct {
   float scale_x, scale_y;
 } UiScale_t;
+extern UiScale_t ui_scale;
 
 typedef struct {
   const char *file;

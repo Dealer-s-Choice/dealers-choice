@@ -31,11 +31,6 @@
 
 #include <pcg_basic.h>
 
-#include "graphics.h"
-#include "types.h"
-
-extern SdlContext_t *g_sdl_context;
-extern UiScale_t ui_scale;
 extern pcg32_random_t rng;
 
 #endif

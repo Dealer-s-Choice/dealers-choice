@@ -133,9 +133,12 @@ static Button_t create_game_choice_button(const char *text, SDL_Renderer *render
 }
 
 void render_link(Link_t *link) {
+  const uint8_t LINK_PAD_X = 10;
+  const uint8_t LINK_PAD_Y = 2;
+
   TTF_SetFontStyle(link->font, TTF_STYLE_UNDERLINE);
 
-  SDL_Color text_color = (link->hovered) ? get_color(COLOR_BLUE) : get_color(COLOR_BLACK);
+  SDL_Color text_color = link->hovered ? get_color(COLOR_BLUE) : get_color(COLOR_BLACK);
 
   SDL_Surface *surface = TTF_RenderText_Solid(link->font, link->text, text_color);
   if (!surface) {
@@ -150,20 +153,27 @@ void render_link(Link_t *link) {
     return;
   }
 
-  link->rect.w = surface->w;
-  link->rect.h = surface->h;
+  /* background rect (with padding) */
+  SDL_Rect bg = {link->rect.x, link->rect.y, surface->w + LINK_PAD_X * 2,
+                 surface->h + LINK_PAD_Y * 2};
+
+  /* text rect (inside padding) */
+  SDL_Rect text_rect = {bg.x + LINK_PAD_X, bg.y + LINK_PAD_Y, surface->w, surface->h};
 
   SDL_FreeSurface(surface);
 
+  /* background */
   if (link->hovered)
     SDL_SetRenderDrawColor(link->renderer, 255, 255, 255, 255);
   else
     SDL_SetRenderDrawColor(link->renderer, 230, 245, 230, 255);
 
-  SDL_RenderFillRect(link->renderer, &link->rect);
+  SDL_RenderFillRect(link->renderer, &bg);
 
-  SDL_RenderCopy(link->renderer, texture, NULL, &link->rect);
+  /* text */
+  SDL_RenderCopy(link->renderer, texture, NULL, &text_rect);
   SDL_DestroyTexture(texture);
+
   TTF_SetFontStyle(link->font, TTF_STYLE_NORMAL);
 }
 
@@ -198,12 +208,14 @@ static Button_t create_deuces_wild_button(SDL_Renderer *renderer, const Font_t *
   return b;
 }
 
-static void layout_links(Link_t *link, const size_t count) {
+static void layout_links(Link_t *link, size_t count) {
+  int center_x = g_sdl_context->win_center.x + SCALE_X(200);
+
   for (size_t i = 0; i < count; i++) {
-    link[i].rect.x = g_sdl_context->win_center.x + card_area.h;
-    ;
+    link[i].rect.x = center_x - (link[i].rect.w / 2);
+
     link[i].rect.y = (g_sdl_context->window_height - (link[i].rect.h * 2)) - (i * link[i].rect.h) -
-                     (i * (link[i].rect.h * 0.2));
+                     (i * (link[i].rect.h * 0.4));
   }
 }
 
@@ -255,12 +267,12 @@ static bool menu_display_game_choices(const PlayerConfig_t *player_config,
   bool dealing = true;
 
   Link_t link[] = {/* TRANSLATORS: "Discord", "Lazarus Project" should not be translated */
-                   {_(" Discord Channel (on Lazarus Project Server) "),
+                   {_("Discord Channel (on Lazarus Project Server)"),
                     "https://discord.com/channels/1295630985429516299/1385298664192217138",
                     font->fonts[FONT_LINK], sdl_context->renderer, (SDL_Rect){0}, false},
-                   {" Matrix ", "https://matrix.to/#/#dealers-choice:matrix.org",
+                   {"Matrix", "https://matrix.to/#/#dealers-choice:matrix.org",
                     font->fonts[FONT_LINK], sdl_context->renderer, (SDL_Rect){0}, false},
-                   {" Website ", DEALERSCHOICE_URL, font->fonts[FONT_LINK], sdl_context->renderer,
+                   {"Website", DEALERSCHOICE_URL, font->fonts[FONT_LINK], sdl_context->renderer,
                     (SDL_Rect){0}, false}};
 
   for (size_t i = 0; i < ARRAY_SIZE(link); i++)
