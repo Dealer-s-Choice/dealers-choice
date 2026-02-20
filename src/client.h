@@ -34,18 +34,6 @@
 #include "net.h"
 #include "types.h"
 
-typedef struct {
-  const char *text;
-  const char *url;
-  TTF_Font *font;
-  // SDL_Color textColor;
-  SDL_Renderer *renderer;
-  // SDL_Color bg_color;
-  // SDL_Color fg_color;
-  SDL_Rect rect;
-  bool hovered;
-} Link_t;
-
 typedef enum {
   SND_SERVER_JOIN,
   SND_CARD_DEALT,
@@ -72,9 +60,8 @@ extern const GameChoice_t game_choices[];
 SocketContext_t get_socket_context_and_run_client(PlayerConfig_t *player_config,
                                                   const CliArgs_t *cli_args, const char *host_str,
                                                   const uint16_t port, SdlContext_t *sdl_context,
-                                                  Font_t *font, Path_t *path, const bool test_mode);
-
-void render_link(Link_t *link);
+                                                  Font_t *font, Path_t *path, const bool test_mode,
+                                                  Link_t *links);
 
 int8_t send_player_action(ClientState_t *client_state, TCPsocket sock, uint8_t action,
                           uint32_t amount);

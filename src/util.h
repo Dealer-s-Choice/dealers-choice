@@ -29,6 +29,8 @@
 #ifndef __UTIL_H
 #define __UTIL_H
 
+#include <SDL2/SDL_ttf.h>
+
 extern bool verbose;
 
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
@@ -53,6 +55,25 @@ typedef struct {
   long name_max;
 } PathconfLimits_t;
 
+typedef struct {
+  const char *text;
+  const char *url;
+  TTF_Font *font;
+  // SDL_Color textColor;
+  SDL_Renderer *renderer;
+  // SDL_Color bg_color;
+  // SDL_Color fg_color;
+  SDL_Rect rect;
+  bool hovered;
+} Link_t;
+
+typedef struct {
+  const char *text;
+  const char *url;
+} LinkDef_t;
+extern const LinkDef_t LINK_DEFS[];
+extern const size_t LINK_DEFS_COUNT;
+
 void get_data_dir(Path_t *path);
 
 EPathState check_pathname_state(const char *pathname);
@@ -75,4 +96,9 @@ void parse_signed(const char *s, long minv, long maxv, long *out);
 
 void parse_unsigned(const char *s, unsigned long maxv, unsigned long *out);
 
+void init_links(Link_t *links, TTF_Font *font);
+
+void render_link(Link_t *link);
+
+void layout_links(Link_t *link, size_t count);
 #endif

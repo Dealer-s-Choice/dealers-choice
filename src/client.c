@@ -132,51 +132,6 @@ static Button_t create_game_choice_button(const char *text, SDL_Renderer *render
   return b;
 }
 
-void render_link(Link_t *link) {
-  const uint8_t LINK_PAD_X = 10;
-  const uint8_t LINK_PAD_Y = 2;
-
-  TTF_SetFontStyle(link->font, TTF_STYLE_UNDERLINE);
-
-  SDL_Color text_color = link->hovered ? get_color(COLOR_BLUE) : get_color(COLOR_BLACK);
-
-  SDL_Surface *surface = TTF_RenderText_Solid(link->font, link->text, text_color);
-  if (!surface) {
-    SDL_Log("Failed to render text surface: %s", TTF_GetError());
-    return;
-  }
-
-  SDL_Texture *texture = SDL_CreateTextureFromSurface(link->renderer, surface);
-  if (!texture) {
-    SDL_Log("Failed to create texture from surface: %s", SDL_GetError());
-    SDL_FreeSurface(surface);
-    return;
-  }
-
-  /* background rect (with padding) */
-  SDL_Rect bg = {link->rect.x, link->rect.y, surface->w + LINK_PAD_X * 2,
-                 surface->h + LINK_PAD_Y * 2};
-
-  /* text rect (inside padding) */
-  SDL_Rect text_rect = {bg.x + LINK_PAD_X, bg.y + LINK_PAD_Y, surface->w, surface->h};
-
-  SDL_FreeSurface(surface);
-
-  /* background */
-  if (link->hovered)
-    SDL_SetRenderDrawColor(link->renderer, 255, 255, 255, 255);
-  else
-    SDL_SetRenderDrawColor(link->renderer, 230, 245, 230, 255);
-
-  SDL_RenderFillRect(link->renderer, &bg);
-
-  /* text */
-  SDL_RenderCopy(link->renderer, texture, NULL, &text_rect);
-  SDL_DestroyTexture(texture);
-
-  TTF_SetFontStyle(link->font, TTF_STYLE_NORMAL);
-}
-
 static void ma_sound_start_wrap(ma_sound *pSound, const char *file, const int line) {
   ma_result result = ma_sound_start(pSound);
   if (result != MA_SUCCESS) {
@@ -208,24 +163,13 @@ static Button_t create_deuces_wild_button(SDL_Renderer *renderer, const Font_t *
   return b;
 }
 
-static void layout_links(Link_t *link, size_t count) {
-  int center_x = g_sdl_context->win_center.x + SCALE_X(200);
-
-  for (size_t i = 0; i < count; i++) {
-    link[i].rect.x = center_x - (link[i].rect.w / 2);
-
-    link[i].rect.y = (g_sdl_context->window_height - (link[i].rect.h * 2)) - (i * link[i].rect.h) -
-                     (i * (link[i].rect.h * 0.4));
-  }
-}
-
 static const int NUM_COLUMNS = 3;
 
 static bool menu_display_game_choices(const PlayerConfig_t *player_config,
                                       SocketContext_t *socket_context, const int8_t my_id,
                                       GameState_t *game_state, ClientState_t *client_state,
                                       SdlContext_t *sdl_context, Font_t *font,
-                                      const SoundContext_t *sound_context) {
+                                      const SoundContext_t *sound_context, Link_t *links) {
   // This will likely get used later. For now, suppress the warning about "unused parameter"
   (void)player_config;
 
@@ -266,20 +210,7 @@ static bool menu_display_game_choices(const PlayerConfig_t *player_config,
 
   bool dealing = true;
 
-  Link_t link[] = {/* TRANSLATORS: "Discord", "Lazarus Project" should not be translated */
-                   {_("Discord Channel (on Lazarus Project Server)"),
-                    "https://discord.com/channels/1295630985429516299/1385298664192217138",
-                    font->fonts[FONT_LINK], sdl_context->renderer, (SDL_Rect){0}, false},
-                   {"Matrix", "https://matrix.to/#/#dealers-choice:matrix.org",
-                    font->fonts[FONT_LINK], sdl_context->renderer, (SDL_Rect){0}, false},
-                   {"Website", DEALERSCHOICE_URL, font->fonts[FONT_LINK], sdl_context->renderer,
-                    (SDL_Rect){0}, false}};
-
-  for (size_t i = 0; i < ARRAY_SIZE(link); i++)
-    if (TTF_SizeUTF8(link[i].font, link[i].text, &link[i].rect.w, &link[i].rect.h) != 0)
-      fprintf(stderr, "TTF_SizeUTF8 error: %s\n", TTF_GetError());
-
-  layout_links(link, ARRAY_SIZE(link));
+  // layout_links(links, LINK_DEFS_COUNT);
 
   static uint8_t saved_n_clients = 0;
   TCPsocket sock = socket_context->sock;
@@ -307,8 +238,8 @@ static bool menu_display_game_choices(const PlayerConfig_t *player_config,
     SDL_Event e;
     while (SDL_PollEvent(&e)) {
       // SDL_Point mouse_pos = {e.button.x, e.button.y};
-      for (size_t i = 0; i < ARRAY_SIZE(link); i++) {
-        link[i].hovered = SDL_PointInRect(&mouse_pos, &link[i].rect);
+      for (size_t i = 0; i < LINK_DEFS_COUNT; i++) {
+        links[i].hovered = SDL_PointInRect(&mouse_pos, &links[i].rect);
       }
 
       if (e.type == SDL_QUIT) {
@@ -330,9 +261,9 @@ static bool menu_display_game_choices(const PlayerConfig_t *player_config,
             }
           }
         }
-        for (size_t i = 0; i < sizeof link / sizeof link[0]; i++) {
-          if (link[i].hovered && e.button.button == SDL_BUTTON_LEFT)
-            if (SDL_OpenURL(link[i].url) == -1)
+        for (size_t i = 0; i < LINK_DEFS_COUNT; i++) {
+          if (links[i].hovered && e.button.button == SDL_BUTTON_LEFT)
+            if (SDL_OpenURL(links[i].url) == -1)
               fputs(SDL_GetError(), stderr);
         }
         if (button_deuces_wild.hovered)
@@ -408,10 +339,10 @@ static bool menu_display_game_choices(const PlayerConfig_t *player_config,
             &(SDL_Rect){sdl_context->win_center.x, sdl_context->window_height - 200, 0, 0});
 
       if (fullscreen_toggled)
-        layout_links(link, ARRAY_SIZE(link));
-      for (size_t i = 0; i < ARRAY_SIZE(link); i++) {
-        render_link(&link[i]);
-      }
+        layout_links(links, LINK_DEFS_COUNT);
+      for (size_t i = 0; i < LINK_DEFS_COUNT; i++)
+        render_link(&links[i]);
+
     } else {
       // Show dealing screen immediately after click
       show_loading_screen(sdl_context->renderer, font->fonts[FONT_TITLE], _("Dealing..."));
@@ -1498,8 +1429,8 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
 SocketContext_t get_socket_context_and_run_client(PlayerConfig_t *player_config,
                                                   const CliArgs_t *cli_args, const char *host_str,
                                                   const uint16_t port, SdlContext_t *sdl_context,
-                                                  Font_t *font, Path_t *path,
-                                                  const bool test_mode) {
+                                                  Font_t *font, Path_t *path, const bool test_mode,
+                                                  Link_t *links) {
   IPaddress server_ip;
   SocketContext_t socket_context = {0};
 
@@ -1667,9 +1598,9 @@ SocketContext_t get_socket_context_and_run_client(PlayerConfig_t *player_config,
 
     bool running = true;
     do {
-      running =
-          menu_display_game_choices(player_config, &socket_context, game_settings.client_id,
-                                    &game_state, &client_state, sdl_context, font, &sound_context);
+      running = menu_display_game_choices(player_config, &socket_context, game_settings.client_id,
+                                          &game_state, &client_state, sdl_context, font,
+                                          &sound_context, links);
       if (!running)
         break;
 
