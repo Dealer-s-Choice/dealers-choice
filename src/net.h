@@ -31,6 +31,7 @@
 
 #include <SDL2/SDL_net.h>
 
+#include "globals.h"
 #include "netpoker.pb-c.h"
 #include "types.h"
 

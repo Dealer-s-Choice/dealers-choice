@@ -35,6 +35,7 @@
 #include "config.h"
 #include "game.h"
 #include "getlongopt.h"
+#include "globals.h"
 #include "graphics.h"
 #include "main.h"
 #include "server.h"

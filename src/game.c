@@ -141,7 +141,6 @@ Player_t *get_next_connected_client_(Player_t *players_array, int cur, const cha
   return get_next_player_real(players_array, cur, want_all_clients, file, line);
 }
 
-pcg32_random_t rng;
 void pcg_srand_auto(void) {
   uint64_t initstate = time(NULL) ^ (intptr_t)&printf;
   uint64_t initseq = (intptr_t)&pcg_srand_auto;

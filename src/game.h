@@ -30,13 +30,13 @@
 #define __GAME_H
 
 // #include <SDL2/SDL_mixer.h>
-#include <pcg_basic.h>
 #include <pokeval.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
 
 #include "config.h"
+#include "globals.h"
 #include "graphics.h"
 #include "net.h"
 #include "server.h"
@@ -81,7 +81,6 @@ Player_t *get_next_player_(Player_t *players_array, int cur, const char *file, c
 Player_t *get_next_connected_client_(Player_t *players_array, int cur, const char *file,
                                      const int line);
 
-extern pcg32_random_t rng;
 void pcg_srand_auto(void);
 
 #endif

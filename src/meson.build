@@ -8,6 +8,7 @@ shared_src = files(
   'dc_config.c',
   'debug.c',
   'game.c',
+  'globals.c',
   'graphics.c',
   'net.c',
   'protobuf/netpoker.pb-c.c',

@@ -28,8 +28,7 @@
 
 #include "graphics.h"
 #include "game.h"
-
-SdlContext_t *g_sdl_context;
+#include "globals.h"
 
 void show_loading_screen(SDL_Renderer *renderer, TTF_Font *font, const char *message) {
   SDL_Color color = get_color(COLOR_WHITE);
@@ -48,8 +47,6 @@ void show_loading_screen(SDL_Renderer *renderer, TTF_Font *font, const char *mes
   }
   render_text_plain(renderer, font, message, color, &rect);
 }
-
-UiScale_t ui_scale = {0};
 
 static const SDL_Color color_table[COLOR_COUNT] = {
     [COLOR_WHITE] = {255, 255, 255, 255}, [COLOR_LIGHTGRAY] = {200, 200, 200, 255},

@@ -32,6 +32,7 @@
 
 #include "dc_config.h"
 #include "game.h"
+#include "globals.h"
 #include "server.h"
 #include "util.h"
 

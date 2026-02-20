@@ -34,6 +34,7 @@
 
 #include "client.h"
 #include "game.h"
+#include "globals.h"
 #include "graphics.h"
 #include "util.h"
 
@@ -416,8 +417,6 @@ typedef struct {
   SDL_Color pattern_color;
   int pattern_type; // 0: crosshatch, 1: dots, 2: diagonal stripes, 3: grid
 } CardBackStyle_t;
-
-#include "game.h" // for rng
 
 static CardBackStyle_t card_back_styles[] = {
     {{0, 0, 128, 255}, {255, 255, 255, 255}, {200, 200, 255, 255}, 0},   // blue crosshatch
