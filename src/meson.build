@@ -10,6 +10,7 @@ shared_src = files(
   'game.c',
   'globals.c',
   'graphics.c',
+  'links.c',
   'net.c',
   'protobuf/netpoker.pb-c.c',
   'server.c',

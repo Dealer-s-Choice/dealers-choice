@@ -27,7 +27,6 @@
 */
 
 #include "globals.h"
-#include "graphics.h"
 
 SdlContext_t *g_sdl_context;
 UiScale_t ui_scale = {0};

@@ -31,6 +31,7 @@
 
 #include "dc_config.h"
 #include "graphics.h"
+#include "links.h"
 #include "net.h"
 #include "types.h"
 

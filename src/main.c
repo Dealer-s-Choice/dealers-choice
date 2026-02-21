@@ -37,6 +37,7 @@
 #include "getlongopt.h"
 #include "globals.h"
 #include "graphics.h"
+#include "links.h"
 #include "main.h"
 #include "server.h"
 
