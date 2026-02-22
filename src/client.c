@@ -36,6 +36,7 @@
 #include "game.h"
 #include "globals.h"
 #include "graphics.h"
+
 #include "util.h"
 
 const uint8_t MAX_CONNECTION_ATTEMPTS = 12;
@@ -65,8 +66,6 @@ static int send_protocol_header(TCPsocket sock) {
 #define SIZEOF_CARD_TEXT 20
 
 #define MAX_POT_COINS 80
-
-SDL_Rect card_area = {0};
 
 // These two buttons for creating the buttons are mostly identical. In the future,
 // they can be changed so there are some differences if desired. Otherwise,
@@ -722,6 +721,21 @@ static void layout_action_buttons(Button_t *b) {
   }
 }
 
+static void layout_player_pos(SDL_Point *player_pos) {
+  player_pos[0].x = SCALE_X(20);
+  player_pos[0].y = card_area.h * 4;
+
+  player_pos[1].x = SCALE_X(20);
+  player_pos[1].y = card_area.h;
+
+  for (int i = 2; i < MAX_PLAYERS; i++)
+    player_pos[i].x = g_sdl_context->win_center.x;
+
+  player_pos[2].y = card_area.h;
+  player_pos[3].y = card_area.h * 4;
+  player_pos[4].y = card_area.h * 7;
+}
+
 static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *socket_context,
                           const GameSettings_t *game_settings, GameState_t *game_state,
                           SdlContext_t *sdl_context, const Font_t *font, Path_t *path,
@@ -729,29 +743,9 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
   select_card_back_for_game();
 
   ClientState_t client_state = {0};
-  card_area.w = SCALE_X(80);
-  card_area.h = SCALE_Y(50);
 
-  const SDL_Point player_pos[MAX_PLAYERS] = {
-      // P0: left, 1/3 down
-      {.x = SCALE_X(20), .y = card_area.h * 4},
-
-      // P1: Top left
-      {.x = SCALE_X(20), .y = card_area.h},
-
-      // P2: Top right
-      {.x = sdl_context->win_center.x, .y = card_area.h},
-
-      // P3: Right, 1/3 down
-      {.x = sdl_context->win_center.x, .y = card_area.h * 4},
-
-      // P4: Right, 2/3 down
-      {.x = sdl_context->win_center.x, .y = card_area.h * 7},
-  };
-
-  // This offers only a little extra protection if changes are made.
-  _Static_assert(sizeof(player_pos) / sizeof(player_pos[0]) == 5,
-                 "player_pos has wrong number of elements");
+  SDL_Point player_pos[MAX_PLAYERS] = {0};
+  layout_player_pos(player_pos);
 
 #define SIZEOF_STATUS_MSGS 16
   char status_msgs[SIZEOF_STATUS_MSGS][LEN_STATUS_STR] = {0};
@@ -898,6 +892,11 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
     SDL_Point pt[MAX_POT_COINS];
   } PotCoin_t;
 
+  //typedef struct {
+    //SDL_Rect rect;
+  //} CoinInPot_t;
+  // CoinInPot_t coin_in_pot[MAX_POT_COINS] = {0};
+
   PotCoin_t pot_coin = {0};
   uint8_t coins = 0;
   CoinAnimation_t coin_anim = {0};
@@ -971,6 +970,7 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
     if (game_state->pot > coins * game_settings->bet_minimum && coins < MAX_POT_COINS) {
       pot_coin.pt[coins].x = pot_pos.x + pcg32_boundedrand_r(&rng, POT_BOUNDARY) - SCALE_X(150);
       pot_coin.pt[coins].y = pot_pos.y + pcg32_boundedrand_r(&rng, POT_BOUNDARY) - SCALE_Y(150);
+      // coin_in_pot[coin].x = pot_pos.x + pcg32_boundedrand_r(&rng, POT_BOUNDARY) - SCALE_X(150);
       coins++;
       new_coin = true;
     } else if (game_state->pot == 0)
@@ -1335,6 +1335,9 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
       } else if (event.type == SDL_KEYDOWN &&
                  (event.key.keysym.sym == SDLK_RETURN && event.key.keysym.mod & KMOD_ALT)) {
         if (toggle_fullscreen(sdl_context)) {
+          layout_player_pos(player_pos);
+          create_card_context(card_context, starting_turn->id, players_array, player_pos,
+                              sdl_context->renderer, client_state.deuces_wild);
           layout_amount_buttons(amount_button, n_bet_amounts);
           layout_action_buttons(action_button);
         }

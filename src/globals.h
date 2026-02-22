@@ -35,4 +35,6 @@
 
 extern pcg32_random_t rng;
 
+extern SDL_Rect card_area;
+
 #endif

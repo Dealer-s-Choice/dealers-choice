@@ -29,5 +29,8 @@
 #include "globals.h"
 
 SdlContext_t *g_sdl_context;
+
 UiScale_t ui_scale = {0};
+SDL_Rect card_area = {0};
+
 pcg32_random_t rng;

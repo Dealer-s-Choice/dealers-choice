@@ -349,19 +349,25 @@ bool toggle_fullscreen(SdlContext_t *sdl_context) {
     r = SDL_SetWindowFullscreen(sdl_context->window, SDL_WINDOW_FULLSCREEN_DESKTOP);
   }
   if (r == 0) {
-    int x, y;
-    SDL_GetWindowSize(sdl_context->window, &x, &y);
-    sdl_context->win_center.x = x / 2;
-    sdl_context->win_center.y = y / 2;
-
-    sdl_context->window_width = x;
-    sdl_context->window_height = y;
-
-    ui_scale.scale_x = (float)x / 1920.0f;
-    ui_scale.scale_y = (float)y / 1080.0f;
-
+    assign_window_values_set_scaling(sdl_context);
     return true;
   }
   fprintf(stderr, "toggle_fullscreen: %s\n", SDL_GetError());
   return false;
+}
+
+void assign_window_values_set_scaling(SdlContext_t *c) {
+  int x, y;
+  SDL_GetWindowSize(c->window, &x, &y);
+  c->win_center.x = x / 2;
+  c->win_center.y = y / 2;
+
+  c->window_width = x;
+  c->window_height = y;
+
+  ui_scale.scale_x = x / 1920.0f;
+  ui_scale.scale_y = y / 1080.0f;
+
+  card_area.w = SCALE_X(80);
+  card_area.h = SCALE_Y(50);
 }

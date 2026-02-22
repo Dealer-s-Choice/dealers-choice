@@ -272,16 +272,7 @@ static void init_sdl_window(SdlContext_t *sdl_context, const char *title) {
   if (!sdl_context->renderer)
     puts(SDL_GetError());
 
-  int x, y;
-  SDL_GetWindowSize(sdl_context->window, &x, &y);
-  sdl_context->win_center.x = x / 2;
-  sdl_context->win_center.y = y / 2;
-
-  sdl_context->window_width = x;
-  sdl_context->window_height = y;
-
-  ui_scale.scale_x = (float)bounds.w / 1920.0f;
-  ui_scale.scale_y = (float)bounds.h / 1080.0f;
+  assign_window_values_set_scaling(sdl_context);
 
   return;
 }
@@ -318,7 +309,7 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 
-  SdlContext_t sdl_context;
+  SdlContext_t sdl_context = {0};
   init_sdl_window(&sdl_context, DEALERSCHOICE_FORMAL_NAME);
   g_sdl_context = &sdl_context;
 

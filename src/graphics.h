@@ -69,6 +69,7 @@ typedef struct {
   SDL_Renderer *renderer;
   SDL_Window *window;
   SDL_Point win_center;
+  SDL_Point win_center_prev_diff;
   int window_width, window_height;
 } SdlContext_t;
 extern SdlContext_t *g_sdl_context;
@@ -140,5 +141,7 @@ bool toggle_fullscreen(SdlContext_t *sdl_context);
 
 // Transitional loading screen
 void show_loading_screen(SDL_Renderer *renderer, TTF_Font *font, const char *message);
+
+void assign_window_values_set_scaling(SdlContext_t *c);
 
 #endif
