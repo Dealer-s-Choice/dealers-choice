@@ -69,7 +69,6 @@ typedef struct {
   SDL_Renderer *renderer;
   SDL_Window *window;
   SDL_Point win_center;
-  SDL_Point win_center_prev_diff;
   int window_width, window_height;
 } SdlContext_t;
 extern SdlContext_t *g_sdl_context;

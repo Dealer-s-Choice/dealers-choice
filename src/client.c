@@ -762,6 +762,11 @@ static void layout_coins(CoinInPot_t *coins, const int x, int count) {
   }
 }
 
+static void layout_pot_center(SDL_Point *p, const int x) {
+  p->x = x - POT_BOUNDARY + card_area.h;
+  p->y = g_sdl_context->win_center.y + card_area.h;
+}
+
 static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *socket_context,
                           const GameSettings_t *game_settings, GameState_t *game_state,
                           SdlContext_t *sdl_context, const Font_t *font, Path_t *path,
@@ -918,6 +923,8 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
 
   uint8_t coins = 0;
   CoinAnimation_t coin_anim = {0};
+  SDL_Point pot_center = {0};
+  layout_pot_center(&pot_center, player_pos[4].x);
 
   client_state.timer_start = SDL_GetTicks();
 
@@ -984,15 +991,9 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
 
     bool new_coin = false;
 
-    SDL_Point pot_center = {player_pos[4].x - POT_BOUNDARY + card_area.h,
-                            sdl_context->win_center.y + card_area.h};
-
     if (game_state->pot > coins * game_settings->bet_minimum && coins < MAX_POT_COINS) {
-
       coin_in_pot[coins].offset.x = pcg32_boundedrand_r(&rng, POT_BOUNDARY) - POT_BOUNDARY / 2;
-
       coin_in_pot[coins].offset.y = pcg32_boundedrand_r(&rng, POT_BOUNDARY) - POT_BOUNDARY / 2;
-
       coins++;
       new_coin = true;
     } else if (game_state->pot == 0) {
@@ -1026,6 +1027,10 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
 
     if (game_state->pot > 0)
       render_coin_animation(sdl_context->renderer, &coin_anim);
+    // else {
+    // coins = 0;
+    // coin_anim.active = false;
+    //}
 
     if (!button_game_name.text && client_state.game_choice) {
       button_game_name =
@@ -1361,6 +1366,7 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
           layout_player_pos(player_pos);
           create_card_context(card_context, starting_turn->id, players_array, player_pos,
                               sdl_context->renderer, client_state.deuces_wild);
+          layout_pot_center(&pot_center, player_pos[4].x);
           layout_coins(coin_in_pot, player_pos[4].x, coins);
           layout_amount_buttons(amount_button, n_bet_amounts);
           layout_action_buttons(action_button);
