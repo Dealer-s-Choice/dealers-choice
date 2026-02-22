@@ -359,6 +359,7 @@ bool toggle_fullscreen(SdlContext_t *sdl_context) {
 void assign_window_values_set_scaling(SdlContext_t *c) {
   int x, y;
   SDL_GetWindowSize(c->window, &x, &y);
+
   c->win_center.x = x / 2;
   c->win_center.y = y / 2;
 

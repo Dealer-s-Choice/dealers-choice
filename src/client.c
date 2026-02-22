@@ -675,8 +675,11 @@ typedef struct {
 
 void render_coin_animation(SDL_Renderer *renderer, CoinAnimation_t *anim) {
   if (!anim->active) {
-    SDL_RenderCopy(renderer, anim->texture, NULL,
-                   &(SDL_Rect){anim->end.x, anim->end.y, SCALE_X(coin_px), SCALE_Y(coin_px)});
+    return;
+  }
+
+  if (anim->duration <= 0) {
+    anim->active = false;
     return;
   }
 
@@ -685,13 +688,14 @@ void render_coin_animation(SDL_Renderer *renderer, CoinAnimation_t *anim) {
 
   if (progress >= 1.0f) {
     progress = 1.0f;
-    anim->active = false; // Animation is done
+    anim->active = false;
   }
 
-  int x = anim->start.x + (int)((anim->end.x - anim->start.x) * progress);
-  int y = anim->start.y + (int)((anim->end.y - anim->start.y) * progress);
+  float fx = anim->start.x + (anim->end.x - anim->start.x) * progress;
+  float fy = anim->start.y + (anim->end.y - anim->start.y) * progress;
 
-  SDL_Rect dst = {x, y, SCALE_X(coin_px), SCALE_Y(coin_px)};
+  SDL_Rect dst = {.x = (int)fx, .y = (int)fy, .w = SCALE_X(coin_px), .h = SCALE_Y(coin_px)};
+
   SDL_RenderCopy(renderer, anim->texture, NULL, &dst);
 }
 
@@ -734,6 +738,28 @@ static void layout_player_pos(SDL_Point *player_pos) {
   player_pos[2].y = card_area.h;
   player_pos[3].y = card_area.h * 4;
   player_pos[4].y = card_area.h * 7;
+}
+
+typedef struct {
+  SDL_Point offset;
+  SDL_Rect rect;
+} CoinInPot_t;
+
+static void layout_coins(CoinInPot_t *coins, const int x, int count) {
+  SDL_Point pot_center = {x - POT_BOUNDARY + card_area.h,
+                          g_sdl_context->win_center.y + card_area.h};
+
+  int coin_w = SCALE_X(coin_px);
+  int coin_h = SCALE_Y(coin_px);
+
+  for (int i = 0; i < count; i++) {
+    coins[i].rect.w = coin_w;
+    coins[i].rect.h = coin_h;
+
+    coins[i].rect.x = pot_center.x + coins[i].offset.x - coin_w / 2;
+
+    coins[i].rect.y = pot_center.y + coins[i].offset.y - coin_h / 2;
+  }
 }
 
 static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *socket_context,
@@ -888,16 +914,8 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
   SDL_Texture *coin_tex_front =
       load_coin_texture(sdl_context->renderer, path->data, coin[which_coin].front);
 
-  typedef struct {
-    SDL_Point pt[MAX_POT_COINS];
-  } PotCoin_t;
+  CoinInPot_t coin_in_pot[MAX_POT_COINS] = {0};
 
-  //typedef struct {
-    //SDL_Rect rect;
-  //} CoinInPot_t;
-  // CoinInPot_t coin_in_pot[MAX_POT_COINS] = {0};
-
-  PotCoin_t pot_coin = {0};
   uint8_t coins = 0;
   CoinAnimation_t coin_anim = {0};
 
@@ -965,40 +983,45 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
         amount_button[i].enabled = true;
 
     bool new_coin = false;
-    SDL_Point pot_pos = {player_pos[4].x - POT_BOUNDARY + card_area.h,
-                         sdl_context->win_center.y + card_area.h};
+
+    SDL_Point pot_center = {player_pos[4].x - POT_BOUNDARY + card_area.h,
+                            sdl_context->win_center.y + card_area.h};
+
     if (game_state->pot > coins * game_settings->bet_minimum && coins < MAX_POT_COINS) {
-      pot_coin.pt[coins].x = pot_pos.x + pcg32_boundedrand_r(&rng, POT_BOUNDARY) - SCALE_X(150);
-      pot_coin.pt[coins].y = pot_pos.y + pcg32_boundedrand_r(&rng, POT_BOUNDARY) - SCALE_Y(150);
-      // coin_in_pot[coin].x = pot_pos.x + pcg32_boundedrand_r(&rng, POT_BOUNDARY) - SCALE_X(150);
+
+      coin_in_pot[coins].offset.x = pcg32_boundedrand_r(&rng, POT_BOUNDARY) - POT_BOUNDARY / 2;
+
+      coin_in_pot[coins].offset.y = pcg32_boundedrand_r(&rng, POT_BOUNDARY) - POT_BOUNDARY / 2;
+
       coins++;
       new_coin = true;
-    } else if (game_state->pot == 0)
+    } else if (game_state->pot == 0) {
       coins = 0;
-
-    int p;
-    for (p = 0; p < coins; p++) {
-      SDL_Rect coin_rect = {
-          .x = pot_coin.pt[p].x,
-          .y = pot_coin.pt[p].y,
-          .w = SCALE_X(coin_px),
-          .h = SCALE_Y(coin_px),
-      };
-      if (p < coins - 1)
-        SDL_RenderCopy(sdl_context->renderer, coin_tex_front, NULL, &coin_rect);
     }
 
-    p--;
     if (new_coin) {
+      // FIRST: compute rects
+      layout_coins(coin_in_pot, player_pos[4].x, coins);
+
+      int last = coins - 1;
+
+      // NOW rect is valid
       coin_anim = (CoinAnimation_t){
           .texture = coin_tex_front,
           .start = (SDL_Point){player_pos[turn->id].x, player_pos[turn->id].y},
-          .end = (SDL_Point){pot_coin.pt[p].x, pot_coin.pt[p].y},
+          .end = (SDL_Point){coin_in_pot[last].rect.x, coin_in_pot[last].rect.y},
           .start_time = SDL_GetTicks(),
           .duration = 300,
           .active = true,
       };
       new_coin = false;
+    }
+
+    for (int i = 0; i < coins; i++) {
+      if (i == coins - 1 && coin_anim.active) {
+        continue; // last coin is currently animated
+      }
+      SDL_RenderCopy(sdl_context->renderer, coin_tex_front, NULL, &coin_in_pot[i].rect);
     }
 
     if (game_state->pot > 0)
@@ -1163,7 +1186,7 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
     snprintf(buffer, sizeof(buffer), "%" PRIu32, game_state->pot);
     SDL_Color black = {0, 0, 0, 255};
     render_text_centered(sdl_context->renderer, font->fonts[FONT_DEFAULT_BOLD], buffer, black,
-                         pot_pos);
+                         pot_center);
 
     player_ptr = starting_turn;
     do {
@@ -1338,6 +1361,7 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
           layout_player_pos(player_pos);
           create_card_context(card_context, starting_turn->id, players_array, player_pos,
                               sdl_context->renderer, client_state.deuces_wild);
+          layout_coins(coin_in_pot, player_pos[4].x, coins);
           layout_amount_buttons(amount_button, n_bet_amounts);
           layout_action_buttons(action_button);
         }
