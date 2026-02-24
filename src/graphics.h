@@ -121,6 +121,19 @@ typedef struct {
   SDL_Keycode hotkey;
 } Button_t;
 
+typedef struct {
+  const char *text;
+  SDL_Renderer *renderer;
+  SDL_Color bg_color;
+  SDL_Color fg_color;
+  SDL_Rect rect;
+  TTF_Font *font;
+} Indicator_t;
+
+void render_indicator(const Indicator_t *ind);
+
+Indicator_t create_indicator(SDL_Renderer *renderer, const char *text, const Font_t *font);
+
 void mark_selected(SDL_Renderer *renderer, const SDL_Rect *rect);
 
 void render_button(Button_t *button);

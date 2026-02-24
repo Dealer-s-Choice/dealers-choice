@@ -144,7 +144,7 @@ static Button_t create_deuces_wild_button(SDL_Renderer *renderer, const Font_t *
       renderer,
       get_color(COLOR_WHITE),
       get_color(COLOR_BROWN),
-      {0, 0, 0, 0},
+      {0},
       font->fonts[FONT_BOLD],
       false,
       true,
@@ -154,7 +154,8 @@ static Button_t create_deuces_wild_button(SDL_Renderer *renderer, const Font_t *
   };
 
   /* measure text */
-  TTF_SizeUTF8(b.font, b.text, &b.rect.w, &b.rect.h);
+  if (TTF_SizeUTF8(b.font, b.text, &b.rect.w, &b.rect.h) != 0)
+    fprintf(stderr, "TTF_SizeUTF8 failed: %s\n", TTF_GetError());
 
   /* padding */
   b.rect.w += SCALE_X(10);
@@ -767,6 +768,16 @@ static void layout_pot_center(SDL_Point *p, const int x) {
   p->y = g_sdl_context->win_center.y + card_area.h;
 }
 
+static void layout_game_name_indicator(Indicator_t *ind) {
+  ind->rect.x = g_sdl_context->window_width - ind->rect.w - SCALE_X(25);
+  ind->rect.y = g_sdl_context->window_height - SCALE_Y(300);
+}
+
+static void layout_deuces_wild_indicator(Indicator_t *ind) {
+  ind->rect.x = g_sdl_context->window_width - ind->rect.w - SCALE_X(25);
+  ind->rect.y = g_sdl_context->window_height - SCALE_Y(200);
+}
+
 static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *socket_context,
                           const GameSettings_t *game_settings, GameState_t *game_state,
                           SdlContext_t *sdl_context, const Font_t *font, Path_t *path,
@@ -884,8 +895,9 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
     };
   }
 
-  Button_t button_deuces_wild = create_deuces_wild_button(sdl_context->renderer, font);
-  Button_t button_game_name = {0};
+  Indicator_t indicator_deuces_wild = create_indicator(sdl_context->renderer, "Deuces Wild", font);
+  layout_deuces_wild_indicator(&indicator_deuces_wild);
+  Indicator_t indicator_game_name = {0};
 
   int running = 1;
   bool cards_created = false;
@@ -1032,22 +1044,17 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
     // coin_anim.active = false;
     //}
 
-    if (!button_game_name.text && client_state.game_choice) {
-      button_game_name =
-          create_game_choice_button(client_state.game_choice->str, sdl_context->renderer,
-                                    (SDL_Rect){0}, font->fonts[FONT_BOLD], (SDL_Keycode)0);
-      button_game_name.rect.x = sdl_context->window_width - button_game_name.rect.w - SCALE_X(25);
-      button_game_name.rect.y = sdl_context->window_height - SCALE_Y(300);
-      button_game_name.enabled = true;
+    if (!indicator_game_name.text && client_state.game_choice) {
+      indicator_game_name =
+          create_indicator(sdl_context->renderer, client_state.game_choice->str, font);
+      layout_game_name_indicator(&indicator_game_name);
     }
-    if (button_game_name.text)
-      render_button(&button_game_name);
+    if (indicator_game_name.text) {
+      render_indicator(&indicator_game_name);
+    }
 
     if (client_state.deuces_wild) {
-      button_deuces_wild.rect.x =
-          sdl_context->window_width - button_deuces_wild.rect.w - SCALE_X(25);
-      button_deuces_wild.rect.y = sdl_context->window_height - SCALE_Y(200);
-      render_button(&button_deuces_wild);
+      render_indicator(&indicator_deuces_wild);
     }
 
     for (int i = 0; i < SIZEOF_STATUS_MSGS; i++) {
@@ -1370,6 +1377,8 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
           layout_coins(coin_in_pot, player_pos[4].x, coins);
           layout_amount_buttons(amount_button, n_bet_amounts);
           layout_action_buttons(action_button);
+          layout_game_name_indicator(&indicator_game_name);
+          layout_deuces_wild_indicator(&indicator_deuces_wild);
         }
       } else if (event.type == SDL_MOUSEBUTTONDOWN || event.type == SDL_KEYDOWN) {
         if (my_turn && !client_state.do_discard_draw && !client_state.do_exchange_wilds) {

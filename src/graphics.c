@@ -180,7 +180,8 @@ void render_text_plain(SDL_Renderer *renderer, TTF_Font *font, const char *text,
   SDL_RenderCopy(renderer, texture, NULL, dest);
 
   int text_width;
-  TTF_SizeUTF8(font, text, &text_width, NULL);
+  if (TTF_SizeUTF8(font, text, &text_width, NULL) != 0)
+    fprintf(stderr, "TTF_SizeUTF8 failed: %s\n", TTF_GetError());
 
   SDL_FreeSurface(surface);
   SDL_DestroyTexture(texture);
@@ -314,6 +315,84 @@ void render_button(Button_t *button) {
 
   SDL_FreeSurface(textSurface);
   SDL_DestroyTexture(textTexture);
+}
+
+static void draw_filled_ellipse(SDL_Renderer *r, int cx, int cy, int rx, int ry) {
+  if (rx <= 0 || ry <= 0)
+    return;
+
+  for (int y = -ry; y <= ry; y++) {
+    float dy = (float)y / (float)ry;
+
+    float inside = 1.0f - dy * dy;
+    if (inside < 0.0f)
+      continue;
+
+    float dx = rx * sqrtf(inside);
+    int x = (int)(dx + 0.5f); // round safely
+
+    SDL_RenderDrawLine(r, cx - x, cy + y, cx + x, cy + y);
+  }
+}
+
+void render_indicator(const Indicator_t *ind) {
+  if (!ind || !ind->text)
+    return;
+
+  SDL_Renderer *r = ind->renderer;
+
+  // Center and radii
+  int cx = ind->rect.x + ind->rect.w / 2;
+  int cy = ind->rect.y + ind->rect.h / 2;
+  int rx = ind->rect.w / 2;
+  int ry = ind->rect.h / 2;
+
+  // Draw oval background
+  SDL_SetRenderDrawColor(r, ind->bg_color.r, ind->bg_color.g, ind->bg_color.b, ind->bg_color.a);
+  draw_filled_ellipse(r, cx, cy, rx, ry);
+
+  // Render text
+  SDL_Surface *surf = TTF_RenderUTF8_Blended(ind->font, ind->text, ind->fg_color);
+  if (!surf)
+    return;
+
+  SDL_Texture *tex = SDL_CreateTextureFromSurface(r, surf);
+  if (!tex) {
+    SDL_FreeSurface(surf);
+    return;
+  }
+
+  SDL_Rect text_rect = {cx - surf->w / 2, cy - surf->h / 2, surf->w, surf->h};
+
+  SDL_RenderCopy(r, tex, NULL, &text_rect);
+
+  SDL_FreeSurface(surf);
+  SDL_DestroyTexture(tex);
+}
+
+Indicator_t create_indicator(SDL_Renderer *renderer, const char *text, const Font_t *font) {
+  Indicator_t ind = {
+      .text = text,
+      .renderer = renderer,
+      .bg_color = get_color(COLOR_WHITE),
+      .fg_color = get_color(COLOR_BROWN),
+      .rect = {0},
+      .font = font->fonts[FONT_BOLD],
+  };
+
+  if (TTF_SizeUTF8(ind.font, ind.text, &ind.rect.w, &ind.rect.h) != 0) {
+    fprintf(stderr, "TTF_SizeUTF8 failed: %s\n", TTF_GetError());
+    ind.rect.w = SCALE_X(40);
+    ind.rect.h = SCALE_Y(20);
+  }
+
+  int PAD_X = ind.rect.h;     // one text-height on each side
+  int PAD_Y = ind.rect.h / 3; // subtle vertical padding
+
+  ind.rect.w += PAD_X * 2;
+  ind.rect.h += PAD_Y * 2;
+
+  return ind;
 }
 
 SDL_Texture *load_texture(SDL_Renderer *renderer, const char *path) {
