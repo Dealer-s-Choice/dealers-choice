@@ -49,7 +49,7 @@ jobs:
               TAG_NAME=${GITHUB_REF#refs/tags/}
               VERSION=${TAG_NAME}
             else
-              VERSION=latest
+              VERSION=snapshot
             fi
             echo "VERSION=$VERSION" >> $GITHUB_ENV
           fi
