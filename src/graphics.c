@@ -250,13 +250,38 @@ void mark_selected(SDL_Renderer *renderer, const SDL_Rect *rect) {
   }
 }
 
+static float clicked_progress(const Clicked_t *c) {
+  if (!c || c->start_time == 0)
+    return 0.0f;
+
+  uint32_t now = SDL_GetTicks();
+  float t = (now - c->start_time) / (float)c->duration;
+
+  if (t >= 1.0f)
+    return 1.0f;
+
+  return t;
+}
+
 void render_button(Button_t *button) {
   if (!button->active)
     return;
+
+  float click_t = clicked_progress(&button->click);
+
+  if (click_t >= 1.0f) {
+    button->click.start_time = 0; // animation finished
+    click_t = 0.0f;
+  }
+
+  int press_offset = (int)(click_t * SCALE_Y(8));
+  SDL_Rect rect = button->rect;
+  rect.y += press_offset;
+
   // Draw the filled background
   SDL_SetRenderDrawColor(button->renderer, button->bg_color.r, button->bg_color.g,
                          button->bg_color.b, button->bg_color.a);
-  SDL_RenderFillRect(button->renderer, &button->rect);
+  SDL_RenderFillRect(button->renderer, &rect);
 
   // Adjust intensity scale based on hover state
   float lighten_factor = (button->hovered && button->enabled) ? 0.7f : 0.3f;
@@ -272,30 +297,28 @@ void render_button(Button_t *button) {
   Uint8 dark_b = (Uint8)(button->bg_color.b * darken_factor);
 
   // Determine border thickness (6% of smaller dimension, clamped)
-  int min_dim = button->rect.w < button->rect.h ? button->rect.w : button->rect.h;
+  int min_dim = rect.w < rect.h ? rect.w : rect.h;
   int border_thickness = SDL_clamp(min_dim / 16, 1, 4);
 
   // Draw top-left (light) border
   SDL_SetRenderDrawColor(button->renderer, light_r, light_g, light_b, 255);
   for (int i = 0; i < border_thickness; ++i) {
-    SDL_RenderDrawLine(button->renderer, button->rect.x, button->rect.y + i,
-                       button->rect.x + button->rect.w - 1, button->rect.y + i); // Top
-    SDL_RenderDrawLine(button->renderer, button->rect.x + i, button->rect.y, button->rect.x + i,
-                       button->rect.y + button->rect.h - 1); // Left
+    SDL_RenderDrawLine(button->renderer, rect.x, rect.y + i, rect.x + rect.w - 1,
+                       rect.y + i); // Top
+    SDL_RenderDrawLine(button->renderer, rect.x + i, rect.y, rect.x + i,
+                       rect.y + rect.h - 1); // Left
   }
 
   if (button->selected)
-    mark_selected(button->renderer, &button->rect);
+    mark_selected(button->renderer, &rect);
 
   // Draw bottom-right (dark) border
   SDL_SetRenderDrawColor(button->renderer, dark_r, dark_g, dark_b, 255);
   for (int i = 0; i < border_thickness; ++i) {
-    SDL_RenderDrawLine(button->renderer, button->rect.x, button->rect.y + button->rect.h - 1 - i,
-                       button->rect.x + button->rect.w - 1,
-                       button->rect.y + button->rect.h - 1 - i); // Bottom
-    SDL_RenderDrawLine(button->renderer, button->rect.x + button->rect.w - 1 - i, button->rect.y,
-                       button->rect.x + button->rect.w - 1 - i,
-                       button->rect.y + button->rect.h - 1); // Right
+    SDL_RenderDrawLine(button->renderer, rect.x, rect.y + rect.h - 1 - i, rect.x + rect.w - 1,
+                       rect.y + rect.h - 1 - i); // Bottom
+    SDL_RenderDrawLine(button->renderer, rect.x + rect.w - 1 - i, rect.y, rect.x + rect.w - 1 - i,
+                       rect.y + rect.h - 1); // Right
   }
 
   // Render the text centered on the button
@@ -307,8 +330,8 @@ void render_button(Button_t *button) {
 
   SDL_Texture *textTexture = SDL_CreateTextureFromSurface(button->renderer, textSurface);
 
-  int text_x = button->rect.x + (button->rect.w - textSurface->w) / 2;
-  int text_y = button->rect.y + (button->rect.h - textSurface->h) / 2;
+  int text_x = rect.x + (rect.w - textSurface->w) / 2;
+  int text_y = rect.y + (rect.h - textSurface->h) / 2;
   SDL_Rect textRect = {text_x, text_y, textSurface->w, textSurface->h};
 
   SDL_RenderCopy(button->renderer, textTexture, NULL, &textRect);

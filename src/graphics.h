@@ -111,6 +111,17 @@ void clear_screen(SDL_Renderer *renderer);
 void render_text(SDL_Renderer *renderer, TTF_Font *font, const char *text, SDL_Color color,
                  SDL_Rect *dest);
 
+#define CLICKED_DEFAULT                                                                            \
+  {                                                                                                \
+      .start_time = 0,                                                                             \
+      .duration = 80,                                                                              \
+  }
+
+typedef struct {
+  uint32_t start_time;
+  uint32_t duration; // in milliseconds
+} Clicked_t;
+
 typedef struct {
   const char *text;
   SDL_Renderer *renderer;
@@ -121,6 +132,7 @@ typedef struct {
   bool hovered, enabled, selected;
   bool active;
   SDL_Keycode hotkey;
+  Clicked_t click;
 } Button_t;
 
 typedef struct {

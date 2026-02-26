@@ -139,19 +139,18 @@ static void ma_sound_start_wrap(ma_sound *pSound, const char *file, const int li
 }
 
 static Button_t create_deuces_wild_button(SDL_Renderer *renderer, const Font_t *font) {
-  Button_t b = {
-      _("Deuces Wild"),
-      renderer,
-      get_color(COLOR_WHITE),
-      get_color(COLOR_BROWN),
-      {0},
-      font->fonts[FONT_BOLD],
-      false,
-      true,
-      false,
-      true,
-      0,
-  };
+  Button_t b = {_("Deuces Wild"),
+                renderer,
+                get_color(COLOR_WHITE),
+                get_color(COLOR_BROWN),
+                (SDL_Rect){0},
+                font->fonts[FONT_BOLD],
+                false,
+                true,
+                false,
+                true,
+                0,
+                CLICKED_DEFAULT};
 
   /* measure text */
   if (TTF_SizeUTF8(b.font, b.text, &b.rect.w, &b.rect.h) != 0)
@@ -263,8 +262,10 @@ static bool menu_display_game_choices(const PlayerConfig_t *player_config,
             if (SDL_OpenURL(links[i].url) == -1)
               fputs(SDL_GetError(), stderr);
         }
-        if (button_deuces_wild.hovered)
+        if (button_deuces_wild.hovered) {
+          button_deuces_wild.click.start_time = SDL_GetTicks();
           button_deuces_wild.selected = !button_deuces_wild.selected;
+        }
       }
     }
 
@@ -919,19 +920,18 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
     int button_w = text_w + SCALE_X(20);
     int button_h = text_h + SCALE_Y(10);
 
-    amount_button[i] = (Button_t){
-        amount_str[i],
-        sdl_context->renderer,
-        get_color(COLOR_WHITE),
-        get_color(COLOR_BROWN),
-        (SDL_Rect){0, 0, button_w, button_h},
-        font->fonts[FONT_BOLD],
-        false,
-        true,
-        false,
-        true,
-        amount[i].hotkey,
-    };
+    amount_button[i] = (Button_t){amount_str[i],
+                                  sdl_context->renderer,
+                                  get_color(COLOR_WHITE),
+                                  get_color(COLOR_BROWN),
+                                  (SDL_Rect){0, 0, button_w, button_h},
+                                  font->fonts[FONT_BOLD],
+                                  false,
+                                  true,
+                                  false,
+                                  true,
+                                  amount[i].hotkey,
+                                  CLICKED_DEFAULT};
   }
   amount_button[0].selected = true;
   client_state.selected_amount = amount[0].value;
@@ -941,36 +941,34 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
 
   Button_t card_faces[13] = {0};
   for (size_t i = 0; i < ARRAY_SIZE(card_faces); i++) {
-    card_faces[i] = (Button_t){
-        DH_get_card_face_str(i + 1),
-        sdl_context->renderer,
-        get_color(COLOR_WHITE),
-        get_color(COLOR_BROWN),
-        {0},
-        font->fonts[FONT_WILD_SELECT],
-        false,
-        true,
-        false,
-        true,
-        0,
-    };
+    card_faces[i] = (Button_t){DH_get_card_face_str(i + 1),
+                               sdl_context->renderer,
+                               get_color(COLOR_WHITE),
+                               get_color(COLOR_BROWN),
+                               {0},
+                               font->fonts[FONT_WILD_SELECT],
+                               false,
+                               true,
+                               false,
+                               true,
+                               0,
+                               CLICKED_DEFAULT};
   }
 
   Button_t card_suits[DH_SUIT_MAX] = {0};
   for (DH_suit i = 0; i < ARRAY_SIZE(card_suits); i++) {
-    card_suits[i] = (Button_t){
-        DH_get_unicode_suit(i),
-        sdl_context->renderer,
-        get_color(COLOR_WHITE),
-        get_color(COLOR_BROWN),
-        {0},
-        font->fonts[FONT_CARD],
-        false,
-        true,
-        false,
-        true,
-        0,
-    };
+    card_suits[i] = (Button_t){DH_get_unicode_suit(i),
+                               sdl_context->renderer,
+                               get_color(COLOR_WHITE),
+                               get_color(COLOR_BROWN),
+                               {0},
+                               font->fonts[FONT_CARD],
+                               false,
+                               true,
+                               false,
+                               true,
+                               0,
+                               CLICKED_DEFAULT};
   }
 
   layout_wild_selection(card_faces, card_suits, ARRAY_SIZE(card_faces), ARRAY_SIZE(card_suits),
@@ -1374,6 +1372,7 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
                 continue;
               if (SDL_PointInRect(&mouse_pos, &card_faces[f].rect) &&
                   event.type == SDL_MOUSEBUTTONDOWN) {
+                card_faces[f].click.start_time = SDL_GetTicks();
                 DH_Card *card = &turn->hand.card[card_n];
                 card->face_val = card_val;
                 make_human_readable_card(card, &card_context[my_id][card_n]);
@@ -1383,6 +1382,7 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
             for (DH_suit s = DH_SUIT_MAX - DH_SUIT_MAX; s < ARRAY_SIZE(card_suits); s++) {
               if (SDL_PointInRect(&mouse_pos, &card_suits[s].rect) &&
                   event.type == SDL_MOUSEBUTTONDOWN) {
+                card_suits[s].click.start_time = SDL_GetTicks();
                 DH_Card *card = &turn->hand.card[card_n];
                 card->suit = s;
                 make_human_readable_card(card, &card_context[my_id][card_n]);
@@ -1417,6 +1417,7 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
               amount_button[j].selected = false;
             }
             amount_button[i].selected = true;
+            amount_button[i].click.start_time = SDL_GetTicks();
             client_state.selected_amount = atoi(amount_button[i].text);
           }
           break;
