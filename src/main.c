@@ -35,14 +35,16 @@
 #include "config.h"
 #include "game.h"
 #include "getlongopt.h"
+#include "globals.h"
 #include "graphics.h"
+#include "links.h"
 #include "main.h"
 #include "server.h"
 
 enum { RUN_CLIENT = 20 };
 
 static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, const uint16_t port,
-                                SdlContext_t *sdl_context, Font_t *font) {
+                                SdlContext_t *sdl_context, Font_t *font, Link_t *links) {
   Button_t button_connect = {
       .text = _("Connect"),
       .renderer = sdl_context->renderer,
@@ -68,6 +70,9 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, c
   SDL_Rect input_nick = (SDL_Rect){100, 380, 300, 40};
   SDL_StartTextInput();
 
+  // layout_links(links, LINK_DEFS_COUNT);
+
+  bool fullscreen_toggled = false;
   bool run_client = false;
   bool running = true;
   while (running) {
@@ -75,12 +80,20 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, c
     while (SDL_PollEvent(&e)) {
       SDL_Point mouse_pos = {e.button.x, e.button.y};
       button_connect.hovered = SDL_PointInRect(&mouse_pos, &button_connect.rect);
+      for (size_t i = 0; i < LINK_DEFS_COUNT; i++) {
+        links[i].hovered = SDL_PointInRect(&mouse_pos, &links[i].rect);
+      }
       if (e.type == SDL_QUIT) {
         running = false;
       } else if (e.type == SDL_MOUSEBUTTONDOWN) {
         if (SDL_PointInRect(&mouse_pos, &button_connect.rect)) {
           run_client = true;
           running = false;
+        }
+        for (size_t i = 0; i < LINK_DEFS_COUNT; i++) {
+          if (links[i].hovered && e.button.button == SDL_BUTTON_LEFT)
+            if (SDL_OpenURL(links[i].url) == -1)
+              fputs(SDL_GetError(), stderr);
         }
       } else if (e.type == SDL_TEXTINPUT) {
         if (strlen(host_str) + strlen(e.text.text) < MAX_INPUT_LENGTH) {
@@ -90,7 +103,8 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, c
         if (e.key.keysym.sym == SDLK_BACKSPACE && strlen(host_str) > 0) {
           host_str[strlen(host_str) - 1] = '\0';
         } else if (e.key.keysym.sym == SDLK_RETURN && e.key.keysym.mod & KMOD_ALT) {
-          toggle_fullscreen(sdl_context->window);
+          toggle_fullscreen(sdl_context);
+          fullscreen_toggled = true;
         } else if (e.key.keysym.sym == SDLK_RETURN) {
           run_client = true;
           running = false;
@@ -128,6 +142,11 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, c
     render_text_plain(sdl_context->renderer, font->fonts[FONT_VERSION], version,
                       get_color(COLOR_WHITE),
                       &(SDL_Rect){title_rect.x + SCALE_X(40), title_rect.y + SCALE_Y(80), 0, 0});
+
+    if (fullscreen_toggled)
+      layout_links(links, LINK_DEFS_COUNT);
+    for (size_t i = 0; i < LINK_DEFS_COUNT; i++)
+      render_link(&links[i]);
 
     SDL_RenderPresent(sdl_context->renderer);
     SDL_Delay(16);
@@ -232,6 +251,32 @@ static CliArgs_t parse_cli_args(int argc, char *argv[]) {
   return cli_args;
 }
 
+static void init_sdl_window(SdlContext_t *sdl_context, const char *title) {
+  SDL_Rect bounds;
+  if (SDL_GetDisplayBounds(0, &bounds) == 0) {
+    printf("Display 0 bounds: x=%d, y=%d, w=%d, h=%d\n", bounds.x, bounds.y, bounds.w, bounds.h);
+  } else {
+    puts(SDL_GetError());
+    exit(EXIT_FAILURE);
+  }
+
+  float factor = 0.8;
+  float w = bounds.w * factor;
+  float h = bounds.h * factor;
+
+  sdl_context->window = SDL_CreateWindow(title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, w,
+                                         h, SDL_WINDOW_SHOWN);
+  if (!sdl_context->window)
+    puts(SDL_GetError());
+  sdl_context->renderer = SDL_CreateRenderer(sdl_context->window, -1, SDL_RENDERER_ACCELERATED);
+  if (!sdl_context->renderer)
+    puts(SDL_GetError());
+
+  assign_window_values_set_scaling(sdl_context);
+
+  return;
+}
+
 int main(int argc, char *argv[]) {
 #ifdef ENABLE_NLS
   static char *locale_dir;
@@ -264,8 +309,9 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 
-  SdlContext_t sdl_context;
+  SdlContext_t sdl_context = {0};
   init_sdl_window(&sdl_context, DEALERSCHOICE_FORMAL_NAME);
+  g_sdl_context = &sdl_context;
 
   Font_t font;
 
@@ -308,11 +354,16 @@ int main(int argc, char *argv[]) {
   }
 #endif
 
+  Link_t links[LINK_DEFS_COUNT];
+  init_links(links, font.fonts[FONT_LINK]);
+  layout_links(links, LINK_DEFS_COUNT);
+
   char host_str[MAX_INPUT_LENGTH] = {0};
   snprintf(host_str, sizeof(host_str), "%s", (cli_args.host) ? cli_args.host : player_config.host);
 
   uint16_t port = (cli_args.port != 0) ? cli_args.port : player_config.port;
-  if (menu_display_connect(&player_config, host_str, port, &sdl_context, &font) == RUN_CLIENT) {
+  if (menu_display_connect(&player_config, host_str, port, &sdl_context, &font, links) ==
+      RUN_CLIENT) {
     char tmp[256] = {0};
     snprintf(tmp, sizeof(tmp), "Attempting to connect to: %s...", host_str);
     render_text_plain(sdl_context.renderer, font.fonts[FONT_DEFAULT], tmp, get_color(COLOR_WHITE),
@@ -320,7 +371,7 @@ int main(int argc, char *argv[]) {
     SDL_RenderPresent(sdl_context.renderer);
 
     get_socket_context_and_run_client(&player_config, &cli_args, host_str, port, &sdl_context,
-                                      &font, &path, cli_args.test_mode);
+                                      &font, &path, cli_args.test_mode, links);
   }
 
   for (int i = 0; i < NUM_FONTS; ++i)

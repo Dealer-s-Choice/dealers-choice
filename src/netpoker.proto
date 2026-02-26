@@ -27,9 +27,8 @@ message GameState {
   uint32 raises_remaining = 5;
   uint32 prev_bet_amount = 6;
   bool winner_declared = 7;
-  bool deuces_wild = 8;
-  bool player_exchanging = 9;
-  repeated Player player = 10;
+  bool player_exchanging = 8;
+  repeated Player player = 9;
 }
 
 message GameSettings {

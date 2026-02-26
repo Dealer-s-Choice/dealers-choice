@@ -27,6 +27,7 @@
 */
 
 #include "net.h"
+#include "game.h"
 #include "util.h"
 
 static void fill_player_message(struct player_message_builder_t *builder, const Player_t *src) {
@@ -89,7 +90,6 @@ uint8_t *serialize_game_state(const GameState_t *src, uint32_t *size_out) {
   msg.prev_bet_amount = src->prev_bet_amount;
   msg.player_count = src->player_count;
   msg.winner_declared = src->winner_declared;
-  msg.deuces_wild = src->deuces_wild;
   msg.player_exchanging = src->player_exchanging;
 
   Player *player_msgs[MAX_PLAYERS];
@@ -131,7 +131,6 @@ GameState_t deserialize_game_state(const uint8_t *data, uint32_t size) {
   result.prev_bet_amount = msg->prev_bet_amount;
   result.player_count = msg->player_count;
   result.winner_declared = msg->winner_declared;
-  result.deuces_wild = msg->deuces_wild;
   result.player_exchanging = msg->player_exchanging;
 
   size_t n = msg->n_player < MAX_PLAYERS ? msg->n_player : MAX_PLAYERS;
@@ -472,6 +471,14 @@ ERecvStatus_t recv_game_state(SocketContext_t *socket_context, GameState_t *game
     }
 
     hand__free_unpacked(pb_hand, NULL);
+    break;
+  }
+  case MSG_GAME_SELECT: {
+    GameSelectPayload_t payload = {0};
+    get_game_select_payload(buffer, size, id, &payload);
+    client_state->game_type = payload.game_type;
+    client_state->deuces_wild = payload.deuces_wild;
+    client_state->game_choice = find_game_choice_by_type(client_state->game_type);
     break;
   }
 

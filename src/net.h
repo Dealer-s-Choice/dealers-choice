@@ -31,6 +31,7 @@
 
 #include <SDL2/SDL_net.h>
 
+#include "globals.h"
 #include "netpoker.pb-c.h"
 #include "types.h"
 
@@ -108,6 +109,9 @@ typedef struct {
   bool bet_check_fold;
   bool call_raise_fold;
   unsigned int ping_times[MAX_CLIENTS];
+  uint8_t game_type;
+  bool deuces_wild;
+  const GameChoice_t *game_choice;
 } ClientState_t;
 
 struct player_message_builder_t {

@@ -62,9 +62,10 @@ extern int n_passes;
                                                                                                    \
   ERecvStatus_t recv_status;                                                                       \
                                                                                                    \
+  Link_t *links = NULL;                                                                            \
   for (int i = 0; i < N_PLAYERS; i++) {                                                            \
-    socket_context[i] = get_socket_context_and_run_client(&player_config, &cli_args, "127.0.0.1",  \
-                                                          22777, NULL, NULL, &path, test_mode);    \
+    socket_context[i] = get_socket_context_and_run_client(                                         \
+        &player_config, &cli_args, "127.0.0.1", 22777, NULL, NULL, &path, test_mode, links);       \
     assert(socket_context[i].sock != NULL);                                                        \
     recv_game_settings(socket_context[i].sock, socket_context[i].set, &game_settings[i]);          \
     SDL_Delay(n_ms);                                                                               \

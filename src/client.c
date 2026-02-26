@@ -34,26 +34,19 @@
 
 #include "client.h"
 #include "game.h"
+#include "globals.h"
 #include "graphics.h"
+
 #include "util.h"
 
 const uint8_t MAX_CONNECTION_ATTEMPTS = 12;
 static const uint8_t coin_px = 96;
 
-#define POT_BOUNDARY SCALE_Y(250)
+#define POT_BOUNDARY SCALE_Y(450)
 
 #define x_begin_action_button SCALE_X(500)
 
 #define ma_sound_start_checked(pSound) ma_sound_start_wrap((pSound), __FILE__, __LINE__)
-
-static int send_protocol_header(TCPsocket sock) {
-  verbose_puts("Exchanging protocol information...");
-  GameProtocolHeader_t hdr = {0};
-  snprintf(hdr.magic, sizeof(hdr.magic), "%s", GAME_PROTOCOL_MAGIC);
-  hdr.version = SDL_SwapBE16(GAME_PROTOCOL_VERSION);
-
-  return send_all_tcp(sock, &hdr, sizeof(hdr));
-}
 
 // Build fails using gcc on Ubuntu 24.04 (and maybe others) without this
 #ifndef M_PI
@@ -63,40 +56,15 @@ static int send_protocol_header(TCPsocket sock) {
 // What's the max this needs to be to support the unicode suit symbol?
 #define SIZEOF_CARD_TEXT 20
 
-#define MAX_POT_COINS 80
+#define MAX_POT_COINS 40
 
-SDL_Rect card_area = {0};
+static int send_protocol_header(TCPsocket sock) {
+  verbose_puts("Exchanging protocol information...");
+  GameProtocolHeader_t hdr = {0};
+  snprintf(hdr.magic, sizeof(hdr.magic), "%s", GAME_PROTOCOL_MAGIC);
+  hdr.version = SDL_SwapBE16(GAME_PROTOCOL_VERSION);
 
-int8_t send_game_select(TCPsocket sock, uint8_t game_type, bool deuces_wild) {
-  GameSelectPayload_t payload = {game_type, deuces_wild ? 1 : 0};
-
-  const uint32_t payload_size = OPCODE_SIZE + sizeof(payload);
-  const uint32_t total_size_be = SDL_SwapBE32(payload_size);
-
-  uint8_t buffer[LENGTH_PREFIX_SIZE + payload_size];
-
-  // Write length prefix
-  memcpy(buffer, &total_size_be, LENGTH_PREFIX_SIZE);
-
-  // Write opcode (portable big-endian)
-  uint16_t opcode_be = SDL_SwapBE16(MSG_GAME_SELECT);
-  memcpy(buffer + LENGTH_PREFIX_SIZE, &opcode_be, sizeof(opcode_be));
-
-  // Write payload
-  memcpy(buffer + LENGTH_PREFIX_SIZE + OPCODE_SIZE, &payload, sizeof(payload));
-
-  // Send all
-  int result = send_all_tcp(sock, buffer, sizeof(buffer));
-
-  const GameChoice_t *choice = find_game_choice_by_type(game_type);
-  if (result == 0) {
-    verbose_printf("Game type sent: %s (Deuces wild: %s)\n", choice ? choice->str : "Unknown",
-                   deuces_wild ? "Yes" : "No");
-    return 0;
-  }
-
-  fprintf(stderr, "Game type failed to send: %s\n", choice ? choice->str : "Unknown");
-  return result;
+  return send_all_tcp(sock, &hdr, sizeof(hdr));
 }
 
 // These two buttons for creating the buttons are mostly identical. In the future,
@@ -136,7 +104,7 @@ static Button_t create_button(const char *text, SDL_Renderer *renderer, const in
 
 static Button_t create_game_choice_button(const char *text, SDL_Renderer *renderer, SDL_Rect rect,
                                           TTF_Font *font, SDL_Keycode hotkey) {
-  Button_t button = {
+  Button_t b = {
       .text = text,
       .renderer = renderer,
       .bg_color = get_color(COLOR_BLACK),
@@ -149,42 +117,18 @@ static Button_t create_game_choice_button(const char *text, SDL_Renderer *render
       .active = true,
       .hotkey = hotkey,
   };
-  return button;
-}
 
-void render_link(Link_t *link) {
-  TTF_SetFontStyle(link->font, TTF_STYLE_UNDERLINE);
-
-  SDL_Color text_color = (link->hovered) ? get_color(COLOR_BLUE) : get_color(COLOR_BLACK);
-
-  SDL_Surface *surface = TTF_RenderText_Solid(link->font, link->text, text_color);
-  if (!surface) {
-    SDL_Log("Failed to render text surface: %s", TTF_GetError());
-    return;
+  if (TTF_SizeUTF8(font, b.text, &b.rect.w, &b.rect.h) != 0) {
+    fprintf(stderr, "TTF_SizeUTF8 error: %s\n", TTF_GetError());
+    b.rect.w = 0;
+    b.rect.h = 0;
   }
 
-  SDL_Texture *texture = SDL_CreateTextureFromSurface(link->renderer, surface);
-  if (!texture) {
-    SDL_Log("Failed to create texture from surface: %s", SDL_GetError());
-    SDL_FreeSurface(surface);
-    return;
-  }
+  /* Padding — unscaled, matches font metrics */
+  b.rect.w += 30;
+  b.rect.h += (int)(b.rect.h * 0.1f);
 
-  link->rect.w = surface->w;
-  link->rect.h = surface->h;
-
-  SDL_FreeSurface(surface);
-
-  if (link->hovered)
-    SDL_SetRenderDrawColor(link->renderer, 255, 255, 255, 255);
-  else
-    SDL_SetRenderDrawColor(link->renderer, 230, 245, 230, 255);
-
-  SDL_RenderFillRect(link->renderer, &link->rect);
-
-  SDL_RenderCopy(link->renderer, texture, NULL, &link->rect);
-  SDL_DestroyTexture(texture);
-  TTF_SetFontStyle(link->font, TTF_STYLE_NORMAL);
+  return b;
 }
 
 static void ma_sound_start_wrap(ma_sound *pSound, const char *file, const int line) {
@@ -194,56 +138,13 @@ static void ma_sound_start_wrap(ma_sound *pSound, const char *file, const int li
   }
 }
 
-static const int NUM_COLUMNS = 3;
-
-static bool menu_display_game_choices(const PlayerConfig_t *player_config,
-                                      SocketContext_t *socket_context, const int8_t my_id,
-                                      GameState_t *game_state, ClientState_t *client_state,
-                                      SdlContext_t *sdl_context, Font_t *font,
-                                      const SoundContext_t *sound_context) {
-  // This will likely get used later. For now, suppress the warning about "unused parameter"
-  (void)player_config;
-
-  uint8_t n_clients = 0;
-
-  const int top_margin = 25;
-  const int left_margin = 25;
-  const int column_spacing = 400;
-  const float row_spacing_factor = 1.2f;
-
-  Button_t game_choice_button[MAX_CHOICES];
-
-  for (int i = 0; i < MAX_CHOICES; i++) {
-    int column = i % NUM_COLUMNS;
-    int row = i / NUM_COLUMNS;
-
-    int x_offset = SCALE_X(left_margin + column * column_spacing);
-    int y_offset = SCALE_Y(top_margin);
-
-    SDL_Rect rect = {x_offset, y_offset, 0, 0};
-
-    if (TTF_SizeUTF8(font->fonts[FONT_BOLD], game_choices[i].str, &rect.w, &rect.h) != 0) {
-      fprintf(stderr, "TTF_SizeUTF8 error: %s\n", TTF_GetError());
-    }
-
-    /* Padding — unscaled, matches font metrics */
-    rect.w += 30;
-    rect.h += rect.h * 0.1f;
-
-    /* Vertical placement uses already-scaled rect.h */
-    int button_height = (int)(rect.h * row_spacing_factor);
-    rect.y += row * button_height;
-
-    game_choice_button[i] = create_game_choice_button(game_choices[i].str, sdl_context->renderer,
-                                                      rect, font->fonts[FONT_BOLD], (SDL_Keycode)0);
-  }
-
-  Button_t deuces_wild = {
+static Button_t create_deuces_wild_button(SDL_Renderer *renderer, const Font_t *font) {
+  Button_t b = {
       _("Deuces Wild"),
-      sdl_context->renderer,
+      renderer,
       get_color(COLOR_WHITE),
       get_color(COLOR_BROWN),
-      {0, 0, 0, 0},
+      {0},
       font->fonts[FONT_BOLD],
       false,
       true,
@@ -253,41 +154,61 @@ static bool menu_display_game_choices(const PlayerConfig_t *player_config,
   };
 
   /* measure text */
-  TTF_SizeUTF8(deuces_wild.font, deuces_wild.text, &deuces_wild.rect.w, &deuces_wild.rect.h);
+  if (TTF_SizeUTF8(b.font, b.text, &b.rect.w, &b.rect.h) != 0)
+    fprintf(stderr, "TTF_SizeUTF8 failed: %s\n", TTF_GetError());
 
   /* padding */
-  deuces_wild.rect.w += SCALE_X(10);
-  deuces_wild.rect.h += SCALE_Y(10);
+  b.rect.w += SCALE_X(10);
+  b.rect.h += SCALE_Y(10);
+  return b;
+}
 
+static const int NUM_COLUMNS = 4;
+
+static bool menu_display_game_choices(const PlayerConfig_t *player_config,
+                                      SocketContext_t *socket_context, const int8_t my_id,
+                                      GameState_t *game_state, ClientState_t *client_state,
+                                      SdlContext_t *sdl_context, Font_t *font,
+                                      const SoundContext_t *sound_context, Link_t *links) {
+  // This will likely get used later. For now, suppress the warning about "unused parameter"
+  (void)player_config;
+
+  uint8_t n_clients = 0;
+
+  const int column_spacing = 400;
+  const float row_spacing_factor = 1.2f;
+
+  Button_t game_choice_button[MAX_CHOICES];
+
+  for (int i = 0; i < MAX_CHOICES; i++) {
+    int column = i % NUM_COLUMNS;
+    int row = i / NUM_COLUMNS;
+
+    int x_offset = MARGIN + SCALE_X(column * column_spacing);
+    int y_offset = MARGIN;
+
+    SDL_Rect rect = {x_offset, y_offset, 0, 0};
+
+    game_choice_button[i] = create_game_choice_button(game_choices[i].str, sdl_context->renderer,
+                                                      rect, font->fonts[FONT_BOLD], (SDL_Keycode)0);
+
+    /* Vertical placement uses already-scaled rect.h */
+    int button_height = (int)(game_choice_button[i].rect.h * row_spacing_factor);
+    game_choice_button[i].rect.y += row * button_height;
+  }
+
+  Button_t button_deuces_wild = create_deuces_wild_button(sdl_context->renderer, font);
   /* align X to second column */
-  deuces_wild.rect.x = SCALE_X(left_margin + 1 * column_spacing);
-
+  button_deuces_wild.rect.x = MARGIN + SCALE_X(1 * column_spacing);
   /* compute grid height */
   int rows = (MAX_CHOICES + NUM_COLUMNS - 1) / NUM_COLUMNS;
-  int button_height = (int)(deuces_wild.rect.h * row_spacing_factor);
-
+  int button_height = (int)(button_deuces_wild.rect.h * row_spacing_factor);
   /* place below the grid */
-  deuces_wild.rect.y = SCALE_Y(top_margin) + rows * button_height;
+  button_deuces_wild.rect.y = MARGIN + rows * button_height;
 
   bool dealing = true;
 
-  const int link_column = sdl_context->win_center.x + card_area.h;
-  Link_t link[] = {
-      /* TRANSLATORS: "Discord", "Lazarus Project" should not be translated */
-      {_(" Discord Channel (on Lazarus Project Server) "),
-       "https://discord.com/channels/1295630985429516299/1385298664192217138",
-       font->fonts[FONT_LINK], sdl_context->renderer, (SDL_Rect){link_column, 0, 0, 0}, false},
-      {" Matrix ", "https://matrix.to/#/#dealers-choice:matrix.org", font->fonts[FONT_LINK],
-       sdl_context->renderer, (SDL_Rect){link_column, 0, 0, 0}, false},
-      {" Website ", DEALERSCHOICE_URL, font->fonts[FONT_LINK], sdl_context->renderer,
-       (SDL_Rect){link_column, 0, 0, 0}, false}};
-
-  for (size_t i = 0; i < ARRAY_SIZE(link); i++) {
-    if (TTF_SizeUTF8(link[i].font, link[i].text, &link[i].rect.w, &link[i].rect.h) != 0)
-      fprintf(stderr, "TTF_SizeUTF8 error: %s\n", TTF_GetError());
-    link[i].rect.y = (sdl_context->window_height - (link[i].rect.h * 2)) - (i * link[i].rect.h) -
-                     (i * (link[i].rect.h * 0.2));
-  }
+  // layout_links(links, LINK_DEFS_COUNT);
 
   static uint8_t saved_n_clients = 0;
   TCPsocket sock = socket_context->sock;
@@ -300,7 +221,7 @@ static bool menu_display_game_choices(const PlayerConfig_t *player_config,
     for (int i = 0; i < MAX_CHOICES; i++)
       game_choice_button[i].enabled = (game_state->dealer_id == my_id && n_clients > 1);
 
-    deuces_wild.enabled = (game_state->dealer_id == my_id && n_clients > 1);
+    button_deuces_wild.enabled = (game_state->dealer_id == my_id && n_clients > 1);
 
     SDL_Point mouse_pos;
     SDL_GetMouseState(&mouse_pos.x, &mouse_pos.y);
@@ -308,25 +229,28 @@ static bool menu_display_game_choices(const PlayerConfig_t *player_config,
       game_choice_button[i].hovered = SDL_PointInRect(&mouse_pos, &game_choice_button[i].rect);
     }
 
-    deuces_wild.hovered = SDL_PointInRect(&mouse_pos, &deuces_wild.rect) && deuces_wild.enabled;
+    button_deuces_wild.hovered =
+        SDL_PointInRect(&mouse_pos, &button_deuces_wild.rect) && button_deuces_wild.enabled;
 
+    bool fullscreen_toggled = false;
     SDL_Event e;
     while (SDL_PollEvent(&e)) {
       // SDL_Point mouse_pos = {e.button.x, e.button.y};
-      for (size_t i = 0; i < ARRAY_SIZE(link); i++) {
-        link[i].hovered = SDL_PointInRect(&mouse_pos, &link[i].rect);
+      for (size_t i = 0; i < LINK_DEFS_COUNT; i++) {
+        links[i].hovered = SDL_PointInRect(&mouse_pos, &links[i].rect);
       }
 
       if (e.type == SDL_QUIT) {
         return false;
       } else if (e.type == SDL_KEYDOWN &&
                  (e.key.keysym.sym == SDLK_RETURN && e.key.keysym.mod & KMOD_ALT)) {
-        toggle_fullscreen(sdl_context->window);
+        fullscreen_toggled = toggle_fullscreen(sdl_context);
       } else if (e.type == SDL_MOUSEBUTTONDOWN) {
         for (int i = 0; i < MAX_CHOICES; i++) {
           if (SDL_PointInRect(&mouse_pos, &game_choice_button[i].rect) &&
               game_state->dealer_id == my_id) {
-            if (send_game_select(sock, game_choices[i].game_type, deuces_wild.selected) == 0) {
+            if (send_game_select(sock, game_choices[i].game_type, button_deuces_wild.selected) ==
+                0) {
               dealing = false;
               break;
             } else {
@@ -334,13 +258,13 @@ static bool menu_display_game_choices(const PlayerConfig_t *player_config,
             }
           }
         }
-        for (size_t i = 0; i < sizeof link / sizeof link[0]; i++) {
-          if (link[i].hovered && e.button.button == SDL_BUTTON_LEFT)
-            if (SDL_OpenURL(link[i].url) == -1)
+        for (size_t i = 0; i < LINK_DEFS_COUNT; i++) {
+          if (links[i].hovered && e.button.button == SDL_BUTTON_LEFT)
+            if (SDL_OpenURL(links[i].url) == -1)
               fputs(SDL_GetError(), stderr);
         }
-        if (deuces_wild.hovered)
-          deuces_wild.selected = !deuces_wild.selected;
+        if (button_deuces_wild.hovered)
+          button_deuces_wild.selected = !button_deuces_wild.selected;
       }
     }
 
@@ -349,13 +273,10 @@ static bool menu_display_game_choices(const PlayerConfig_t *player_config,
       for (int i = 0; i < MAX_CHOICES; i++)
         render_button(&game_choice_button[i]);
 
-      render_button(&deuces_wild);
+      render_button(&button_deuces_wild);
 
-      SDL_Point status_pos = {
-          sdl_context->window_width * .1,
-          sdl_context->window_height / 2,
-      };
-      int offset_x = status_pos.x, offset_y = status_pos.y;
+      int offset_x = sdl_context->window_width * .1;
+      int offset_y = sdl_context->window_height / 2;
 
       SDL_Rect text_connected = {offset_x, offset_y, 0, 0};
       render_text_plain(sdl_context->renderer, font->fonts[FONT_BOLD], _("Connected players:"),
@@ -414,8 +335,11 @@ static bool menu_display_game_choices(const PlayerConfig_t *player_config,
             "Waiting for dealer to select game...", get_color(COLOR_WHITE),
             &(SDL_Rect){sdl_context->win_center.x, sdl_context->window_height - 200, 0, 0});
 
-      for (size_t i = 0; i < ARRAY_SIZE(link); i++)
-        render_link(&link[i]);
+      if (fullscreen_toggled)
+        layout_links(links, LINK_DEFS_COUNT);
+      for (size_t i = 0; i < LINK_DEFS_COUNT; i++)
+        render_link(&links[i]);
+
     } else {
       // Show dealing screen immediately after click
       show_loading_screen(sdl_context->renderer, font->fonts[FONT_TITLE], _("Dealing..."));
@@ -433,8 +357,6 @@ typedef struct {
   SDL_Color pattern_color;
   int pattern_type; // 0: crosshatch, 1: dots, 2: diagonal stripes, 3: grid
 } CardBackStyle_t;
-
-#include "game.h" // for rng
 
 static CardBackStyle_t card_back_styles[] = {
     {{0, 0, 128, 255}, {255, 255, 255, 255}, {200, 200, 255, 255}, 0},   // blue crosshatch
@@ -675,6 +597,8 @@ static void make_human_readable_card(DH_Card *card, CardContext_t *context) {
   }
 }
 
+static const int PADDING_BETWEEN_CARDS = 10;
+
 static void create_card_context(CardContext_t card_context[MAX_PLAYERS][MAX_HAND_SIZE],
                                 const int start_i, Player_t *players_array,
                                 const SDL_Point *player_pos, SDL_Renderer *renderer,
@@ -694,7 +618,7 @@ static void create_card_context(CardContext_t card_context[MAX_PLAYERS][MAX_HAND
       const int id = turn->id;
       DH_Card *card = &(turn->hand.card)[card_n];
       const SDL_Point card_pos = {
-          player_pos[id].x + card_n * (card_area.w + SCALE_X(10)),
+          player_pos[id].x + card_n * (card_area.w + SCALE_X(PADDING_BETWEEN_CARDS)),
           player_pos[id].y,
       };
       SDL_Rect rect = {card_pos.x, card_pos.y, card_area.w, card_area.h};
@@ -752,8 +676,11 @@ typedef struct {
 
 void render_coin_animation(SDL_Renderer *renderer, CoinAnimation_t *anim) {
   if (!anim->active) {
-    SDL_RenderCopy(renderer, anim->texture, NULL,
-                   &(SDL_Rect){anim->end.x, anim->end.y, SCALE_X(coin_px), SCALE_Y(coin_px)});
+    return;
+  }
+
+  if (anim->duration <= 0) {
+    anim->active = false;
     return;
   }
 
@@ -762,13 +689,14 @@ void render_coin_animation(SDL_Renderer *renderer, CoinAnimation_t *anim) {
 
   if (progress >= 1.0f) {
     progress = 1.0f;
-    anim->active = false; // Animation is done
+    anim->active = false;
   }
 
-  int x = anim->start.x + (int)((anim->end.x - anim->start.x) * progress);
-  int y = anim->start.y + (int)((anim->end.y - anim->start.y) * progress);
+  float fx = anim->start.x + (anim->end.x - anim->start.x) * progress;
+  float fy = anim->start.y + (anim->end.y - anim->start.y) * progress;
 
-  SDL_Rect dst = {x, y, SCALE_X(coin_px), SCALE_Y(coin_px)};
+  SDL_Rect dst = {.x = (int)fx, .y = (int)fy, .w = SCALE_X(coin_px), .h = SCALE_Y(coin_px)};
+
   SDL_RenderCopy(renderer, anim->texture, NULL, &dst);
 }
 
@@ -783,6 +711,152 @@ enum {
   MAX_ACTIONS,
 };
 
+static void layout_amount_buttons(Button_t *b, const size_t count) {
+  int left_margin = SCALE_X(500);
+  for (size_t i = 0; i < count; i++) {
+    b[i].rect.x = left_margin;
+    b[i].rect.y = g_sdl_context->window_height - (b[i].rect.h * 3);
+    left_margin += b[i].rect.w + SCALE_X(10);
+  }
+}
+
+static void layout_action_buttons(Button_t *b) {
+  for (int i = 0; i < MAX_ACTIONS; i++) {
+    b[i].rect.y = g_sdl_context->window_height - (b[i].rect.h * 5);
+  }
+}
+
+static void layout_player_pos(SDL_Point *player_pos) {
+  player_pos[0].x = MARGIN;
+  player_pos[0].y = card_area.h * 4;
+
+  player_pos[1].x = SCALE_X(20);
+  player_pos[1].y = card_area.h;
+
+  for (int i = 2; i < MAX_PLAYERS; i++)
+    player_pos[i].x = g_sdl_context->window_width -
+                      (card_area.w * 7 + (SCALE_X(PADDING_BETWEEN_CARDS) * 7) + MARGIN);
+
+  player_pos[2].y = card_area.h;
+  player_pos[3].y = card_area.h * 4;
+  player_pos[4].y = card_area.h * 7;
+}
+
+typedef struct {
+  SDL_Point offset;
+  SDL_Rect rect;
+} CoinInPot_t;
+
+static void layout_coins(CoinInPot_t *coins, SDL_Point *p, int count) {
+  int coin_w = SCALE_X(coin_px);
+  int coin_h = SCALE_Y(coin_px);
+
+  for (int i = 0; i < count; i++) {
+    coins[i].rect.w = coin_w;
+    coins[i].rect.h = coin_h;
+
+    coins[i].rect.x = p->x + coins[i].offset.x - coin_w / 2;
+
+    coins[i].rect.y = p->y + coins[i].offset.y - coin_h / 2;
+  }
+}
+
+static void layout_pot_center(SDL_Point *p) {
+  p->x = g_sdl_context->win_center.x;
+  p->y = g_sdl_context->win_center.y;
+}
+
+static void layout_game_name_indicator(Indicator_t *ind) {
+  ind->rect.x = g_sdl_context->window_width - ind->rect.w - SCALE_X(25);
+  ind->rect.y = g_sdl_context->window_height - SCALE_Y(300);
+}
+
+static void layout_deuces_wild_indicator(Indicator_t *ind) {
+  ind->rect.x = g_sdl_context->window_width - ind->rect.w - SCALE_X(25);
+  ind->rect.y = g_sdl_context->window_height - SCALE_Y(200);
+}
+
+static void layout_wild_selection(Button_t *card_faces, Button_t *card_suits, const int face_count,
+                                  const DH_suit suit_count, const Font_t *font) {
+  int y_offset = card_area.h * 1;
+  int width, height;
+  TTF_SizeUTF8(font->fonts[FONT_WILD_SELECT], " 10 ", &width, &height);
+  for (int i = 0; i < face_count; i++) {
+    card_faces[i].rect =
+        (SDL_Rect){g_sdl_context->win_center.x - SCALE_X(100), y_offset, width, height};
+    y_offset += height + SCALE_Y(10);
+  }
+
+  y_offset = (height + SCALE_Y(10)) * 6;
+  TTF_SizeUTF8(font->fonts[FONT_CARD], "   ", &width, &height);
+  for (DH_suit i = 0; i < suit_count; i++) {
+    card_suits[i].rect = (SDL_Rect){
+        g_sdl_context->win_center.x - SCALE_X(100) + width + SCALE_X(20), y_offset, width, height};
+    y_offset += height + SCALE_Y(10);
+  }
+}
+
+static void layout_timer(SDL_Point *p) {
+  p->x = g_sdl_context->window_width - (MARGIN * 4);
+  p->y = g_sdl_context->window_height - (MARGIN * 3);
+}
+
+static void draw_filled_circle(SDL_Renderer *r, int cx, int cy, int radius) {
+  if (radius <= 0)
+    return;
+
+  for (int y = -radius; y <= radius; y++) {
+    float dy = (float)y / (float)radius;
+    float inside = 1.0f - dy * dy;
+    if (inside < 0.0f)
+      continue;
+
+    int x = (int)(radius * sqrtf(inside) + 0.5f);
+    SDL_RenderDrawLine(r, cx - x, cy + y, cx + x, cy + y);
+  }
+}
+
+static void render_text_pot(const char *text, const SDL_Point center, const Font_t *font) {
+  if (!text)
+    text = "";
+
+  SDL_Surface *surface = TTF_RenderUTF8_Blended(font->fonts[FONT_DEFAULT_BOLD], *text ? text : " ",
+                                                get_color(COLOR_BLACK));
+  if (!surface) {
+    fprintf(stderr, "TTF_RenderUTF8_Blended error: %s\n", TTF_GetError());
+    return;
+  }
+
+  SDL_Renderer *renderer = g_sdl_context->renderer;
+  SDL_Texture *texture = SDL_CreateTextureFromSurface(renderer, surface);
+  if (!texture) {
+    SDL_FreeSurface(surface);
+    fprintf(stderr, "SDL_CreateTextureFromSurface error: %s\n", SDL_GetError());
+    return;
+  }
+
+  int text_w = surface->w;
+  int text_h = surface->h;
+
+  /* Background circle */
+  int PAD = SCALE_X(14);
+  int radius = (text_w > text_h ? text_w : text_h) / 2 + PAD;
+  if (radius < SCALE_X(24))
+    radius = SCALE_X(24);
+
+  SDL_SetRenderDrawBlendMode(g_sdl_context->renderer, SDL_BLENDMODE_BLEND);
+  SDL_SetRenderDrawColor(renderer, 255, 255, 255, 64);
+  draw_filled_circle(renderer, center.x, center.y, radius);
+
+  /* Text rect centered */
+  SDL_Rect text_rect = {center.x - text_w / 2, center.y - text_h / 2, text_w, text_h};
+
+  SDL_RenderCopy(renderer, texture, NULL, &text_rect);
+
+  SDL_FreeSurface(surface);
+  SDL_DestroyTexture(texture);
+}
+
 static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *socket_context,
                           const GameSettings_t *game_settings, GameState_t *game_state,
                           SdlContext_t *sdl_context, const Font_t *font, Path_t *path,
@@ -790,29 +864,9 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
   select_card_back_for_game();
 
   ClientState_t client_state = {0};
-  card_area.w = SCALE_X(80);
-  card_area.h = SCALE_Y(50);
 
-  const SDL_Point player_pos[MAX_PLAYERS] = {
-      // P0: left, 1/3 down
-      {.x = SCALE_X(20), .y = card_area.h * 4},
-
-      // P1: Top left
-      {.x = SCALE_X(20), .y = card_area.h},
-
-      // P2: Top right
-      {.x = sdl_context->win_center.x, .y = card_area.h},
-
-      // P3: Right, 1/3 down
-      {.x = sdl_context->win_center.x, .y = card_area.h * 4},
-
-      // P4: Right, 2/3 down
-      {.x = sdl_context->win_center.x, .y = card_area.h * 7},
-  };
-
-  // This offers only a little extra protection if changes are made.
-  _Static_assert(sizeof(player_pos) / sizeof(player_pos[0]) == 5,
-                 "player_pos has wrong number of elements");
+  SDL_Point player_pos[MAX_PLAYERS] = {0};
+  layout_player_pos(player_pos);
 
 #define SIZEOF_STATUS_MSGS 16
   char status_msgs[SIZEOF_STATUS_MSGS][LEN_STATUS_STR] = {0};
@@ -830,13 +884,13 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
       [EXCHANGE] = {_("Exchange"), SDLK_x, true},
   };
 
-  const int action_button_y = sdl_context->window_height - (card_area.h * 4);
   Button_t action_button[MAX_ACTIONS];
   for (int i = 0; i < MAX_ACTIONS; i++) {
-    action_button[i] = create_button(action_button_attrs[i].text, sdl_context->renderer,
-                                     action_button_y, font->fonts[FONT_BOLD],
-                                     action_button_attrs[i].key, action_button_attrs[i].secondary);
+    action_button[i] =
+        create_button(action_button_attrs[i].text, sdl_context->renderer, 0, font->fonts[FONT_BOLD],
+                      action_button_attrs[i].key, action_button_attrs[i].secondary);
   }
+  layout_action_buttons(action_button);
 
   const struct Amount_t {
     const uint32_t value;
@@ -848,8 +902,10 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
   const size_t n_bet_amounts = ARRAY_SIZE(amount);
   Button_t amount_button[n_bet_amounts];
 
-  char amount_str[n_bet_amounts][16];    // enough for uint32_t
-  int current_x = x_begin_action_button; // Start position for first button
+  SDL_Point timer = {0};
+  layout_timer(&timer);
+
+  char amount_str[n_bet_amounts][16]; // enough for uint32_t
 
   for (size_t i = 0; i < n_bet_amounts; i++) {
     snprintf(amount_str[i], sizeof(amount_str[i]), "%" PRIu32, amount[i].value);
@@ -868,7 +924,7 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
         sdl_context->renderer,
         get_color(COLOR_WHITE),
         get_color(COLOR_BROWN),
-        (SDL_Rect){current_x, action_button_y + card_area.w, button_w, button_h},
+        (SDL_Rect){0, 0, button_w, button_h},
         font->fonts[FONT_BOLD],
         false,
         true,
@@ -876,26 +932,21 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
         true,
         amount[i].hotkey,
     };
-
-    current_x += button_w + SCALE_X(10); // Move right for next button with spacing
   }
   amount_button[0].selected = true;
   client_state.selected_amount = amount[0].value;
+  layout_amount_buttons(amount_button, n_bet_amounts);
 
   CardContext_t card_context[MAX_PLAYERS][MAX_HAND_SIZE];
 
   Button_t card_faces[13] = {0};
   for (size_t i = 0; i < ARRAY_SIZE(card_faces); i++) {
-    int card_val = i + 1;
-    if (card_val == DH_CARD_TWO)
-      continue;
-
     card_faces[i] = (Button_t){
-        "",
+        DH_get_card_face_str(i + 1),
         sdl_context->renderer,
         get_color(COLOR_WHITE),
         get_color(COLOR_BROWN),
-        {0, 0, 0, 0},
+        {0},
         font->fonts[FONT_WILD_SELECT],
         false,
         true,
@@ -908,11 +959,11 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
   Button_t card_suits[DH_SUIT_MAX] = {0};
   for (DH_suit i = 0; i < ARRAY_SIZE(card_suits); i++) {
     card_suits[i] = (Button_t){
-        "",
+        DH_get_unicode_suit(i),
         sdl_context->renderer,
         get_color(COLOR_WHITE),
         get_color(COLOR_BROWN),
-        {0, 0, 0, 0},
+        {0},
         font->fonts[FONT_CARD],
         false,
         true,
@@ -921,6 +972,14 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
         0,
     };
   }
+
+  layout_wild_selection(card_faces, card_suits, ARRAY_SIZE(card_faces), ARRAY_SIZE(card_suits),
+                        font);
+
+  Indicator_t indicator_deuces_wild = create_indicator(sdl_context->renderer, "Deuces Wild", font);
+  layout_deuces_wild_indicator(&indicator_deuces_wild);
+
+  Indicator_t indicator_game_name = {0};
 
   int running = 1;
   bool cards_created = false;
@@ -954,13 +1013,12 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
   SDL_Texture *coin_tex_front =
       load_coin_texture(sdl_context->renderer, path->data, coin[which_coin].front);
 
-  typedef struct {
-    SDL_Point pt[MAX_POT_COINS];
-  } PotCoin_t;
+  CoinInPot_t coin_in_pot[MAX_POT_COINS] = {0};
 
-  PotCoin_t pot_coin = {0};
   uint8_t coins = 0;
   CoinAnimation_t coin_anim = {0};
+  SDL_Point pot_center = {0};
+  layout_pot_center(&pot_center);
 
   client_state.timer_start = SDL_GetTicks();
 
@@ -1014,46 +1072,39 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
     if (!cards_created) {
       // printf("%d\n", __LINE__);
       create_card_context(card_context, starting_turn->id, players_array, player_pos,
-                          sdl_context->renderer, game_state->deuces_wild);
+                          sdl_context->renderer, client_state.deuces_wild);
       cards_created = true;
     }
-    // printf("%d\n", __LINE__);
 
     clear_screen(sdl_context->renderer);
+    // bool fullscreen_toggled = false;
 
     if (game_state->prev_bet_amount == 0)
       for (size_t i = 0; i < n_bet_amounts; i++)
         amount_button[i].enabled = true;
 
     bool new_coin = false;
-    SDL_Point pot_pos = {player_pos[4].x - POT_BOUNDARY + card_area.h,
-                         sdl_context->win_center.y + card_area.h};
+
     if (game_state->pot > coins * game_settings->bet_minimum && coins < MAX_POT_COINS) {
-      pot_coin.pt[coins].x = pot_pos.x + pcg32_boundedrand_r(&rng, POT_BOUNDARY) - SCALE_X(150);
-      pot_coin.pt[coins].y = pot_pos.y + pcg32_boundedrand_r(&rng, POT_BOUNDARY) - SCALE_Y(150);
+      coin_in_pot[coins].offset.x = pcg32_boundedrand_r(&rng, POT_BOUNDARY) - POT_BOUNDARY / 2;
+      coin_in_pot[coins].offset.y = pcg32_boundedrand_r(&rng, POT_BOUNDARY) - POT_BOUNDARY / 2;
       coins++;
       new_coin = true;
-    } else if (game_state->pot == 0)
+    } else if (game_state->pot == 0) {
       coins = 0;
-
-    int p;
-    for (p = 0; p < coins; p++) {
-      SDL_Rect coin_rect = {
-          .x = pot_coin.pt[p].x,
-          .y = pot_coin.pt[p].y,
-          .w = SCALE_X(coin_px),
-          .h = SCALE_Y(coin_px),
-      };
-      if (p < coins - 1)
-        SDL_RenderCopy(sdl_context->renderer, coin_tex_front, NULL, &coin_rect);
     }
 
-    p--;
     if (new_coin) {
+      // FIRST: compute rects
+      layout_coins(coin_in_pot, &pot_center, coins);
+
+      int last = coins - 1;
+
+      // NOW rect is valid
       coin_anim = (CoinAnimation_t){
           .texture = coin_tex_front,
           .start = (SDL_Point){player_pos[turn->id].x, player_pos[turn->id].y},
-          .end = (SDL_Point){pot_coin.pt[p].x, pot_coin.pt[p].y},
+          .end = (SDL_Point){coin_in_pot[last].rect.x, coin_in_pot[last].rect.y},
           .start_time = SDL_GetTicks(),
           .duration = 300,
           .active = true,
@@ -1061,8 +1112,32 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
       new_coin = false;
     }
 
+    for (int i = 0; i < coins; i++) {
+      if (i == coins - 1 && coin_anim.active) {
+        continue; // last coin is currently animated
+      }
+      SDL_RenderCopy(sdl_context->renderer, coin_tex_front, NULL, &coin_in_pot[i].rect);
+    }
+
     if (game_state->pot > 0)
       render_coin_animation(sdl_context->renderer, &coin_anim);
+    // else {
+    // coins = 0;
+    // coin_anim.active = false;
+    //}
+
+    if (!indicator_game_name.text && client_state.game_choice) {
+      indicator_game_name =
+          create_indicator(sdl_context->renderer, client_state.game_choice->str, font);
+      layout_game_name_indicator(&indicator_game_name);
+    }
+    if (indicator_game_name.text) {
+      render_indicator(&indicator_game_name);
+    }
+
+    if (client_state.deuces_wild) {
+      render_indicator(&indicator_deuces_wild);
+    }
 
     for (int i = 0; i < SIZEOF_STATUS_MSGS; i++) {
       char tmp[sizeof(status_msgs[0])];
@@ -1196,16 +1271,13 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
       char elapsed_str[8] = {0};
       snprintf(elapsed_str, sizeof(elapsed_str), "%d", elapsed);
 
-      render_text_plain(
-          sdl_context->renderer, font->fonts[FONT_BOLD], elapsed_str, get_color(COLOR_WHITE),
-          &(SDL_Rect){sdl_context->window_width - 60, sdl_context->window_height - 60, 0, 0});
+      render_text_plain(sdl_context->renderer, font->fonts[FONT_BOLD], elapsed_str,
+                        get_color(COLOR_WHITE), &(SDL_Rect){timer.x, timer.y, 0, 0});
     }
 
     char buffer[128];
     snprintf(buffer, sizeof(buffer), "%" PRIu32, game_state->pot);
-    SDL_Color black = {0, 0, 0, 255};
-    render_text_centered(sdl_context->renderer, font->fonts[FONT_DEFAULT_BOLD], buffer, black,
-                         pot_pos);
+    render_text_pot(buffer, pot_center, font);
 
     player_ptr = starting_turn;
     do {
@@ -1236,31 +1308,12 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
       player_ptr = get_next_connected_client(players_array, player_ptr->id);
     } while (player_ptr && player_ptr != starting_turn);
 
-    if (game_state->deuces_wild && client_state.do_exchange_wilds) {
-      int y_offset = card_area.h * 1;
-      int width, height;
-      TTF_SizeUTF8(font->fonts[FONT_WILD_SELECT], " 10 ", &width, &height);
-      for (size_t i = 0; i < ARRAY_SIZE(card_faces); i++) {
-        int card_val = i + 1;
-        if (card_val == DH_CARD_TWO)
-          continue;
-        card_faces[i].text = DH_get_card_face_str(card_val);
-        card_faces[i].rect =
-            (SDL_Rect){sdl_context->win_center.x - SCALE_X(100), y_offset, width, height};
-        y_offset += height + SCALE_Y(10);
+    if (client_state.deuces_wild && client_state.do_exchange_wilds) {
+      for (size_t i = 0; i < ARRAY_SIZE(card_faces); i++)
         render_button(&card_faces[i]);
-      }
 
-      y_offset = (height + SCALE_Y(10)) * 6;
-      TTF_SizeUTF8(font->fonts[FONT_CARD], "   ", &width, &height);
-      for (DH_suit i = 0; i < ARRAY_SIZE(card_suits); i++) {
-        card_suits[i].text = DH_get_unicode_suit(i);
-        card_suits[i].rect =
-            (SDL_Rect){sdl_context->win_center.x - SCALE_X(100) + width + SCALE_X(20), y_offset,
-                       width, height};
-        y_offset += height + SCALE_Y(10);
+      for (DH_suit i = 0; i < ARRAY_SIZE(card_suits); i++)
         render_button(&card_suits[i]);
-      }
     }
 
     SDL_RenderPresent(sdl_context->renderer);
@@ -1371,11 +1424,26 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
       }
       if (amount_selected)
         break;
+
       if (event.type == SDL_QUIT) {
         running = false;
       } else if (event.type == SDL_KEYDOWN &&
                  (event.key.keysym.sym == SDLK_RETURN && event.key.keysym.mod & KMOD_ALT)) {
-        toggle_fullscreen(sdl_context->window);
+        if (toggle_fullscreen(sdl_context)) {
+          layout_player_pos(player_pos);
+          create_card_context(card_context, starting_turn->id, players_array, player_pos,
+                              sdl_context->renderer, client_state.deuces_wild);
+          layout_pot_center(&pot_center);
+          layout_coins(coin_in_pot, &pot_center, coins);
+          layout_amount_buttons(amount_button, n_bet_amounts);
+          layout_action_buttons(action_button);
+          layout_game_name_indicator(&indicator_game_name);
+          layout_deuces_wild_indicator(&indicator_deuces_wild);
+          layout_timer(&timer);
+          if (client_state.deuces_wild && client_state.do_exchange_wilds)
+            layout_wild_selection(card_faces, card_suits, ARRAY_SIZE(card_faces),
+                                  ARRAY_SIZE(card_suits), font);
+        }
       } else if (event.type == SDL_MOUSEBUTTONDOWN || event.type == SDL_KEYDOWN) {
         if (my_turn && !client_state.do_discard_draw && !client_state.do_exchange_wilds) {
           if (client_state.bet_check_fold || client_state.call_raise_fold) {
@@ -1484,8 +1552,8 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
 SocketContext_t get_socket_context_and_run_client(PlayerConfig_t *player_config,
                                                   const CliArgs_t *cli_args, const char *host_str,
                                                   const uint16_t port, SdlContext_t *sdl_context,
-                                                  Font_t *font, Path_t *path,
-                                                  const bool test_mode) {
+                                                  Font_t *font, Path_t *path, const bool test_mode,
+                                                  Link_t *links) {
   IPaddress server_ip;
   SocketContext_t socket_context = {0};
 
@@ -1653,9 +1721,9 @@ SocketContext_t get_socket_context_and_run_client(PlayerConfig_t *player_config,
 
     bool running = true;
     do {
-      running =
-          menu_display_game_choices(player_config, &socket_context, game_settings.client_id,
-                                    &game_state, &client_state, sdl_context, font, &sound_context);
+      running = menu_display_game_choices(player_config, &socket_context, game_settings.client_id,
+                                          &game_state, &client_state, sdl_context, font,
+                                          &sound_context, links);
       if (!running)
         break;
 

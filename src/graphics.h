@@ -39,6 +39,8 @@
 #define SCALE_X(val) ((int)((val) * ui_scale.scale_x))
 #define SCALE_Y(val) ((int)((val) * ui_scale.scale_y))
 
+#define MARGIN SCALE_X(20)
+
 #define BUTTON_X_SPACING SCALE_X(10)
 
 typedef enum {
@@ -71,6 +73,7 @@ typedef struct {
   SDL_Point win_center;
   int window_width, window_height;
 } SdlContext_t;
+extern SdlContext_t *g_sdl_context;
 
 typedef struct {
   float scale_x, scale_y;
@@ -105,8 +108,6 @@ TTF_Font *open_font(const FontArgs_t *args);
 
 void clear_screen(SDL_Renderer *renderer);
 
-void init_sdl_window(SdlContext_t *sdl_context, const char *title);
-
 void render_text(SDL_Renderer *renderer, TTF_Font *font, const char *text, SDL_Color color,
                  SDL_Rect *dest);
 
@@ -121,6 +122,19 @@ typedef struct {
   bool active;
   SDL_Keycode hotkey;
 } Button_t;
+
+typedef struct {
+  const char *text;
+  SDL_Renderer *renderer;
+  SDL_Color bg_color;
+  SDL_Color fg_color;
+  SDL_Rect rect;
+  TTF_Font *font;
+} Indicator_t;
+
+void render_indicator(const Indicator_t *ind);
+
+Indicator_t create_indicator(SDL_Renderer *renderer, const char *text, const Font_t *font);
 
 void mark_selected(SDL_Renderer *renderer, const SDL_Rect *rect);
 
@@ -137,9 +151,11 @@ void render_nick(SDL_Renderer *renderer, TTF_Font *font, const char *text, SDL_C
 
 SDL_Texture *load_texture(SDL_Renderer *renderer, const char *path);
 
-void toggle_fullscreen(SDL_Window *window);
+bool toggle_fullscreen(SdlContext_t *sdl_context);
 
 // Transitional loading screen
 void show_loading_screen(SDL_Renderer *renderer, TTF_Font *font, const char *message);
+
+void assign_window_values_set_scaling(SdlContext_t *c);
 
 #endif

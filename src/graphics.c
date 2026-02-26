@@ -4,7 +4,7 @@
 
  MIT License
 
- Copyright (c) 2025 Andy Alt
+ Copyright (c) 2025,2026 Andy Alt
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -47,8 +47,6 @@ void show_loading_screen(SDL_Renderer *renderer, TTF_Font *font, const char *mes
   render_text_plain(renderer, font, message, color, &rect);
 }
 
-UiScale_t ui_scale = {0};
-
 static const SDL_Color color_table[COLOR_COUNT] = {
     [COLOR_WHITE] = {255, 255, 255, 255}, [COLOR_LIGHTGRAY] = {200, 200, 200, 255},
     [COLOR_GRAY] = {128, 128, 128, 255},  [COLOR_DARKGRAY] = {64, 64, 64, 255},
@@ -81,41 +79,6 @@ void clear_screen(SDL_Renderer *renderer) {
   SDL_SetRenderDrawColor(renderer, get_color(COLOR_GREEN_ONE).r, get_color(COLOR_GREEN_ONE).g,
                          get_color(COLOR_GREEN_ONE).b, get_color(COLOR_GREEN_ONE).a);
   SDL_RenderClear(renderer);
-}
-
-void init_sdl_window(SdlContext_t *sdl_context, const char *title) {
-  SDL_Rect bounds;
-  if (SDL_GetDisplayBounds(0, &bounds) == 0) {
-    printf("Display 0 bounds: x=%d, y=%d, w=%d, h=%d\n", bounds.x, bounds.y, bounds.w, bounds.h);
-  } else {
-    puts(SDL_GetError());
-    exit(EXIT_FAILURE);
-  }
-
-  float factor = 0.8;
-  float w = bounds.w * factor;
-  float h = bounds.h * factor;
-
-  sdl_context->window = SDL_CreateWindow(title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, w,
-                                         h, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
-  if (!sdl_context->window)
-    puts(SDL_GetError());
-  sdl_context->renderer = SDL_CreateRenderer(sdl_context->window, -1, SDL_RENDERER_ACCELERATED);
-  if (!sdl_context->renderer)
-    puts(SDL_GetError());
-
-  int x, y;
-  SDL_GetWindowSize(sdl_context->window, &x, &y);
-  sdl_context->win_center.x = x / 2;
-  sdl_context->win_center.y = y / 2;
-
-  sdl_context->window_width = w;
-  sdl_context->window_height = h;
-
-  ui_scale.scale_x = (float)bounds.w / 1920.0f;
-  ui_scale.scale_y = (float)bounds.h / 1080.0f;
-
-  return;
 }
 
 TTF_Font *open_font(const FontArgs_t *args) {
@@ -217,7 +180,8 @@ void render_text_plain(SDL_Renderer *renderer, TTF_Font *font, const char *text,
   SDL_RenderCopy(renderer, texture, NULL, dest);
 
   int text_width;
-  TTF_SizeUTF8(font, text, &text_width, NULL);
+  if (TTF_SizeUTF8(font, text, &text_width, NULL) != 0)
+    fprintf(stderr, "TTF_SizeUTF8 failed: %s\n", TTF_GetError());
 
   SDL_FreeSurface(surface);
   SDL_DestroyTexture(texture);
@@ -353,6 +317,84 @@ void render_button(Button_t *button) {
   SDL_DestroyTexture(textTexture);
 }
 
+static void draw_filled_ellipse(SDL_Renderer *r, int cx, int cy, int rx, int ry) {
+  if (rx <= 0 || ry <= 0)
+    return;
+
+  for (int y = -ry; y <= ry; y++) {
+    float dy = (float)y / (float)ry;
+
+    float inside = 1.0f - dy * dy;
+    if (inside < 0.0f)
+      continue;
+
+    float dx = rx * sqrtf(inside);
+    int x = (int)(dx + 0.5f); // round safely
+
+    SDL_RenderDrawLine(r, cx - x, cy + y, cx + x, cy + y);
+  }
+}
+
+void render_indicator(const Indicator_t *ind) {
+  if (!ind || !ind->text)
+    return;
+
+  SDL_Renderer *r = ind->renderer;
+
+  // Center and radii
+  int cx = ind->rect.x + ind->rect.w / 2;
+  int cy = ind->rect.y + ind->rect.h / 2;
+  int rx = ind->rect.w / 2;
+  int ry = ind->rect.h / 2;
+
+  // Draw oval background
+  SDL_SetRenderDrawColor(r, ind->bg_color.r, ind->bg_color.g, ind->bg_color.b, ind->bg_color.a);
+  draw_filled_ellipse(r, cx, cy, rx, ry);
+
+  // Render text
+  SDL_Surface *surf = TTF_RenderUTF8_Blended(ind->font, ind->text, ind->fg_color);
+  if (!surf)
+    return;
+
+  SDL_Texture *tex = SDL_CreateTextureFromSurface(r, surf);
+  if (!tex) {
+    SDL_FreeSurface(surf);
+    return;
+  }
+
+  SDL_Rect text_rect = {cx - surf->w / 2, cy - surf->h / 2, surf->w, surf->h};
+
+  SDL_RenderCopy(r, tex, NULL, &text_rect);
+
+  SDL_FreeSurface(surf);
+  SDL_DestroyTexture(tex);
+}
+
+Indicator_t create_indicator(SDL_Renderer *renderer, const char *text, const Font_t *font) {
+  Indicator_t ind = {
+      .text = text,
+      .renderer = renderer,
+      .bg_color = get_color(COLOR_WHITE),
+      .fg_color = get_color(COLOR_BROWN),
+      .rect = {0},
+      .font = font->fonts[FONT_BOLD],
+  };
+
+  if (TTF_SizeUTF8(ind.font, ind.text, &ind.rect.w, &ind.rect.h) != 0) {
+    fprintf(stderr, "TTF_SizeUTF8 failed: %s\n", TTF_GetError());
+    ind.rect.w = SCALE_X(40);
+    ind.rect.h = SCALE_Y(20);
+  }
+
+  int PAD_X = ind.rect.h;     // one text-height on each side
+  int PAD_Y = ind.rect.h / 3; // subtle vertical padding
+
+  ind.rect.w += PAD_X * 2;
+  ind.rect.h += PAD_Y * 2;
+
+  return ind;
+}
+
 SDL_Texture *load_texture(SDL_Renderer *renderer, const char *path) {
   if (!(IMG_Init(IMG_INIT_PNG) & IMG_INIT_PNG)) {
     SDL_Log("IMG_Init failed: %s", IMG_GetError());
@@ -375,16 +417,37 @@ SDL_Texture *load_texture(SDL_Renderer *renderer, const char *path) {
   return texture;
 }
 
-void toggle_fullscreen(SDL_Window *window) {
+bool toggle_fullscreen(SdlContext_t *sdl_context) {
   int r;
-  Uint32 flags = SDL_GetWindowFlags(window);
+  Uint32 flags = SDL_GetWindowFlags(sdl_context->window);
   if (flags & SDL_WINDOW_FULLSCREEN_DESKTOP) {
     // Currently fullscreen, go back to windowed
-    r = SDL_SetWindowFullscreen(window, 0); // disable fullscreen
+    r = SDL_SetWindowFullscreen(sdl_context->window, 0); // disable fullscreen
   } else {
     // Switch to fullscreen desktop mode (borderless, scaled)
-    r = SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN_DESKTOP);
+    r = SDL_SetWindowFullscreen(sdl_context->window, SDL_WINDOW_FULLSCREEN_DESKTOP);
   }
-  if (r != 0)
-    fprintf(stderr, "toggle_fullscreen: %s\n", SDL_GetError());
+  if (r == 0) {
+    assign_window_values_set_scaling(sdl_context);
+    return true;
+  }
+  fprintf(stderr, "toggle_fullscreen: %s\n", SDL_GetError());
+  return false;
+}
+
+void assign_window_values_set_scaling(SdlContext_t *c) {
+  int x, y;
+  SDL_GetWindowSize(c->window, &x, &y);
+
+  c->win_center.x = x / 2;
+  c->win_center.y = y / 2;
+
+  c->window_width = x;
+  c->window_height = y;
+
+  ui_scale.scale_x = x / 1920.0f;
+  ui_scale.scale_y = y / 1080.0f;
+
+  card_area.w = SCALE_X(80);
+  card_area.h = SCALE_Y(50);
 }
