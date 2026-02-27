@@ -798,8 +798,8 @@ static void layout_wild_selection(Button_t *card_faces, Button_t *card_suits, co
 }
 
 static void layout_timer(SDL_Point *p) {
-  p->x = g_sdl_context->window_width - (MARGIN * 4);
-  p->y = g_sdl_context->window_height - (MARGIN * 3);
+  p->x = g_sdl_context->win_center.x;
+  p->y = g_sdl_context->window_height - SCALE_Y(200);
 }
 
 static void draw_filled_circle(SDL_Renderer *r, int cx, int cy, int radius) {
