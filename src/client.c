@@ -649,6 +649,22 @@ static void create_card_context(CardContext_t card_context[MAX_PLAYERS][MAX_HAND
   } while (turn && turn != starting_turn);
 }
 
+static void layout_cards(CardContext_t card_context[MAX_PLAYERS][MAX_HAND_SIZE],
+                         Player_t *players_array, const SDL_Point *player_pos) {
+
+  Player_t *turn = &players_array[0];
+  Player_t *starting_turn = turn;
+  do {
+    for (int card_n = 0; card_n < MAX_HAND_SIZE; card_n++) {
+      const int id = turn->id;
+      SDL_Rect rect = {player_pos[id].x + card_n * (card_area.w + SCALE_X(PADDING_BETWEEN_CARDS)),
+                       player_pos[id].y, card_area.w, card_area.h};
+      card_context[id][card_n].rect = rect;
+    }
+    turn = get_next_connected_client(players_array, turn->id);
+  } while (turn && turn != starting_turn);
+}
+
 typedef struct {
   const char *front;
 } Coin_t;
@@ -1432,8 +1448,7 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
                  (event.key.keysym.sym == SDLK_RETURN && event.key.keysym.mod & KMOD_ALT)) {
         if (toggle_fullscreen(sdl_context)) {
           layout_player_pos(player_pos);
-          create_card_context(card_context, starting_turn->id, players_array, player_pos,
-                              sdl_context->renderer, client_state.deuces_wild);
+          layout_cards(card_context, players_array, player_pos);
           layout_pot_center(&pot_center);
           layout_coins(coin_in_pot, &pot_center, coins);
           layout_amount_buttons(amount_button, n_bet_amounts);
