@@ -251,30 +251,24 @@ static CliArgs_t parse_cli_args(int argc, char *argv[]) {
   return cli_args;
 }
 
-static void init_sdl_window(SdlContext_t *sdl_context, const char *title) {
+static void init_sdl_window(SdlContext_t *c, const char *title) {
   SDL_Rect bounds;
-  if (SDL_GetDisplayBounds(0, &bounds) == 0) {
-    printf("Display 0 bounds: x=%d, y=%d, w=%d, h=%d\n", bounds.x, bounds.y, bounds.w, bounds.h);
-  } else {
-    puts(SDL_GetError());
-    exit(EXIT_FAILURE);
-  }
+  SDL_GetDisplayBounds(0, &bounds);
 
-  float factor = 0.8;
-  float w = bounds.w * factor;
-  float h = bounds.h * factor;
+  float factor = 0.8f;
+  int w = (int)(bounds.w * factor);
+  int h = (int)(bounds.h * factor);
 
-  sdl_context->window = SDL_CreateWindow(title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, w,
-                                         h, SDL_WINDOW_SHOWN);
-  if (!sdl_context->window)
-    puts(SDL_GetError());
-  sdl_context->renderer = SDL_CreateRenderer(sdl_context->window, -1, SDL_RENDERER_ACCELERATED);
-  if (!sdl_context->renderer)
-    puts(SDL_GetError());
+  c->window = SDL_CreateWindow(title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, w, h,
+                               SDL_WINDOW_SHOWN | SDL_WINDOW_ALLOW_HIGHDPI);
 
-  assign_window_values_set_scaling(sdl_context);
+  SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0"); // nearest / pixel-perfect
+  c->renderer =
+      SDL_CreateRenderer(c->window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
 
-  return;
+  SDL_RenderSetLogicalSize(c->renderer, LOGICAL_WIDTH, LOGICAL_HEIGHT);
+
+  assign_window_values_set_scaling(c);
 }
 
 int main(int argc, char *argv[]) {

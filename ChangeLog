@@ -10,6 +10,7 @@
   + Add card back patterns
   * Bump game protocol to v6
   * bugfix: Infinite checking when first person in a >=3 person game folds
+  * bugfix: Using AppImage, objects don't appear correctly after fullscreen switch
 
 2025-08-11
 

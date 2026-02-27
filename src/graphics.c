@@ -459,18 +459,17 @@ bool toggle_fullscreen(SdlContext_t *sdl_context) {
 }
 
 void assign_window_values_set_scaling(SdlContext_t *c) {
-  int x, y;
-  SDL_GetWindowSize(c->window, &x, &y);
+  // Logical size — NOT physical pixels
+  c->window_width = LOGICAL_WIDTH;
+  c->window_height = LOGICAL_HEIGHT;
 
-  c->win_center.x = x / 2;
-  c->win_center.y = y / 2;
+  c->win_center.x = LOGICAL_WIDTH / 2;
+  c->win_center.y = LOGICAL_HEIGHT / 2;
 
-  c->window_width = x;
-  c->window_height = y;
+  // Scaling is now identity
+  ui_scale.scale_x = 1.0f;
+  ui_scale.scale_y = 1.0f;
 
-  ui_scale.scale_x = x / 1920.0f;
-  ui_scale.scale_y = y / 1080.0f;
-
-  card_area.w = SCALE_X(80);
-  card_area.h = SCALE_Y(50);
+  card_area.w = 80;
+  card_area.h = 50;
 }
