@@ -68,7 +68,7 @@ jobs:
           sha256sum "$file" > "$file.sha256sum";
 
       - name: Artifact Filename
-        run: echo "ARTIFACT_NAME=AppImages-${ARCH//\//-}" >> $GITHUB_ENV
+        run: echo "ARTIFACT_NAME=dealers-choice-appImage-${ARCH//\//-}" >> $GITHUB_ENV
 
       - if: ${{ github.ref != 'refs/heads/trunk' }}
         name: Upload AppImage
