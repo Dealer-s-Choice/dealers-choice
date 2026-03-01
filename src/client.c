@@ -743,20 +743,46 @@ static void layout_action_buttons(Button_t *b) {
   }
 }
 
-static void layout_player_pos(SDL_Point *player_pos) {
-  player_pos[0].x = MARGIN;
-  player_pos[0].y = card_area.h * 4;
+static void layout_player_pos(SDL_Point *player_pos)
+{
+    SDL_Rect vp;
+    SDL_RenderGetViewport(g_sdl_context->renderer, &vp);
 
-  player_pos[1].x = SCALE_X(20);
-  player_pos[1].y = card_area.h;
+    const int margin = MARGIN;
 
-  for (int i = 2; i < MAX_PLAYERS; i++)
-    player_pos[i].x = g_sdl_context->window_width -
-                      (card_area.w * 7 + (SCALE_X(PADDING_BETWEEN_CARDS) * 7) + MARGIN);
+    int table_center_y = vp.h / 2;
 
-  player_pos[2].y = card_area.h;
-  player_pos[3].y = card_area.h * 4;
-  player_pos[4].y = card_area.h * 7;
+    /* Vertical spacing between rows */
+    int v_gap = card_area.h * 3;  // stable, resolution-independent
+
+    /* Left side X */
+    int left_x = margin;
+
+    /* Right side X */
+    int right_x = vp.w -
+                  (card_area.w * 7 +
+                   PADDING_BETWEEN_CARDS * 7 +
+                   margin);
+
+    /* Player 1 (top-left) */
+    player_pos[1].x = left_x;
+    player_pos[1].y = table_center_y - v_gap;
+
+    /* Player 0 (left-middle) */
+    player_pos[0].x = left_x;
+    player_pos[0].y = table_center_y;
+
+    /* Player 2 (top-right) */
+    player_pos[2].x = right_x;
+    player_pos[2].y = table_center_y - v_gap;
+
+    /* Player 3 (right-middle) */
+    player_pos[3].x = right_x;
+    player_pos[3].y = table_center_y;
+
+    /* Player 4 (right-bottom) */
+    player_pos[4].x = right_x;
+    player_pos[4].y = table_center_y + v_gap;
 }
 
 typedef struct {

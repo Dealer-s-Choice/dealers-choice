@@ -37,8 +37,7 @@ void render_link(Link_t *link) {
 
   SDL_Color text_color = link->hovered ? get_color(COLOR_BLUE) : get_color(COLOR_BLACK);
 
-  SDL_Surface *surface =
-    TTF_RenderUTF8_Blended(link->font, link->text, text_color);
+  SDL_Surface *surface = TTF_RenderUTF8_Blended(link->font, link->text, text_color);
   if (!surface) {
     SDL_Log("Failed to render text surface: %s", TTF_GetError());
     return;

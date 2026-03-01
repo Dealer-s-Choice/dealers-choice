@@ -440,36 +440,53 @@ SDL_Texture *load_texture(SDL_Renderer *renderer, const char *path) {
   return texture;
 }
 
-bool toggle_fullscreen(SdlContext_t *sdl_context) {
-  int r;
-  Uint32 flags = SDL_GetWindowFlags(sdl_context->window);
-  if (flags & SDL_WINDOW_FULLSCREEN_DESKTOP) {
-    // Currently fullscreen, go back to windowed
-    r = SDL_SetWindowFullscreen(sdl_context->window, 0); // disable fullscreen
-  } else {
-    // Switch to fullscreen desktop mode (borderless, scaled)
-    r = SDL_SetWindowFullscreen(sdl_context->window, SDL_WINDOW_FULLSCREEN_DESKTOP);
+bool toggle_fullscreen(SdlContext_t *c) {
+  if (!c || !c->window) {
+    SDL_Log("toggle_fullscreen: invalid context");
+    return false;
   }
-  if (r == 0) {
-    assign_window_values_set_scaling(sdl_context);
-    return true;
+
+  const Uint32 flags = SDL_GetWindowFlags(c->window);
+  const bool is_fs = (flags & SDL_WINDOW_FULLSCREEN_DESKTOP) != 0;
+
+  const Uint32 new_mode = is_fs ? 0 : SDL_WINDOW_FULLSCREEN_DESKTOP;
+
+  if (SDL_SetWindowFullscreen(c->window, new_mode) != 0) {
+    SDL_Log("SDL_SetWindowFullscreen failed: %s", SDL_GetError());
+    return false;
   }
-  fprintf(stderr, "toggle_fullscreen: %s\n", SDL_GetError());
-  return false;
+
+  /*
+   * SDL does NOT immediately update renderer size on all platforms.
+   * Force a layout refresh after the mode switch.
+   */
+  assign_window_values_set_scaling(c);
+
+  return true;
 }
 
-void assign_window_values_set_scaling(SdlContext_t *c) {
-  // Logical size — NOT physical pixels
-  c->window_width = LOGICAL_WIDTH;
-  c->window_height = LOGICAL_HEIGHT;
 
-  c->win_center.x = LOGICAL_WIDTH / 2;
-  c->win_center.y = LOGICAL_HEIGHT / 2;
+typedef struct {
+    SDL_Rect viewport;
+    SDL_Point center;
+} UiLayout_t;
 
-  // Scaling is now identity
-  ui_scale.scale_x = 1.0f;
-  ui_scale.scale_y = 1.0f;
+static inline UiLayout_t ui_layout(SDL_Renderer *r)
+{
+    UiLayout_t ui;
+    SDL_RenderGetViewport(r, &ui.viewport);
 
-  card_area.w = 80;
-  card_area.h = 50;
+    ui.center.x = ui.viewport.x + ui.viewport.w / 2;
+    ui.center.y = ui.viewport.y + ui.viewport.h / 2;
+    return ui;
+}
+
+void assign_window_values_set_scaling(SdlContext_t *c)
+{
+    SDL_GetRendererOutputSize(c->renderer,
+                              &c->window_width,
+                              &c->window_height);
+
+    card_area.w = 80;
+    card_area.h = 50;
 }

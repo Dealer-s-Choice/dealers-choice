@@ -253,20 +253,39 @@ static CliArgs_t parse_cli_args(int argc, char *argv[]) {
 
 static void init_sdl_window(SdlContext_t *c, const char *title) {
   SDL_Rect bounds;
-  SDL_GetDisplayBounds(0, &bounds);
 
-  float factor = 0.8f;
-  int w = (int)(bounds.w * factor);
-  int h = (int)(bounds.h * factor);
+  if (SDL_GetDisplayBounds(0, &bounds) != 0) {
+    SDL_Log("SDL_GetDisplayBounds failed: %s", SDL_GetError());
+    exit(EXIT_FAILURE);
+  }
+
+  const float factor = 0.8f;
+  const int w = (int)(bounds.w * factor);
+  const int h = (int)(bounds.h * factor);
 
   c->window = SDL_CreateWindow(title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, w, h,
                                SDL_WINDOW_SHOWN | SDL_WINDOW_ALLOW_HIGHDPI);
 
-  SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0"); // nearest / pixel-perfect
+  if (!c->window) {
+    SDL_Log("SDL_CreateWindow failed: %s", SDL_GetError());
+    exit(EXIT_FAILURE);
+  }
+
+  /* MUST be set BEFORE creating the renderer */
+  SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0"); // nearest
+
   c->renderer =
       SDL_CreateRenderer(c->window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
 
-  SDL_RenderSetLogicalSize(c->renderer, LOGICAL_WIDTH, LOGICAL_HEIGHT);
+  if (!c->renderer) {
+    SDL_Log("SDL_CreateRenderer failed: %s", SDL_GetError());
+    SDL_DestroyWindow(c->window);
+    exit(EXIT_FAILURE);
+  }
+
+  if (SDL_RenderSetLogicalSize(c->renderer, LOGICAL_WIDTH, LOGICAL_HEIGHT) != 0) {
+    SDL_Log("SDL_RenderSetLogicalSize failed: %s", SDL_GetError());
+  }
 
   assign_window_values_set_scaling(c);
 }
