@@ -1,8 +1,8 @@
 [wrap-file]
-directory = miniaudio-0.11.24
-source_url = https://github.com/mackron/miniaudio/archive/refs/tags/0.11.24.tar.gz
-source_filename = miniaudio-0.11.24.tar.gz
-source_hash = 3fdeb62a9387a3164e901475c663f5ab5c8318de268fd2c64af937c6a65980bd
+directory = miniaudio-0.11.25
+source_url = https://github.com/mackron/miniaudio/archive/refs/tags/0.11.25.tar.gz
+source_filename = miniaudio-0.11.25.tar.gz
+source_hash = b900edcffe979816e2560a0580b9b1216d674b4f17fbadeca8f777a7f8ab0274
 method = cmake
 
 [provide]
