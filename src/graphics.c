@@ -456,48 +456,5 @@ bool toggle_fullscreen(SdlContext_t *c) {
     return false;
   }
 
-  /*
-   * SDL does NOT immediately update renderer size on all platforms.
-   * Force a layout refresh after the mode switch.
-   */
-  assign_window_values_set_scaling(c);
-
   return true;
-}
-
-typedef struct {
-  SDL_Rect viewport;
-  SDL_Point center;
-} UiLayout_t;
-
-static inline UiLayout_t ui_layout(SDL_Renderer *r) {
-  UiLayout_t ui;
-  SDL_RenderGetViewport(r, &ui.viewport);
-
-  ui.center.x = ui.viewport.x + ui.viewport.w / 2;
-  ui.center.y = ui.viewport.y + ui.viewport.h / 2;
-  return ui;
-}
-
-void assign_window_values_set_scaling(SdlContext_t *c) {
-  if (!c) {
-    SDL_Log("assign_window_values_set_scaling: null context");
-    return;
-  }
-
-  if (!c->renderer) {
-    SDL_Log("assign_window_values_set_scaling: renderer not initialized");
-    return;
-  }
-
-  // if (SDL_GetRendererOutputSize(c->renderer, &c->window_width, &c->window_height) != 0) {
-  // SDL_Log("SDL_GetRendererOutputSize failed: %s", SDL_GetError());
-  // c->window_width = 0;
-  // c->window_height = 0;
-  //}
-
-  SDL_RenderGetViewport(c->renderer, &g_viewport);
-
-  g_center.x = g_viewport.x + g_viewport.w / 2;
-  g_center.y = g_viewport.y + g_viewport.h / 2;
 }

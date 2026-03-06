@@ -102,7 +102,7 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, c
           host_str[strlen(host_str) - 1] = '\0';
         } else if (e.key.keysym.sym == SDLK_RETURN && e.key.keysym.mod & KMOD_ALT) {
           if (toggle_fullscreen(sdl_context)) {
-            layout_links(links, LINK_DEFS_COUNT);
+            // layout_links(links, LINK_DEFS_COUNT);
           }
         } else if (e.key.keysym.sym == SDLK_RETURN) {
           run_client = true;
@@ -283,7 +283,10 @@ static void init_sdl_window(SdlContext_t *c, const char *title) {
     SDL_Log("SDL_RenderSetLogicalSize failed: %s", SDL_GetError());
   }
 
-  assign_window_values_set_scaling(c);
+  SDL_RenderGetViewport(c->renderer, &g_viewport);
+
+  g_center.x = g_viewport.x + g_viewport.w / 2;
+  g_center.y = g_viewport.y + g_viewport.h / 2;
 }
 
 int main(int argc, char *argv[]) {
