@@ -59,8 +59,8 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, c
   if (TTF_SizeUTF8(button_connect.font, button_connect.text, &button_connect.rect.w,
                    &button_connect.rect.h) != 0)
     fprintf(stderr, "TTF_SizeUTF8 error: %s\n", TTF_GetError());
-  button_connect.rect.w += SCALE_X(20);
-  button_connect.rect.h += SCALE_Y(10);
+  button_connect.rect.w += 20;
+  button_connect.rect.h += 10;
 
   SDL_Rect input_box = (SDL_Rect){100, 220, 200, 40};
 
@@ -125,14 +125,13 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, c
     char port_str[24] = {0};
     snprintf(port_str, sizeof(port_str), _("port: %" PRIu16), port);
     render_text_plain(sdl_context->renderer, font->fonts[FONT_DEFAULT], port_str,
-                      get_color(COLOR_BLACK),
-                      &(SDL_Rect){input_box.x, input_box.y + SCALE_Y(50), 0, 0});
+                      get_color(COLOR_BLACK), &(SDL_Rect){input_box.x, input_box.y + 50, 0, 0});
 
     SDL_Rect input_nick_pos = {input_nick.x, input_nick.y, 0, 0};
     render_text_plain(sdl_context->renderer, font->fonts[FONT_DEFAULT], player_config->nick,
                       get_color(COLOR_BLACK), &input_nick_pos);
 
-    SDL_Rect title_rect = {g_center.x / 1.5, SCALE_Y(60), 0, 0};
+    SDL_Rect title_rect = {g_center.x / 1.5, 60, 0, 0};
     render_text_plain(sdl_context->renderer, font->fonts[FONT_TITLE], DEALERSCHOICE_FORMAL_NAME,
                       get_color(COLOR_BLACK), &title_rect);
 
@@ -140,7 +139,7 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, c
     snprintf(version, sizeof(version), "Version " DEALERSCHOICE_VERSION);
     render_text_plain(sdl_context->renderer, font->fonts[FONT_VERSION], version,
                       get_color(COLOR_WHITE),
-                      &(SDL_Rect){title_rect.x + SCALE_X(40), title_rect.y + SCALE_Y(80), 0, 0});
+                      &(SDL_Rect){title_rect.x + 40, title_rect.y + 80, 0, 0});
 
     for (size_t i = 0; i < LINK_DEFS_COUNT; i++)
       render_link(&links[i]);
@@ -340,7 +339,7 @@ int main(int argc, char *argv[]) {
   for (int i = 0; i < NUM_FONTS; ++i) {
     char font_path[4096] = {0};
     snprintf(font_path, sizeof(font_path), "%s/%s", path.data, font_args[i].file);
-    font.fonts[i] = open_font(&(FontArgs_t){font_path, SCALE_Y(font_args[i].ptsize)});
+    font.fonts[i] = open_font(&(FontArgs_t){font_path, font_args[i].ptsize});
     if (!font.fonts[i])
       return -1;
   }
@@ -377,7 +376,7 @@ int main(int argc, char *argv[]) {
     char tmp[256] = {0};
     snprintf(tmp, sizeof(tmp), "Attempting to connect to: %s...", host_str);
     render_text_plain(sdl_context.renderer, font.fonts[FONT_DEFAULT], tmp, get_color(COLOR_WHITE),
-                      &(SDL_Rect){SCALE_X(10), g_center.y, 0, 0});
+                      &(SDL_Rect){10, g_center.y, 0, 0});
     SDL_RenderPresent(sdl_context.renderer);
 
     get_socket_context_and_run_client(&player_config, &cli_args, host_str, port, &sdl_context,

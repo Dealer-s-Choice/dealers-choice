@@ -274,7 +274,7 @@ void render_button(Button_t *button) {
     click_t = 0.0f;
   }
 
-  int press_offset = (int)(click_t * SCALE_Y(8));
+  int press_offset = (int)(click_t * 8);
   SDL_Rect rect = button->rect;
   rect.y += press_offset;
 
@@ -405,8 +405,8 @@ Indicator_t create_indicator(SDL_Renderer *renderer, const char *text, const Fon
 
   if (TTF_SizeUTF8(ind.font, ind.text, &ind.rect.w, &ind.rect.h) != 0) {
     fprintf(stderr, "TTF_SizeUTF8 failed: %s\n", TTF_GetError());
-    ind.rect.w = SCALE_X(40);
-    ind.rect.h = SCALE_Y(20);
+    ind.rect.w = 40;
+    ind.rect.h = 20;
   }
 
   int PAD_X = ind.rect.h;     // one text-height on each side

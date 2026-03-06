@@ -39,14 +39,9 @@
 #define LOGICAL_WIDTH 1920
 #define LOGICAL_HEIGHT 1080
 
-// #define SCALE_X(val) ((int)((val) * ui_scale.scale_x))
-// #define SCALE_Y(val) ((int)((val) * ui_scale.scale_y))
-#define SCALE_X(val) (val)
-#define SCALE_Y(val) (val)
+#define MARGIN 20
 
-#define MARGIN SCALE_X(20)
-
-#define BUTTON_X_SPACING SCALE_X(10)
+#define BUTTON_X_SPACING 10
 
 typedef enum {
   COLOR_WHITE,
