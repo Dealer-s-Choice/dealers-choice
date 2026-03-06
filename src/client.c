@@ -743,46 +743,19 @@ static void layout_action_buttons(Button_t *b) {
   }
 }
 
-static void layout_player_pos(SDL_Point *player_pos)
-{
-    SDL_Rect vp;
-    SDL_RenderGetViewport(g_sdl_context->renderer, &vp);
+static void layout_player_pos(SDL_Point *player_pos) {
+  player_pos[0].x = MARGIN;
+  player_pos[0].y = card_area.h * 4;
 
-    const int margin = MARGIN;
+  player_pos[1].x = MARGIN;
+  player_pos[1].y = card_area.h;
 
-    int table_center_y = vp.h / 2;
+  for (int i = 2; i < MAX_PLAYERS; i++)
+    player_pos[i].x = LOGICAL_WIDTH - (card_area.w * 7 + (PADDING_BETWEEN_CARDS * 7) + MARGIN);
 
-    /* Vertical spacing between rows */
-    int v_gap = card_area.h * 3;  // stable, resolution-independent
-
-    /* Left side X */
-    int left_x = margin;
-
-    /* Right side X */
-    int right_x = vp.w -
-                  (card_area.w * 7 +
-                   PADDING_BETWEEN_CARDS * 7 +
-                   margin);
-
-    /* Player 1 (top-left) */
-    player_pos[1].x = left_x;
-    player_pos[1].y = table_center_y - v_gap;
-
-    /* Player 0 (left-middle) */
-    player_pos[0].x = left_x;
-    player_pos[0].y = table_center_y;
-
-    /* Player 2 (top-right) */
-    player_pos[2].x = right_x;
-    player_pos[2].y = table_center_y - v_gap;
-
-    /* Player 3 (right-middle) */
-    player_pos[3].x = right_x;
-    player_pos[3].y = table_center_y;
-
-    /* Player 4 (right-bottom) */
-    player_pos[4].x = right_x;
-    player_pos[4].y = table_center_y + v_gap;
+  player_pos[2].y = card_area.h;
+  player_pos[3].y = card_area.h * 4;
+  player_pos[4].y = card_area.h * 7;
 }
 
 typedef struct {
@@ -791,27 +764,26 @@ typedef struct {
 } CoinInPot_t;
 
 static void layout_coins(CoinInPot_t *coins, SDL_Point *p, int count) {
-  int coin_w = SCALE_X(coin_px);
-  int coin_h = SCALE_Y(coin_px);
-
   for (int i = 0; i < count; i++) {
-    coins[i].rect.w = coin_w;
-    coins[i].rect.h = coin_h;
+    coins[i].rect.w = coin_px;
+    coins[i].rect.h = coin_px;
 
-    coins[i].rect.x = p->x + coins[i].offset.x - coin_w / 2;
-
-    coins[i].rect.y = p->y + coins[i].offset.y - coin_h / 2;
+    coins[i].rect.x = p->x + coins[i].offset.x - coin_px / 2;
+    coins[i].rect.y = p->y + coins[i].offset.y - coin_px / 2;
   }
 }
 
 static void layout_pot_center(SDL_Point *p) {
-  p->x = g_sdl_context->win_center.x;
-  p->y = g_sdl_context->win_center.y;
+  p->x = LOGICAL_WIDTH / 2;
+  p->y = LOGICAL_HEIGHT / 2;
 }
 
 static void layout_game_name_indicator(Indicator_t *ind) {
-  ind->rect.x = g_sdl_context->window_width - ind->rect.w - SCALE_X(25);
-  ind->rect.y = g_sdl_context->window_height - SCALE_Y(300);
+  const int margin_x = 25;
+  const int offset_from_bottom = 300;
+
+  ind->rect.x = LOGICAL_WIDTH - ind->rect.w - margin_x;
+  ind->rect.y = LOGICAL_HEIGHT - offset_from_bottom;
 }
 
 static void layout_deuces_wild_indicator(Indicator_t *ind) {
