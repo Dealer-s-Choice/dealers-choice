@@ -490,11 +490,11 @@ void assign_window_values_set_scaling(SdlContext_t *c) {
     return;
   }
 
-  if (SDL_GetRendererOutputSize(c->renderer, &c->window_width, &c->window_height) != 0) {
-    SDL_Log("SDL_GetRendererOutputSize failed: %s", SDL_GetError());
-    c->window_width = 0;
-    c->window_height = 0;
-  }
+  // if (SDL_GetRendererOutputSize(c->renderer, &c->window_width, &c->window_height) != 0) {
+  // SDL_Log("SDL_GetRendererOutputSize failed: %s", SDL_GetError());
+  // c->window_width = 0;
+  // c->window_height = 0;
+  //}
 
   SDL_RenderGetViewport(c->renderer, &g_viewport);
 

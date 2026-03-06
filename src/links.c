@@ -75,12 +75,12 @@ void render_link(Link_t *link) {
 }
 
 void layout_links(Link_t *link, size_t count) {
-  int center_x = g_sdl_context->win_center.x + SCALE_X(200);
+  int center_x = g_center.x + 200;
 
   for (size_t i = 0; i < count; i++) {
     link[i].rect.x = center_x - (link[i].rect.w / 2);
 
-    link[i].rect.y = (g_sdl_context->window_height - (link[i].rect.h * 2)) - (i * link[i].rect.h) -
-                     (i * (link[i].rect.h * 0.4));
+    link[i].rect.y =
+        (g_viewport.h - (link[i].rect.h * 2)) - (i * link[i].rect.h) - (i * (link[i].rect.h * 0.4));
   }
 }

@@ -75,8 +75,6 @@ const char *get_color_name(EColorName_t name);
 typedef struct {
   SDL_Renderer *renderer;
   SDL_Window *window;
-  SDL_Point win_center;
-  int window_width, window_height;
 } SdlContext_t;
 extern SdlContext_t *g_sdl_context;
 

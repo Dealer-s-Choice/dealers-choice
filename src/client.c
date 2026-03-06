@@ -278,8 +278,8 @@ static bool menu_display_game_choices(const PlayerConfig_t *player_config,
 
       render_button(&button_deuces_wild);
 
-      int offset_x = sdl_context->window_width * .1;
-      int offset_y = sdl_context->window_height / 2;
+      int offset_x = g_viewport.w * .1;
+      int offset_y = g_viewport.h / 2;
 
       SDL_Rect text_connected = {offset_x, offset_y, 0, 0};
       render_text_plain(sdl_context->renderer, font->fonts[FONT_BOLD], _("Connected players:"),
@@ -291,7 +291,7 @@ static bool menu_display_game_choices(const PlayerConfig_t *player_config,
 
       n_clients = 0;
       do {
-        int ping_column_x = sdl_context->win_center.x - SCALE_X(100); // fixed right edge for ping
+        int ping_column_x = g_center.x - SCALE_X(100); // fixed right edge for ping
         offset_y += SCALE_Y(40);
 
         // Build nickname + dealer label
@@ -328,15 +328,13 @@ static bool menu_display_game_choices(const PlayerConfig_t *player_config,
       saved_n_clients = n_clients;
 
       if (n_clients == 1)
-        render_text_plain(
-            sdl_context->renderer, font->fonts[FONT_DEFAULT], "Waiting for more players...",
-            get_color(COLOR_WHITE),
-            &(SDL_Rect){sdl_context->win_center.x, sdl_context->window_height - 200, 0, 0});
+        render_text_plain(sdl_context->renderer, font->fonts[FONT_DEFAULT],
+                          "Waiting for more players...", get_color(COLOR_WHITE),
+                          &(SDL_Rect){g_center.x, g_viewport.h - 200, 0, 0});
       if (game_state->dealer_id != my_id)
-        render_text_plain(
-            sdl_context->renderer, font->fonts[FONT_DEFAULT],
-            "Waiting for dealer to select game...", get_color(COLOR_WHITE),
-            &(SDL_Rect){sdl_context->win_center.x, sdl_context->window_height - 200, 0, 0});
+        render_text_plain(sdl_context->renderer, font->fonts[FONT_DEFAULT],
+                          "Waiting for dealer to select game...", get_color(COLOR_WHITE),
+                          &(SDL_Rect){g_center.x, g_viewport.h - 200, 0, 0});
 
       if (fullscreen_toggled)
         layout_links(links, LINK_DEFS_COUNT);
@@ -734,14 +732,14 @@ static void layout_amount_buttons(Button_t *b, const size_t count) {
   int left_margin = SCALE_X(500);
   for (size_t i = 0; i < count; i++) {
     b[i].rect.x = left_margin;
-    b[i].rect.y = g_sdl_context->window_height - (b[i].rect.h * 3);
+    b[i].rect.y = g_viewport.h - (b[i].rect.h * 3);
     left_margin += b[i].rect.w + SCALE_X(10);
   }
 }
 
 static void layout_action_buttons(Button_t *b) {
   for (int i = 0; i < MAX_ACTIONS; i++) {
-    b[i].rect.y = g_sdl_context->window_height - (b[i].rect.h * 5);
+    b[i].rect.y = g_viewport.h - (b[i].rect.h * 5);
   }
 }
 
@@ -792,8 +790,8 @@ static void layout_game_name_indicator(Indicator_t *ind) {
 }
 
 static void layout_deuces_wild_indicator(Indicator_t *ind) {
-  ind->rect.x = g_sdl_context->window_width - ind->rect.w - SCALE_X(25);
-  ind->rect.y = g_sdl_context->window_height - SCALE_Y(200);
+  ind->rect.x = g_viewport.w - ind->rect.w - SCALE_X(25);
+  ind->rect.y = g_viewport.h - SCALE_Y(200);
 }
 
 static void layout_wild_selection(Button_t *card_faces, Button_t *card_suits, const int face_count,
@@ -802,23 +800,22 @@ static void layout_wild_selection(Button_t *card_faces, Button_t *card_suits, co
   int width, height;
   TTF_SizeUTF8(font->fonts[FONT_WILD_SELECT], " 10 ", &width, &height);
   for (int i = 0; i < face_count; i++) {
-    card_faces[i].rect =
-        (SDL_Rect){g_sdl_context->win_center.x - SCALE_X(100), y_offset, width, height};
+    card_faces[i].rect = (SDL_Rect){g_center.x - SCALE_X(100), y_offset, width, height};
     y_offset += height + SCALE_Y(10);
   }
 
   y_offset = (height + SCALE_Y(10)) * 6;
   TTF_SizeUTF8(font->fonts[FONT_CARD], "   ", &width, &height);
   for (DH_suit i = 0; i < suit_count; i++) {
-    card_suits[i].rect = (SDL_Rect){
-        g_sdl_context->win_center.x - SCALE_X(100) + width + SCALE_X(20), y_offset, width, height};
+    card_suits[i].rect =
+        (SDL_Rect){g_center.x - SCALE_X(100) + width + SCALE_X(20), y_offset, width, height};
     y_offset += height + SCALE_Y(10);
   }
 }
 
 static void layout_timer(SDL_Point *p) {
-  p->x = g_sdl_context->win_center.x;
-  p->y = g_sdl_context->window_height - SCALE_Y(200);
+  p->x = g_center.x;
+  p->y = g_viewport.h - SCALE_Y(200);
 }
 
 static void draw_filled_circle(SDL_Renderer *r, int cx, int cy, int radius) {
@@ -1159,8 +1156,7 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
     for (int i = 0; i < SIZEOF_STATUS_MSGS; i++) {
       char tmp[sizeof(status_msgs[0])];
       snprintf(tmp, sizeof tmp, "%s", status_msgs[i]);
-      SDL_Rect text_pos = {SCALE_X(40),
-                           (sdl_context->win_center.y) + (SCALE_Y(20) * i) + SCALE_Y(5), 0, 0};
+      SDL_Rect text_pos = {SCALE_X(40), (g_center.y) + (SCALE_Y(20) * i) + SCALE_Y(5), 0, 0};
       render_text_plain(sdl_context->renderer, font->fonts[FONT_STATUS_MSG], tmp,
                         get_color(COLOR_BLACK), &text_pos);
     }

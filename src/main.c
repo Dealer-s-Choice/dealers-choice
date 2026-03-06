@@ -70,9 +70,7 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, c
   SDL_Rect input_nick = (SDL_Rect){100, 380, 300, 40};
   SDL_StartTextInput();
 
-  // layout_links(links, LINK_DEFS_COUNT);
-
-  bool fullscreen_toggled = false;
+  layout_links(links, LINK_DEFS_COUNT);
   bool run_client = false;
   bool running = true;
   while (running) {
@@ -103,8 +101,9 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, c
         if (e.key.keysym.sym == SDLK_BACKSPACE && strlen(host_str) > 0) {
           host_str[strlen(host_str) - 1] = '\0';
         } else if (e.key.keysym.sym == SDLK_RETURN && e.key.keysym.mod & KMOD_ALT) {
-          toggle_fullscreen(sdl_context);
-          fullscreen_toggled = true;
+          if (toggle_fullscreen(sdl_context)) {
+            layout_links(links, LINK_DEFS_COUNT);
+          }
         } else if (e.key.keysym.sym == SDLK_RETURN) {
           run_client = true;
           running = false;
@@ -133,7 +132,7 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, c
     render_text_plain(sdl_context->renderer, font->fonts[FONT_DEFAULT], player_config->nick,
                       get_color(COLOR_BLACK), &input_nick_pos);
 
-    SDL_Rect title_rect = {sdl_context->win_center.x / 1.5, SCALE_Y(60), 0, 0};
+    SDL_Rect title_rect = {g_center.x / 1.5, SCALE_Y(60), 0, 0};
     render_text_plain(sdl_context->renderer, font->fonts[FONT_TITLE], DEALERSCHOICE_FORMAL_NAME,
                       get_color(COLOR_BLACK), &title_rect);
 
@@ -143,8 +142,6 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, c
                       get_color(COLOR_WHITE),
                       &(SDL_Rect){title_rect.x + SCALE_X(40), title_rect.y + SCALE_Y(80), 0, 0});
 
-    if (fullscreen_toggled)
-      layout_links(links, LINK_DEFS_COUNT);
     for (size_t i = 0; i < LINK_DEFS_COUNT; i++)
       render_link(&links[i]);
 
@@ -380,7 +377,7 @@ int main(int argc, char *argv[]) {
     char tmp[256] = {0};
     snprintf(tmp, sizeof(tmp), "Attempting to connect to: %s...", host_str);
     render_text_plain(sdl_context.renderer, font.fonts[FONT_DEFAULT], tmp, get_color(COLOR_WHITE),
-                      &(SDL_Rect){SCALE_X(10), sdl_context.win_center.y, 0, 0});
+                      &(SDL_Rect){SCALE_X(10), g_center.y, 0, 0});
     SDL_RenderPresent(sdl_context.renderer);
 
     get_socket_context_and_run_client(&player_config, &cli_args, host_str, port, &sdl_context,
