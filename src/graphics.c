@@ -480,8 +480,24 @@ static inline UiLayout_t ui_layout(SDL_Renderer *r) {
 }
 
 void assign_window_values_set_scaling(SdlContext_t *c) {
-  SDL_GetRendererOutputSize(c->renderer, &c->window_width, &c->window_height);
+  if (!c) {
+    SDL_Log("assign_window_values_set_scaling: null context");
+    return;
+  }
 
-  card_area.w = 80;
-  card_area.h = 50;
+  if (!c->renderer) {
+    SDL_Log("assign_window_values_set_scaling: renderer not initialized");
+    return;
+  }
+
+  if (SDL_GetRendererOutputSize(c->renderer, &c->window_width, &c->window_height) != 0) {
+    SDL_Log("SDL_GetRendererOutputSize failed: %s", SDL_GetError());
+    c->window_width = 0;
+    c->window_height = 0;
+  }
+
+  SDL_RenderGetViewport(c->renderer, &g_viewport);
+
+  g_center.x = g_viewport.x + g_viewport.w / 2;
+  g_center.y = g_viewport.y + g_viewport.h / 2;
 }

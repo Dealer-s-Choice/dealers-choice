@@ -42,6 +42,8 @@
 const uint8_t MAX_CONNECTION_ATTEMPTS = 12;
 static const uint8_t coin_px = 96;
 
+static const SDL_Rect card_area = {0, 0, 80, 50};
+
 #define POT_BOUNDARY SCALE_Y(450)
 
 #define x_begin_action_button SCALE_X(500)
@@ -744,18 +746,24 @@ static void layout_action_buttons(Button_t *b) {
 }
 
 static void layout_player_pos(SDL_Point *player_pos) {
-  player_pos[0].x = MARGIN;
-  player_pos[0].y = card_area.h * 4;
+  SDL_Rect vp = g_viewport;
 
-  player_pos[1].x = MARGIN;
-  player_pos[1].y = card_area.h;
+  int right_x = vp.x + vp.w - (card_area.w * 7 + PADDING_BETWEEN_CARDS * 7 + MARGIN);
 
-  for (int i = 2; i < MAX_PLAYERS; i++)
-    player_pos[i].x = LOGICAL_WIDTH - (card_area.w * 7 + (PADDING_BETWEEN_CARDS * 7) + MARGIN);
+  player_pos[0].x = vp.x + MARGIN;
+  player_pos[0].y = vp.y + card_area.h * 4;
 
-  player_pos[2].y = card_area.h;
-  player_pos[3].y = card_area.h * 4;
-  player_pos[4].y = card_area.h * 7;
+  player_pos[1].x = vp.x + 20;
+  player_pos[1].y = vp.y + card_area.h;
+
+  player_pos[2].x = right_x;
+  player_pos[2].y = vp.y + card_area.h;
+
+  player_pos[3].x = right_x;
+  player_pos[3].y = vp.y + card_area.h * 4;
+
+  player_pos[4].x = right_x;
+  player_pos[4].y = vp.y + card_area.h * 7;
 }
 
 typedef struct {
@@ -774,16 +782,13 @@ static void layout_coins(CoinInPot_t *coins, SDL_Point *p, int count) {
 }
 
 static void layout_pot_center(SDL_Point *p) {
-  p->x = LOGICAL_WIDTH / 2;
-  p->y = LOGICAL_HEIGHT / 2;
+  p->x = g_center.x;
+  p->y = g_center.y;
 }
 
 static void layout_game_name_indicator(Indicator_t *ind) {
-  const int margin_x = 25;
-  const int offset_from_bottom = 300;
-
-  ind->rect.x = LOGICAL_WIDTH - ind->rect.w - margin_x;
-  ind->rect.y = LOGICAL_HEIGHT - offset_from_bottom;
+  ind->rect.x = g_viewport.x + g_viewport.w - ind->rect.w - MARGIN;
+  ind->rect.y = g_viewport.y + g_viewport.h - 300;
 }
 
 static void layout_deuces_wild_indicator(Indicator_t *ind) {

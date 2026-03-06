@@ -31,6 +31,8 @@
 SdlContext_t *g_sdl_context;
 
 UiScale_t ui_scale = {0};
-SDL_Rect card_area = {0};
 
 pcg32_random_t rng;
+
+SDL_Rect g_viewport = {0};
+SDL_Point g_center = {0};
