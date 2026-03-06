@@ -221,43 +221,43 @@ static bool menu_display_game_choices(const PlayerConfig_t *player_config,
     if (recv_status == RECV_ERROR)
       return false;
 
+    bool is_dealer = game_state->dealer_id == my_id && n_clients > 1;
     for (int i = 0; i < MAX_CHOICES; i++)
-      game_choice_button[i].enabled = (game_state->dealer_id == my_id && n_clients > 1);
+      game_choice_button[i].enabled = is_dealer;
 
-    button_deuces_wild.enabled = (game_state->dealer_id == my_id && n_clients > 1);
+    button_deuces_wild.enabled = is_dealer;
 
+    /* --- update hover every frame --- */
     int mx, my;
     SDL_GetMouseState(&mx, &my);
+
     float lx, ly;
     SDL_RenderWindowToLogical(sdl_context->renderer, mx, my, &lx, &ly);
+
     SDL_Point mouse_pos = {(int)lx, (int)ly};
 
-    for (int i = 0; i < MAX_CHOICES; i++) {
+    for (int i = 0; i < MAX_CHOICES; i++)
       game_choice_button[i].hovered = SDL_PointInRect(&mouse_pos, &game_choice_button[i].rect);
-    }
 
     button_deuces_wild.hovered =
         SDL_PointInRect(&mouse_pos, &button_deuces_wild.rect) && button_deuces_wild.enabled;
 
+    for (size_t i = 0; i < LINK_DEFS_COUNT; i++)
+      links[i].hovered = SDL_PointInRect(&mouse_pos, &links[i].rect);
+
     SDL_Event e;
     while (SDL_PollEvent(&e)) {
-      // SDL_Point mouse_pos = {e.button.x, e.button.y};
-      for (size_t i = 0; i < LINK_DEFS_COUNT; i++) {
-        links[i].hovered = SDL_PointInRect(&mouse_pos, &links[i].rect);
-      }
 
-      if (e.type == SDL_QUIT) {
+      switch (e.type) {
+
+      case SDL_QUIT:
         return false;
-      } else if (e.type == SDL_KEYDOWN &&
-                 (e.key.keysym.sym == SDLK_RETURN && e.key.keysym.mod & KMOD_ALT)) {
-        if (toggle_fullscreen(sdl_context)) {
-          // layout_links(links, LINK_DEFS_COUNT);
-          // update_layout(game_choice_button);
-        }
-      } else if (e.type == SDL_MOUSEBUTTONDOWN) {
+
+      case SDL_MOUSEBUTTONDOWN: {
         for (int i = 0; i < MAX_CHOICES; i++) {
           if (SDL_PointInRect(&mouse_pos, &game_choice_button[i].rect) &&
               game_state->dealer_id == my_id) {
+
             if (send_game_select(sock, game_choices[i].game_type, button_deuces_wild.selected) ==
                 0) {
               dealing = false;
@@ -267,15 +267,44 @@ static bool menu_display_game_choices(const PlayerConfig_t *player_config,
             }
           }
         }
+
         for (size_t i = 0; i < LINK_DEFS_COUNT; i++) {
           if (links[i].hovered && e.button.button == SDL_BUTTON_LEFT)
             if (SDL_OpenURL(links[i].url) == -1)
               fputs(SDL_GetError(), stderr);
         }
+
         if (button_deuces_wild.hovered) {
           button_deuces_wild.click.start_time = SDL_GetTicks();
           button_deuces_wild.selected = !button_deuces_wild.selected;
         }
+      } break;
+
+      case SDL_KEYDOWN:
+        switch (e.key.keysym.sym) {
+
+        case SDLK_RETURN:
+          if (e.key.keysym.mod & KMOD_ALT)
+            toggle_fullscreen(sdl_context);
+          break;
+
+        case SDLK_F11:
+          toggle_fullscreen(sdl_context);
+          break;
+
+        case SDLK_ESCAPE: {
+          Uint32 flags = SDL_GetWindowFlags(sdl_context->window);
+          if (flags & SDL_WINDOW_FULLSCREEN_DESKTOP)
+            toggle_fullscreen(sdl_context);
+          break;
+        }
+
+        default:
+          break;
+        }
+        break;
+      default:
+        break;
       }
     }
 
