@@ -164,7 +164,22 @@ static Button_t create_deuces_wild_button(SDL_Renderer *renderer, const Font_t *
   return b;
 }
 
-static const int NUM_COLUMNS = 4;
+#define NUM_COLUMNS 4
+#define column_spacing 400
+
+static void update_layout(Button_t *gcb) {
+  const float row_spacing_factor = 1.2f;
+  SDL_Rect vp = g_viewport;
+  for (int i = 0; i < MAX_CHOICES; i++) {
+    int row = i / NUM_COLUMNS;
+    int column = i % NUM_COLUMNS;
+
+    gcb[i].rect.x = vp.x + MARGIN + column * column_spacing;
+
+    int button_height = (int)(gcb[i].rect.h * row_spacing_factor);
+    gcb[i].rect.y = vp.y + MARGIN + (row * button_height);
+  }
+}
 
 static bool menu_display_game_choices(const PlayerConfig_t *player_config,
                                       SocketContext_t *socket_context, const int8_t my_id,
@@ -176,40 +191,27 @@ static bool menu_display_game_choices(const PlayerConfig_t *player_config,
 
   uint8_t n_clients = 0;
 
-  const int column_spacing = 400;
-  const float row_spacing_factor = 1.2f;
-
   Button_t game_choice_button[MAX_CHOICES];
 
-  for (int i = 0; i < MAX_CHOICES; i++) {
-    int column = i % NUM_COLUMNS;
-    int row = i / NUM_COLUMNS;
-
-    int x_offset = MARGIN + column * column_spacing;
-    int y_offset = MARGIN;
-
-    SDL_Rect rect = {x_offset, y_offset, 0, 0};
-
-    game_choice_button[i] = create_game_choice_button(game_choices[i].str, sdl_context->renderer,
-                                                      rect, font->fonts[FONT_BOLD], (SDL_Keycode)0);
-
-    /* Vertical placement uses already-scaled rect.h */
-    int button_height = (int)(game_choice_button[i].rect.h * row_spacing_factor);
-    game_choice_button[i].rect.y += row * button_height;
-  }
+  for (int i = 0; i < MAX_CHOICES; i++)
+    game_choice_button[i] =
+        create_game_choice_button(game_choices[i].str, sdl_context->renderer, (SDL_Rect){0},
+                                  font->fonts[FONT_BOLD], (SDL_Keycode)0);
 
   Button_t button_deuces_wild = create_deuces_wild_button(sdl_context->renderer, font);
   /* align X to second column */
   button_deuces_wild.rect.x = MARGIN + 1 * column_spacing;
   /* compute grid height */
   int rows = (MAX_CHOICES + NUM_COLUMNS - 1) / NUM_COLUMNS;
+  const float row_spacing_factor = 1.2f;
   int button_height = (int)(button_deuces_wild.rect.h * row_spacing_factor);
   /* place below the grid */
   button_deuces_wild.rect.y = MARGIN + rows * button_height;
 
   bool dealing = true;
 
-  // layout_links(links, LINK_DEFS_COUNT);
+  layout_links(links, LINK_DEFS_COUNT);
+  update_layout(game_choice_button);
 
   static uint8_t saved_n_clients = 0;
   TCPsocket sock = socket_context->sock;
@@ -224,8 +226,12 @@ static bool menu_display_game_choices(const PlayerConfig_t *player_config,
 
     button_deuces_wild.enabled = (game_state->dealer_id == my_id && n_clients > 1);
 
-    SDL_Point mouse_pos;
-    SDL_GetMouseState(&mouse_pos.x, &mouse_pos.y);
+    int mx, my;
+    SDL_GetMouseState(&mx, &my);
+    float lx, ly;
+    SDL_RenderWindowToLogical(sdl_context->renderer, mx, my, &lx, &ly);
+    SDL_Point mouse_pos = {(int)lx, (int)ly};
+
     for (int i = 0; i < MAX_CHOICES; i++) {
       game_choice_button[i].hovered = SDL_PointInRect(&mouse_pos, &game_choice_button[i].rect);
     }
@@ -233,7 +239,6 @@ static bool menu_display_game_choices(const PlayerConfig_t *player_config,
     button_deuces_wild.hovered =
         SDL_PointInRect(&mouse_pos, &button_deuces_wild.rect) && button_deuces_wild.enabled;
 
-    bool fullscreen_toggled = false;
     SDL_Event e;
     while (SDL_PollEvent(&e)) {
       // SDL_Point mouse_pos = {e.button.x, e.button.y};
@@ -245,7 +250,10 @@ static bool menu_display_game_choices(const PlayerConfig_t *player_config,
         return false;
       } else if (e.type == SDL_KEYDOWN &&
                  (e.key.keysym.sym == SDLK_RETURN && e.key.keysym.mod & KMOD_ALT)) {
-        fullscreen_toggled = toggle_fullscreen(sdl_context);
+        if (toggle_fullscreen(sdl_context)) {
+          layout_links(links, LINK_DEFS_COUNT);
+          // update_layout(game_choice_button);
+        }
       } else if (e.type == SDL_MOUSEBUTTONDOWN) {
         for (int i = 0; i < MAX_CHOICES; i++) {
           if (SDL_PointInRect(&mouse_pos, &game_choice_button[i].rect) &&
@@ -336,8 +344,6 @@ static bool menu_display_game_choices(const PlayerConfig_t *player_config,
                           "Waiting for dealer to select game...", get_color(COLOR_WHITE),
                           &(SDL_Rect){g_center.x, g_viewport.h - 200, 0, 0});
 
-      if (fullscreen_toggled)
-        layout_links(links, LINK_DEFS_COUNT);
       for (size_t i = 0; i < LINK_DEFS_COUNT; i++)
         render_link(&links[i]);
 
