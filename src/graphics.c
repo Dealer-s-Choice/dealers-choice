@@ -465,28 +465,23 @@ bool toggle_fullscreen(SdlContext_t *c) {
   return true;
 }
 
-
 typedef struct {
-    SDL_Rect viewport;
-    SDL_Point center;
+  SDL_Rect viewport;
+  SDL_Point center;
 } UiLayout_t;
 
-static inline UiLayout_t ui_layout(SDL_Renderer *r)
-{
-    UiLayout_t ui;
-    SDL_RenderGetViewport(r, &ui.viewport);
+static inline UiLayout_t ui_layout(SDL_Renderer *r) {
+  UiLayout_t ui;
+  SDL_RenderGetViewport(r, &ui.viewport);
 
-    ui.center.x = ui.viewport.x + ui.viewport.w / 2;
-    ui.center.y = ui.viewport.y + ui.viewport.h / 2;
-    return ui;
+  ui.center.x = ui.viewport.x + ui.viewport.w / 2;
+  ui.center.y = ui.viewport.y + ui.viewport.h / 2;
+  return ui;
 }
 
-void assign_window_values_set_scaling(SdlContext_t *c)
-{
-    SDL_GetRendererOutputSize(c->renderer,
-                              &c->window_width,
-                              &c->window_height);
+void assign_window_values_set_scaling(SdlContext_t *c) {
+  SDL_GetRendererOutputSize(c->renderer, &c->window_width, &c->window_height);
 
-    card_area.w = 80;
-    card_area.h = 50;
+  card_area.w = 80;
+  card_area.h = 50;
 }
