@@ -167,18 +167,21 @@ static Button_t create_deuces_wild_button(SDL_Renderer *renderer, const Font_t *
 #define NUM_COLUMNS 4
 #define column_spacing 400
 
-static void update_layout(Button_t *gcb) {
+static void update_layout(Button_t *gc_b, Button_t *dw_b) {
   const float row_spacing_factor = 1.2f;
   SDL_Rect vp = g_viewport;
   for (int i = 0; i < MAX_CHOICES; i++) {
     int row = i / NUM_COLUMNS;
     int column = i % NUM_COLUMNS;
 
-    gcb[i].rect.x = vp.x + MARGIN + column * column_spacing;
+    gc_b[i].rect.x = vp.x + MARGIN + column * column_spacing;
 
-    int button_height = (int)(gcb[i].rect.h * row_spacing_factor);
-    gcb[i].rect.y = vp.y + MARGIN + (row * button_height);
+    int button_height = (int)(gc_b[i].rect.h * row_spacing_factor);
+    gc_b[i].rect.y = vp.y + MARGIN + (row * button_height);
   }
+
+  dw_b->rect.x = g_viewport.x + 200;
+  dw_b->rect.y = g_viewport.y + 200;
 }
 
 static bool menu_display_game_choices(const PlayerConfig_t *player_config,
@@ -199,19 +202,11 @@ static bool menu_display_game_choices(const PlayerConfig_t *player_config,
                                   font->fonts[FONT_BOLD], (SDL_Keycode)0);
 
   Button_t button_deuces_wild = create_deuces_wild_button(sdl_context->renderer, font);
-  /* align X to second column */
-  button_deuces_wild.rect.x = MARGIN + 1 * column_spacing;
-  /* compute grid height */
-  int rows = (MAX_CHOICES + NUM_COLUMNS - 1) / NUM_COLUMNS;
-  const float row_spacing_factor = 1.2f;
-  int button_height = (int)(button_deuces_wild.rect.h * row_spacing_factor);
-  /* place below the grid */
-  button_deuces_wild.rect.y = MARGIN + rows * button_height;
 
   bool dealing = true;
 
   layout_links(links, LINK_DEFS_COUNT);
-  update_layout(game_choice_button);
+  update_layout(game_choice_button, &button_deuces_wild);
 
   static uint8_t saved_n_clients = 0;
   TCPsocket sock = socket_context->sock;
@@ -221,11 +216,11 @@ static bool menu_display_game_choices(const PlayerConfig_t *player_config,
     if (recv_status == RECV_ERROR)
       return false;
 
-    bool is_dealer = game_state->dealer_id == my_id && n_clients > 1;
+    bool dealing_enabled = game_state->dealer_id == my_id && n_clients > 1;
     for (int i = 0; i < MAX_CHOICES; i++)
-      game_choice_button[i].enabled = is_dealer;
+      game_choice_button[i].enabled = dealing_enabled;
 
-    button_deuces_wild.enabled = is_dealer;
+    button_deuces_wild.enabled = dealing_enabled;
 
     /* --- update hover every frame --- */
     int mx, my;

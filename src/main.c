@@ -284,6 +284,7 @@ static void init_sdl_window(SdlContext_t *c, const char *title) {
   }
 
   SDL_RenderGetViewport(c->renderer, &g_viewport);
+  SDL_Log("Viewport: x=%d y=%d w=%d h=%d", g_viewport.x, g_viewport.y, g_viewport.w, g_viewport.h);
 
   g_center.x = g_viewport.x + g_viewport.w / 2;
   g_center.y = g_viewport.y + g_viewport.h / 2;
