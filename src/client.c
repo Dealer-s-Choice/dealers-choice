@@ -130,15 +130,15 @@ static Button_t create_deuces_wild_button(SDL_Renderer *renderer, const Font_t *
   return b;
 }
 
-#define NUM_COLUMNS 4
-#define column_spacing 400
-
 static void update_layout(Button_t *gc_b, Button_t *dw_b) {
+  const uint8_t num_columns = 4;
+  const int column_spacing = 400;
   const float row_spacing_factor = 1.2f;
+
   SDL_Rect vp = g_viewport;
   for (int i = 0; i < MAX_CHOICES; i++) {
-    int row = i / NUM_COLUMNS;
-    int column = i % NUM_COLUMNS;
+    int row = i / num_columns;
+    int column = i % num_columns;
 
     gc_b[i].rect.x = vp.x + MARGIN + column * column_spacing;
 
