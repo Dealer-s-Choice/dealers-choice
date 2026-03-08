@@ -40,6 +40,12 @@ The timeout is defined in
 | 2    |    250     |
 | 3    |    500     |
 
+|             Full Screen                                     |
+|-------------------------------------------------------------|
+| F11 or Alt+Enter  | toggle full-screen                      |
+| ESC               | if full-screen, switch to windowed mode |
+
+
 Hotkeys are not implemented for everything yet, but they are planned, as well
 as [making them
 configurable](https://github.com/Dealer-s-Choice/dealers-choice/issues/102).

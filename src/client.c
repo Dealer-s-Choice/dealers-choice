@@ -1471,23 +1471,28 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
 
       if (event.type == SDL_QUIT) {
         running = false;
-      } else if (event.type == SDL_KEYDOWN &&
-                 (event.key.keysym.sym == SDLK_RETURN && event.key.keysym.mod & KMOD_ALT)) {
-        if (toggle_fullscreen(sdl_context)) {
-          // layout_player_pos(player_pos);
-          // layout_cards(card_context, players_array, player_pos);
-          // layout_table_center(&table_center);
-          // layout_coins(coin_in_pot, &table_center, coins);
-          // layout_amount_buttons(amount_button, n_bet_amounts);
-          // layout_action_buttons(action_button);
-          // layout_game_name_indicator(&indicator_game_name);
-          // layout_deuces_wild_indicator(&indicator_deuces_wild);
-          // layout_timer(&timer);
-          // if (client_state.deuces_wild && client_state.do_exchange_wilds)
-          // layout_wild_selection(card_faces, card_suits, ARRAY_SIZE(card_faces),
-          // ARRAY_SIZE(card_suits), font);
+      } else if (event.type == SDL_KEYDOWN) {
+        switch (event.key.keysym.sym) {
+        case SDLK_RETURN:
+          if (event.key.keysym.mod & KMOD_ALT)
+            toggle_fullscreen(sdl_context);
+          break;
+
+        case SDLK_F11:
+          toggle_fullscreen(sdl_context);
+          break;
+
+        case SDLK_ESCAPE: {
+          Uint32 flags = SDL_GetWindowFlags(sdl_context->window);
+          if (flags & SDL_WINDOW_FULLSCREEN_DESKTOP)
+            toggle_fullscreen(sdl_context);
+          break;
         }
-      } else if (event.type == SDL_MOUSEBUTTONDOWN || event.type == SDL_KEYDOWN) {
+        default:
+          break;
+        }
+      }
+      if (event.type == SDL_MOUSEBUTTONDOWN || event.type == SDL_KEYDOWN) {
         if (my_turn && !client_state.do_discard_draw && !client_state.do_exchange_wilds) {
           if (client_state.bet_check_fold || client_state.call_raise_fold) {
             if (SDL_PointInRect(&mouse_pos, &action_button[FOLD].rect) ||

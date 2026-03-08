@@ -98,15 +98,34 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, c
           strcat(host_str, e.text.text);
         }
       } else if (e.type == SDL_KEYDOWN) {
-        if (e.key.keysym.sym == SDLK_BACKSPACE && strlen(host_str) > 0) {
-          host_str[strlen(host_str) - 1] = '\0';
-        } else if (e.key.keysym.sym == SDLK_RETURN && e.key.keysym.mod & KMOD_ALT) {
-          if (toggle_fullscreen(sdl_context)) {
-            // layout_links(links, LINK_DEFS_COUNT);
+        switch (e.key.keysym.sym) {
+        case SDLK_RETURN:
+          if (e.key.keysym.mod & KMOD_ALT)
+            toggle_fullscreen(sdl_context);
+          else {
+            run_client = true;
+            running = false;
           }
-        } else if (e.key.keysym.sym == SDLK_RETURN) {
-          run_client = true;
-          running = false;
+          break;
+
+        case SDLK_F11:
+          toggle_fullscreen(sdl_context);
+          break;
+
+        case SDLK_ESCAPE: {
+          Uint32 flags = SDL_GetWindowFlags(sdl_context->window);
+          if (flags & SDL_WINDOW_FULLSCREEN_DESKTOP)
+            toggle_fullscreen(sdl_context);
+          break;
+        }
+
+        case SDLK_BACKSPACE:
+          if (strlen(host_str) > 0)
+            host_str[strlen(host_str) - 1] = '\0';
+          break;
+
+        default:
+          break;
         }
       }
     }
