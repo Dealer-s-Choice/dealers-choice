@@ -9,10 +9,7 @@ typedef struct {
   const char *text;
   const char *url;
   TTF_Font *font;
-  // SDL_Color textColor;
   SDL_Renderer *renderer;
-  // SDL_Color bg_color;
-  // SDL_Color fg_color;
   SDL_Rect rect;
   bool hovered;
 } Link_t;

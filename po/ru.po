@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: dealers-choice\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-02-25 21:27-0600\n"
+"POT-Creation-Date: 2026-03-08 14:06-0500\n"
 "PO-Revision-Date: 2025-07-02 00:18-0500\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -18,58 +18,64 @@ msgstr ""
 "Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
 "n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
 
-#: src/client.c:143
+#: src/client.c:110
 msgid "Deuces Wild"
 msgstr ""
 
-#: src/client.c:282
+#: src/client.c:276
 msgid "Connected players:"
 msgstr "Подключённые игроки:"
 
-#: src/client.c:345
+#: src/client.c:335
 msgid "Dealing..."
 msgstr ""
 
-#: src/client.c:881
+#: src/client.c:886
 msgid "Check"
 msgstr "Чек"
 
-#: src/client.c:881
+#: src/client.c:886
 msgid "Bet"
 msgstr "Ставка"
 
-#: src/client.c:882
+#: src/client.c:887
 msgid "Fold"
 msgstr "Пас"
 
-#: src/client.c:882
+#: src/client.c:887
 msgid "Call"
 msgstr "Колл"
 
-#: src/client.c:883
+#: src/client.c:888
 msgid "Raise"
 msgstr "Рейз"
 
-#: src/client.c:883
+#: src/client.c:888
 msgid "Discard"
 msgstr "Сбросить"
 
-#: src/client.c:884
+#: src/client.c:889
 msgid "Exchange"
 msgstr ""
 
-#: src/client.c:1226
+#: src/client.c:1228
 msgid "Click a 2, then choose value and suit to assign."
 msgstr ""
 
-#: src/main.c:49
+#: src/main.c:50
 msgid "Connect"
 msgstr "Подключиться"
 
-#: src/main.c:127
+#: src/main.c:139
 #, c-format
 msgid "port: %<PRIu16>"
 msgstr ""
 
-#~ msgid " Discord Channel (on Lazarus Project Server) "
-#~ msgstr " Канал Discord (на сервере проекта Lazarus) "
+#: src/links.c:12
+#, fuzzy
+msgid "Discord Channel (on Lazarus Project Server)"
+msgstr " Канал Discord (на сервере проекта Lazarus) "
+
+#: src/links.c:15
+msgid "Website"
+msgstr ""

@@ -40,7 +40,11 @@ if get_option('nls') and not platform_is_windows
     i18n = import('i18n')
     i18n.gettext(
       meson.project_name(),
-      args: ['--directory=' + meson.project_source_root()],
+      args: [
+        '--keyword=_',
+        '--keyword=N_',
+        '--directory=' + meson.project_source_root(),
+      ],
     )
   else
     message('libintl not found. You will either need to install the appropriate')
