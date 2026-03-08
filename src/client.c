@@ -809,7 +809,7 @@ static void layout_coins(CoinInPot_t *coins, SDL_Point *p, int count) {
   }
 }
 
-static void layout_pot_center(SDL_Point *p) {
+static void layout_table_center(SDL_Point *p) {
   p->x = g_center.x;
   p->y = g_center.y;
 }
@@ -1060,8 +1060,8 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
 
   uint8_t coins = 0;
   CoinAnimation_t coin_anim = {0};
-  SDL_Point pot_center = {0};
-  layout_pot_center(&pot_center);
+  SDL_Point table_center = {0};
+  layout_table_center(&table_center);
 
   client_state.timer_start = SDL_GetTicks();
 
@@ -1140,7 +1140,7 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
 
     if (new_coin) {
       // FIRST: compute rects
-      layout_coins(coin_in_pot, &pot_center, coins);
+      layout_coins(coin_in_pot, &table_center, coins);
 
       int last = coins - 1;
 
@@ -1320,7 +1320,7 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
 
     char buffer[128];
     snprintf(buffer, sizeof(buffer), "%" PRIu32, game_state->pot);
-    render_text_pot(buffer, pot_center, font);
+    render_text_pot(buffer, table_center, font);
 
     player_ptr = starting_turn;
     do {
@@ -1476,8 +1476,8 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
         if (toggle_fullscreen(sdl_context)) {
           // layout_player_pos(player_pos);
           // layout_cards(card_context, players_array, player_pos);
-          // layout_pot_center(&pot_center);
-          // layout_coins(coin_in_pot, &pot_center, coins);
+          // layout_table_center(&table_center);
+          // layout_coins(coin_in_pot, &table_center, coins);
           // layout_amount_buttons(amount_button, n_bet_amounts);
           // layout_action_buttons(action_button);
           // layout_game_name_indicator(&indicator_game_name);
