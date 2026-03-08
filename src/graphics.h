@@ -74,11 +74,6 @@ typedef struct {
 extern SdlContext_t *g_sdl_context;
 
 typedef struct {
-  float scale_x, scale_y;
-} UiScale_t;
-extern UiScale_t ui_scale;
-
-typedef struct {
   const char *file;
   const int ptsize;
 } FontArgs_t;
@@ -150,7 +145,5 @@ bool toggle_fullscreen(SdlContext_t *sdl_context);
 
 // Transitional loading screen
 void show_loading_screen(SDL_Renderer *renderer, TTF_Font *font, const char *message);
-
-void assign_window_values_set_scaling(SdlContext_t *c);
 
 #endif

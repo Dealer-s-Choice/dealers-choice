@@ -30,8 +30,6 @@
 
 SdlContext_t *g_sdl_context;
 
-UiScale_t ui_scale = {0};
-
 pcg32_random_t rng;
 
 SDL_Rect g_viewport = {0};
