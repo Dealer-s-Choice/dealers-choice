@@ -287,13 +287,6 @@ static bool menu_display_game_choices(const PlayerConfig_t *player_config,
           toggle_fullscreen(sdl_context);
           break;
 
-        case SDLK_ESCAPE: {
-          Uint32 flags = SDL_GetWindowFlags(sdl_context->window);
-          if (flags & SDL_WINDOW_FULLSCREEN_DESKTOP)
-            toggle_fullscreen(sdl_context);
-          break;
-        }
-
         default:
           break;
         }
@@ -1482,12 +1475,6 @@ static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *
           toggle_fullscreen(sdl_context);
           break;
 
-        case SDLK_ESCAPE: {
-          Uint32 flags = SDL_GetWindowFlags(sdl_context->window);
-          if (flags & SDL_WINDOW_FULLSCREEN_DESKTOP)
-            toggle_fullscreen(sdl_context);
-          break;
-        }
         default:
           break;
         }

@@ -8,7 +8,7 @@
   + Add feedback when some buttons are clicked
   * Increase coin size
   + Add card back patterns
-  + Add F11 and ESC key for full-screen switching
+  + Add F11 key for full-screen toggling
   * Bump game protocol to v6
   * bugfix: Infinite checking when first person in a >=3 person game folds
   * bugfix: Using AppImage, objects don't appear correctly after fullscreen switch

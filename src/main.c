@@ -112,13 +112,6 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, c
           toggle_fullscreen(sdl_context);
           break;
 
-        case SDLK_ESCAPE: {
-          Uint32 flags = SDL_GetWindowFlags(sdl_context->window);
-          if (flags & SDL_WINDOW_FULLSCREEN_DESKTOP)
-            toggle_fullscreen(sdl_context);
-          break;
-        }
-
         case SDLK_BACKSPACE:
           if (strlen(host_str) > 0)
             host_str[strlen(host_str) - 1] = '\0';
