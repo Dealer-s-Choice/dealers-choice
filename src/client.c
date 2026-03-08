@@ -150,11 +150,11 @@ static void update_layout(Button_t *gc_b, Button_t *dw_b) {
   dw_b->rect.y = g_viewport.y + 200;
 }
 
-static bool menu_display_game_choices(const PlayerConfig_t *player_config,
-                                      SocketContext_t *socket_context, const int8_t my_id,
-                                      GameState_t *game_state, ClientState_t *client_state,
-                                      SdlContext_t *sdl_context, Font_t *font,
-                                      const SoundContext_t *sound_context, Link_t *links) {
+static bool handle_game_selection(const PlayerConfig_t *player_config,
+                                  SocketContext_t *socket_context, const int8_t my_id,
+                                  GameState_t *game_state, ClientState_t *client_state,
+                                  SdlContext_t *sdl_context, Font_t *font,
+                                  const SoundContext_t *sound_context, Link_t *links) {
   // This will likely get used later. For now, suppress the warning about "unused parameter"
   (void)player_config;
 
@@ -862,10 +862,10 @@ static void render_text_pot(const char *text, const SDL_Point center, const Font
   SDL_DestroyTexture(texture);
 }
 
-static bool run_game_loop(const PlayerConfig_t *player_config, SocketContext_t *socket_context,
-                          const GameSettings_t *game_settings, GameState_t *game_state,
-                          SdlContext_t *sdl_context, const Font_t *font, Path_t *path,
-                          const SoundContext_t *sound_context) {
+static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext_t *socket_context,
+                              const GameSettings_t *game_settings, GameState_t *game_state,
+                              SdlContext_t *sdl_context, const Font_t *font, Path_t *path,
+                              const SoundContext_t *sound_context) {
   select_card_back_for_game();
 
   ClientState_t client_state = {0};
@@ -1722,14 +1722,14 @@ SocketContext_t get_socket_context_and_run_client(PlayerConfig_t *player_config,
 
     bool running = true;
     do {
-      running = menu_display_game_choices(player_config, &socket_context, game_settings.client_id,
-                                          &game_state, &client_state, sdl_context, font,
-                                          &sound_context, links);
+      running = handle_game_selection(player_config, &socket_context, game_settings.client_id,
+                                      &game_state, &client_state, sdl_context, font, &sound_context,
+                                      links);
       if (!running)
         break;
 
-      running = run_game_loop(player_config, &socket_context, &game_settings, &game_state,
-                              sdl_context, font, path, &sound_context);
+      running = handle_game_logic(player_config, &socket_context, &game_settings, &game_state,
+                                  sdl_context, font, path, &sound_context);
     } while (running);
     for (i = 0; i < SND_NUM_SOUNDS; i++)
       ma_sound_uninit(&sounds[i].sound);
