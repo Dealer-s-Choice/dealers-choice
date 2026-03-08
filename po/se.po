@@ -1,0 +1,78 @@
+# Northern Sami translations for dealers-choice package.
+# Copyright (C) 2026 THE dealers-choice'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the dealers-choice package.
+# Andy <arch_stanton5995@proton.me>, 2026.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: dealers-choice\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-03-08 14:06-0500\n"
+"PO-Revision-Date: 2026-03-08 14:30-0500\n"
+"Last-Translator: Andy <arch_stanton5995@proton.me>\n"
+"Language-Team: \n"
+"Language: se\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: src/client.c:110
+msgid "Deuces Wild"
+msgstr "Tvåor är vilda"
+
+#: src/client.c:276
+msgid "Connected players:"
+msgstr "Anslutna spelare:"
+
+#: src/client.c:335
+msgid "Dealing..."
+msgstr "Delar ut..."
+
+#: src/client.c:886
+msgid "Check"
+msgstr "Passa"
+
+#: src/client.c:886
+msgid "Bet"
+msgstr "Satsa"
+
+#: src/client.c:887
+msgid "Fold"
+msgstr "Lägg dig"
+
+#: src/client.c:887
+msgid "Call"
+msgstr "Syn"
+
+#: src/client.c:888
+msgid "Raise"
+msgstr "Höj"
+
+#: src/client.c:888
+msgid "Discard"
+msgstr "Kasta"
+
+#: src/client.c:889
+msgid "Exchange"
+msgstr "Byt"
+
+#: src/client.c:1228
+msgid "Click a 2, then choose value and suit to assign."
+msgstr "Klicka på en tvåa och välj sedan valör och färg att tilldela."
+
+#: src/main.c:50
+msgid "Connect"
+msgstr "Anslut"
+
+#: src/main.c:139
+#, c-format
+msgid "port: %<PRIu16>"
+msgstr "port: %<PRIu16>"
+
+#: src/links.c:12
+msgid "Discord Channel (on Lazarus Project Server)"
+msgstr "Discord-kanal (på Lazarus Project-servern)"
+
+#: src/links.c:15
+msgid "Website"
+msgstr "Webbplats"
