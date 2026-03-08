@@ -37,7 +37,7 @@ void render_link(Link_t *link) {
 
   SDL_Color text_color = link->hovered ? get_color(COLOR_BLUE) : get_color(COLOR_BLACK);
 
-  SDL_Surface *surface = TTF_RenderText_Solid(link->font, link->text, text_color);
+  SDL_Surface *surface = TTF_RenderUTF8_Blended(link->font, link->text, text_color);
   if (!surface) {
     SDL_Log("Failed to render text surface: %s", TTF_GetError());
     return;
@@ -75,12 +75,12 @@ void render_link(Link_t *link) {
 }
 
 void layout_links(Link_t *link, size_t count) {
-  int center_x = g_sdl_context->win_center.x + SCALE_X(200);
+  int center_x = g_center.x + 200;
 
   for (size_t i = 0; i < count; i++) {
     link[i].rect.x = center_x - (link[i].rect.w / 2);
 
-    link[i].rect.y = (g_sdl_context->window_height - (link[i].rect.h * 2)) - (i * link[i].rect.h) -
-                     (i * (link[i].rect.h * 0.4));
+    link[i].rect.y =
+        (g_viewport.h - (link[i].rect.h * 2)) - (i * link[i].rect.h) - (i * (link[i].rect.h * 0.4));
   }
 }

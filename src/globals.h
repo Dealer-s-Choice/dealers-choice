@@ -35,6 +35,7 @@
 
 extern pcg32_random_t rng;
 
-extern SDL_Rect card_area;
+extern SDL_Rect g_viewport;
+extern SDL_Point g_center;
 
 #endif

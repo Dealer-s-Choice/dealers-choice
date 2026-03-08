@@ -59,8 +59,8 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, c
   if (TTF_SizeUTF8(button_connect.font, button_connect.text, &button_connect.rect.w,
                    &button_connect.rect.h) != 0)
     fprintf(stderr, "TTF_SizeUTF8 error: %s\n", TTF_GetError());
-  button_connect.rect.w += SCALE_X(20);
-  button_connect.rect.h += SCALE_Y(10);
+  button_connect.rect.w += 20;
+  button_connect.rect.h += 10;
 
   SDL_Rect input_box = (SDL_Rect){100, 220, 200, 40};
 
@@ -70,9 +70,7 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, c
   SDL_Rect input_nick = (SDL_Rect){100, 380, 300, 40};
   SDL_StartTextInput();
 
-  // layout_links(links, LINK_DEFS_COUNT);
-
-  bool fullscreen_toggled = false;
+  layout_links(links, LINK_DEFS_COUNT);
   bool run_client = false;
   bool running = true;
   while (running) {
@@ -103,8 +101,9 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, c
         if (e.key.keysym.sym == SDLK_BACKSPACE && strlen(host_str) > 0) {
           host_str[strlen(host_str) - 1] = '\0';
         } else if (e.key.keysym.sym == SDLK_RETURN && e.key.keysym.mod & KMOD_ALT) {
-          toggle_fullscreen(sdl_context);
-          fullscreen_toggled = true;
+          if (toggle_fullscreen(sdl_context)) {
+            // layout_links(links, LINK_DEFS_COUNT);
+          }
         } else if (e.key.keysym.sym == SDLK_RETURN) {
           run_client = true;
           running = false;
@@ -126,14 +125,13 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, c
     char port_str[24] = {0};
     snprintf(port_str, sizeof(port_str), _("port: %" PRIu16), port);
     render_text_plain(sdl_context->renderer, font->fonts[FONT_DEFAULT], port_str,
-                      get_color(COLOR_BLACK),
-                      &(SDL_Rect){input_box.x, input_box.y + SCALE_Y(50), 0, 0});
+                      get_color(COLOR_BLACK), &(SDL_Rect){input_box.x, input_box.y + 50, 0, 0});
 
     SDL_Rect input_nick_pos = {input_nick.x, input_nick.y, 0, 0};
     render_text_plain(sdl_context->renderer, font->fonts[FONT_DEFAULT], player_config->nick,
                       get_color(COLOR_BLACK), &input_nick_pos);
 
-    SDL_Rect title_rect = {sdl_context->win_center.x / 1.5, SCALE_Y(60), 0, 0};
+    SDL_Rect title_rect = {g_center.x / 1.5, 60, 0, 0};
     render_text_plain(sdl_context->renderer, font->fonts[FONT_TITLE], DEALERSCHOICE_FORMAL_NAME,
                       get_color(COLOR_BLACK), &title_rect);
 
@@ -141,10 +139,8 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, c
     snprintf(version, sizeof(version), "Version " DEALERSCHOICE_VERSION);
     render_text_plain(sdl_context->renderer, font->fonts[FONT_VERSION], version,
                       get_color(COLOR_WHITE),
-                      &(SDL_Rect){title_rect.x + SCALE_X(40), title_rect.y + SCALE_Y(80), 0, 0});
+                      &(SDL_Rect){title_rect.x + 40, title_rect.y + 80, 0, 0});
 
-    if (fullscreen_toggled)
-      layout_links(links, LINK_DEFS_COUNT);
     for (size_t i = 0; i < LINK_DEFS_COUNT; i++)
       render_link(&links[i]);
 
@@ -251,30 +247,47 @@ static CliArgs_t parse_cli_args(int argc, char *argv[]) {
   return cli_args;
 }
 
-static void init_sdl_window(SdlContext_t *sdl_context, const char *title) {
+static void init_sdl_window(SdlContext_t *c, const char *title) {
   SDL_Rect bounds;
-  if (SDL_GetDisplayBounds(0, &bounds) == 0) {
-    printf("Display 0 bounds: x=%d, y=%d, w=%d, h=%d\n", bounds.x, bounds.y, bounds.w, bounds.h);
-  } else {
-    puts(SDL_GetError());
+
+  if (SDL_GetDisplayBounds(0, &bounds) != 0) {
+    SDL_Log("SDL_GetDisplayBounds failed: %s", SDL_GetError());
     exit(EXIT_FAILURE);
   }
 
-  float factor = 0.8;
-  float w = bounds.w * factor;
-  float h = bounds.h * factor;
+  const float factor = 0.8f;
+  const int w = (int)(bounds.w * factor);
+  const int h = (int)(bounds.h * factor);
 
-  sdl_context->window = SDL_CreateWindow(title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, w,
-                                         h, SDL_WINDOW_SHOWN);
-  if (!sdl_context->window)
-    puts(SDL_GetError());
-  sdl_context->renderer = SDL_CreateRenderer(sdl_context->window, -1, SDL_RENDERER_ACCELERATED);
-  if (!sdl_context->renderer)
-    puts(SDL_GetError());
+  c->window = SDL_CreateWindow(title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, w, h,
+                               SDL_WINDOW_SHOWN | SDL_WINDOW_ALLOW_HIGHDPI);
 
-  assign_window_values_set_scaling(sdl_context);
+  if (!c->window) {
+    SDL_Log("SDL_CreateWindow failed: %s", SDL_GetError());
+    exit(EXIT_FAILURE);
+  }
 
-  return;
+  /* MUST be set BEFORE creating the renderer */
+  SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0"); // nearest
+
+  c->renderer =
+      SDL_CreateRenderer(c->window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+
+  if (!c->renderer) {
+    SDL_Log("SDL_CreateRenderer failed: %s", SDL_GetError());
+    SDL_DestroyWindow(c->window);
+    exit(EXIT_FAILURE);
+  }
+
+  if (SDL_RenderSetLogicalSize(c->renderer, LOGICAL_WIDTH, LOGICAL_HEIGHT) != 0) {
+    SDL_Log("SDL_RenderSetLogicalSize failed: %s", SDL_GetError());
+  }
+
+  SDL_RenderGetViewport(c->renderer, &g_viewport);
+  SDL_Log("Viewport: x=%d y=%d w=%d h=%d", g_viewport.x, g_viewport.y, g_viewport.w, g_viewport.h);
+
+  g_center.x = g_viewport.x + g_viewport.w / 2;
+  g_center.y = g_viewport.y + g_viewport.h / 2;
 }
 
 int main(int argc, char *argv[]) {
@@ -330,7 +343,7 @@ int main(int argc, char *argv[]) {
   for (int i = 0; i < NUM_FONTS; ++i) {
     char font_path[4096] = {0};
     snprintf(font_path, sizeof(font_path), "%s/%s", path.data, font_args[i].file);
-    font.fonts[i] = open_font(&(FontArgs_t){font_path, SCALE_Y(font_args[i].ptsize)});
+    font.fonts[i] = open_font(&(FontArgs_t){font_path, font_args[i].ptsize});
     if (!font.fonts[i])
       return -1;
   }
@@ -367,7 +380,7 @@ int main(int argc, char *argv[]) {
     char tmp[256] = {0};
     snprintf(tmp, sizeof(tmp), "Attempting to connect to: %s...", host_str);
     render_text_plain(sdl_context.renderer, font.fonts[FONT_DEFAULT], tmp, get_color(COLOR_WHITE),
-                      &(SDL_Rect){SCALE_X(10), sdl_context.win_center.y, 0, 0});
+                      &(SDL_Rect){10, g_center.y, 0, 0});
     SDL_RenderPresent(sdl_context.renderer);
 
     get_socket_context_and_run_client(&player_config, &cli_args, host_str, port, &sdl_context,

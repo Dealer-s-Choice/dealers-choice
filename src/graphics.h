@@ -36,12 +36,12 @@
 #include "net.h"
 #include "types.h"
 
-#define SCALE_X(val) ((int)((val) * ui_scale.scale_x))
-#define SCALE_Y(val) ((int)((val) * ui_scale.scale_y))
+#define LOGICAL_WIDTH 1920
+#define LOGICAL_HEIGHT 1080
 
-#define MARGIN SCALE_X(20)
+#define MARGIN 20
 
-#define BUTTON_X_SPACING SCALE_X(10)
+#define BUTTON_X_SPACING 10
 
 typedef enum {
   COLOR_WHITE,
@@ -70,8 +70,6 @@ const char *get_color_name(EColorName_t name);
 typedef struct {
   SDL_Renderer *renderer;
   SDL_Window *window;
-  SDL_Point win_center;
-  int window_width, window_height;
 } SdlContext_t;
 extern SdlContext_t *g_sdl_context;
 

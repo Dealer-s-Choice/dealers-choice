@@ -274,7 +274,7 @@ void render_button(Button_t *button) {
     click_t = 0.0f;
   }
 
-  int press_offset = (int)(click_t * SCALE_Y(8));
+  int press_offset = (int)(click_t * 8);
   SDL_Rect rect = button->rect;
   rect.y += press_offset;
 
@@ -405,8 +405,8 @@ Indicator_t create_indicator(SDL_Renderer *renderer, const char *text, const Fon
 
   if (TTF_SizeUTF8(ind.font, ind.text, &ind.rect.w, &ind.rect.h) != 0) {
     fprintf(stderr, "TTF_SizeUTF8 failed: %s\n", TTF_GetError());
-    ind.rect.w = SCALE_X(40);
-    ind.rect.h = SCALE_Y(20);
+    ind.rect.w = 40;
+    ind.rect.h = 20;
   }
 
   int PAD_X = ind.rect.h;     // one text-height on each side
@@ -440,37 +440,21 @@ SDL_Texture *load_texture(SDL_Renderer *renderer, const char *path) {
   return texture;
 }
 
-bool toggle_fullscreen(SdlContext_t *sdl_context) {
-  int r;
-  Uint32 flags = SDL_GetWindowFlags(sdl_context->window);
-  if (flags & SDL_WINDOW_FULLSCREEN_DESKTOP) {
-    // Currently fullscreen, go back to windowed
-    r = SDL_SetWindowFullscreen(sdl_context->window, 0); // disable fullscreen
-  } else {
-    // Switch to fullscreen desktop mode (borderless, scaled)
-    r = SDL_SetWindowFullscreen(sdl_context->window, SDL_WINDOW_FULLSCREEN_DESKTOP);
+bool toggle_fullscreen(SdlContext_t *c) {
+  if (!c || !c->window) {
+    SDL_Log("toggle_fullscreen: invalid context");
+    return false;
   }
-  if (r == 0) {
-    assign_window_values_set_scaling(sdl_context);
-    return true;
+
+  const Uint32 flags = SDL_GetWindowFlags(c->window);
+  const bool is_fs = (flags & SDL_WINDOW_FULLSCREEN_DESKTOP) != 0;
+
+  const Uint32 new_mode = is_fs ? 0 : SDL_WINDOW_FULLSCREEN_DESKTOP;
+
+  if (SDL_SetWindowFullscreen(c->window, new_mode) != 0) {
+    SDL_Log("SDL_SetWindowFullscreen failed: %s", SDL_GetError());
+    return false;
   }
-  fprintf(stderr, "toggle_fullscreen: %s\n", SDL_GetError());
-  return false;
-}
 
-void assign_window_values_set_scaling(SdlContext_t *c) {
-  int x, y;
-  SDL_GetWindowSize(c->window, &x, &y);
-
-  c->win_center.x = x / 2;
-  c->win_center.y = y / 2;
-
-  c->window_width = x;
-  c->window_height = y;
-
-  ui_scale.scale_x = x / 1920.0f;
-  ui_scale.scale_y = y / 1080.0f;
-
-  card_area.w = SCALE_X(80);
-  card_area.h = SCALE_Y(50);
+  return true;
 }
