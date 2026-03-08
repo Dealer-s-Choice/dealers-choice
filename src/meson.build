@@ -4,6 +4,7 @@ if get_option('gen_protobuf')
 endif
 
 shared_src = files(
+  'button.c',
   'client.c',
   'dc_config.c',
   'debug.c',

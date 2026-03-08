@@ -32,6 +32,7 @@
 #include <string.h>
 #include <time.h>
 
+#include "button.h"
 #include "client.h"
 #include "game.h"
 #include "globals.h"
@@ -67,41 +68,6 @@ static int send_protocol_header(TCPsocket sock) {
   hdr.version = SDL_SwapBE16(GAME_PROTOCOL_VERSION);
 
   return send_all_tcp(sock, &hdr, sizeof(hdr));
-}
-
-// These two buttons for creating the buttons are mostly identical. In the future,
-// they can be changed so there are some differences if desired. Otherwise,
-// they'll be merged, and some of the values, such as the colors, will be passed
-// as arguments.
-static Button_t create_button(const char *text, SDL_Renderer *renderer, const int y, TTF_Font *font,
-                              SDL_Keycode key, const bool secondary) {
-  Button_t button = {
-      .text = text,
-      .renderer = renderer,
-      .bg_color = get_color(COLOR_BLACK),
-      .fg_color = get_color(COLOR_YELLOW),
-      .rect = (SDL_Rect){0, y, 0, 0},
-      .font = font,
-      .hovered = false,
-      .enabled = true,
-      .selected = false,
-      .active = true,
-      .hotkey = key,
-  };
-
-  // This should help avoid the button acidentally being clicked when someone double-clicks
-  // on the previous action button
-  if (secondary) {
-    TTF_SizeUTF8(font, text, &button.rect.w, &button.rect.h);
-    button.rect.y += button.rect.h + 10;
-  }
-
-  if (TTF_SizeUTF8(font, text, &button.rect.w, &button.rect.h) != 0)
-    fprintf(stderr, "TTF_SizeUTF8 error: %s\n", TTF_GetError());
-
-  button.rect.w += 20;
-  button.rect.h += 10;
-  return button;
 }
 
 static Button_t create_game_choice_button(const char *text, SDL_Renderer *renderer, SDL_Rect rect,

@@ -31,6 +31,7 @@
 #include <stdlib.h> // For setenv()
 #include <string.h>
 
+#include "button.h"
 #include "client.h"
 #include "config.h"
 #include "game.h"
