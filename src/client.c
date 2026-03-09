@@ -70,64 +70,11 @@ static int send_protocol_header(TCPsocket sock) {
   return send_all_tcp(sock, &hdr, sizeof(hdr));
 }
 
-static Button_t create_game_choice_button(const char *text, SDL_Renderer *renderer, SDL_Rect rect,
-                                          TTF_Font *font, SDL_Keycode hotkey) {
-  Button_t b = {
-      .text = text,
-      .renderer = renderer,
-      .bg_color = get_color(COLOR_BLACK),
-      .fg_color = get_color(COLOR_YELLOW),
-      .rect = rect,
-      .font = font,
-      .hovered = false,
-      .enabled = false,
-      .selected = false,
-      .active = true,
-      .hotkey = hotkey,
-  };
-
-  if (TTF_SizeUTF8(font, b.text, &b.rect.w, &b.rect.h) != 0) {
-    fprintf(stderr, "TTF_SizeUTF8 error: %s\n", TTF_GetError());
-    b.rect.w = 0;
-    b.rect.h = 0;
-  }
-
-  /* Padding — unscaled, matches font metrics */
-  b.rect.w += 30;
-  b.rect.h += (int)(b.rect.h * 0.1f);
-
-  return b;
-}
-
 static void ma_sound_start_wrap(ma_sound *pSound, const char *file, const int line) {
   ma_result result = ma_sound_start(pSound);
   if (result != MA_SUCCESS) {
     fprintf(stderr, "[ma_sound_start] Failed (%s:%d) -> result = %d\n", file, line, result);
   }
-}
-
-static Button_t create_deuces_wild_button(SDL_Renderer *renderer, const Font_t *font) {
-  Button_t b = {_("Deuces Wild"),
-                renderer,
-                get_color(COLOR_WHITE),
-                get_color(COLOR_BROWN),
-                (SDL_Rect){0},
-                font->fonts[FONT_BOLD],
-                false,
-                true,
-                false,
-                true,
-                0,
-                CLICKED_DEFAULT};
-
-  /* measure text */
-  if (TTF_SizeUTF8(b.font, b.text, &b.rect.w, &b.rect.h) != 0)
-    fprintf(stderr, "TTF_SizeUTF8 failed: %s\n", TTF_GetError());
-
-  /* padding */
-  b.rect.w += 10;
-  b.rect.h += 10;
-  return b;
 }
 
 static void update_layout(Button_t *gc_b, Button_t *dw_b) {
@@ -164,10 +111,14 @@ static bool handle_game_selection(const PlayerConfig_t *player_config,
 
   for (int i = 0; i < MAX_CHOICES; i++)
     game_choice_button[i] =
-        create_game_choice_button(game_choices[i].str, sdl_context->renderer, (SDL_Rect){0},
-                                  font->fonts[FONT_BOLD], (SDL_Keycode)0);
+        create_button(game_choices[i].str, (EColor_t){COLOR_BLACK, COLOR_YELLOW},
+                      font->fonts[FONT_BOLD], (SDL_Keycode)0);
 
-  Button_t button_deuces_wild = create_deuces_wild_button(sdl_context->renderer, font);
+  Button_t button_deuces_wild =
+      create_button(_("Deuces Wild"), (EColor_t){COLOR_WHITE, COLOR_BROWN}, font->fonts[FONT_BOLD],
+                    (SDL_Keycode)0);
+
+  //  create_deuces_wild_button(sdl_context->renderer, font);
 
   bool dealing = true;
 
@@ -726,9 +677,24 @@ static void layout_amount_buttons(Button_t *b, const size_t count) {
   }
 }
 
-static void layout_action_buttons(Button_t *b) {
+typedef struct {
+  const char *text;
+  SDL_Keycode key;
+  bool secondary;
+} ActionButtonAttrs;
+
+ActionButtonAttrs action_button_attrs[MAX_ACTIONS] = {
+    [CHECK] = {N_("Check"), SDLK_c, false},      [BET] = {N_("Bet"), SDLK_b, false},
+    [FOLD] = {N_("Fold"), SDLK_f, false},        [CALL] = {N_("Call"), SDLK_c, false},
+    [RAISE] = {N_("Raise"), SDLK_r, false},      [DISCARD] = {N_("Discard"), SDLK_d, true},
+    [EXCHANGE] = {N_("Exchange"), SDLK_x, true},
+};
+
+static void layout_action_buttons(Button_t *b, ActionButtonAttrs *attr) {
   for (int i = 0; i < MAX_ACTIONS; i++) {
     b[i].rect.y = g_viewport.h - (b[i].rect.h * 5);
+    if (attr[i].secondary)
+      b[i].rect.y += b[i].rect.h + 10;
   }
 }
 
@@ -876,26 +842,13 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
 #define SIZEOF_STATUS_MSGS 16
   char status_msgs[SIZEOF_STATUS_MSGS][LEN_STATUS_STR] = {0};
 
-  typedef struct {
-    const char *text;
-    SDL_Keycode key;
-    bool secondary;
-  } ActionButtonAttrs;
-
-  ActionButtonAttrs action_button_attrs[MAX_ACTIONS] = {
-      [CHECK] = {_("Check"), SDLK_c, false},      [BET] = {_("Bet"), SDLK_b, false},
-      [FOLD] = {_("Fold"), SDLK_f, false},        [CALL] = {_("Call"), SDLK_c, false},
-      [RAISE] = {_("Raise"), SDLK_r, false},      [DISCARD] = {_("Discard"), SDLK_d, true},
-      [EXCHANGE] = {_("Exchange"), SDLK_x, true},
-  };
-
   Button_t action_button[MAX_ACTIONS];
   for (int i = 0; i < MAX_ACTIONS; i++) {
     action_button[i] =
-        create_button(action_button_attrs[i].text, sdl_context->renderer, 0, font->fonts[FONT_BOLD],
-                      action_button_attrs[i].key, action_button_attrs[i].secondary);
+        create_button(action_button_attrs[i].text, (EColor_t){COLOR_BLACK, COLOR_YELLOW},
+                      font->fonts[FONT_BOLD], action_button_attrs[i].key);
   }
-  layout_action_buttons(action_button);
+  layout_action_buttons(action_button, action_button_attrs);
 
   const struct Amount_t {
     const uint32_t value;
@@ -914,28 +867,8 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
 
   for (size_t i = 0; i < n_bet_amounts; i++) {
     snprintf(amount_str[i], sizeof(amount_str[i]), "%" PRIu32, amount[i].value);
-
-    int text_w = 0, text_h = 0;
-    if (TTF_SizeText(font->fonts[FONT_BOLD], amount_str[i], &text_w, &text_h) != 0) {
-      fprintf(stderr, "TTF_SizeText failed: %s\n", TTF_GetError());
-      text_w = 60; // fallback width
-    }
-
-    int button_w = text_w + 20;
-    int button_h = text_h + 10;
-
-    amount_button[i] = (Button_t){amount_str[i],
-                                  sdl_context->renderer,
-                                  get_color(COLOR_WHITE),
-                                  get_color(COLOR_BROWN),
-                                  (SDL_Rect){0, 0, button_w, button_h},
-                                  font->fonts[FONT_BOLD],
-                                  false,
-                                  true,
-                                  false,
-                                  true,
-                                  amount[i].hotkey,
-                                  CLICKED_DEFAULT};
+    amount_button[i] = create_button(amount_str[i], (EColor_t){COLOR_WHITE, COLOR_BROWN},
+                                     font->fonts[FONT_BOLD], amount[i].hotkey);
   }
   amount_button[0].selected = true;
   client_state.selected_amount = amount[0].value;
@@ -944,36 +877,14 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
   CardContext_t card_context[MAX_PLAYERS][MAX_HAND_SIZE];
 
   Button_t card_faces[13] = {0};
-  for (size_t i = 0; i < ARRAY_SIZE(card_faces); i++) {
-    card_faces[i] = (Button_t){DH_get_card_face_str(i + 1),
-                               sdl_context->renderer,
-                               get_color(COLOR_WHITE),
-                               get_color(COLOR_BROWN),
-                               {0},
-                               font->fonts[FONT_WILD_SELECT],
-                               false,
-                               true,
-                               false,
-                               true,
-                               0,
-                               CLICKED_DEFAULT};
-  }
+  for (size_t i = 0; i < ARRAY_SIZE(card_faces); i++)
+    card_faces[i] = create_button(DH_get_card_face_str(i + 1), (EColor_t){COLOR_WHITE, COLOR_BROWN},
+                                  font->fonts[FONT_WILD_SELECT], (SDL_Keycode)0);
 
   Button_t card_suits[DH_SUIT_MAX] = {0};
-  for (DH_suit i = 0; i < ARRAY_SIZE(card_suits); i++) {
-    card_suits[i] = (Button_t){DH_get_unicode_suit(i),
-                               sdl_context->renderer,
-                               get_color(COLOR_WHITE),
-                               get_color(COLOR_BROWN),
-                               {0},
-                               font->fonts[FONT_CARD],
-                               false,
-                               true,
-                               false,
-                               true,
-                               0,
-                               CLICKED_DEFAULT};
-  }
+  for (DH_suit i = 0; i < ARRAY_SIZE(card_suits); i++)
+    card_suits[i] = create_button(DH_get_unicode_suit(i), (EColor_t){COLOR_WHITE, COLOR_BROWN},
+                                  font->fonts[FONT_CARD], (SDL_Keycode)0);
 
   layout_wild_selection(card_faces, card_suits, ARRAY_SIZE(card_faces), ARRAY_SIZE(card_suits),
                         font);

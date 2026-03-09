@@ -31,16 +31,34 @@
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
-// #include <SDL_image.h>
 
-// #include "types.h"
 #include "graphics.h"
+
+#define CLICKED_DEFAULT                                                                            \
+  {                                                                                                \
+      .start_time = 0,                                                                             \
+      .duration = 80,                                                                              \
+  }
+
+typedef struct {
+  uint32_t start_time;
+  uint32_t duration; // in milliseconds
+} Clicked_t;
+
+typedef struct {
+  SDL_Color bg;
+  SDL_Color fg;
+} Color_t;
+
+typedef struct {
+  EColorName_t bg;
+  EColorName_t fg;
+} EColor_t;
 
 typedef struct {
   const char *text;
   SDL_Renderer *renderer;
-  SDL_Color bg_color;
-  SDL_Color fg_color;
+  Color_t color;
   SDL_Rect rect;
   TTF_Font *font;
   bool hovered, enabled, selected;
@@ -51,7 +69,6 @@ typedef struct {
 
 void render_button(Button_t *button);
 
-Button_t create_button(const char *text, SDL_Renderer *renderer, const int y, TTF_Font *font,
-                       SDL_Keycode key, const bool secondary);
+Button_t create_button(const char *text, EColor_t color, TTF_Font *font, const SDL_Keycode key);
 
 #endif

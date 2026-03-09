@@ -46,22 +46,11 @@ enum { RUN_CLIENT = 20 };
 
 static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, const uint16_t port,
                                 SdlContext_t *sdl_context, Font_t *font, Link_t *links) {
-  Button_t button_connect = {
-      .text = _("Connect"),
-      .renderer = sdl_context->renderer,
-      .bg_color = get_color(COLOR_BLACK),
-      .fg_color = get_color(COLOR_YELLOW),
-      .rect = {100, 160, 0, 0},
-      .font = font->fonts[FONT_BOLD],
-      .enabled = true,
-      .active = true,
-  };
+  Button_t button_connect = create_button(_("Connect"), (EColor_t){COLOR_BLACK, COLOR_YELLOW},
+                                          font->fonts[FONT_BOLD], (SDL_Keycode)0);
 
-  if (TTF_SizeUTF8(button_connect.font, button_connect.text, &button_connect.rect.w,
-                   &button_connect.rect.h) != 0)
-    fprintf(stderr, "TTF_SizeUTF8 error: %s\n", TTF_GetError());
-  button_connect.rect.w += 20;
-  button_connect.rect.h += 10;
+  button_connect.rect.x = 100;
+  button_connect.rect.y = 160;
 
   SDL_Rect input_box = (SDL_Rect){100, 220, 200, 40};
 
