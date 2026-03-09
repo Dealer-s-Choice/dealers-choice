@@ -41,6 +41,7 @@ if get_option('nls') and not platform_is_windows
     i18n.gettext(
       meson.project_name(),
       args: [
+        '--add-comments',
         '--keyword=_',
         '--keyword=N_',
         '--directory=' + meson.project_source_root(),

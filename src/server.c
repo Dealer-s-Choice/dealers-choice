@@ -1229,7 +1229,7 @@ static void play_game(ArgsBroadcastGameState_t *args, DH_Deck *deck) {
   if (args->cli_args->server_log_game_results_file) {
     char tmp[LEN_STATUS_STR] = {0};
     snprintf(tmp, sizeof(tmp), _("Game: %s%s"), choice->str,
-             args->deuces_wild ? _(" / Deuces Wild") : "");
+             args->deuces_wild ? " / Deuces Wild" : "");
     FILE *fp = fopen(args->cli_args->server_log_game_results_file, "a");
     if (!fp)
       perror("fopen");

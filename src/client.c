@@ -115,6 +115,7 @@ static bool handle_game_selection(const PlayerConfig_t *player_config,
                       font->fonts[FONT_BOLD], (SDL_Keycode)0);
 
   Button_t button_deuces_wild =
+  // TRANSLATORS: Name of a poker variant. Usually left untranslated.
       create_button(_("Deuces Wild"), (EColor_t){COLOR_WHITE, COLOR_BROWN}, font->fonts[FONT_BOLD],
                     (SDL_Keycode)0);
 
@@ -889,7 +890,7 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
   layout_wild_selection(card_faces, card_suits, ARRAY_SIZE(card_faces), ARRAY_SIZE(card_suits),
                         font);
 
-  Indicator_t indicator_deuces_wild = create_indicator(sdl_context->renderer, "Deuces Wild", font);
+  Indicator_t indicator_deuces_wild = create_indicator(sdl_context->renderer, _("Deuces Wild"), font);
   layout_deuces_wild_indicator(&indicator_deuces_wild);
 
   Indicator_t indicator_game_name = {0};
