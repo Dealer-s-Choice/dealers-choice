@@ -368,3 +368,11 @@ bool toggle_fullscreen(SdlContext_t *c) {
 
   return true;
 }
+
+// Removes a little from the border, this function is primarily intended
+// for use with input boxes, the prevent the borders from disappearing.
+void draw_rect_border(SDL_Renderer *r, SDL_Rect rect) {
+  rect.w--;
+  rect.h--;
+  SDL_RenderDrawRect(r, &rect);
+}

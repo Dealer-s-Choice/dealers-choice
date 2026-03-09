@@ -52,7 +52,20 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, c
   button_connect.rect.x = 100;
   button_connect.rect.y = 160;
 
-  SDL_Rect input_box = (SDL_Rect){100, 220, 200, 40};
+  int text_w, text_h;
+
+  if (TTF_SizeUTF8(font->fonts[FONT_DEFAULT], "255.255.255.255", &text_w, &text_h) != 0) {
+    SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "TTF_SizeUTF8 failed: %s", TTF_GetError());
+
+    /* fallback size */
+    text_w = 150;
+    text_h = 20;
+  }
+  SDL_Rect input_box = {100, 220, text_w + 20, text_h + 16};
+
+  SDL_Rect input_text_pos = {input_box.x + 10, input_box.y + (input_box.h - text_h) / 2, 0, 0};
+
+  SDL_Rect port_rect = {input_box.x, input_box.y + 60, 0, 0};
 
   // TODO: Create a 'input_box' struct similar to CardContext_t. It will
   // be used for inputs such as the host ip, nick, and port
@@ -117,17 +130,15 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, c
     render_button(&button_connect);
 
     SDL_SetRenderDrawColor(sdl_context->renderer, 255, 255, 255, 255);
-    SDL_RenderDrawRect(sdl_context->renderer, &input_box);
-    SDL_Rect input_text_pos = {input_box.x, input_box.y, 0, 0};
-    // TTF_SetFontSize
-    // TTF_SetFontStyle(font->fonts[FONT_BOLD], TTF_STYLE_BOLD);
+    draw_rect_border(sdl_context->renderer, input_box);
+
     render_text(sdl_context->renderer, font->fonts[FONT_DEFAULT], host_str, get_color(COLOR_WHITE),
                 &input_text_pos);
 
     char port_str[24] = {0};
     snprintf(port_str, sizeof(port_str), _("port: %" PRIu16), port);
     render_text_plain(sdl_context->renderer, font->fonts[FONT_DEFAULT], port_str,
-                      get_color(COLOR_BLACK), &(SDL_Rect){input_box.x, input_box.y + 50, 0, 0});
+                      get_color(COLOR_BLACK), &port_rect);
 
     SDL_Rect input_nick_pos = {input_nick.x, input_nick.y, 0, 0};
     render_text_plain(sdl_context->renderer, font->fonts[FONT_DEFAULT], player_config->nick,
