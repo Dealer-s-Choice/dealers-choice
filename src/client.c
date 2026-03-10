@@ -115,7 +115,7 @@ static bool handle_game_selection(const PlayerConfig_t *player_config,
                       font->fonts[FONT_BOLD], (SDL_Keycode)0);
 
   Button_t button_deuces_wild =
-  // TRANSLATORS: Name of a poker variant. Usually left untranslated.
+      // TRANSLATORS: Name of a poker variant. Usually left untranslated.
       create_button(_("Deuces Wild"), (EColor_t){COLOR_WHITE, COLOR_BROWN}, font->fonts[FONT_BOLD],
                     (SDL_Keycode)0);
 
@@ -740,14 +740,16 @@ static void layout_table_center(SDL_Point *p) {
   p->y = g_center.y;
 }
 
+static int right_align(int width) { return g_viewport.x + g_viewport.w - width - MARGIN; }
+
 static void layout_game_name_indicator(Indicator_t *ind) {
-  ind->rect.x = g_viewport.x + g_viewport.w - ind->rect.w - MARGIN;
+  ind->rect.x = right_align(ind->rect.w);
   ind->rect.y = g_viewport.y + g_viewport.h - 300;
 }
 
 static void layout_deuces_wild_indicator(Indicator_t *ind) {
-  ind->rect.x = g_viewport.w - ind->rect.w - 25;
-  ind->rect.y = g_viewport.h - 200;
+  ind->rect.x = right_align(ind->rect.w);
+  ind->rect.y = g_viewport.y + g_viewport.h - 200;
 }
 
 static void layout_wild_selection(Button_t *card_faces, Button_t *card_suits, const int face_count,
@@ -890,7 +892,8 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
   layout_wild_selection(card_faces, card_suits, ARRAY_SIZE(card_faces), ARRAY_SIZE(card_suits),
                         font);
 
-  Indicator_t indicator_deuces_wild = create_indicator(sdl_context->renderer, _("Deuces Wild"), font);
+  Indicator_t indicator_deuces_wild =
+      create_indicator(sdl_context->renderer, _("Deuces Wild"), font);
   layout_deuces_wild_indicator(&indicator_deuces_wild);
 
   Indicator_t indicator_game_name = {0};
