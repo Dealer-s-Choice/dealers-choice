@@ -62,7 +62,7 @@ for (i = 0; i < N_PLAYERS; i++) {
 fprintf(stderr, "%d\n", game_state[0].pot);
 
 const int expected_coins[3][3] = {
-    {19450, 19950, 20600}, {18900, 20550, 20550}, {18850, 20575, 20575}};
+    {19450, 19950, 20600}, {20050, 19400, 20550}, {20000, 19425, 20575}};
 
 for (i = 0; i < N_PLAYERS; i++)
   assert(game_state[0].player[i].coins == expected_coins[game][i]);

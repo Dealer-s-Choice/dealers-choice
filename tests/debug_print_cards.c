@@ -28,14 +28,14 @@ RealHand_t real_hand =
 DebugPrintCards_t cards_str = debug_print_cards(&real_hand.player[0]);
 
 fprintf(stderr, "--%s--", cards_str.str);
-assert(strcmp(cards_str.str, "4♦8♠3♠4♣2♠") == 0);
+assert(strcmp(cards_str.str, "5♥2♥8♣8♠2♠") == 0);
 
 fprintf(stderr, "--%s--", cards_str.str);
 cards_str = debug_print_cards(&real_hand.player[1]);
-assert(strcmp(cards_str.str, "2♦5♠5♥5♣7♠") == 0);
+assert(strcmp(cards_str.str, "2♦5♣6♦7♦3♠") == 0);
 
 fprintf(stderr, "--%s--", cards_str.str);
 cards_str = debug_print_cards(&real_hand.player[2]);
-assert(strcmp(cards_str.str, "2♥6♦3♦8♣7♦") == 0);
+assert(strcmp(cards_str.str, "5♠7♠3♦4♦4♣") == 0);
 
 _MAIN_TAIL_

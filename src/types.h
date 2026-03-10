@@ -119,7 +119,9 @@ typedef struct GameChoice_t {
   const uint8_t game_type;
   const game_func_t func;
   const uint8_t hand_size;
-  const uint8_t n_betting_rounds, n_draws, n_stud_new_cards;
+  const uint8_t n_betting_rounds, n_draws;
+  const uint8_t n_cards_initial_deal;
+  const bool face_up[7];
 } GameChoice_t;
 
 extern const GameChoice_t game_choices[];

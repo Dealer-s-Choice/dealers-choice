@@ -174,43 +174,20 @@ RealHand_t deal_cards_to_players(GameState_t *game_state, DH_Deck *deck, const u
 
   const GameChoice_t *choice = find_game_choice_by_type(game_type);
 
-  size_t i = 0;
-  do {
-    if (choice->n_stud_new_cards == 0) {
-      for (i = 0; i < MAX_HAND_SIZE; ++i) {
-        if (i >= choice->hand_size) {
-          real_hand.player[turn->id].card[i] = DH_card_null;
-          turn->hand.card[i] = DH_card_null;
-          continue;
-        }
-        turn->hand.card[i] = DH_card_back;
+  for (int i = 0; i < MAX_HAND_SIZE; i++)
+    do {
+      if (i >= choice->n_cards_initial_deal) {
+        real_hand.player[turn->id].card[i] = DH_card_null;
+        turn->hand.card[i] = DH_card_null;
+      } else {
         real_hand.player[turn->id].card[i] = DH_deal_top_card(deck);
+        if (choice->face_up[i])
+          turn->hand.card[i] = real_hand.player[turn->id].card[i];
+        else
+          turn->hand.card[i] = DH_card_back;
       }
-    } else {
-      int cards_dealt = 0;
-      POKEVAL_Hand_7 *hand = &turn->hand;
-
-      for (i = 0; i < 2; i++) {
-        // First card face down
-        hand->card[cards_dealt] = DH_card_back;
-        real_hand.player[turn->id].card[cards_dealt] = DH_deal_top_card(deck);
-        cards_dealt++;
-        if (game_type == game_choices[FIVE_CARD_STUD].game_type)
-          break;
-      }
-
-      // Next card face up
-      hand->card[cards_dealt] = DH_deal_top_card(deck);
-      real_hand.player[turn->id].card[cards_dealt] = hand->card[cards_dealt];
-      cards_dealt++;
-
-      for (i = cards_dealt; i < MAX_HAND_SIZE; i++) {
-        hand->card[i] = DH_card_null;
-        real_hand.player[turn->id].card[i] = hand->card[i];
-      }
-    }
-    turn = get_next_player(players_array, turn->id);
-  } while (turn && turn != starting_turn);
+      turn = get_next_player(players_array, turn->id);
+    } while (turn && turn != starting_turn);
 
   return real_hand;
 }
@@ -1105,25 +1082,24 @@ void game_stud(GAME_ARGS) {
   server_handle_ante(args->game_state, args->config->ante);
 
   RoundResults results = {0};
-  for (int i = 0; i < choice->n_betting_rounds; i++) {
+  for (uint8_t i = choice->n_cards_initial_deal; i <= choice->hand_size; i++) {
     results = handle_round();
 
-    if (results.n_winners > 0 || i == choice->n_stud_new_cards)
+    if (results.n_winners > 0)
       break;
 
     turn = *args->starting_turn;
 
-    printf("round: %d\n", i);
+    verbose_printf("round: %d\n", i);
     do {
       int id = turn->id;
       POKEVAL_Hand_7 *hand = &turn->hand;
 
-      uint8_t n = i + (choice->hand_size - choice->n_stud_new_cards);
-      args->real_hand->player[id].card[n] = DH_deal_top_card(deck);
-      if (n != 6)
-        hand->card[n] = args->real_hand->player[id].card[n];
+      args->real_hand->player[id].card[i] = DH_deal_top_card(deck);
+      if (choice->face_up[i])
+        hand->card[i] = args->real_hand->player[id].card[i];
       else
-        hand->card[n] = DH_card_back;
+        hand->card[i] = DH_card_back;
       // broadcast_game_state(args);
       turn = get_next_player(players_array, turn->id);
     } while (turn && turn != *args->starting_turn);
