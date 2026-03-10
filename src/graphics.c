@@ -307,8 +307,8 @@ Indicator_t create_indicator(SDL_Renderer *renderer, const char *text, const Fon
   Indicator_t ind = {
       .text = text,
       .renderer = renderer,
-      .bg_color = get_color(COLOR_WHITE),
-      .fg_color = get_color(COLOR_BROWN),
+      .bg_color = get_color(COLOR_BLACK),
+      .fg_color = get_color(COLOR_ORANGE),
       .rect = {0},
       .font = font->fonts[FONT_BOLD],
   };
