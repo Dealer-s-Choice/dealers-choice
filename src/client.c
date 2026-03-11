@@ -907,10 +907,10 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
 
   Coin_t coin[] = {
       {
-          "48x48_front_1907_Saint_Gaudens_gold_coin.png",
+          "96x96_front_1907_Saint_Gaudens_gold_coin.png",
       },
       {
-          "48x48_front_Gaius-Julius-Caesar-denarius-44-BC-RRC-480-3.png",
+          "96x96_front_Gaius-Julius-Caesar-denarius-44-BC-RRC-480-3.png",
       },
       {
           "96x96-1984_rv_marie_curie.png",
