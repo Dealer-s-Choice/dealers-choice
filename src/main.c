@@ -49,8 +49,11 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, c
   Button_t button_connect = create_button(_("Connect"), (EColor_t){COLOR_BLACK, COLOR_YELLOW},
                                           font->fonts[FONT_BOLD], (SDL_Keycode)0);
 
-  button_connect.rect.x = 100;
-  button_connect.rect.y = 160;
+  SDL_Rect title_rect = {g_center.x / 1.5, 60, 0, 0};
+
+  int x_margin = g_viewport.x + 100;
+  button_connect.rect.x = x_margin;
+  button_connect.rect.y = g_viewport.y + 160;
 
   int text_w, text_h;
 
@@ -61,7 +64,7 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, c
     text_w = 150;
     text_h = 20;
   }
-  SDL_Rect input_box = {100, 220, text_w + 20, text_h + 16};
+  SDL_Rect input_box = {x_margin, g_viewport.y + 220, text_w + 20, text_h + 16};
 
   SDL_Rect input_text_pos = {input_box.x + 10, input_box.y + (input_box.h - text_h) / 2, 0, 0};
 
@@ -70,7 +73,8 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, c
   // TODO: Create a 'input_box' struct similar to CardContext_t. It will
   // be used for inputs such as the host ip, nick, and port
   // This isn't actually an input yet.
-  SDL_Rect input_nick = (SDL_Rect){100, 380, 300, 40};
+  SDL_Rect input_nick = (SDL_Rect){x_margin, g_viewport.y + 380, 300, 40};
+  SDL_Rect input_nick_pos = {input_nick.x, input_nick.y, 0, 0};
   SDL_StartTextInput();
 
   layout_links(links, LINK_DEFS_COUNT);
@@ -140,11 +144,9 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, c
     render_text_plain(sdl_context->renderer, font->fonts[FONT_DEFAULT], port_str,
                       get_color(COLOR_BLACK), &port_rect);
 
-    SDL_Rect input_nick_pos = {input_nick.x, input_nick.y, 0, 0};
     render_text_plain(sdl_context->renderer, font->fonts[FONT_DEFAULT], player_config->nick,
                       get_color(COLOR_BLACK), &input_nick_pos);
 
-    SDL_Rect title_rect = {g_center.x / 1.5, 60, 0, 0};
     render_text_plain(sdl_context->renderer, font->fonts[FONT_TITLE], DEALERSCHOICE_FORMAL_NAME,
                       get_color(COLOR_BLACK), &title_rect);
 
@@ -347,7 +349,7 @@ int main(int argc, char *argv[]) {
       [FONT_DEFAULT_BOLD] = {.file = "LiberationSans-Bold.ttf", .ptsize = 32},
       [FONT_BOLD] = {.file = "LiberationSans-Bold.ttf", .ptsize = 26},
       [FONT_LINK] = {.file = "LiberationSans-Regular.ttf", .ptsize = 22},
-      [FONT_STATUS_MSG] = {.file = "LiberationSans-Regular.ttf", .ptsize = 24},
+      [FONT_STATUS_MSG] = {.file = "LiberationSans-Bold.ttf", .ptsize = 24},
       [FONT_TITLE] = {.file = "LiberationSerif-BoldItalic.ttf", .ptsize = 72},
       [FONT_VERSION] = {.file = "LiberationSans-Regular.ttf", .ptsize = 22},
       [FONT_WILD_SELECT] = {.file = "LiberationSans-Bold.ttf", .ptsize = 24},

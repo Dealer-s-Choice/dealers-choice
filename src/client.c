@@ -937,6 +937,14 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
   SDL_Point table_center = {0};
   layout_table_center(&table_center);
 
+  int line_h = TTF_FontHeight(font->fonts[FONT_STATUS_MSG]);
+
+  const int pad_x = 8;
+  const int pad_y = 6;
+
+  SDL_Rect msg_panel = {g_viewport.x + 30, g_center.y, 420,
+                        (line_h + 2) * SIZEOF_STATUS_MSGS + pad_y * 2};
+
   client_state.timer_start = SDL_GetTicks();
 
   const int8_t my_id = game_settings->client_id;
@@ -1057,12 +1065,18 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
       render_indicator(&indicator_deuces_wild);
     }
 
+    SDL_SetRenderDrawColor(sdl_context->renderer, 255, 255, 255, 255);
+    SDL_RenderFillRect(sdl_context->renderer, &msg_panel);
+
+    SDL_SetRenderDrawColor(sdl_context->renderer, 0, 0, 0, 255);
+    SDL_RenderDrawRect(sdl_context->renderer, &msg_panel);
+
     for (int i = 0; i < SIZEOF_STATUS_MSGS; i++) {
-      char tmp[sizeof(status_msgs[0])];
-      snprintf(tmp, sizeof tmp, "%s", status_msgs[i]);
-      SDL_Rect text_pos = {40, (g_center.y) + (20 * i) + 5, 0, 0};
-      render_text_plain(sdl_context->renderer, font->fonts[FONT_STATUS_MSG], tmp,
-                        get_color(COLOR_BLACK), &text_pos);
+
+      SDL_Rect pos = {msg_panel.x + pad_x, msg_panel.y + pad_y + i * (line_h + 2), 0, 0};
+
+      render_text_plain(sdl_context->renderer, font->fonts[FONT_STATUS_MSG], status_msgs[i],
+                        get_color(COLOR_BLACK), &pos);
     }
 
     Player_t *player_ptr = starting_turn;
