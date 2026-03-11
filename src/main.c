@@ -393,7 +393,7 @@ int main(int argc, char *argv[]) {
   if (menu_display_connect(&player_config, host_str, port, &sdl_context, &font, links) ==
       RUN_CLIENT) {
     char tmp[256] = {0};
-    snprintf(tmp, sizeof(tmp), "Attempting to connect to: %s...", host_str);
+    snprintf(tmp, sizeof(tmp), _("Attempting connection to: %s..."), host_str);
     render_text_plain(sdl_context.renderer, font.fonts[FONT_DEFAULT], tmp, get_color(COLOR_WHITE),
                       &(SDL_Rect){10, g_center.y, 0, 0});
     SDL_RenderPresent(sdl_context.renderer);

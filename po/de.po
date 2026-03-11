@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: dealers-choice\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-03-09 15:49-0500\n"
+"POT-Creation-Date: 2026-03-11 12:43-0500\n"
 "PO-Revision-Date: 2025-06-19 21:52-0500\n"
 "Last-Translator: Andy <andy@prometheus.localhost.localdomain>\n"
 "Language-Team: German <translation-team-de@lists.sourceforge.net>\n"
@@ -18,13 +18,25 @@ msgstr ""
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
 #. TRANSLATORS: Name of a poker variant. Usually left untranslated.
-#: src/client.c:119 src/client.c:893
+#: src/client.c:119 src/client.c:896
 msgid "Deuces Wild"
 msgstr ""
 
 #: src/client.c:228
 msgid "Connected players:"
 msgstr "Anwesende Spieler"
+
+#: src/client.c:243
+msgid " (Dealer)"
+msgstr ""
+
+#: src/client.c:275
+msgid "Waiting for more players..."
+msgstr ""
+
+#: src/client.c:279
+msgid "Waiting for dealer to select game..."
+msgstr ""
 
 #. Show dealing screen immediately after click
 #: src/client.c:287
@@ -59,7 +71,7 @@ msgstr "Ablegen"
 msgid "Exchange"
 msgstr ""
 
-#: src/client.c:1140
+#: src/client.c:1157
 msgid "Click a 2, then choose value and suit to assign."
 msgstr ""
 
@@ -67,9 +79,14 @@ msgstr ""
 msgid "Connect"
 msgstr "verbinden"
 
-#: src/main.c:139
+#: src/main.c:143
 #, c-format
 msgid "port: %<PRIu16>"
+msgstr ""
+
+#: src/main.c:396
+#, c-format
+msgid "Attempting connection to: %s..."
 msgstr ""
 
 #. TRANSLATORS: "Discord", "Lazarus Project" should not be translated

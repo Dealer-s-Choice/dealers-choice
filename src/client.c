@@ -238,9 +238,9 @@ static bool handle_game_selection(const PlayerConfig_t *player_config,
         offset_y += 40;
 
         // Build nickname + dealer label
-        char nick_buf[SIZEOF_NICK + sizeof(" (Dealer)")];
+        char nick_buf[SIZEOF_NICK + 256];
         snprintf(nick_buf, sizeof nick_buf, "%s%s", client->nick,
-                 game_state->dealer_id == client->id ? " (Dealer)" : "");
+                 game_state->dealer_id == client->id ? _(" (Dealer)") : "");
 
         // Build ping text
         char ping_buf[32];
@@ -272,11 +272,11 @@ static bool handle_game_selection(const PlayerConfig_t *player_config,
 
       if (n_clients == 1)
         render_text_plain(sdl_context->renderer, font->fonts[FONT_DEFAULT],
-                          "Waiting for more players...", get_color(COLOR_WHITE),
+                          _("Waiting for more players..."), get_color(COLOR_WHITE),
                           &(SDL_Rect){g_center.x, g_viewport.h - 200, 0, 0});
       if (game_state->dealer_id != my_id)
         render_text_plain(sdl_context->renderer, font->fonts[FONT_DEFAULT],
-                          "Waiting for dealer to select game...", get_color(COLOR_WHITE),
+                          _("Waiting for dealer to select game..."), get_color(COLOR_WHITE),
                           &(SDL_Rect){g_center.x, g_viewport.h - 200, 0, 0});
 
       for (size_t i = 0; i < LINK_DEFS_COUNT; i++)
