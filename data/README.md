@@ -37,7 +37,7 @@ ArchaiOptix, [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0), via
 
 [File:Marcus Antonius - Cleopatra 32 BC 90020163](https://commons.wikimedia.org/wiki/File:Marcus_Antonius_-_Cleopatra_32_BC_90020163.jpg)
 
-[Classical Numismatic Group Inc.](http://www.cngcoins.com), [CC BY-SA 2.5](https://creativecommons.org/licenses/by-sa/2.5], via Wikimedia Commons
+[Classical Numismatic Group Inc.](http://www.cngcoins.com), [CC BY-SA 2.5](https://creativecommons.org/licenses/by-sa/2.5), via Wikimedia Commons
 
 
 ## Fonts
