@@ -90,6 +90,8 @@ dep_names = [
 ]
 
 # On Slackware, the miniaudio build fails (linking) if dl and threads aren't added here
+# On FreeBSD, threads is needed.
+shared_dep += dependency('threads')
 if host_sys == 'linux'
   shared_dep += [cc.find_library('dl')]
   dep_names += ['threads']
