@@ -1,3 +1,6 @@
+2026-03-12
+
+- dealers-choice 0.0.9:
   + Implement California lowball
   + Implement Six-card stud (partially complete)
   + Automatically sort hands
