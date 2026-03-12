@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: dealers-choice\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-03-11 12:43-0500\n"
+"POT-Creation-Date: 2026-03-12 14:40-0500\n"
 "PO-Revision-Date: 2025-07-02 00:18-0500\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -84,7 +84,7 @@ msgstr "Se connecter"
 msgid "port: %<PRIu16>"
 msgstr ""
 
-#: src/main.c:396
+#: src/main.c:403
 #, c-format
 msgid "Attempting connection to: %s..."
 msgstr ""
