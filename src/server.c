@@ -1085,7 +1085,7 @@ void game_stud(GAME_ARGS) {
   for (uint8_t i = choice->n_cards_initial_deal; i <= choice->hand_size; i++) {
     results = handle_round();
 
-    if (results.n_winners > 0)
+    if (results.n_winners > 0 || i == choice->hand_size)
       break;
 
     turn = *args->starting_turn;
