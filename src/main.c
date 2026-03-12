@@ -185,6 +185,7 @@ static CliArgs_t parse_cli_args(int argc, char *argv[]) {
     OPT_VERSION,
     OPT_VERBOSE,
     OPT_DISABLE_AUDIO,
+    OPT_DISABLE_TIMEOUT,
   };
 
   static const glopt_option_t options[] = {
@@ -198,6 +199,7 @@ static CliArgs_t parse_cli_args(int argc, char *argv[]) {
       {"version", GLOPT_NO_ARG, OPT_VERSION},
       {"verbose", GLOPT_NO_ARG, OPT_VERBOSE},
       {"disable-audio", GLOPT_NO_ARG, OPT_DISABLE_AUDIO},
+      {"disable-timeout", GLOPT_NO_ARG, OPT_DISABLE_TIMEOUT},
       {NULL, 0, 0}};
 
   glopt_parser_t parser;
@@ -243,6 +245,9 @@ static CliArgs_t parse_cli_args(int argc, char *argv[]) {
     case OPT_DISABLE_AUDIO:
       cli_args.disable_audio = true;
       break;
+    case OPT_DISABLE_TIMEOUT:
+      cli_args.disable_timeout = true;
+      break;
     case '?':
     default:
       print_version();
@@ -254,6 +259,8 @@ static CliArgs_t parse_cli_args(int argc, char *argv[]) {
             "  --host [IP]\n"
             "  --port [port]\n"
             "  --disable-audio\n"
+            "  --disable-timeout          Server will not disconnect players who exceed the action "
+            "timeout threshold\n"
             "  --version\n",
             stderr);
       exit(EXIT_FAILURE);

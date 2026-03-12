@@ -34,6 +34,20 @@
 #include "dc_config.h"
 #include "util.h"
 
+#define CFG_SET_SIGNED(TYPE, MIN, MAX)                                                             \
+  do {                                                                                             \
+    long v;                                                                                        \
+    parse_signed(val, (MIN), (MAX), &v);                                                           \
+    *(TYPE *)field = (TYPE)v;                                                                      \
+  } while (0)
+
+#define CFG_SET_UNSIGNED(TYPE, MAX)                                                                \
+  do {                                                                                             \
+    unsigned long v;                                                                               \
+    parse_unsigned(val, (MAX), &v);                                                                \
+    *(TYPE *)field = (TYPE)v;                                                                      \
+  } while (0)
+
 static void config_set_from_string_real(void *cfg, const ConfigEntry *entry, const char *val) {
   void *field = (uint8_t *)cfg + entry->offset;
 
@@ -41,24 +55,22 @@ static void config_set_from_string_real(void *cfg, const ConfigEntry *entry, con
   case CFG_TYPE_STRING:
     snprintf((char *)field, entry->size, "%s", val);
     break;
-  case CFG_TYPE_INT: {
-    long v;
-    parse_signed(val, INT_MIN, INT_MAX, &v);
-    *(int *)field = (int)v;
+  case CFG_TYPE_INT:
+    CFG_SET_SIGNED(int, INT_MIN, INT_MAX);
     break;
-  }
-  case CFG_TYPE_UINT16: {
-    unsigned long v;
-    parse_unsigned(val, UINT16_MAX, &v);
-    *(uint16_t *)field = (uint16_t)v;
+
+  case CFG_TYPE_UINT8:
+    CFG_SET_UNSIGNED(uint8_t, UINT8_MAX);
     break;
-  }
-  case CFG_TYPE_UINT32: {
-    unsigned long v;
-    parse_unsigned(val, UINT32_MAX, &v);
-    *(uint32_t *)field = (uint32_t)v;
+
+  case CFG_TYPE_UINT16:
+    CFG_SET_UNSIGNED(uint16_t, UINT16_MAX);
     break;
-  }
+
+  case CFG_TYPE_UINT32:
+    CFG_SET_UNSIGNED(uint32_t, UINT32_MAX);
+    break;
+
   case CFG_TYPE_BOOL:
     if (strcasecmp(val, "yes") == 0 || strcasecmp(val, "true") == 0 || strcmp(val, "1") == 0) {
       *(bool *)field = true;

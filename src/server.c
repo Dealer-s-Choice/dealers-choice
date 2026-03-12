@@ -881,13 +881,21 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args) {
     if (args->game_state->player_count > 1) {
       if (turn->is_connected) {
         if (action.action == 0) {
+          args->player_timeouts[turn->id]++;
           if (!has_paid_all_bets(player_total_paid[turn->id], total_bets_plus_raises)) {
             action.action =
                 handle_fold(args->game_state, args->real_hand, turn, args->starting_turn, &action);
           } else if (total_bets_plus_raises == 0) {
             action.action = handle_check(&action);
           }
-        }
+          if (!args->cli_args->disable_timeout &&
+              args->player_timeouts[turn->id] == args->config->action_timeout_max) {
+            remove_disconnected_player(args, args->turn_id);
+            printf("exceeded timeout threshold (%d): disconnecting %s\n",
+                   args->config->action_timeout_max, turn->nick);
+          }
+        } else
+          args->player_timeouts[turn->id] = 0;
 
         if (action.amount > 0)
           snprintf(status_str, sizeof status_str, "%s %s%d", turn->nick, action.str, action.amount);
@@ -1422,6 +1430,7 @@ static ELoop_t register_new_client(ArgsBroadcastGameState_t *args) {
       Player_t *slot_id = &(args->game_state->player)[slot];
       slot_id->id = slot;
       slot_id->is_connected = true;
+      args->player_timeouts[slot] = 0;
       if (args->game_state->at_menu)
         slot_id->in = true;
       else {

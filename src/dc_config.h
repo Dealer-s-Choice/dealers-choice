@@ -48,6 +48,7 @@ typedef struct ServerConfig_t {
   uint32_t bet_minimum;
   uint32_t bet_median;
   uint32_t bet_maximum;
+  uint8_t action_timeout_max;
 } ServerConfig_t;
 
 typedef struct {
@@ -63,6 +64,7 @@ typedef struct {
 typedef enum {
   CFG_TYPE_STRING,
   CFG_TYPE_INT,
+  CFG_TYPE_UINT8,
   CFG_TYPE_UINT16,
   CFG_TYPE_UINT32,
   CFG_TYPE_BOOL
@@ -110,7 +112,9 @@ static const ConfigEntry server_config_entries[] = {
      sizeof(uint32_t)},
     {"bet_median", CFG_TYPE_UINT32, "250", offsetof(ServerConfig_t, bet_median), sizeof(uint32_t)},
     {"bet_maximum", CFG_TYPE_UINT32, "500", offsetof(ServerConfig_t, bet_maximum),
-     sizeof(uint32_t)}};
+     sizeof(uint32_t)},
+    {"action_timeout_max", CFG_TYPE_UINT8, "3", offsetof(ServerConfig_t, action_timeout_max),
+     sizeof(uint8_t)}};
 
 static const size_t server_config_entry_count = ARRAY_SIZE(server_config_entries);
 

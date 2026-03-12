@@ -22,6 +22,9 @@ If there has been a bet, the default action is "fold".
 The timeout is defined in
 [server.conf](https://github.com/Dealer-s-Choice/dealers_choice/blob/trunk/data/server.conf).
 
+If a player times out repeatedly, they will be disconnected from the game (See
+`action_timeout_max` in server.conf).
+
 ## Hotkeys
 
 | Key | Action               |
