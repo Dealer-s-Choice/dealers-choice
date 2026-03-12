@@ -1299,8 +1299,6 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
           if (card_context[my_id][card_n].selected) {
             for (DH_card_face f = 0; f < (DH_card_face)ARRAY_SIZE(card_faces); f++) {
               DH_card_face card_val = f + 1;
-              if (card_val == DH_CARD_TWO)
-                continue;
               if (SDL_PointInRect(&mouse_pos, &card_faces[f].rect) &&
                   event.type == SDL_MOUSEBUTTONDOWN) {
                 card_faces[f].click.start_time = SDL_GetTicks();
