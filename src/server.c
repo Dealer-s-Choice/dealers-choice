@@ -888,11 +888,10 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args) {
           } else if (total_bets_plus_raises == 0) {
             action.action = handle_check(&action);
           }
-          if (!args->cli_args->disable_timeout &&
-              args->player_timeouts[turn->id] == args->config->action_timeout_max) {
+          uint8_t m = args->config->action_timeout_max;
+          if (m != 0 && !args->cli_args->disable_timeout && args->player_timeouts[turn->id] == m) {
             remove_disconnected_player(args, args->turn_id);
-            printf("exceeded timeout threshold (%d): disconnecting %s\n",
-                   args->config->action_timeout_max, turn->nick);
+            printf("exceeded timeout threshold (%d): disconnecting %s\n", m, turn->nick);
           }
         } else
           args->player_timeouts[turn->id] = 0;
