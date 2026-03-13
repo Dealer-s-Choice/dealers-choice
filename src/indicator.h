@@ -40,11 +40,20 @@ typedef struct {
   SDL_Color bg_color;
   SDL_Color fg_color;
   SDL_Rect rect;
+  SDL_Rect text_rect;
+  SDL_Texture *text_tex;
   TTF_Font *font;
+
+  int cx;
+  int cy;
+  int rx;
+  int ry;
 } Indicator_t;
 
 void render_indicator(const Indicator_t *ind);
 
 Indicator_t create_indicator(SDL_Renderer *renderer, const char *text, const Font_t *font);
+
+void destroy_indicator(Indicator_t *ind);
 
 #endif

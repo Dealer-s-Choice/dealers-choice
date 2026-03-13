@@ -48,61 +48,57 @@ static void draw_filled_ellipse(SDL_Renderer *r, int cx, int cy, int rx, int ry)
 }
 
 void render_indicator(const Indicator_t *ind) {
-  if (!ind || !ind->text)
-    return;
-
   SDL_Renderer *r = ind->renderer;
 
-  // Center and radii
-  int cx = ind->rect.x + ind->rect.w / 2;
-  int cy = ind->rect.y + ind->rect.h / 2;
-  int rx = ind->rect.w / 2;
-  int ry = ind->rect.h / 2;
-
-  // Draw oval background
   SDL_SetRenderDrawColor(r, ind->bg_color.r, ind->bg_color.g, ind->bg_color.b, ind->bg_color.a);
-  draw_filled_ellipse(r, cx, cy, rx, ry);
 
-  // Render text
-  SDL_Surface *surf = TTF_RenderUTF8_Blended(ind->font, ind->text, ind->fg_color);
-  if (!surf)
-    return;
+  draw_filled_ellipse(r, ind->cx, ind->cy, ind->rx, ind->ry);
 
-  SDL_Texture *tex = SDL_CreateTextureFromSurface(r, surf);
-  if (!tex) {
-    SDL_FreeSurface(surf);
-    return;
-  }
-
-  SDL_Rect text_rect = {cx - surf->w / 2, cy - surf->h / 2, surf->w, surf->h};
-
-  SDL_RenderCopy(r, tex, NULL, &text_rect);
-
-  SDL_FreeSurface(surf);
-  SDL_DestroyTexture(tex);
+  SDL_RenderCopy(r, ind->text_tex, NULL, &ind->text_rect);
 }
 
 Indicator_t create_indicator(SDL_Renderer *renderer, const char *text, const Font_t *font) {
-  Indicator_t ind = {
-      .text = text,
-      .renderer = renderer,
-      .bg_color = get_color(COLOR_WHITE),
-      .fg_color = get_color(COLOR_BROWN),
-      .rect = {0},
-      .font = font->fonts[FONT_BOLD],
-  };
+  Indicator_t ind = {.text = text,
+                     .renderer = renderer,
+                     .bg_color = get_color(COLOR_WHITE),
+                     .fg_color = get_color(COLOR_BROWN),
+                     .rect = {0},
+                     .text_rect = {0},
+                     .text_tex = NULL,
+                     .font = font->fonts[FONT_BOLD],
+                     .cx = 0,
+                     .cy = 0,
+                     .rx = 0,
+                     .ry = 0};
 
-  if (TTF_SizeUTF8(ind.font, ind.text, &ind.rect.w, &ind.rect.h) != 0) {
-    fprintf(stderr, "TTF_SizeUTF8 failed: %s\n", TTF_GetError());
+  SDL_Surface *surf = TTF_RenderUTF8_Blended(ind.font, ind.text, ind.fg_color);
+  if (!surf) {
+    fprintf(stderr, "TTF_RenderUTF8_Blended failed: %s\n", TTF_GetError());
     ind.rect.w = 40;
     ind.rect.h = 20;
+    return ind;
   }
 
-  int PAD_X = ind.rect.h;     // one text-height on each side
-  int PAD_Y = ind.rect.h / 3; // subtle vertical padding
+  ind.text_tex = SDL_CreateTextureFromSurface(renderer, surf);
 
-  ind.rect.w += PAD_X * 2;
-  ind.rect.h += PAD_Y * 2;
+  int text_w = surf->w;
+  int text_h = surf->h;
+
+  int PAD_X = text_h;
+  int PAD_Y = text_h / 3;
+
+  ind.rect.w = text_w + PAD_X * 2;
+  ind.rect.h = text_h + PAD_Y * 2;
+
+  ind.text_rect.w = text_w;
+  ind.text_rect.h = text_h;
+
+  SDL_FreeSurface(surf);
 
   return ind;
+}
+
+void destroy_indicator(Indicator_t *ind) {
+  if (ind && ind->text_tex)
+    SDL_DestroyTexture(ind->text_tex);
 }

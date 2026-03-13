@@ -743,14 +743,32 @@ static void layout_table_center(SDL_Point *p) {
 
 static int right_align(int width) { return g_viewport.x + g_viewport.w - width - MARGIN; }
 
+static void layout_indicator(Indicator_t *ind, int x, int y) {
+  ind->rect.x = x;
+  ind->rect.y = y;
+
+  ind->rx = ind->rect.w / 2;
+  ind->ry = ind->rect.h / 2;
+
+  ind->cx = ind->rect.x + ind->rx;
+  ind->cy = ind->rect.y + ind->ry;
+
+  ind->text_rect.x = ind->cx - ind->text_rect.w / 2;
+  ind->text_rect.y = ind->cy - ind->text_rect.h / 2;
+}
+
 static void layout_game_name_indicator(Indicator_t *ind) {
-  ind->rect.x = right_align(ind->rect.w);
-  ind->rect.y = g_viewport.y + g_viewport.h - 300;
+  int x = right_align(ind->rect.w);
+  int y = g_viewport.y + g_viewport.h - 300;
+
+  layout_indicator(ind, x, y);
 }
 
 static void layout_deuces_wild_indicator(Indicator_t *ind) {
-  ind->rect.x = right_align(ind->rect.w);
-  ind->rect.y = g_viewport.y + g_viewport.h - 200;
+  int x = right_align(ind->rect.w);
+  int y = g_viewport.y + g_viewport.h - 200;
+
+  layout_indicator(ind, x, y);
 }
 
 static void layout_wild_selection(Button_t *card_faces, Button_t *card_suits, const int face_count,
@@ -1475,6 +1493,8 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
     } // End Poll event
   }
   SDL_DestroyTexture(coin_tex_front);
+  destroy_indicator(&indicator_game_name);
+  destroy_indicator(&indicator_deuces_wild);
   return running;
 }
 
