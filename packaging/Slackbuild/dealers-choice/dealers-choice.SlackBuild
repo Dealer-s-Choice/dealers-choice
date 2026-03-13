@@ -93,6 +93,9 @@ cd build
   DESTDIR=$PKG ninja install
 cd ..
 
+# Remove unneeded miniaudio static libraries
+rm -f $PKG/usr/lib*/libminiaudio*.a
+
 cat $CWD/$PRGNAM.SlackBuild > $PKG/usr/doc/$PRGNAM-$VERSION/$PRGNAM.SlackBuild
 
 mkdir -p $PKG/install
