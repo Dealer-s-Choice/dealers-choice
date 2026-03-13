@@ -26,7 +26,11 @@
 
 */
 
+#include <SDL.h>
+#include <SDL_ttf.h>
+
 #include "indicator.h"
+#include "ui_widget.h"
 
 static void draw_filled_ellipse(SDL_Renderer *r, int cx, int cy, int rx, int ry) {
   if (rx <= 0 || ry <= 0)
@@ -46,58 +50,82 @@ static void draw_filled_ellipse(SDL_Renderer *r, int cx, int cy, int rx, int ry)
   }
 }
 
-void render_indicator(const Indicator_t *ind) {
+// render function (non-static so we can assign pointer)
+void indicator_render(UIWidget_t *w) {
+  Indicator_t *ind = (Indicator_t *)w;
+
   SDL_Renderer *r = ind->renderer;
 
+  // draw oval background
   SDL_SetRenderDrawColor(r, ind->bg_color.r, ind->bg_color.g, ind->bg_color.b, ind->bg_color.a);
-
   draw_filled_ellipse(r, ind->cx, ind->cy, ind->rx, ind->ry);
 
+  // render text
   SDL_RenderCopy(r, ind->text_tex, NULL, &ind->text_rect);
 }
 
-Indicator_t create_indicator(SDL_Renderer *renderer, const char *text, const Font_t *font) {
-  Indicator_t ind = {.text = text,
-                     .renderer = renderer,
-                     .bg_color = get_color(COLOR_WHITE),
-                     .fg_color = get_color(COLOR_BROWN),
-                     .rect = {0},
-                     .text_rect = {0},
-                     .text_tex = NULL,
-                     .font = font->fonts[FONT_BOLD],
-                     .cx = 0,
-                     .cy = 0,
-                     .rx = 0,
-                     .ry = 0};
+static void indicator_destroy(UIWidget_t *w) {
+  if (!w)
+    return;
 
-  SDL_Surface *surf = TTF_RenderUTF8_Blended(ind.font, ind.text, ind.fg_color);
-  if (!surf) {
-    fprintf(stderr, "TTF_RenderUTF8_Blended failed: %s\n", TTF_GetError());
-    ind.rect.w = 40;
-    ind.rect.h = 20;
-    return ind;
+  Indicator_t *ind = (Indicator_t *)w;
+
+  if (ind->text_tex) {
+    SDL_DestroyTexture(ind->text_tex);
+    ind->text_tex = NULL;
   }
 
-  ind.text_tex = SDL_CreateTextureFromSurface(renderer, surf);
-
-  int text_w = surf->w;
-  int text_h = surf->h;
-
-  int PAD_X = text_h;
-  int PAD_Y = text_h / 3;
-
-  ind.rect.w = text_w + PAD_X * 2;
-  ind.rect.h = text_h + PAD_Y * 2;
-
-  ind.text_rect.w = text_w;
-  ind.text_rect.h = text_h;
-
-  SDL_FreeSurface(surf);
-
-  return ind;
+  free(ind);
 }
 
-void destroy_indicator(Indicator_t *ind) {
-  if (ind && ind->text_tex)
-    SDL_DestroyTexture(ind->text_tex);
+Indicator_t *create_indicator(const char *text, TTF_Font *font, EColorName_t bg_color,
+                              EColorName_t fg_color) {
+  SDL_Renderer *renderer = g_sdl_context->renderer;
+  if (!renderer || !text || !font)
+    return NULL;
+
+  Indicator_t *ind = calloc(1, sizeof(*ind));
+  if (!ind)
+    return NULL;
+
+  ind->renderer = renderer;
+  ind->bg_color = get_color(bg_color);
+
+  SDL_Color fg = get_color(fg_color);
+
+  // Create text surface once
+  SDL_Surface *surf = TTF_RenderUTF8_Blended(font, text, fg);
+  if (!surf) {
+    fprintf(stderr, "TTF_RenderUTF8_Blended failed: %s\n", TTF_GetError());
+    free(ind);
+    return NULL;
+  }
+
+  ind->text_tex = SDL_CreateTextureFromSurface(renderer, surf);
+  if (!ind->text_tex) {
+    fprintf(stderr, "SDL_CreateTextureFromSurface failed: %s\n", SDL_GetError());
+    SDL_FreeSurface(surf);
+    free(ind);
+    return NULL;
+  }
+
+  ind->text_rect.w = surf->w;
+  ind->text_rect.h = surf->h;
+  SDL_FreeSurface(surf);
+
+  // Compute indicator rectangle with padding
+  int pad_x = ind->text_rect.h;     // horizontal padding
+  int pad_y = ind->text_rect.h / 3; // vertical padding
+  ind->base.rect.w = ind->text_rect.w + pad_x * 2;
+  ind->base.rect.h = ind->text_rect.h + pad_y * 2;
+
+  // Precompute oval radii
+  ind->rx = ind->base.rect.w / 2;
+  ind->ry = ind->base.rect.h / 2;
+
+  // Assign callbacks
+  ind->base.render = indicator_render;
+  ind->base.destroy = indicator_destroy;
+
+  return ind;
 }

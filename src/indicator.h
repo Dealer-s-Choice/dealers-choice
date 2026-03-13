@@ -33,27 +33,39 @@
 #include <SDL2/SDL_ttf.h>
 
 #include "graphics.h"
+#include "ui_widget.h"
 
 typedef struct {
-  const char *text;
-  SDL_Renderer *renderer;
-  SDL_Color bg_color;
-  SDL_Color fg_color;
-  SDL_Rect rect;
-  SDL_Rect text_rect;
-  SDL_Texture *text_tex;
-  TTF_Font *font;
+  UIWidget_t base; // <-- base widget for render/destroy + rect
 
-  int cx;
-  int cy;
-  int rx;
-  int ry;
+  SDL_Renderer *renderer;
+
+  SDL_Texture *text_tex;
+  SDL_Rect text_rect;
+
+  SDL_Color bg_color;
+
+  int cx, cy; // oval center
+  int rx, ry; // oval radii
+
+  TTF_Font *font; // font reference
 } Indicator_t;
+/*
+ChatGPT:
+The reason `fg_color` (foreground/text color) is not stored in the struct is
+because in this design, the **text is rendered immediately to a texture**
+during `create_indicator()`.
+
+Once the texture is created with `SDL_CreateTextureFromSurface()`, the
+color information is baked into the texture**. * You no longer need the
+`fg_color` stored in the struct, because rendering the indicator simply draws
+the pre-created texture.
+
+*/
 
 void render_indicator(const Indicator_t *ind);
 
-Indicator_t create_indicator(SDL_Renderer *renderer, const char *text, const Font_t *font);
-
-void destroy_indicator(Indicator_t *ind);
+Indicator_t *create_indicator(const char *text, TTF_Font *font, EColorName_t bg_color,
+                              EColorName_t fg_color);
 
 #endif

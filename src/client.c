@@ -741,31 +741,30 @@ static void layout_table_center(SDL_Point *p) {
   p->y = g_center.y;
 }
 
-static int right_align(int width) { return g_viewport.x + g_viewport.w - width - MARGIN; }
+static inline int right_align(int width) { return g_viewport.x + g_viewport.w - width - MARGIN; }
 
 static void layout_indicator(Indicator_t *ind, int x, int y) {
-  ind->rect.x = x;
-  ind->rect.y = y;
+  ui_widget_place(&ind->base, x, y); // sets base.rect.x/y
 
-  ind->rx = ind->rect.w / 2;
-  ind->ry = ind->rect.h / 2;
+  ind->rx = ind->base.rect.w / 2;
+  ind->ry = ind->base.rect.h / 2;
 
-  ind->cx = ind->rect.x + ind->rx;
-  ind->cy = ind->rect.y + ind->ry;
+  ind->cx = ind->base.rect.x + ind->rx;
+  ind->cy = ind->base.rect.y + ind->ry;
 
   ind->text_rect.x = ind->cx - ind->text_rect.w / 2;
   ind->text_rect.y = ind->cy - ind->text_rect.h / 2;
 }
 
 static void layout_game_name_indicator(Indicator_t *ind) {
-  int x = right_align(ind->rect.w);
+  int x = right_align(ind->base.rect.w);
   int y = g_viewport.y + g_viewport.h - 300;
 
   layout_indicator(ind, x, y);
 }
 
 static void layout_deuces_wild_indicator(Indicator_t *ind) {
-  int x = right_align(ind->rect.w);
+  int x = right_align(ind->base.rect.w);
   int y = g_viewport.y + g_viewport.h - 200;
 
   layout_indicator(ind, x, y);
@@ -911,11 +910,11 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
   layout_wild_selection(card_faces, card_suits, ARRAY_SIZE(card_faces), ARRAY_SIZE(card_suits),
                         font);
 
-  Indicator_t indicator_deuces_wild =
-      create_indicator(sdl_context->renderer, _("Deuces Wild"), font);
-  layout_deuces_wild_indicator(&indicator_deuces_wild);
+  Indicator_t *indicator_deuces_wild =
+      create_indicator(("Deuces Wild"), font->fonts[FONT_BOLD], COLOR_WHITE, COLOR_BROWN);
+  layout_deuces_wild_indicator(indicator_deuces_wild);
 
-  Indicator_t indicator_game_name = {0};
+  Indicator_t *indicator_game_name = NULL;
 
   int running = 1;
   bool cards_created = false;
@@ -1071,17 +1070,18 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
     // coin_anim.active = false;
     //}
 
-    if (!indicator_game_name.text && client_state.game_choice) {
-      indicator_game_name =
-          create_indicator(sdl_context->renderer, client_state.game_choice->str, font);
-      layout_game_name_indicator(&indicator_game_name);
+    if (!indicator_game_name && client_state.game_choice) {
+      indicator_game_name = create_indicator(client_state.game_choice->str, font->fonts[FONT_BOLD],
+                                             COLOR_WHITE, COLOR_BROWN);
+      layout_game_name_indicator(indicator_game_name);
     }
-    if (indicator_game_name.text) {
-      render_indicator(&indicator_game_name);
+
+    if (indicator_game_name) {
+      ui_widget_render(&indicator_game_name->base);
     }
 
     if (client_state.deuces_wild) {
-      render_indicator(&indicator_deuces_wild);
+      ui_widget_render(&indicator_deuces_wild->base);
     }
 
     SDL_SetRenderDrawColor(sdl_context->renderer, 255, 255, 255, 255);
@@ -1493,8 +1493,8 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
     } // End Poll event
   }
   SDL_DestroyTexture(coin_tex_front);
-  destroy_indicator(&indicator_game_name);
-  destroy_indicator(&indicator_deuces_wild);
+  ui_widget_destroy(&indicator_game_name->base);
+  ui_widget_destroy(&indicator_deuces_wild->base);
   return running;
 }
 
