@@ -37,6 +37,7 @@
 #include "game.h"
 #include "globals.h"
 #include "graphics.h"
+#include "indicator.h"
 
 #include "util.h"
 

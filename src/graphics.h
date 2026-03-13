@@ -104,19 +104,6 @@ void clear_screen(SDL_Renderer *renderer);
 void render_text(SDL_Renderer *renderer, TTF_Font *font, const char *text, SDL_Color color,
                  SDL_Rect *dest);
 
-typedef struct {
-  const char *text;
-  SDL_Renderer *renderer;
-  SDL_Color bg_color;
-  SDL_Color fg_color;
-  SDL_Rect rect;
-  TTF_Font *font;
-} Indicator_t;
-
-void render_indicator(const Indicator_t *ind);
-
-Indicator_t create_indicator(SDL_Renderer *renderer, const char *text, const Font_t *font);
-
 void mark_selected(SDL_Renderer *renderer, const SDL_Rect *rect);
 
 void render_text_centered(SDL_Renderer *renderer, TTF_Font *font, const char *text, SDL_Color color,
