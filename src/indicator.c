@@ -27,7 +27,6 @@
 */
 
 #include "indicator.h"
-#include "game.h"
 
 static void draw_filled_ellipse(SDL_Renderer *r, int cx, int cy, int rx, int ry) {
   if (rx <= 0 || ry <= 0)
