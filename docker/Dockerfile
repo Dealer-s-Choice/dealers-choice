@@ -26,6 +26,7 @@ FROM alpine
 
 # Install runtime dependencies
 RUN apk add --no-cache \
+    libsodium \
     sdl2 \
     sdl2_image \
     sdl2_net \

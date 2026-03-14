@@ -4,6 +4,7 @@ RUN pacman -Syu --noconfirm \
     base-devel \
     cmake \
     git \
+    libsodium \
     meson \
     sdl2 \
     sdl2_image \
