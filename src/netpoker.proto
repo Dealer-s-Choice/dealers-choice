@@ -17,6 +17,7 @@ message Player {
   bool in = 5;
   bool winner = 6;
   bool is_connected = 7;
+  bool is_admin = 8;
 }
 
 message GameState {

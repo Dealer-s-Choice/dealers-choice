@@ -64,6 +64,7 @@ typedef struct {
   bool in; // Used for spectators or when someone has folded
   bool winner;
   bool is_connected;
+  bool is_admin;
 } Player_t;
 
 typedef struct {

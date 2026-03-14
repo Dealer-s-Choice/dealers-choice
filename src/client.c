@@ -27,6 +27,7 @@
 */
 
 #include <deckhandler.h>
+#include <sodium.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -1498,6 +1499,33 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
   return running;
 }
 
+int authenticate_with_server(TCPsocket sock, const char *password) {
+  unsigned char nonce[NONCE_SIZE];
+  unsigned char hash[HASH_SIZE];
+
+  /* receive nonce */
+  if (recv_all_tcp(sock, nonce, NONCE_SIZE) < 0) {
+    fprintf(stderr, "Failed to receive nonce\n");
+    return -1;
+  }
+
+  /* compute SHA256(password + nonce) */
+  crypto_hash_sha256_state state;
+
+  crypto_hash_sha256_init(&state);
+  crypto_hash_sha256_update(&state, (const unsigned char *)password, strlen(password));
+  crypto_hash_sha256_update(&state, nonce, NONCE_SIZE);
+  crypto_hash_sha256_final(&state, hash);
+
+  /* send response */
+  if (send_all_tcp(sock, hash, HASH_SIZE) < 0) {
+    fprintf(stderr, "Failed to send authentication response\n");
+    return -1;
+  }
+
+  return 0;
+}
+
 SocketContext_t get_socket_context_and_run_client(PlayerConfig_t *player_config,
                                                   const CliArgs_t *cli_args, const char *host_str,
                                                   const uint16_t port, SdlContext_t *sdl_context,
@@ -1563,6 +1591,10 @@ SocketContext_t get_socket_context_and_run_client(PlayerConfig_t *player_config,
   }
 
   if (!test_mode) {
+    const char *password = cli_args->password ? cli_args->password : "";
+    if (authenticate_with_server(sock, password) < 0)
+      fprintf(stderr, "Authentication attempt failed\n");
+
     GameState_t game_state = {0};
     GameSettings_t game_settings = {0};
     ClientState_t client_state = {0};

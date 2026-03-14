@@ -36,6 +36,7 @@ typedef struct {
   bool test_mode, run_server_flag;
   bool disable_audio;
   bool disable_timeout;
+  const char *password;
 } CliArgs_t;
 
 #endif

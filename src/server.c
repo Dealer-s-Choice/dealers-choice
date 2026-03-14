@@ -26,6 +26,7 @@
 
 */
 
+#include <sodium.h>
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
@@ -1401,6 +1402,33 @@ static void flush_client_socket(TCPsocket sock) {
   SDLNet_FreeSocketSet(tmp_set);
 }
 
+static int send_nonce(TCPsocket sock, unsigned char nonce[NONCE_SIZE]) {
+  randombytes_buf(nonce, NONCE_SIZE);
+  return send_all_tcp(sock, nonce, NONCE_SIZE);
+}
+
+static int verify_client_password(TCPsocket sock, const char *stored_password,
+                                  const unsigned char nonce[NONCE_SIZE]) {
+  unsigned char client_hash[HASH_SIZE];
+  unsigned char expected_hash[HASH_SIZE];
+
+  if (recv_all_tcp(sock, client_hash, HASH_SIZE) < 0)
+    return -1;
+
+  crypto_hash_sha256_state state;
+
+  crypto_hash_sha256_init(&state);
+  crypto_hash_sha256_update(&state, (const unsigned char *)stored_password,
+                            strlen(stored_password));
+  crypto_hash_sha256_update(&state, nonce, NONCE_SIZE);
+  crypto_hash_sha256_final(&state, expected_hash);
+
+  if (sodium_memcmp(client_hash, expected_hash, HASH_SIZE) == 0)
+    return 0;
+
+  return -1;
+}
+
 static ELoop_t register_new_client(ArgsBroadcastGameState_t *args) {
   // checks for and accepts incoming connections
   TCPsocket new_client = SDLNet_TCP_Accept(*args->server_sock);
@@ -1446,6 +1474,23 @@ static ELoop_t register_new_client(ArgsBroadcastGameState_t *args) {
 
       if (!args->cli_args->test_mode) {
         Player_t *player = &(args->game_state->player)[slot];
+
+        unsigned char nonce[NONCE_SIZE];
+        if (send_nonce(new_client, nonce) < 0) {
+          fprintf(stderr, "Failed to send nonce\n");
+          return -1;
+        }
+
+        const char *password = args->cli_args->password ? args->cli_args->password : "";
+        if (verify_client_password(new_client, password, nonce) < 0) {
+          fprintf(stderr, "Authentication failed, but not required\n");
+        } else {
+          if (args->cli_args->password) {
+            puts("Client authenticated!");
+            player->is_admin = true;
+          }
+        }
+
         int16_t net_len;
 
         // Step 1: Recv the size first (must happen before interpreting it)

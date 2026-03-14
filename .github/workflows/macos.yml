@@ -37,7 +37,8 @@ jobs:
           sdl2 \
           sdl2_image \
           sdl2_net \
-          sdl2_ttf
+          sdl2_ttf \
+          libsodium
 
     - name: Meson setup
       run: |

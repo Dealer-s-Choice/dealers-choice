@@ -35,12 +35,15 @@
 #include "netpoker.pb-c.h"
 #include "types.h"
 
+#define NONCE_SIZE 32
+#define HASH_SIZE crypto_hash_sha256_BYTES
+
 #ifndef MAX_HAND_SIZE
 #define MAX_HAND_SIZE 7
 #endif
 
 #define GAME_PROTOCOL_MAGIC "DCPROTO"
-#define GAME_PROTOCOL_VERSION 6
+#define GAME_PROTOCOL_VERSION 7
 
 #ifdef _MSC_VER
 #pragma pack(push, 1)

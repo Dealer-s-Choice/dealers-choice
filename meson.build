@@ -84,6 +84,7 @@ shared_dep = [
 
 dep_names = [
   'libprotobuf-c',
+  'libsodium',
   'SDL2',
   'SDL2_ttf',
   'SDL2_net',

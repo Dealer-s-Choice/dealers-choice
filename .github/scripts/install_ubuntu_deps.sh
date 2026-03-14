@@ -13,4 +13,5 @@ sudo apt-get install --no-install-recommends -y \
   libsdl2-dev \
   libsdl2-image-dev \
   libsdl2-net-dev \
-  libsdl2-ttf-dev
+  libsdl2-ttf-dev \
+  libsodium-dev

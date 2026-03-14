@@ -69,10 +69,11 @@ struct  Player
   protobuf_c_boolean in;
   protobuf_c_boolean winner;
   protobuf_c_boolean is_connected;
+  protobuf_c_boolean is_admin;
 };
 #define PLAYER__INIT \
  { PROTOBUF_C_MESSAGE_INIT (&player__descriptor) \
-, (char *)protobuf_c_empty_string, 0, NULL, 0, 0, 0, 0 }
+, (char *)protobuf_c_empty_string, 0, NULL, 0, 0, 0, 0, 0 }
 
 
 struct  GameState

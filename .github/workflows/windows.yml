@@ -33,6 +33,7 @@ jobs:
           cc:p
           cmake:p
           gettext:p
+          libsodium:p
           meson:p
           ninja:p
           pkgconf:p
