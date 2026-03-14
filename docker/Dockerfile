@@ -3,6 +3,7 @@ FROM alpine AS build
 RUN apk update && apk add --no-cache \
     build-base \
     cmake \
+    libsodium-dev \
     meson \
     ninja \
     git \
@@ -26,7 +27,7 @@ FROM alpine
 
 # Install runtime dependencies
 RUN apk add --no-cache \
-    libsodium-dev \
+    libsodium \
     sdl2 \
     sdl2_image \
     sdl2_net \
