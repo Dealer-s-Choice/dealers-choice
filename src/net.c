@@ -270,7 +270,7 @@ Player_t deserialize_player(const uint8_t *data, size_t size) {
  * @param length Number of bytes to send.
  * @return 0 on success, -1 on failure.
  */
-int send_all_tcp(TCPsocket sock, const void *data, size_t length) {
+int send_all_tcp_DEPRECATED(TCPsocket sock, const void *data, size_t length) {
   const uint8_t *buf = (const uint8_t *)data;
   size_t total_sent = 0;
 
@@ -288,22 +288,34 @@ int send_all_tcp(TCPsocket sock, const void *data, size_t length) {
   return 0;
 }
 
-/* Return: number of bytes read on success (== requested len),
-           -1 on error/connection closed. */
+int send_all_tcp(TCPsocket sock, const void *data, size_t length) {
+  int sent = SDLNet_TCP_Send(sock, data, (int)length);
+
+  if (sent < 0) {
+    fprintf(stderr, "SDLNet_TCP_Send failed: %s\n", SDLNet_GetError());
+    return -1;
+  }
+
+  if (sent < (int)length) {
+    fprintf(stderr, "Short send: %d of %zu bytes\n", sent, length);
+    return -1;
+  }
+
+  return sent;
+}
+
 int recv_all_tcp(TCPsocket sock, void *buf, size_t len) {
-  uint8_t *p = (uint8_t *)buf;
+  uint8_t *p = buf;
   size_t total = 0;
 
   while (total < len) {
     int r = SDLNet_TCP_Recv(sock, p + total, (int)(len - total));
-    if (r <= 0) {
-      /* r == 0 means connection closed, r < 0 is error.
-         SDL_net doesn't use errno; use SDLNet_GetError() when logging. */
+
+    if (r <= 0)
       return -1;
-    }
+
     total += (size_t)r;
   }
-
   return (int)total;
 }
 
@@ -552,16 +564,21 @@ void socket_cleanup(SocketContext_t *socket_context) {
 }
 
 int send_message(TCPsocket sock, uint16_t opcode, const uint8_t *payload, size_t payload_len) {
-  uint32_t total_size = SDL_SwapBE32(2 + payload_len); // opcode + payload
+  if (payload_len > UINT32_MAX - 2)
+    return -1;
+  uint32_t total_size = SDL_SwapBE32(2 + payload_len);
   uint16_t opcode_be = SDL_SwapBE16(opcode);
 
-  uint8_t header[6];
-  memcpy(header, &total_size, 4);
-  memcpy(header + 4, &opcode_be, 2);
+  if (send_all_tcp(sock, &total_size, sizeof(total_size)) < 0)
+    return -1;
 
-  if (send_all_tcp(sock, header, sizeof(header)) < 0)
+  if (send_all_tcp(sock, &opcode_be, sizeof(opcode_be)) < 0)
     return -1;
-  if (send_all_tcp(sock, payload, payload_len) < 0)
-    return -1;
+
+  if (payload_len > 0) {
+    if (send_all_tcp(sock, payload, payload_len) < 0)
+      return -1;
+  }
+
   return 0;
 }
