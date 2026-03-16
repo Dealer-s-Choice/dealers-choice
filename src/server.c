@@ -1482,8 +1482,9 @@ static ELoop_t register_new_client(ArgsBroadcastGameState_t *args) {
         }
 
         const char *password = args->cli_args->password ? args->cli_args->password : "";
-        if (verify_client_password(new_client, password, nonce) < 0) {
-          fprintf(stderr, "Authentication failed, but not required\n");
+        if (verify_client_password(new_client, password, nonce) < 0 || !args->cli_args->password) {
+          // fprintf(stderr, "Authentication failed, but not required\n");
+          player->is_admin = false;
         } else {
           if (args->cli_args->password) {
             puts("Client authenticated!");
