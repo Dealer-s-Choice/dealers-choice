@@ -36,30 +36,27 @@
 #include "ui_widget.h"
 
 typedef struct {
-    UIWidget_t base;
+  UIWidget_t base;
 
-    SDL_Renderer *renderer;
+  SDL_Renderer *renderer;
 
-    SDL_Texture *nick_tex;
-    SDL_Texture *ping_tex;
+  SDL_Texture *nick_tex;
+  SDL_Texture *ping_tex;
 
-    SDL_Rect nick_rect;
-    SDL_Rect ping_rect;
+  SDL_Rect nick_rect;
+  SDL_Rect ping_rect;
 
-    SDL_Color color;
+  SDL_Color color;
 
-    TTF_Font *font;
+  TTF_Font *font;
 
-    int ping_column_x;
-    int ping;   // cached ping value
+  int ping_column_x;
+  int ping; // cached ping value
 } PlayerWidget_t;
 
 void player_widget_render(PlayerWidget_t *pw);
 
-PlayerWidget_t *player_widget_create(const char *nick,
-                                     bool dealer,
-                                     uint32_t ping,
-                                     TTF_Font *font);
+PlayerWidget_t *player_widget_create(const char *nick, bool dealer, uint32_t ping, TTF_Font *font);
 
 void player_widget_update_ping(PlayerWidget_t *pw, int ping);
 

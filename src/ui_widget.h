@@ -13,26 +13,26 @@ struct UIWidget_t {
 };
 
 typedef struct {
-    int x;
-    int y;
+  int x;
+  int y;
 
-    int rows;
-    int cols;
+  int rows;
+  int cols;
 
-    int row_spacing;
-    int col_spacing;
+  int row_spacing;
+  int col_spacing;
 
-    int col_width[8];
-    int row_height[32];
+  int col_width[8];
+  int row_height[32];
 
-    UIWidget_t *cells[32][8];
+  UIWidget_t *cells[32][8];
 } UITable_t;
 
 typedef struct {
-    int x;
-    int y;
-    int spacing;
-    int current_y;
+  int x;
+  int y;
+  int spacing;
+  int current_y;
 } VStack_t;
 
 /* lifecycle helpers */

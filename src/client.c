@@ -247,12 +247,10 @@ static bool handle_game_selection(const PlayerConfig_t *player_config,
 
         PlayerWidget_t *pw = player_widgets[client->id];
         if (!pw) {
-            pw = player_widget_create(client->nick,
-                                      game_state->dealer_id == client->id,
-                                      client_state->ping_times[client->id],
-                                      font->fonts[FONT_BOLD]);
+          pw = player_widget_create(client->nick, game_state->dealer_id == client->id,
+                                    client_state->ping_times[client->id], font->fonts[FONT_BOLD]);
 
-            player_widgets[client->id] = pw;
+          player_widgets[client->id] = pw;
         }
 
         /* update ping if needed */
@@ -267,7 +265,7 @@ static bool handle_game_selection(const PlayerConfig_t *player_config,
 
       /* render widgets */
       for (int i = 0; i < row; i++) {
-          player_widget_render(player_widgets[i]);
+        player_widget_render(player_widgets[i]);
       }
 
       if (saved_n_clients < n_clients && saved_n_clients != 0)
