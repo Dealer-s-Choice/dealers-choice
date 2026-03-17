@@ -14,6 +14,7 @@ shared_src = files(
   'indicator.c',
   'links.c',
   'net.c',
+  'player_widget.c',
   'protobuf/netpoker.pb-c.c',
   'server.c',
   'ui_widget.c',

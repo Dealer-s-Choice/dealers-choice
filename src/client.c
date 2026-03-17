@@ -39,6 +39,7 @@
 #include "globals.h"
 #include "graphics.h"
 #include "indicator.h"
+#include "player_widget.h"
 
 #include "util.h"
 
@@ -130,6 +131,8 @@ static bool handle_game_selection(const PlayerConfig_t *player_config,
 
   static uint8_t saved_n_clients = 0;
   TCPsocket sock = socket_context->sock;
+
+  PlayerWidget_t *player_widgets[MAX_PLAYERS] = {0};
 
   while (game_state->at_menu) {
     ERecvStatus_t recv_status = recv_game_state(socket_context, game_state, client_state, my_id);
@@ -231,43 +234,42 @@ static bool handle_game_selection(const PlayerConfig_t *player_config,
                         get_color(COLOR_BLACK), &text_connected);
       offset_x += 10;
 
+      UITable_t table = {0};
+      ui_table_begin(&table, (g_viewport.w * .1) + 10, g_viewport.h / 2, 2);
+
+      int row = 0;
+
       Player_t *client = &game_state->player[my_id];
       Player_t *start = client;
 
       n_clients = 0;
       do {
-        int ping_column_x = g_center.x - 100; // fixed right edge for ping
-        offset_y += 40;
 
-        // Build nickname + dealer label
-        char nick_buf[SIZEOF_NICK + 256];
-        snprintf(nick_buf, sizeof nick_buf, "%s%s", client->nick,
-                 game_state->dealer_id == client->id ? _(" (Dealer)") : "");
+        PlayerWidget_t *pw = player_widgets[client->id];
+        if (!pw) {
+            pw = player_widget_create(client->nick,
+                                      game_state->dealer_id == client->id,
+                                      client_state->ping_times[client->id],
+                                      font->fonts[FONT_BOLD]);
 
-        // Build ping text
-        char ping_buf[32];
-        snprintf(ping_buf, sizeof ping_buf, "ping %ums", client_state->ping_times[client->id]);
-
-        // Render nick left-aligned
-        SDL_Rect nick_pos = {offset_x, offset_y, 0, 0};
-        render_text_plain(sdl_context->renderer, font->fonts[FONT_BOLD], nick_buf,
-                          get_color(COLOR_WHITE), &nick_pos);
-
-        // Measure ping text width
-        int ping_w = 0, ping_h = 0;
-        if (TTF_SizeUTF8(font->fonts[FONT_BOLD], ping_buf, &ping_w, &ping_h) != 0) {
-          fprintf(stderr, "TTF_SizeUTF8 failed: %s\n", TTF_GetError());
-          ping_w = 0;
+            player_widgets[client->id] = pw;
         }
 
-        // Render ping right-aligned at ping_column_x
-        SDL_Rect ping_pos = {ping_column_x - ping_w, offset_y, 0, 0};
-        render_text_plain(sdl_context->renderer, font->fonts[FONT_BOLD], ping_buf,
-                          get_color(COLOR_WHITE), &ping_pos);
+        /* update ping if needed */
+        player_widget_update_ping(pw, client_state->ping_times[client->id]);
+        ui_table_add(&table, row, 0, &pw->base);
 
+        row++;
         n_clients++;
         client = get_next_connected_client(game_state->player, client->id);
       } while (client && client != start);
+      ui_table_layout(&table);
+
+      /* render widgets */
+      for (int i = 0; i < row; i++) {
+          player_widget_render(player_widgets[i]);
+      }
+
       if (saved_n_clients < n_clients && saved_n_clients != 0)
         ma_sound_start_checked(&sound_context->sounds[SND_SERVER_JOIN].sound);
       saved_n_clients = n_clients;
