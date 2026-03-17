@@ -1,5 +1,5 @@
 /*
- player_widget.h
+ player.h
  https://github.com/Dealer-s-Choice/dealers_choice
 
  MIT License

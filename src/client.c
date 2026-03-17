@@ -39,7 +39,7 @@
 #include "globals.h"
 #include "graphics.h"
 #include "indicator.h"
-#include "player_widget.h"
+#include "widgets/player.h"
 
 #include "util.h"
 

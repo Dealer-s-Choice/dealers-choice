@@ -1,5 +1,5 @@
 /*
- player_widget.c
+ player.c
  https://github.com/Dealer-s-Choice/dealers_choice
 
  MIT License
@@ -26,7 +26,7 @@
 
 */
 
-#include "player_widget.h"
+#include "player.h"
 #include "translate.h"
 
 PlayerWidget_t *player_widget_create(const char *nick, bool dealer, uint32_t ping, TTF_Font *font) {

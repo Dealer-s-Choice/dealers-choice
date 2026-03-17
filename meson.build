@@ -134,7 +134,7 @@ configure_file(output: 'config.h', configuration: conf)
 
 _lib = static_library(
   'game',
-  shared_src,
+  [shared_src, widgets_src],
   dependencies: shared_dep,
   include_directories: shared_inc,
 )

@@ -1,7 +1,4 @@
-if get_option('gen_protobuf')
-  protoc = find_program('protoc', required: true)
-  run_command([protoc, '--c_out=./protobuf', 'netpoker.proto'], check: true)
-endif
+subdir('widgets')
 
 shared_src = files(
   'button.c',
@@ -14,7 +11,6 @@ shared_src = files(
   'indicator.c',
   'links.c',
   'net.c',
-  'player_widget.c',
   'protobuf/netpoker.pb-c.c',
   'server.c',
   'ui_widget.c',
