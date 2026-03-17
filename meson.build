@@ -55,6 +55,8 @@ add_project_arguments(definitions, language: 'c')
 
 canfigger_dep = dependency(
   'canfigger',
+  version: '>=0.3.0',
+  fallback: ['canfigger', 'canfigger_dep'],
   default_options: 'default_library=static',
 )
 
