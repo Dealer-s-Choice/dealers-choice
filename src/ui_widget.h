@@ -2,11 +2,13 @@
 #define __UI_WIDGET_H
 
 #include <SDL.h>
+#include <stdbool.h>
 
 typedef struct UIWidget_t UIWidget_t;
 
 struct UIWidget_t {
   SDL_Rect rect;
+  bool hovered;
 
   void (*render)(UIWidget_t *w);
   void (*destroy)(UIWidget_t *w);
@@ -42,11 +44,11 @@ void ui_widget_destroy(UIWidget_t *w);
 /* simple layout helper */
 void ui_widget_place(UIWidget_t *w, int x, int y);
 
-void vstack_begin(VStack_t *v, int x, int y, int spacing);
+// void vstack_begin(VStack_t *v, int x, int y, int spacing);
 
-void vstack_place(VStack_t *v, UIWidget_t *w);
+// void vstack_place(VStack_t *v, UIWidget_t *w);
 
-void vstack_place_right(VStack_t *v, UIWidget_t *w, int right_edge);
+// void vstack_place_right(VStack_t *v, UIWidget_t *w, int right_edge);
 
 void ui_table_begin(UITable_t *t, int x, int y, int cols);
 

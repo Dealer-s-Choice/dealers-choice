@@ -163,12 +163,69 @@ static bool handle_game_selection(const PlayerConfig_t *player_config,
     for (size_t i = 0; i < LINK_DEFS_COUNT; i++)
       links[i].hovered = SDL_PointInRect(&mouse_pos, &links[i].rect);
 
+    for (int i = 0; i < MAX_PLAYERS; i++) {
+      PlayerWidget_t *pw = player_widgets[i];
+      if (!pw)
+        continue;
+
+      // Check if mouse is over this widget's base rect
+      pw->base.hovered = SDL_PointInRect(&mouse_pos, &pw->base.rect);
+      if (pw->base.hovered) {
+        fprintf(stderr, "%d is hovered\n", i);
+        break;
+      }
+    }
+
+    clear_screen(sdl_context->renderer);
+
+    UITable_t table = {0};
+    ui_table_begin(&table, (g_viewport.w * .1) + 10, (g_viewport.h / 2) + 40, 2);
+
+    int row = 0;
+
+    Player_t *client = &game_state->player[my_id];
+    Player_t *start = client;
+
+    n_clients = 0;
+    do {
+
+      PlayerWidget_t *pw = player_widgets[client->id];
+      if (!pw) {
+        pw = player_widget_create(client->nick, game_state->dealer_id == client->id,
+                                  client_state->ping_times[client->id], font->fonts[FONT_BOLD]);
+
+        player_widgets[client->id] = pw;
+      }
+
+      /* update ping if needed */
+      player_widget_update_ping(pw, client_state->ping_times[client->id]);
+      ui_table_add(&table, row, 0, &pw->base);
+
+      row++;
+      n_clients++;
+      client = get_next_connected_client(game_state->player, client->id);
+    } while (client && client != start);
+    ui_table_layout(&table);
+
+    /* render widgets */
+    for (int i = 0; i < MAX_PLAYERS; i++) {
+      if (player_widgets[i])
+        ui_widget_render(&player_widgets[i]->base);
+    }
+
     SDL_Event e;
     while (SDL_PollEvent(&e)) {
 
       switch (e.type) {
 
       case SDL_QUIT:
+        for (int i = 0; i < MAX_PLAYERS; i++) {
+          if (player_widgets[i]) {
+            ui_widget_destroy(
+                &player_widgets[i]->base); // calls the correct type-specific destructor
+            player_widgets[i] = NULL;      // avoid dangling pointer
+          }
+        }
         return false;
 
       case SDL_MOUSEBUTTONDOWN: {
@@ -219,7 +276,6 @@ static bool handle_game_selection(const PlayerConfig_t *player_config,
       }
     }
 
-    clear_screen(sdl_context->renderer);
     if (dealing == true) {
       for (int i = 0; i < MAX_CHOICES; i++)
         render_button(&game_choice_button[i]);
@@ -233,40 +289,6 @@ static bool handle_game_selection(const PlayerConfig_t *player_config,
       render_text_plain(sdl_context->renderer, font->fonts[FONT_BOLD], _("Connected players:"),
                         get_color(COLOR_BLACK), &text_connected);
       offset_x += 10;
-
-      UITable_t table = {0};
-      ui_table_begin(&table, (g_viewport.w * .1) + 10, g_viewport.h / 2, 2);
-
-      int row = 0;
-
-      Player_t *client = &game_state->player[my_id];
-      Player_t *start = client;
-
-      n_clients = 0;
-      do {
-
-        PlayerWidget_t *pw = player_widgets[client->id];
-        if (!pw) {
-          pw = player_widget_create(client->nick, game_state->dealer_id == client->id,
-                                    client_state->ping_times[client->id], font->fonts[FONT_BOLD]);
-
-          player_widgets[client->id] = pw;
-        }
-
-        /* update ping if needed */
-        player_widget_update_ping(pw, client_state->ping_times[client->id]);
-        ui_table_add(&table, row, 0, &pw->base);
-
-        row++;
-        n_clients++;
-        client = get_next_connected_client(game_state->player, client->id);
-      } while (client && client != start);
-      ui_table_layout(&table);
-
-      /* render widgets */
-      for (int i = 0; i < row; i++) {
-        player_widget_render(player_widgets[i]);
-      }
 
       if (saved_n_clients < n_clients && saved_n_clients != 0)
         ma_sound_start_checked(&sound_context->sounds[SND_SERVER_JOIN].sound);
@@ -290,6 +312,12 @@ static bool handle_game_selection(const PlayerConfig_t *player_config,
     }
     SDL_RenderPresent(sdl_context->renderer);
     SDL_Delay(16);
+  }
+  for (int i = 0; i < MAX_PLAYERS; i++) {
+    if (player_widgets[i]) {
+      ui_widget_destroy(&player_widgets[i]->base); // calls the correct type-specific destructor
+      player_widgets[i] = NULL;                    // avoid dangling pointer
+    }
   }
   return true;
 }

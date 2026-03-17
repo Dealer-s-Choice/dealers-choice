@@ -29,9 +29,6 @@
 #ifndef __PLAYER_H
 #define __PLAYER_H
 
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_ttf.h>
-
 #include "graphics.h"
 #include "ui_widget.h"
 
@@ -50,11 +47,12 @@ typedef struct {
 
   TTF_Font *font;
 
-  int ping_column_x;
   int ping; // cached ping value
 } PlayerWidget_t;
 
-void player_widget_render(PlayerWidget_t *pw);
+void player_widget_destroy(UIWidget_t *w);
+
+void player_widget_render(UIWidget_t *w);
 
 PlayerWidget_t *player_widget_create(const char *nick, bool dealer, uint32_t ping, TTF_Font *font);
 

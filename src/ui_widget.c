@@ -24,26 +24,26 @@ void ui_widget_place(UIWidget_t *w, int x, int y) {
   w->rect.y = y;
 }
 
-void vstack_begin(VStack_t *v, int x, int y, int spacing) {
-  v->x = x;
-  v->y = y;
-  v->spacing = spacing;
-  v->current_y = y;
-}
+// void vstack_begin(VStack_t *v, int x, int y, int spacing) {
+// v->x = x;
+// v->y = y;
+// v->spacing = spacing;
+// v->current_y = y;
+//}
 
-void vstack_place(VStack_t *v, UIWidget_t *w) {
-  w->rect.x = v->x;
-  w->rect.y = v->current_y;
+// void vstack_place(VStack_t *v, UIWidget_t *w) {
+// w->rect.x = v->x;
+// w->rect.y = v->current_y;
 
-  v->current_y += w->rect.h + v->spacing;
-}
+// v->current_y += w->rect.h + v->spacing;
+//}
 
-void vstack_place_right(VStack_t *v, UIWidget_t *w, int right_edge) {
-  w->rect.x = right_edge - w->rect.w;
-  w->rect.y = v->current_y;
+// void vstack_place_right(VStack_t *v, UIWidget_t *w, int right_edge) {
+// w->rect.x = right_edge - w->rect.w;
+// w->rect.y = v->current_y;
 
-  v->current_y += w->rect.h + v->spacing;
-}
+// v->current_y += w->rect.h + v->spacing;
+//}
 
 void ui_table_begin(UITable_t *t, int x, int y, int cols) {
   memset(t, 0, sizeof(*t));

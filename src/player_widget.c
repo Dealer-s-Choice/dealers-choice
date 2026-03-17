@@ -26,15 +26,8 @@
 
 */
 
-#include <stdio.h>
-
-#include <SDL.h>
-#include <SDL_ttf.h>
-
-#include "globals.h"
 #include "player_widget.h"
 #include "translate.h"
-#include "util.h"
 
 PlayerWidget_t *player_widget_create(const char *nick, bool dealer, uint32_t ping, TTF_Font *font) {
   SDL_Renderer *renderer = g_sdl_context->renderer;
@@ -55,17 +48,30 @@ PlayerWidget_t *player_widget_create(const char *nick, bool dealer, uint32_t pin
 
   SDL_Surface *s;
 
+  /* nickname */
   s = TTF_RenderUTF8_Blended(font, nick_buf, pw->color);
   pw->nick_tex = SDL_CreateTextureFromSurface(renderer, s);
   pw->nick_rect.w = s->w;
   pw->nick_rect.h = s->h;
   SDL_FreeSurface(s);
 
+  /* ping */
   s = TTF_RenderUTF8_Blended(font, ping_buf, pw->color);
   pw->ping_tex = SDL_CreateTextureFromSurface(renderer, s);
   pw->ping_rect.w = s->w;
   pw->ping_rect.h = s->h;
   SDL_FreeSurface(s);
+
+  /* IMPORTANT: widget size for table layout */
+  int spacing = 20;
+
+  pw->base.rect.w = pw->nick_rect.w + spacing + pw->ping_rect.w;
+  pw->base.rect.h = SDL_max(pw->nick_rect.h, pw->ping_rect.h);
+
+  pw->ping = ping;
+
+  pw->base.destroy = player_widget_destroy;
+  pw->base.render = player_widget_render;
 
   return pw;
 }
@@ -96,31 +102,37 @@ void player_widget_update_ping(PlayerWidget_t *pw, int ping) {
   pw->ping_rect.w = surf->w;
   pw->ping_rect.h = surf->h;
 
-  /* keep ping text right-aligned */
-  pw->ping_rect.x = pw->ping_column_x - pw->ping_rect.w;
-
   SDL_FreeSurface(surf);
 }
 
-void player_widget_layout(PlayerWidget_t *pw, int x, int y) {
-  pw->base.rect.x = x;
-  pw->base.rect.y = y;
+void player_widget_layout(PlayerWidget_t *pw) {
+  pw->nick_rect.x = pw->base.rect.x;
+  pw->nick_rect.y = pw->base.rect.y;
 
-  pw->nick_rect.x = x;
-  pw->nick_rect.y = y;
-
-  pw->ping_rect.x = pw->ping_column_x - pw->ping_rect.w;
-  pw->ping_rect.y = y;
+  pw->ping_rect.x = pw->base.rect.x;
+  pw->ping_rect.y = pw->base.rect.y;
 }
 
-void player_widget_render(PlayerWidget_t *pw) {
+void player_widget_render(UIWidget_t *w) {
+  PlayerWidget_t *pw = (PlayerWidget_t *)w;
+
+  int spacing = 20;
+
+  pw->nick_rect.x = pw->base.rect.x;
+  pw->nick_rect.y = pw->base.rect.y;
+
+  pw->ping_rect.x = pw->base.rect.x + pw->nick_rect.w + spacing;
+  pw->ping_rect.y = pw->base.rect.y;
+
   SDL_RenderCopy(pw->renderer, pw->nick_tex, NULL, &pw->nick_rect);
   SDL_RenderCopy(pw->renderer, pw->ping_tex, NULL, &pw->ping_rect);
 }
 
-void player_widget_destroy(PlayerWidget_t *pw) {
-  if (!pw)
+void player_widget_destroy(UIWidget_t *w) {
+  if (!w)
     return;
+
+  PlayerWidget_t *pw = (PlayerWidget_t *)w;
 
   if (pw->nick_tex)
     SDL_DestroyTexture(pw->nick_tex);
