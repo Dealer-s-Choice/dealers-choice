@@ -4,10 +4,12 @@
 static void text_widget_render(UIWidget_t *w) {
   TextWidget_t *tw = (TextWidget_t *)w;
 
-  tw->rect.x = tw->base.rect.x;
-  tw->rect.y = tw->base.rect.y;
+  if (!tw->tex)
+    return;
 
-  SDL_RenderCopy(tw->renderer, tw->tex, NULL, &tw->rect);
+  SDL_Rect dst = {w->rect.x, w->rect.y, tw->rect.w, tw->rect.h};
+
+  SDL_RenderCopy(tw->renderer, tw->tex, NULL, &dst);
 }
 
 static void text_widget_destroy(UIWidget_t *w) {

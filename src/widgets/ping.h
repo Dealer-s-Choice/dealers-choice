@@ -11,7 +11,7 @@ typedef struct {
   int ping;
 } PingWidget_t;
 
-PingWidget_t *ping_widget_create(int ping, TTF_Font *font, SDL_Color color);
+PingWidget_t *ping_widget_create(int ping, TTF_Font *font);
 
 void ping_widget_update(PingWidget_t *pw, int ping);
 

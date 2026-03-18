@@ -204,8 +204,8 @@ static bool handle_game_selection(const PlayerConfig_t *player_config,
 
       /* ping */
       if (!ping_widgets[id]) {
-        ping_widgets[id] = ping_widget_create(client_state->ping_times[id], font->fonts[FONT_BOLD],
-                                              get_color(COLOR_WHITE));
+        ping_widgets[id] = ping_widget_create(client_state->ping_times[id], font->fonts[FONT_BOLD]);
+                                              ;
         ui_register(&registry, &ping_widgets[id]->base);
       }
 

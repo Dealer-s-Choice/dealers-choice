@@ -1,6 +1,6 @@
 #include "ping.h"
 
-static void ping_widget_destroy(UIWidget_t *w) {
+void ping_widget_destroy(UIWidget_t *w) {
   PingWidget_t *pw = (PingWidget_t *)w;
 
   if (pw->text)
@@ -15,14 +15,14 @@ static void ping_widget_render(UIWidget_t *w) {
   if (!pw->text)
     return;
 
-  /* inherit position from base */
-  pw->text->base.rect.x = pw->base.rect.x;
-  pw->text->base.rect.y = pw->base.rect.y;
+  // Position text using base rect
+  pw->text->base.rect.x = w->rect.x;
+  pw->text->base.rect.y = w->rect.y;
 
   ui_widget_render(&pw->text->base);
 }
 
-PingWidget_t *ping_widget_create(int ping, TTF_Font *font, SDL_Color color) {
+PingWidget_t *ping_widget_create(int ping, TTF_Font *font) {
   PingWidget_t *pw = calloc(1, sizeof(*pw));
   if (!pw)
     return NULL;
@@ -30,25 +30,23 @@ PingWidget_t *ping_widget_create(int ping, TTF_Font *font, SDL_Color color) {
   char buf[32];
   snprintf(buf, sizeof buf, "ping %dms", ping);
 
-  pw->text = text_widget_create(buf, font, color);
+  pw->text = text_widget_create(buf, font);
   pw->ping = ping;
 
-  pw->base.render = ping_widget_render;
-  pw->base.destroy = ping_widget_destroy;
-
-  /* size = text size */
+  // IMPORTANT: propagate size to base widget
   pw->base.rect.w = pw->text->base.rect.w;
   pw->base.rect.h = pw->text->base.rect.h;
+
+  // hook render/destroy
+  pw->base.render = ping_widget_render;
+  pw->base.destroy = ping_widget_destroy;
 
   return pw;
 }
 
 void ping_widget_update(PingWidget_t *pw, int ping) {
-  if (!pw)
-    return;
-
   if (pw->ping == ping)
-    return; // no change → no texture rebuild
+    return;
 
   pw->ping = ping;
 
