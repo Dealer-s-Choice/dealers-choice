@@ -314,3 +314,16 @@ void parse_unsigned(const char *s, unsigned long maxv, unsigned long *out) {
 
   *out = v;
 }
+
+char *dc_strdup(const char *s) {
+  if (!s)
+    return NULL;
+
+  size_t len = strlen(s) + 1;
+  char *copy = malloc(len);
+  if (!copy)
+    return NULL;
+
+  memcpy(copy, s, len);
+  return copy;
+}

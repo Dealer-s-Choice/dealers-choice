@@ -16,6 +16,35 @@ void ui_widget_destroy(UIWidget_t *w) {
     w->destroy(w);
 }
 
+void ui_register(UIRegistry_t *reg, UIWidget_t *w) {
+  if (!reg || !w)
+    return;
+
+  if (reg->count >= MAX_WIDGETS)
+    return;
+
+  reg->items[reg->count++] = w;
+}
+
+void ui_destroy_all(UIRegistry_t *reg) {
+  if (!reg)
+    return;
+
+  for (int i = 0; i < reg->count; i++) {
+    if (reg->items[i])
+      ui_widget_destroy(reg->items[i]);
+  }
+
+  reg->count = 0;
+}
+
+void ui_render_all(UIRegistry_t *reg) {
+  for (int i = 0; i < reg->count; i++) {
+    if (reg->items[i])
+      ui_widget_render(reg->items[i]);
+  }
+}
+
 void ui_widget_place(UIWidget_t *w, int x, int y) {
   if (!w)
     return;

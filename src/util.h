@@ -75,4 +75,6 @@ void parse_signed(const char *s, long minv, long maxv, long *out);
 
 void parse_unsigned(const char *s, unsigned long maxv, unsigned long *out);
 
+char *dc_strdup(const char *s);
+
 #endif

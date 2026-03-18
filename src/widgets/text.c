@@ -1,4 +1,5 @@
 #include "text.h"
+#include "util.h"
 
 static void text_widget_render(UIWidget_t *w)
 {
@@ -34,7 +35,7 @@ TextWidget_t *text_widget_create(const char *text, TTF_Font *font, SDL_Color col
     tw->renderer = renderer;
     tw->font = font;
     tw->color = color;
-    tw->text = strdup(text);
+    tw->text = dc_strdup(text);
 
     SDL_Surface *s = TTF_RenderUTF8_Blended(font, text, color);
     tw->tex = SDL_CreateTextureFromSurface(renderer, s);
@@ -63,7 +64,7 @@ void text_widget_set_text(TextWidget_t *tw, const char *text)
         SDL_DestroyTexture(tw->tex);
 
     free(tw->text);
-    tw->text = strdup(text);
+    tw->text = dc_strdup(text);
 
     SDL_Surface *s = TTF_RenderUTF8_Blended(tw->font, text, tw->color);
     tw->tex = SDL_CreateTextureFromSurface(tw->renderer, s);

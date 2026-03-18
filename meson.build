@@ -42,6 +42,7 @@ extra_flags = [
   '-Werror=odr',
   '-Werror=lto-type-mismatch',
   '-Werror=strict-aliasing',
+  '-Werror=int-conversion',
 ]
 
 # To enable PATH_MAX and friends on Alpine Linux

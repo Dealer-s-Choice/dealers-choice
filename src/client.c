@@ -132,6 +132,7 @@ static bool handle_game_selection(const PlayerConfig_t *player_config,
   static uint8_t saved_n_clients = 0;
   TCPsocket sock = socket_context->sock;
 
+  UIRegistry_t registry = {0};
   TextWidget_t *nick_widgets[MAX_PLAYERS] = {0};
   PingWidget_t *ping_widgets[MAX_PLAYERS] = {0};
 
@@ -198,12 +199,14 @@ static bool handle_game_selection(const PlayerConfig_t *player_config,
                  game_state->dealer_id == id ? _(" (Dealer)") : "");
 
         nick_widgets[id] = text_widget_create(buf, font->fonts[FONT_BOLD], get_color(COLOR_WHITE));
+        ui_register(&registry, &nick_widgets[id]->base);
       }
 
       /* ping */
       if (!ping_widgets[id]) {
         ping_widgets[id] = ping_widget_create(client_state->ping_times[id], font->fonts[FONT_BOLD],
                                               get_color(COLOR_WHITE));
+        ui_register(&registry, &ping_widgets[id]->base);
       }
 
       /* update ping */
@@ -220,13 +223,7 @@ static bool handle_game_selection(const PlayerConfig_t *player_config,
     } while (client && client != start);
     ui_table_layout(&table);
 
-    for (int i = 0; i < MAX_PLAYERS; i++) {
-      if (nick_widgets[i])
-        ui_widget_render(&nick_widgets[i]->base);
-
-      if (ping_widgets[i])
-        ui_widget_render(&ping_widgets[i]->text->base);
-    }
+    ui_render_all(&registry);
 
     SDL_Event e;
     while (SDL_PollEvent(&e)) {
@@ -234,17 +231,7 @@ static bool handle_game_selection(const PlayerConfig_t *player_config,
       switch (e.type) {
 
       case SDL_QUIT:
-        for (int i = 0; i < MAX_PLAYERS; i++) {
-          if (nick_widgets[i]) {
-            ui_widget_destroy(&nick_widgets[i]->base);
-            nick_widgets[i] = NULL;
-          }
-
-          if (ping_widgets[i]) {
-            ui_widget_destroy(&ping_widgets[i]->base);
-            ping_widgets[i] = NULL;
-          }
-        }
+        ui_destroy_all(&registry);
         return false;
 
       case SDL_MOUSEBUTTONDOWN: {
@@ -257,6 +244,7 @@ static bool handle_game_selection(const PlayerConfig_t *player_config,
               dealing = false;
               break;
             } else {
+              ui_destroy_all(&registry);
               return false;
             }
           }
@@ -332,12 +320,8 @@ static bool handle_game_selection(const PlayerConfig_t *player_config,
     SDL_RenderPresent(sdl_context->renderer);
     SDL_Delay(16);
   }
-  // for (int i = 0; i < MAX_PLAYERS; i++) {
-  // if (player_widgets[i]) {
-  // ui_widget_destroy(&player_widgets[i]->base); // calls the correct type-specific destructor
-  // player_widgets[i] = NULL;                    // avoid dangling pointer
-  //}
-  //}
+
+  ui_destroy_all(&registry);
   return true;
 }
 
@@ -958,8 +942,11 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
   layout_wild_selection(card_faces, card_suits, ARRAY_SIZE(card_faces), ARRAY_SIZE(card_suits),
                         font);
 
+  UIRegistry_t registry = {0};
   Indicator_t *indicator_deuces_wild =
       create_indicator(("Deuces Wild"), font->fonts[FONT_BOLD], COLOR_WHITE, COLOR_BROWN);
+  ui_register(&registry, &indicator_deuces_wild->base);
+
   layout_deuces_wild_indicator(indicator_deuces_wild);
 
   Indicator_t *indicator_game_name = NULL;
@@ -1121,6 +1108,7 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
     if (!indicator_game_name && client_state.game_choice) {
       indicator_game_name = create_indicator(client_state.game_choice->str, font->fonts[FONT_BOLD],
                                              COLOR_WHITE, COLOR_BROWN);
+      ui_register(&registry, &indicator_game_name->base);
       layout_game_name_indicator(indicator_game_name);
     }
 
@@ -1541,8 +1529,7 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
     } // End Poll event
   }
   SDL_DestroyTexture(coin_tex_front);
-  ui_widget_destroy(&indicator_game_name->base);
-  ui_widget_destroy(&indicator_deuces_wild->base);
+  ui_destroy_all(&registry);
   return running;
 }
 
