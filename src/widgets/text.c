@@ -7,9 +7,7 @@ static void text_widget_render(UIWidget_t *w) {
   if (!tw->tex)
     return;
 
-  SDL_Rect dst = {w->rect.x, w->rect.y, tw->rect.w, tw->rect.h};
-
-  SDL_RenderCopy(tw->renderer, tw->tex, NULL, &dst);
+  SDL_RenderCopy(tw->renderer, tw->tex, NULL, &w->rect); // use base rect directly
 }
 
 static void text_widget_destroy(UIWidget_t *w) {
@@ -39,10 +37,6 @@ TextWidget_t *text_widget_create(const char *text, TTF_Font *font, SDL_Color col
   SDL_Surface *s = TTF_RenderUTF8_Blended(font, text, color);
   tw->tex = SDL_CreateTextureFromSurface(renderer, s);
 
-  tw->rect.w = s->w;
-  tw->rect.h = s->h;
-
-  /* important: widget size */
   tw->base.rect.w = s->w;
   tw->base.rect.h = s->h;
 
@@ -65,13 +59,10 @@ void text_widget_set_text(TextWidget_t *tw, const char *text) {
   tw->text = dc_strdup(text);
 
   SDL_Surface *s = TTF_RenderUTF8_Blended(tw->font, text, tw->color);
+  if (!s)
+    return;
   tw->tex = SDL_CreateTextureFromSurface(tw->renderer, s);
-
-  tw->rect.w = s->w;
-  tw->rect.h = s->h;
-
   tw->base.rect.w = s->w;
   tw->base.rect.h = s->h;
-
   SDL_FreeSurface(s);
 }

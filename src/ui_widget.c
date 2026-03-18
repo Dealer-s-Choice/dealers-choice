@@ -26,6 +26,19 @@ void ui_register(UIRegistry_t *reg, UIWidget_t *w) {
   reg->items[reg->count++] = w;
 }
 
+void ui_unregister(UIRegistry_t *reg, UIWidget_t *w) {
+  if (!reg || !w)
+    return;
+
+  for (int i = 0; i < reg->count; i++) {
+    if (reg->items[i] == w) {
+      reg->items[i] = reg->items[--reg->count];
+      reg->items[reg->count] = NULL;
+      return;
+    }
+  }
+}
+
 void ui_destroy_all(UIRegistry_t *reg) {
   if (!reg)
     return;

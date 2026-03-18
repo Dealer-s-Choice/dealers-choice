@@ -30,7 +30,7 @@ PingWidget_t *ping_widget_create(int ping, TTF_Font *font) {
   char buf[32];
   snprintf(buf, sizeof buf, "ping %dms", ping);
 
-  pw->text = text_widget_create(buf, font);
+  pw->text = text_widget_create(buf, font, get_color(COLOR_WHITE));
   pw->ping = ping;
 
   // IMPORTANT: propagate size to base widget
@@ -47,11 +47,11 @@ PingWidget_t *ping_widget_create(int ping, TTF_Font *font) {
 void ping_widget_update(PingWidget_t *pw, int ping) {
   if (pw->ping == ping)
     return;
-
   pw->ping = ping;
-
   char buf[32];
   snprintf(buf, sizeof buf, "ping %dms", ping);
-
   text_widget_set_text(pw->text, buf);
+
+  pw->base.rect.w = pw->text->base.rect.w;
+  pw->base.rect.h = pw->text->base.rect.h;
 }

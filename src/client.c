@@ -135,6 +135,10 @@ static bool handle_game_selection(const PlayerConfig_t *player_config,
   UIRegistry_t registry = {0};
   TextWidget_t *nick_widgets[MAX_PLAYERS] = {0};
   PingWidget_t *ping_widgets[MAX_PLAYERS] = {0};
+  UITable_t table = {0};
+  bool table_needs_rebuild = true;
+
+  static bool was_connected[MAX_PLAYERS] = {0};
 
   while (game_state->at_menu) {
     ERecvStatus_t recv_status = recv_game_state(socket_context, game_state, client_state, my_id);
@@ -179,49 +183,77 @@ static bool handle_game_selection(const PlayerConfig_t *player_config,
     }
 
     clear_screen(sdl_context->renderer);
-
-    UITable_t table = {0};
-    ui_table_begin(&table, (g_viewport.w * .1) + 10, (g_viewport.h / 2) + 40, 2);
-
-    int row = 0;
-
-    Player_t *client = &game_state->player[my_id];
-    Player_t *start = client;
-
     n_clients = 0;
-    do {
-      int id = client->id;
 
-      /* nick */
-      if (!nick_widgets[id]) {
-        char buf[SIZEOF_NICK + 32];
-        snprintf(buf, sizeof buf, "%s%s", client->nick,
-                 game_state->dealer_id == id ? _(" (Dealer)") : "");
+    for (int i = 0; i < MAX_PLAYERS; i++) {
+      if (was_connected[i] && !game_state->player[i].is_connected) {
+        ui_unregister(&registry, &nick_widgets[i]->base);
+        ui_widget_destroy(&nick_widgets[i]->base);
+        nick_widgets[i] = NULL;
 
-        nick_widgets[id] = text_widget_create(buf, font->fonts[FONT_BOLD], get_color(COLOR_WHITE));
-        ui_register(&registry, &nick_widgets[id]->base);
+        ui_unregister(&registry, &ping_widgets[i]->base);
+        ui_widget_destroy(&ping_widgets[i]->base);
+        ping_widgets[i] = NULL;
+
+        table_needs_rebuild = true;
       }
+      if (game_state->player[i].is_connected != was_connected[i])
+        table_needs_rebuild = true;
+      was_connected[i] = game_state->player[i].is_connected;
+    }
 
-      /* ping */
-      if (!ping_widgets[id]) {
-        ping_widgets[id] = ping_widget_create(client_state->ping_times[id], font->fonts[FONT_BOLD]);
-                                              ;
-        ui_register(&registry, &ping_widgets[id]->base);
-      }
+    // printf("game_state is connected %d\n", game_state->player[i].is_connected);
+    if (table_needs_rebuild) {
+      ui_table_begin(&table, (g_viewport.w * .1) + 10, (g_viewport.h / 2) + 40, 2);
+      Player_t *client = &game_state->player[my_id];
+      Player_t *start = client;
+      int row = 0;
 
-      /* update ping */
-      ping_widget_update(ping_widgets[id], client_state->ping_times[id]);
+      do {
+        int id = client->id;
 
-      /* table */
-      ui_table_add(&table, row, 0, &nick_widgets[id]->base);
-      ui_table_add(&table, row, 1, &ping_widgets[id]->text->base);
+        /* nick */
+        if (!nick_widgets[id]) {
+          char buf[SIZEOF_NICK + 32];
+          snprintf(buf, sizeof buf, "%s%s", client->nick,
+                   game_state->dealer_id == id ? _(" (Dealer)") : "");
 
-      row++;
-      n_clients++;
+          nick_widgets[id] =
+              text_widget_create(buf, font->fonts[FONT_BOLD], get_color(COLOR_WHITE));
+          ui_register(&registry, &nick_widgets[id]->base);
+        }
 
-      client = get_next_connected_client(game_state->player, client->id);
-    } while (client && client != start);
-    ui_table_layout(&table);
+        /* ping */
+        if (!ping_widgets[id]) {
+          ping_widgets[id] =
+              ping_widget_create(client_state->ping_times[id], font->fonts[FONT_BOLD]);
+          ;
+          ui_register(&registry, &ping_widgets[id]->base);
+        }
+
+        int old_w = ping_widgets[id]->base.rect.w;
+        ping_widget_update(ping_widgets[id], client_state->ping_times[id]);
+        if (ping_widgets[id]->base.rect.w != old_w)
+          table.dirty = true;
+
+        /* table */
+        ui_table_add(&table, row, 0, &nick_widgets[id]->base);
+        ui_table_add(&table, row, 1, &ping_widgets[id]->base);
+
+        row++;
+        n_clients++;
+
+        client = get_next_connected_client(game_state->player, client->id);
+      } while (client && client != start);
+    }
+
+    table_needs_rebuild = false;
+    table.dirty = true;
+
+    if (table.dirty) {
+      ui_table_layout(&table);
+      table.dirty = false;
+    }
 
     ui_render_all(&registry);
 

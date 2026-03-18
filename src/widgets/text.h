@@ -10,7 +10,6 @@ typedef struct {
   SDL_Renderer *renderer;
 
   SDL_Texture *tex;
-  SDL_Rect rect;
 
   SDL_Color color;
   TTF_Font *font;

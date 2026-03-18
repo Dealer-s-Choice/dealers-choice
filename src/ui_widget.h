@@ -30,6 +30,8 @@ typedef struct {
   int row_height[32];
 
   UIWidget_t *cells[32][8];
+
+  bool dirty;
 } UITable_t;
 
 typedef struct {
@@ -51,6 +53,8 @@ void ui_table_add(UITable_t *t, int row, int col, UIWidget_t *w);
 void ui_table_layout(UITable_t *t);
 
 void ui_register(UIRegistry_t *reg, UIWidget_t *w);
+
+void ui_unregister(UIRegistry_t *reg, UIWidget_t *w);
 
 void ui_destroy_all(UIRegistry_t *reg);
 
