@@ -52,6 +52,8 @@ void ui_destroy_all(UIRegistry_t *reg) {
 }
 
 void ui_render_all(UIRegistry_t *reg) {
+  if (!reg)
+    return;
   for (int i = 0; i < reg->count; i++) {
     if (reg->items[i])
       ui_widget_render(reg->items[i]);

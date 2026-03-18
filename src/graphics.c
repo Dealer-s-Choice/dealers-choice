@@ -277,17 +277,16 @@ bool toggle_fullscreen(SdlContext_t *c) {
     SDL_Log("toggle_fullscreen: invalid context");
     return false;
   }
-
   const Uint32 flags = SDL_GetWindowFlags(c->window);
   const bool is_fs = (flags & SDL_WINDOW_FULLSCREEN_DESKTOP) != 0;
-
   const Uint32 new_mode = is_fs ? 0 : SDL_WINDOW_FULLSCREEN_DESKTOP;
-
   if (SDL_SetWindowFullscreen(c->window, new_mode) != 0) {
     SDL_Log("SDL_SetWindowFullscreen failed: %s", SDL_GetError());
     return false;
   }
-
+  SDL_RenderGetViewport(c->renderer, &g_viewport);
+  g_center.x = g_viewport.x + g_viewport.w / 2;
+  g_center.y = g_viewport.y + g_viewport.h / 2;
   return true;
 }
 

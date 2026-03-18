@@ -122,8 +122,6 @@ static bool handle_game_selection(const PlayerConfig_t *player_config,
       create_button(_("Deuces Wild"), (EColor_t){COLOR_WHITE, COLOR_BROWN}, font->fonts[FONT_BOLD],
                     (SDL_Keycode)0);
 
-  //  create_deuces_wild_button(sdl_context->renderer, font);
-
   bool dealing = true;
 
   layout_links(links, LINK_DEFS_COUNT);
@@ -145,13 +143,8 @@ static bool handle_game_selection(const PlayerConfig_t *player_config,
     if (recv_status == RECV_ERROR)
       return false;
 
-    bool dealing_enabled = game_state->dealer_id == my_id && n_clients > 1;
-    for (int i = 0; i < MAX_CHOICES; i++)
-      game_choice_button[i].enabled = dealing_enabled;
+    clear_screen(sdl_context->renderer);
 
-    button_deuces_wild.enabled = dealing_enabled;
-
-    /* --- update hover every frame --- */
     int mx, my;
     SDL_GetMouseState(&mx, &my);
 
@@ -168,22 +161,6 @@ static bool handle_game_selection(const PlayerConfig_t *player_config,
 
     for (size_t i = 0; i < LINK_DEFS_COUNT; i++)
       links[i].hovered = SDL_PointInRect(&mouse_pos, &links[i].rect);
-
-    for (int i = 0; i < MAX_PLAYERS; i++) {
-      TextWidget_t *pw = nick_widgets[i];
-      if (!pw)
-        continue;
-
-      // Check if mouse is over this widget's base rect
-      pw->base.hovered = SDL_PointInRect(&mouse_pos, &pw->base.rect);
-      if (pw->base.hovered) {
-        fprintf(stderr, "%d is hovered\n", i);
-        break;
-      }
-    }
-
-    clear_screen(sdl_context->renderer);
-    n_clients = 0;
 
     for (int i = 0; i < MAX_PLAYERS; i++) {
       if (was_connected[i] && !game_state->player[i].is_connected) {
@@ -225,6 +202,7 @@ static bool handle_game_selection(const PlayerConfig_t *player_config,
       ui_table_begin(&table, (g_viewport.w * .1) + 10, (g_viewport.h / 2) + 40, 2);
       Player_t *client = &game_state->player[my_id];
       Player_t *start = client;
+      n_clients = 0;
       int row = 0;
 
       do {
@@ -263,10 +241,21 @@ static bool handle_game_selection(const PlayerConfig_t *player_config,
 
         client = get_next_connected_client(game_state->player, client->id);
       } while (client && client != start);
+      table.dirty = true; // force layout after rebuild
+      table_needs_rebuild = false;
     }
 
-    table_needs_rebuild = false;
-    table.dirty = true;
+    for (int i = 0; i < MAX_PLAYERS; i++) {
+      if (!nick_widgets[i])
+        continue;
+      nick_widgets[i]->base.hovered = SDL_PointInRect(&mouse_pos, &nick_widgets[i]->base.rect);
+    }
+
+    bool dealing_enabled = game_state->dealer_id == my_id && n_clients > 1;
+    for (int i = 0; i < MAX_CHOICES; i++)
+      game_choice_button[i].enabled = dealing_enabled;
+
+    button_deuces_wild.enabled = dealing_enabled;
 
     if (table.dirty) {
       ui_table_layout(&table);
@@ -278,13 +267,23 @@ static bool handle_game_selection(const PlayerConfig_t *player_config,
           w->rect.x = ping_x;
       }
       table.dirty = false;
+      table_needs_rebuild = false;
     }
 
     ui_render_all(&registry);
 
+    // int wx, wy, rx, ry;
+    // SDL_GetWindowSize(sdl_context->window, &wx, &wy);
+    // SDL_GetRendererOutputSize(sdl_context->renderer, &rx, &ry);
+    // SDL_Log("window: %dx%d  renderer output: %dx%d  logical: %dx%d",
+    // wx, wy, rx, ry, LOGICAL_WIDTH, LOGICAL_HEIGHT);
+
+    // int lw, lh;
+    // SDL_RenderGetLogicalSize(sdl_context->renderer, &lw, &lh);
+    // SDL_Log("logical size from renderer: %dx%d", lw, lh);
+
     SDL_Event e;
     while (SDL_PollEvent(&e)) {
-
       switch (e.type) {
 
       case SDL_QUIT:
@@ -292,33 +291,41 @@ static bool handle_game_selection(const PlayerConfig_t *player_config,
         return false;
 
       case SDL_MOUSEBUTTONDOWN: {
-        for (int i = 0; i < MAX_CHOICES; i++) {
-          if (SDL_PointInRect(&mouse_pos, &game_choice_button[i].rect) &&
-              game_state->dealer_id == my_id) {
-
-            if (send_game_select(sock, game_choices[i].game_type, button_deuces_wild.selected) ==
-                0) {
-              dealing = false;
-              break;
-            } else {
-              ui_destroy_all(&registry);
-              return false;
+        if (e.button.button == SDL_BUTTON_LEFT) {
+          for (int i = 0; i < MAX_CHOICES; i++) {
+            if (SDL_PointInRect(&mouse_pos, &game_choice_button[i].rect) &&
+                game_state->dealer_id == my_id) {
+              if (send_game_select(sock, game_choices[i].game_type, button_deuces_wild.selected) ==
+                  0) {
+                dealing = false;
+                break;
+              } else {
+                ui_destroy_all(&registry);
+                return false;
+              }
+            }
+          }
+          for (size_t i = 0; i < LINK_DEFS_COUNT; i++) {
+            if (SDL_PointInRect(&mouse_pos, &links[i].rect))
+              if (SDL_OpenURL(links[i].url) == -1)
+                fputs(SDL_GetError(), stderr);
+          }
+          if (SDL_PointInRect(&mouse_pos, &button_deuces_wild.rect) && button_deuces_wild.enabled) {
+            button_deuces_wild.click.start_time = SDL_GetTicks();
+            button_deuces_wild.selected = !button_deuces_wild.selected;
+          }
+          if (game_state->player[my_id].is_admin) {
+            for (int i = 0; i < MAX_PLAYERS; i++) {
+              if (i == my_id || !nick_widgets[i])
+                continue;
+              if (SDL_PointInRect(&mouse_pos, &nick_widgets[i]->base.rect)) {
+                // send_kick_request(socket_context, game_state->player[i].id);
+                break;
+              }
             }
           }
         }
-
-        for (size_t i = 0; i < LINK_DEFS_COUNT; i++) {
-          if (links[i].hovered && e.button.button == SDL_BUTTON_LEFT)
-            if (SDL_OpenURL(links[i].url) == -1)
-              fputs(SDL_GetError(), stderr);
-        }
-
-        if (button_deuces_wild.hovered) {
-          button_deuces_wild.click.start_time = SDL_GetTicks();
-          button_deuces_wild.selected = !button_deuces_wild.selected;
-        }
       } break;
-
       case SDL_KEYDOWN:
         switch (e.key.keysym.sym) {
 
