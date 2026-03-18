@@ -137,6 +137,12 @@ static bool handle_game_selection(const PlayerConfig_t *player_config,
   UITable_t table = {0};
   bool table_needs_rebuild = true;
 
+  TextWidget_t *connected_tw =
+      text_widget_create(_("Connected players:"), font->fonts[FONT_BOLD], get_color(COLOR_BLACK));
+  ui_register(&registry, &connected_tw->base);
+  connected_tw->base.rect.x = g_viewport.w * .1;
+  connected_tw->base.rect.y = g_viewport.h / 2;
+
   static bool was_connected[MAX_PLAYERS] = {0};
 
   while (game_state->at_menu) {
@@ -356,14 +362,6 @@ static bool handle_game_selection(const PlayerConfig_t *player_config,
         render_button(&game_choice_button[i]);
 
       render_button(&button_deuces_wild);
-
-      int offset_x = g_viewport.w * .1;
-      int offset_y = g_viewport.h / 2;
-
-      SDL_Rect text_connected = {offset_x, offset_y, 0, 0};
-      render_text_plain(sdl_context->renderer, font->fonts[FONT_BOLD], _("Connected players:"),
-                        get_color(COLOR_BLACK), &text_connected);
-      offset_x += 10;
 
       if (saved_n_clients < n_clients && saved_n_clients != 0)
         ma_sound_start_checked(&sound_context->sounds[SND_SERVER_JOIN].sound);
