@@ -39,6 +39,7 @@
 #include "globals.h"
 #include "graphics.h"
 #include "widgets/indicator.h"
+#include "widgets/nick.h"
 #include "widgets/ping.h"
 
 #include "util.h"
@@ -131,7 +132,7 @@ static bool handle_game_selection(const PlayerConfig_t *player_config,
   TCPsocket sock = socket_context->sock;
 
   UIRegistry_t registry = {0};
-  TextWidget_t *nick_widgets[MAX_PLAYERS] = {0};
+  NickWidget_t *nick_widgets[MAX_PLAYERS] = {0};
   PingWidget_t *ping_widgets[MAX_PLAYERS] = {0};
   UITable_t table = {0};
   bool table_needs_rebuild = true;
@@ -140,8 +141,10 @@ static bool handle_game_selection(const PlayerConfig_t *player_config,
 
   while (game_state->at_menu) {
     ERecvStatus_t recv_status = recv_game_state(socket_context, game_state, client_state, my_id);
-    if (recv_status == RECV_ERROR)
+    if (recv_status == RECV_ERROR) {
+      ui_destroy_all(&registry);
       return false;
+    }
 
     clear_screen(sdl_context->renderer);
 
@@ -215,7 +218,7 @@ static bool handle_game_selection(const PlayerConfig_t *player_config,
                    game_state->dealer_id == id ? _(" (Dealer)") : "");
 
           nick_widgets[id] =
-              text_widget_create(buf, font->fonts[FONT_BOLD], get_color(COLOR_WHITE));
+              nick_widget_create(buf, game_state->player[id].id, font->fonts[FONT_BOLD]);
           ui_register(&registry, &nick_widgets[id]->base);
         }
 
@@ -319,6 +322,7 @@ static bool handle_game_selection(const PlayerConfig_t *player_config,
               if (i == my_id || !nick_widgets[i])
                 continue;
               if (SDL_PointInRect(&mouse_pos, &nick_widgets[i]->base.rect)) {
+                printf("id: %d\n", nick_widgets[i]->id);
                 // send_kick_request(socket_context, game_state->player[i].id);
                 break;
               }
