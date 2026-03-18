@@ -5,10 +5,10 @@
 #include "ui_widget.h"
 
 typedef struct {
-    UIWidget_t base;
+  UIWidget_t base;
 
-    TextWidget_t *text;
-    int ping;
+  TextWidget_t *text;
+  int ping;
 } PingWidget_t;
 
 PingWidget_t *ping_widget_create(int ping, TTF_Font *font, SDL_Color color);
