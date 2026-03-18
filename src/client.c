@@ -202,6 +202,24 @@ static bool handle_game_selection(const PlayerConfig_t *player_config,
       was_connected[i] = game_state->player[i].is_connected;
     }
 
+    static int8_t prev_dealer_id = -1;
+
+    if (game_state->dealer_id != prev_dealer_id) {
+      // destroy both old and new dealer nick widgets so they get recreated with correct strings
+      if (prev_dealer_id >= 0 && nick_widgets[prev_dealer_id]) {
+        ui_unregister(&registry, &nick_widgets[prev_dealer_id]->base);
+        ui_widget_destroy(&nick_widgets[prev_dealer_id]->base);
+        nick_widgets[prev_dealer_id] = NULL;
+      }
+      if (nick_widgets[game_state->dealer_id]) {
+        ui_unregister(&registry, &nick_widgets[game_state->dealer_id]->base);
+        ui_widget_destroy(&nick_widgets[game_state->dealer_id]->base);
+        nick_widgets[game_state->dealer_id] = NULL;
+      }
+      prev_dealer_id = game_state->dealer_id;
+      table_needs_rebuild = true;
+    }
+
     // printf("game_state is connected %d\n", game_state->player[i].is_connected);
     if (table_needs_rebuild) {
       ui_table_begin(&table, (g_viewport.w * .1) + 10, (g_viewport.h / 2) + 40, 2);
@@ -252,6 +270,13 @@ static bool handle_game_selection(const PlayerConfig_t *player_config,
 
     if (table.dirty) {
       ui_table_layout(&table);
+      // shift ping column (col 1) to center x
+      int ping_x = g_center.x;
+      for (int r = 0; r < table.rows; r++) {
+        UIWidget_t *w = table.cells[r][1];
+        if (w)
+          w->rect.x = ping_x;
+      }
       table.dirty = false;
     }
 
