@@ -9,13 +9,6 @@ static void nick_widget_render(UIWidget_t *w) {
   ui_widget_render(&nw->text->base);
 }
 
-static void nick_widget_destroy(UIWidget_t *w) {
-  NickWidget_t *nw = (NickWidget_t *)w;
-  if (nw->text)
-    ui_widget_destroy(&nw->text->base);
-  free(nw);
-}
-
 NickWidget_t *nick_widget_create(const char *nick, const int8_t id, TTF_Font *font) {
   NickWidget_t *nw = calloc(1, sizeof(*nw));
   if (!nw)
@@ -29,6 +22,6 @@ NickWidget_t *nick_widget_create(const char *nick, const int8_t id, TTF_Font *fo
   nw->base.rect.w = nw->text->base.rect.w;
   nw->base.rect.h = nw->text->base.rect.h;
   nw->base.render = nick_widget_render;
-  nw->base.destroy = nick_widget_destroy;
+  nw->base.destroy = text_wrapper_destroy;
   return nw;
 }

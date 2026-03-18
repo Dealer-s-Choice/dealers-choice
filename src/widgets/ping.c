@@ -1,14 +1,5 @@
 #include "ping.h"
 
-void ping_widget_destroy(UIWidget_t *w) {
-  PingWidget_t *pw = (PingWidget_t *)w;
-
-  if (pw->text)
-    ui_widget_destroy(&pw->text->base);
-
-  free(pw);
-}
-
 static void ping_widget_render(UIWidget_t *w) {
   PingWidget_t *pw = (PingWidget_t *)w;
 
@@ -39,7 +30,7 @@ PingWidget_t *ping_widget_create(int ping, TTF_Font *font) {
 
   // hook render/destroy
   pw->base.render = ping_widget_render;
-  pw->base.destroy = ping_widget_destroy;
+  pw->base.destroy = text_wrapper_destroy;
 
   return pw;
 }

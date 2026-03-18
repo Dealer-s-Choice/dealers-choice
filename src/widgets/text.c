@@ -66,3 +66,10 @@ void text_widget_set_text(TextWidget_t *tw, const char *text) {
   tw->base.rect.h = s->h;
   SDL_FreeSurface(s);
 }
+
+void text_wrapper_destroy(UIWidget_t *w) {
+  TextWrapperWidget_t *tw = (TextWrapperWidget_t *)w;
+  if (tw->text)
+    ui_widget_destroy(&tw->text->base);
+  free(tw);
+}
