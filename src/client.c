@@ -39,7 +39,7 @@
 #include "globals.h"
 #include "graphics.h"
 #include "indicator.h"
-#include "widgets/player.h"
+#include "widgets/ping.h"
 
 #include "util.h"
 
@@ -132,7 +132,8 @@ static bool handle_game_selection(const PlayerConfig_t *player_config,
   static uint8_t saved_n_clients = 0;
   TCPsocket sock = socket_context->sock;
 
-  PlayerWidget_t *player_widgets[MAX_PLAYERS] = {0};
+  TextWidget_t *nick_widgets[MAX_PLAYERS] = {0};
+  PingWidget_t *ping_widgets[MAX_PLAYERS] = {0};
 
   while (game_state->at_menu) {
     ERecvStatus_t recv_status = recv_game_state(socket_context, game_state, client_state, my_id);
@@ -164,7 +165,7 @@ static bool handle_game_selection(const PlayerConfig_t *player_config,
       links[i].hovered = SDL_PointInRect(&mouse_pos, &links[i].rect);
 
     for (int i = 0; i < MAX_PLAYERS; i++) {
-      PlayerWidget_t *pw = player_widgets[i];
+      TextWidget_t *pw = nick_widgets[i];
       if (!pw)
         continue;
 
@@ -188,29 +189,43 @@ static bool handle_game_selection(const PlayerConfig_t *player_config,
 
     n_clients = 0;
     do {
+      int id = client->id;
 
-      PlayerWidget_t *pw = player_widgets[client->id];
-      if (!pw) {
-        pw = player_widget_create(client->nick, game_state->dealer_id == client->id,
-                                  client_state->ping_times[client->id], font->fonts[FONT_BOLD]);
+      /* nick */
+      if (!nick_widgets[id]) {
+        char buf[SIZEOF_NICK + 32];
+        snprintf(buf, sizeof buf, "%s%s", client->nick,
+                 game_state->dealer_id == id ? _(" (Dealer)") : "");
 
-        player_widgets[client->id] = pw;
+        nick_widgets[id] = text_widget_create(buf, font->fonts[FONT_BOLD], get_color(COLOR_WHITE));
       }
 
-      /* update ping if needed */
-      player_widget_update_ping(pw, client_state->ping_times[client->id]);
-      ui_table_add(&table, row, 0, &pw->base);
+      /* ping */
+      if (!ping_widgets[id]) {
+        ping_widgets[id] = ping_widget_create(client_state->ping_times[id], font->fonts[FONT_BOLD],
+                                              get_color(COLOR_WHITE));
+      }
+
+      /* update ping */
+      ping_widget_update(ping_widgets[id], client_state->ping_times[id]);
+
+      /* table */
+      ui_table_add(&table, row, 0, &nick_widgets[id]->base);
+      ui_table_add(&table, row, 1, &ping_widgets[id]->text->base);
 
       row++;
       n_clients++;
+
       client = get_next_connected_client(game_state->player, client->id);
     } while (client && client != start);
     ui_table_layout(&table);
 
-    /* render widgets */
     for (int i = 0; i < MAX_PLAYERS; i++) {
-      if (player_widgets[i])
-        ui_widget_render(&player_widgets[i]->base);
+      if (nick_widgets[i])
+        ui_widget_render(&nick_widgets[i]->base);
+
+      if (ping_widgets[i])
+        ui_widget_render(&ping_widgets[i]->text->base);
     }
 
     SDL_Event e;
@@ -220,10 +235,14 @@ static bool handle_game_selection(const PlayerConfig_t *player_config,
 
       case SDL_QUIT:
         for (int i = 0; i < MAX_PLAYERS; i++) {
-          if (player_widgets[i]) {
-            ui_widget_destroy(
-                &player_widgets[i]->base); // calls the correct type-specific destructor
-            player_widgets[i] = NULL;      // avoid dangling pointer
+          if (nick_widgets[i]) {
+            ui_widget_destroy(&nick_widgets[i]->base);
+            nick_widgets[i] = NULL;
+          }
+
+          if (ping_widgets[i]) {
+            ui_widget_destroy(&ping_widgets[i]->base);
+            ping_widgets[i] = NULL;
           }
         }
         return false;
@@ -313,12 +332,12 @@ static bool handle_game_selection(const PlayerConfig_t *player_config,
     SDL_RenderPresent(sdl_context->renderer);
     SDL_Delay(16);
   }
-  for (int i = 0; i < MAX_PLAYERS; i++) {
-    if (player_widgets[i]) {
-      ui_widget_destroy(&player_widgets[i]->base); // calls the correct type-specific destructor
-      player_widgets[i] = NULL;                    // avoid dangling pointer
-    }
-  }
+  // for (int i = 0; i < MAX_PLAYERS; i++) {
+  // if (player_widgets[i]) {
+  // ui_widget_destroy(&player_widgets[i]->base); // calls the correct type-specific destructor
+  // player_widgets[i] = NULL;                    // avoid dangling pointer
+  //}
+  //}
   return true;
 }
 

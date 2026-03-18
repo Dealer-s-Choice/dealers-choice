@@ -1,3 +1,4 @@
 widgets_src = files(
-  'player.c',
+  'ping.c',
+  'text.c',
 )

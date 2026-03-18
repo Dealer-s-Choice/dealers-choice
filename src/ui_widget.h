@@ -1,7 +1,7 @@
 #ifndef __UI_WIDGET_H
 #define __UI_WIDGET_H
 
-#include <SDL.h>
+#include "graphics.h"
 #include <stdbool.h>
 
 typedef struct UIWidget_t UIWidget_t;
