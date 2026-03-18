@@ -26,10 +26,20 @@ void ui_register(UIRegistry_t *reg, UIWidget_t *w) {
   reg->items[reg->count++] = w;
 }
 
+/*
+ * Remove a widget from the registry before destroying it.
+ * Always call this before ui_widget_destroy() on any registered widget —
+ * the registry holds raw pointers and does not know when a widget is freed.
+ * Failing to unregister first will cause ui_render_all() to call render()
+ * on freed memory (heap-use-after-free).
+ *
+ * Uses swap-with-last to remove in O(1). Order is not preserved.
+ *
+ * Comment written by Claude (Anthropic).
+ */
 void ui_unregister(UIRegistry_t *reg, UIWidget_t *w) {
   if (!reg || !w)
     return;
-
   for (int i = 0; i < reg->count; i++) {
     if (reg->items[i] == w) {
       reg->items[i] = reg->items[--reg->count];
