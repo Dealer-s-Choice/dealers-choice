@@ -7,7 +7,7 @@ project(
     'warning_level=3',
     'b_sanitize=address,undefined',
     'b_lundef=false',
-    'c_std=c11',
+    'c_std=c99',
   ],
 )
 
