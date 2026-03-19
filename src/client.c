@@ -849,9 +849,6 @@ static void layout_indicator(Indicator_t *ind, int x, int y) {
 
   ind->cx = ind->base.rect.x + ind->rx;
   ind->cy = ind->base.rect.y + ind->ry;
-
-  ind->text_rect.x = ind->cx - ind->text_rect.w / 2;
-  ind->text_rect.y = ind->cy - ind->text_rect.h / 2;
 }
 
 static void layout_game_name_indicator(Indicator_t *ind) {

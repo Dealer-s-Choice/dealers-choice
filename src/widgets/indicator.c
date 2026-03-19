@@ -27,9 +27,9 @@
 */
 
 #include <SDL.h>
-#include <SDL_ttf.h>
 
 #include "indicator.h"
+#include "text.h"
 #include "ui_widget.h"
 
 static void draw_filled_ellipse(SDL_Renderer *r, int cx, int cy, int rx, int ry) {
@@ -60,22 +60,10 @@ void indicator_render(UIWidget_t *w) {
   SDL_SetRenderDrawColor(r, ind->bg_color.r, ind->bg_color.g, ind->bg_color.b, ind->bg_color.a);
   draw_filled_ellipse(r, ind->cx, ind->cy, ind->rx, ind->ry);
 
-  // render text
-  SDL_RenderCopy(r, ind->text_tex, NULL, &ind->text_rect);
-}
-
-static void indicator_destroy(UIWidget_t *w) {
-  if (!w)
-    return;
-
-  Indicator_t *ind = (Indicator_t *)w;
-
-  if (ind->text_tex) {
-    SDL_DestroyTexture(ind->text_tex);
-    ind->text_tex = NULL;
-  }
-
-  free(ind);
+  // render text centered in oval
+  ind->text->base.rect.x = ind->cx - ind->text->base.rect.w / 2;
+  ind->text->base.rect.y = ind->cy - ind->text->base.rect.h / 2;
+  ui_widget_render(&ind->text->base);
 }
 
 Indicator_t *create_indicator(const char *text, TTF_Font *font, EColorName_t bg_color,
@@ -91,33 +79,19 @@ Indicator_t *create_indicator(const char *text, TTF_Font *font, EColorName_t bg_
   ind->renderer = renderer;
   ind->bg_color = get_color(bg_color);
 
-  SDL_Color fg = get_color(fg_color);
-
-  // Create text surface once
-  SDL_Surface *surf = TTF_RenderUTF8_Blended(font, text, fg);
-  if (!surf) {
-    fprintf(stderr, "TTF_RenderUTF8_Blended failed: %s\n", TTF_GetError());
+  ind->text = text_widget_create(text, font, get_color(fg_color));
+  if (!ind->text) {
     free(ind);
     return NULL;
   }
-
-  ind->text_tex = SDL_CreateTextureFromSurface(renderer, surf);
-  if (!ind->text_tex) {
-    fprintf(stderr, "SDL_CreateTextureFromSurface failed: %s\n", SDL_GetError());
-    SDL_FreeSurface(surf);
-    free(ind);
-    return NULL;
-  }
-
-  ind->text_rect.w = surf->w;
-  ind->text_rect.h = surf->h;
-  SDL_FreeSurface(surf);
 
   // Compute indicator rectangle with padding
-  int pad_x = ind->text_rect.h;     // horizontal padding
-  int pad_y = ind->text_rect.h / 3; // vertical padding
-  ind->base.rect.w = ind->text_rect.w + pad_x * 2;
-  ind->base.rect.h = ind->text_rect.h + pad_y * 2;
+  int text_w = ind->text->base.rect.w;
+  int text_h = ind->text->base.rect.h;
+  int pad_x = text_h;     // horizontal padding
+  int pad_y = text_h / 3; // vertical padding
+  ind->base.rect.w = text_w + pad_x * 2;
+  ind->base.rect.h = text_h + pad_y * 2;
 
   // Precompute oval radii
   ind->rx = ind->base.rect.w / 2;
@@ -125,7 +99,7 @@ Indicator_t *create_indicator(const char *text, TTF_Font *font, EColorName_t bg_
 
   // Assign callbacks
   ind->base.render = indicator_render;
-  ind->base.destroy = indicator_destroy;
+  ind->base.destroy = text_wrapper_destroy;
 
   return ind;
 }
