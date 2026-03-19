@@ -23,6 +23,7 @@ void ui_register(UIRegistry_t *reg, UIWidget_t *w) {
   if (reg->count >= MAX_WIDGETS)
     return;
 
+  w->enabled = true;
   reg->items[reg->count++] = w;
 }
 
@@ -65,7 +66,7 @@ void ui_render_all(UIRegistry_t *reg) {
   if (!reg)
     return;
   for (int i = 0; i < reg->count; i++) {
-    if (reg->items[i])
+    if (reg->items[i] && reg->items[i]->enabled)
       ui_widget_render(reg->items[i]);
   }
 }

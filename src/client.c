@@ -143,6 +143,18 @@ static bool handle_game_selection(const PlayerConfig_t *player_config,
   connected_tw->base.rect.x = g_viewport.w * .1;
   connected_tw->base.rect.y = g_viewport.h / 2;
 
+  TextWidget_t *waiting_players_tw = text_widget_create(
+      _("Waiting for more players..."), font->fonts[FONT_DEFAULT], get_color(COLOR_WHITE));
+  ui_register(&registry, &waiting_players_tw->base);
+  waiting_players_tw->base.rect.x = g_center.x;
+  waiting_players_tw->base.rect.y = g_viewport.h - 200;
+
+  TextWidget_t *waiting_dealer_tw = text_widget_create(
+      _("Waiting for dealer to select game..."), font->fonts[FONT_DEFAULT], get_color(COLOR_WHITE));
+  ui_register(&registry, &waiting_dealer_tw->base);
+  waiting_dealer_tw->base.rect.x = g_center.x;
+  waiting_dealer_tw->base.rect.y = g_viewport.h - 200;
+
   static bool was_connected[MAX_PLAYERS] = {0};
 
   while (game_state->at_menu) {
@@ -279,6 +291,9 @@ static bool handle_game_selection(const PlayerConfig_t *player_config,
       table_needs_rebuild = false;
     }
 
+    waiting_players_tw->base.enabled = dealing && (n_clients == 1);
+    waiting_dealer_tw->base.enabled = dealing && (n_clients > 1 && game_state->dealer_id != my_id);
+
     ui_render_all(&registry);
 
     // int wx, wy, rx, ry;
@@ -366,15 +381,6 @@ static bool handle_game_selection(const PlayerConfig_t *player_config,
       if (saved_n_clients < n_clients && saved_n_clients != 0)
         ma_sound_start_checked(&sound_context->sounds[SND_SERVER_JOIN].sound);
       saved_n_clients = n_clients;
-
-      if (n_clients == 1)
-        render_text_plain(sdl_context->renderer, font->fonts[FONT_DEFAULT],
-                          _("Waiting for more players..."), get_color(COLOR_WHITE),
-                          &(SDL_Rect){g_center.x, g_viewport.h - 200, 0, 0});
-      if (game_state->dealer_id != my_id)
-        render_text_plain(sdl_context->renderer, font->fonts[FONT_DEFAULT],
-                          _("Waiting for dealer to select game..."), get_color(COLOR_WHITE),
-                          &(SDL_Rect){g_center.x, g_viewport.h - 200, 0, 0});
 
       for (size_t i = 0; i < LINK_DEFS_COUNT; i++)
         render_link(&links[i]);

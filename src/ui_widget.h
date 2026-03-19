@@ -11,6 +11,7 @@ typedef struct UIWidget_t UIWidget_t;
 struct UIWidget_t {
   SDL_Rect rect;
   bool hovered;
+  bool enabled;
 
   void (*render)(UIWidget_t *w);
   void (*destroy)(UIWidget_t *w);
