@@ -38,6 +38,7 @@
 #include "game.h"
 #include "globals.h"
 #include "graphics.h"
+#include "widgets/button.h"
 #include "widgets/dealer.h"
 #include "widgets/indicator.h"
 #include "widgets/nick.h"
@@ -82,7 +83,7 @@ static void ma_sound_start_wrap(ma_sound *pSound, const char *file, const int li
   }
 }
 
-static void update_layout(Button_t *gc_b, Button_t *dw_b) {
+static void update_layout(Button_t *gc_b, ButtonWidget_t *dw_b) {
   const uint8_t num_columns = 4;
   const int column_spacing = 400;
   const float row_spacing_factor = 1.2f;
@@ -98,8 +99,8 @@ static void update_layout(Button_t *gc_b, Button_t *dw_b) {
     gc_b[i].rect.y = vp.y + MARGIN + (row * button_height);
   }
 
-  dw_b->rect.x = g_viewport.x + 200;
-  dw_b->rect.y = g_viewport.y + 200;
+  dw_b->base.rect.x = g_viewport.x + 200;
+  dw_b->base.rect.y = g_viewport.y + 200;
 }
 
 static bool handle_game_selection(const PlayerConfig_t *player_config,
@@ -118,20 +119,21 @@ static bool handle_game_selection(const PlayerConfig_t *player_config,
         create_button(game_choices[i].str, (EColor_t){COLOR_BLACK, COLOR_YELLOW},
                       font->fonts[FONT_BOLD], (SDL_Keycode)0);
 
-  Button_t button_deuces_wild =
-      // TRANSLATORS: Name of a poker variant. Usually left untranslated.
-      create_button(_("Deuces Wild"), (EColor_t){COLOR_WHITE, COLOR_BROWN}, font->fonts[FONT_BOLD],
-                    (SDL_Keycode)0);
+  // TRANSLATORS: Name of a poker variant. Usually left untranslated.
+  ButtonWidget_t *button_deuces_wild =
+      button_widget_create(_("Deuces Wild"), (EColor_t){COLOR_WHITE, COLOR_BROWN},
+                           font->fonts[FONT_BOLD], (SDL_Keycode)0);
 
   bool dealing = true;
 
   layout_links(links, LINK_DEFS_COUNT);
-  update_layout(game_choice_button, &button_deuces_wild);
+  update_layout(game_choice_button, button_deuces_wild);
 
   static uint8_t saved_n_clients = 0;
   TCPsocket sock = socket_context->sock;
 
   UIRegistry_t registry = {0};
+  ui_register(&registry, &button_deuces_wild->base);
   NickWidget_t *nick_widgets[MAX_PLAYERS] = {0};
   DealerWidget_t *dealer_widgets[MAX_PLAYERS] = {0};
   int8_t selected_nick = -1;
@@ -187,8 +189,8 @@ static bool handle_game_selection(const PlayerConfig_t *player_config,
     for (int i = 0; i < MAX_CHOICES; i++)
       game_choice_button[i].hovered = SDL_PointInRect(&mouse_pos, &game_choice_button[i].rect);
 
-    button_deuces_wild.hovered =
-        SDL_PointInRect(&mouse_pos, &button_deuces_wild.rect) && button_deuces_wild.enabled;
+    button_deuces_wild->base.hovered =
+        SDL_PointInRect(&mouse_pos, &button_deuces_wild->base.rect) && button_deuces_wild->interactive;
 
     for (size_t i = 0; i < LINK_DEFS_COUNT; i++)
       links[i].hovered = SDL_PointInRect(&mouse_pos, &links[i].rect);
@@ -294,7 +296,8 @@ static bool handle_game_selection(const PlayerConfig_t *player_config,
     for (int i = 0; i < MAX_CHOICES; i++)
       game_choice_button[i].enabled = dealing_enabled;
 
-    button_deuces_wild.enabled = dealing_enabled;
+    button_deuces_wild->interactive = dealing_enabled;
+    button_deuces_wild->base.enabled = dealing;
 
     if (table.dirty) {
       ui_table_layout(&table);
@@ -338,7 +341,7 @@ static bool handle_game_selection(const PlayerConfig_t *player_config,
           for (int i = 0; i < MAX_CHOICES; i++) {
             if (SDL_PointInRect(&mouse_pos, &game_choice_button[i].rect) &&
                 game_state->dealer_id == my_id) {
-              if (send_game_select(sock, game_choices[i].game_type, button_deuces_wild.selected) ==
+              if (send_game_select(sock, game_choices[i].game_type, button_deuces_wild->selected) ==
                   0) {
                 dealing = false;
                 break;
@@ -353,9 +356,10 @@ static bool handle_game_selection(const PlayerConfig_t *player_config,
               if (SDL_OpenURL(links[i].url) == -1)
                 fputs(SDL_GetError(), stderr);
           }
-          if (SDL_PointInRect(&mouse_pos, &button_deuces_wild.rect) && button_deuces_wild.enabled) {
-            button_deuces_wild.click.start_time = SDL_GetTicks();
-            button_deuces_wild.selected = !button_deuces_wild.selected;
+          if (SDL_PointInRect(&mouse_pos, &button_deuces_wild->base.rect) &&
+              button_deuces_wild->interactive) {
+            button_deuces_wild->click.start_time = SDL_GetTicks();
+            button_deuces_wild->selected = !button_deuces_wild->selected;
           }
           if (game_state->player[my_id].is_admin) {
             for (int i = 0; i < MAX_PLAYERS; i++) {
@@ -398,8 +402,6 @@ static bool handle_game_selection(const PlayerConfig_t *player_config,
     if (dealing == true) {
       for (int i = 0; i < MAX_CHOICES; i++)
         render_button(&game_choice_button[i]);
-
-      render_button(&button_deuces_wild);
 
       if (saved_n_clients < n_clients && saved_n_clients != 0)
         ma_sound_start_checked(&sound_context->sounds[SND_SERVER_JOIN].sound);
