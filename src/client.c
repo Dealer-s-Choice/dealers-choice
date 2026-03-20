@@ -242,6 +242,7 @@ static bool handle_game_selection(const PlayerConfig_t *player_config,
         if (!nick_widgets[id]) {
           nick_widgets[id] =
               nick_widget_create(client->nick, game_state->player[id].id, font->fonts[FONT_BOLD]);
+          nick_widgets[id]->highlight = (id == my_id);
           ui_register(&registry, &nick_widgets[id]->base);
         }
 

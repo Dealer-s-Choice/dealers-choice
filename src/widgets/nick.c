@@ -1,9 +1,17 @@
 #include "nick.h"
+#include "globals.h"
 
 static void nick_widget_render(UIWidget_t *w) {
   NickWidget_t *nw = (NickWidget_t *)w;
   if (!nw->text)
     return;
+  if (nw->highlight) {
+    SDL_Renderer *r = g_sdl_context->renderer;
+    SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_BLEND);
+    SDL_SetRenderDrawColor(r, 0, 0, 0, 128);
+    SDL_RenderFillRect(r, &w->rect);
+    SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_NONE);
+  }
   nw->text->base.rect.x = w->rect.x;
   nw->text->base.rect.y = w->rect.y;
   ui_widget_render(&nw->text->base);
