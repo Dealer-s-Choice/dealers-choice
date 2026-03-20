@@ -26,8 +26,6 @@
 
 */
 
-#include <SDL.h>
-
 #include "indicator.h"
 #include "text.h"
 #include "ui_widget.h"

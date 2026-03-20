@@ -165,11 +165,13 @@ static bool handle_game_selection(const PlayerConfig_t *player_config,
 
   static bool was_connected[MAX_PLAYERS] = {0};
 
+  bool result = true;
+
   while (game_state->at_menu) {
     ERecvStatus_t recv_status = recv_game_state(socket_context, game_state, client_state, my_id);
     if (recv_status == RECV_ERROR) {
-      ui_destroy_all(&registry);
-      return false;
+      result = false;
+      goto cleanup;
     }
 
     clear_screen(sdl_context->renderer);
@@ -328,8 +330,8 @@ static bool handle_game_selection(const PlayerConfig_t *player_config,
       switch (e.type) {
 
       case SDL_QUIT:
-        ui_destroy_all(&registry);
-        return false;
+        result = false;
+        goto cleanup;
 
       case SDL_MOUSEBUTTONDOWN: {
         if (e.button.button == SDL_BUTTON_LEFT) {
@@ -341,8 +343,8 @@ static bool handle_game_selection(const PlayerConfig_t *player_config,
                 dealing = false;
                 break;
               } else {
-                ui_destroy_all(&registry);
-                return false;
+                result = false;
+                goto cleanup;
               }
             }
           }
@@ -414,8 +416,9 @@ static bool handle_game_selection(const PlayerConfig_t *player_config,
     SDL_Delay(16);
   }
 
+cleanup:
   ui_destroy_all(&registry);
-  return true;
+  return result;
 }
 
 // Card back pattern/color selection
@@ -1598,14 +1601,16 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
           uint8_t *data = serialize_hand(hand, &size);
           if (!data) {
             fprintf(stderr, "Failed to serialize hand\n");
-            return -1;
+            running = -1;
+            goto cleanup;
           }
 
           // Just send the serialized protobuf
           if (send_all_tcp_DEPRECATED(sock, data, size) != 0) {
             fprintf(stderr, "Failed to send hand\n");
             free(data);
-            return -1;
+            running = -1;
+            goto cleanup;
           } else
             verbose_puts("Wilds sent");
           free(data);
@@ -1613,6 +1618,7 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
       }
     } // End Poll event
   }
+cleanup:
   SDL_DestroyTexture(coin_tex_front);
   ui_destroy_all(&registry);
   return running;
