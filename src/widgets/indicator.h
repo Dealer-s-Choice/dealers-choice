@@ -36,9 +36,9 @@
 typedef struct {
   UIWidget_t base;
 
-  SDL_Renderer *renderer;
+  TextWidget_t *text; // must be second member — see TextWrapperWidget_t
 
-  TextWidget_t *text;
+  SDL_Renderer *renderer;
 
   SDL_Color bg_color;
 

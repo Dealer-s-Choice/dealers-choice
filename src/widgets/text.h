@@ -17,6 +17,9 @@ typedef struct {
   char *text; // optional: store string for updates
 } TextWidget_t;
 
+/* Any struct that uses text_wrapper_destroy() as its destroy callback must
+ * have UIWidget_t base as its first member and TextWidget_t *text as its
+ * second, matching this layout exactly. */
 typedef struct {
   UIWidget_t base;
   TextWidget_t *text;
