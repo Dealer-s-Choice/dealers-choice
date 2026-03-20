@@ -83,7 +83,6 @@ static void ma_sound_start_wrap(ma_sound *pSound, const char *file, const int li
   }
 }
 
-
 static bool handle_game_selection(const PlayerConfig_t *player_config,
                                   SocketContext_t *socket_context, const int8_t my_id,
                                   GameState_t *game_state, ClientState_t *client_state,
@@ -125,8 +124,13 @@ static bool handle_game_selection(const PlayerConfig_t *player_config,
   gc_table.x = (g_viewport.w - gc_total_w) / 2;
   ui_table_layout(&gc_table);
 
-  button_deuces_wild->base.rect.x = g_viewport.x + 200;
-  button_deuces_wild->base.rect.y = g_viewport.y + 200;
+  int gc_bottom = gc_table.y;
+  for (int r = 0; r < gc_table.rows; r++)
+    gc_bottom += gc_table.row_height[r] + gc_table.row_spacing;
+  gc_bottom -= gc_table.row_spacing;
+
+  button_deuces_wild->base.rect.x = (g_viewport.w - button_deuces_wild->base.rect.w) / 2;
+  button_deuces_wild->base.rect.y = gc_bottom + MARGIN;
 
   NickWidget_t *nick_widgets[MAX_PLAYERS] = {0};
   DealerWidget_t *dealer_widgets[MAX_PLAYERS] = {0};
