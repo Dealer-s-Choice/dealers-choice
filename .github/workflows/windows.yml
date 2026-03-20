@@ -56,6 +56,6 @@ jobs:
 
     - name: Test
       shell: msys2 {0}
-      continue-on-error: true
+      continue-on-error: false
       run: |
-        meson test --no-stdsplit -v -C _build
+        PYTHONUTF8=1 meson test --no-stdsplit -v -C _build
