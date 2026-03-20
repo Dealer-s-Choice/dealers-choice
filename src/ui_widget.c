@@ -101,6 +101,30 @@ void ui_table_add(UITable_t *t, int row, int col, UIWidget_t *w) {
     t->rows = row + 1;
 }
 
+void ui_table_draw_row_separators(const UITable_t *t, SDL_Renderer *renderer) {
+  if (!t || !renderer || t->rows < 2)
+    return;
+
+  int max_x = 0;
+  for (int r = 0; r < t->rows; r++) {
+    for (int c = 0; c < t->cols; c++) {
+      UIWidget_t *w = t->cells[r][c];
+      if (w && w->rect.x + w->rect.w > max_x)
+        max_x = w->rect.x + w->rect.w;
+    }
+  }
+
+  SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+
+  int y = t->y;
+  for (int r = 0; r < t->rows - 1; r++) {
+    int line_y = y + t->row_height[r] + t->row_spacing / 2;
+    SDL_Rect sep = {t->x, line_y, max_x - t->x, 2};
+    SDL_RenderFillRect(renderer, &sep);
+    y += t->row_height[r] + t->row_spacing;
+  }
+}
+
 void ui_table_layout(UITable_t *t) {
   int y = t->y;
 

@@ -53,6 +53,8 @@ void ui_table_add(UITable_t *t, int row, int col, UIWidget_t *w);
 
 void ui_table_layout(UITable_t *t);
 
+void ui_table_draw_row_separators(const UITable_t *t, SDL_Renderer *renderer);
+
 void ui_register(UIRegistry_t *reg, UIWidget_t *w);
 
 void ui_unregister(UIRegistry_t *reg, UIWidget_t *w);

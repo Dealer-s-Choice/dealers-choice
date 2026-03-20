@@ -19,7 +19,7 @@ PingWidget_t *ping_widget_create(int ping, TTF_Font *font) {
     return NULL;
 
   char buf[32];
-  snprintf(buf, sizeof buf, "ping %dms", ping);
+  snprintf(buf, sizeof buf, "%dms", ping);
 
   pw->text = text_widget_create(buf, font, get_color(COLOR_WHITE));
   pw->ping = ping;
@@ -40,7 +40,7 @@ void ping_widget_update(PingWidget_t *pw, int ping) {
     return;
   pw->ping = ping;
   char buf[32];
-  snprintf(buf, sizeof buf, "ping %dms", ping);
+  snprintf(buf, sizeof buf, "%dms", ping);
   text_widget_set_text(pw->text, buf);
 
   pw->base.rect.w = pw->text->base.rect.w;

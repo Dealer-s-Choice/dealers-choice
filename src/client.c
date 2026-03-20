@@ -38,6 +38,7 @@
 #include "game.h"
 #include "globals.h"
 #include "graphics.h"
+#include "widgets/dealer.h"
 #include "widgets/indicator.h"
 #include "widgets/nick.h"
 #include "widgets/ping.h"
@@ -133,15 +134,22 @@ static bool handle_game_selection(const PlayerConfig_t *player_config,
 
   UIRegistry_t registry = {0};
   NickWidget_t *nick_widgets[MAX_PLAYERS] = {0};
+  DealerWidget_t *dealer_widgets[MAX_PLAYERS] = {0};
   PingWidget_t *ping_widgets[MAX_PLAYERS] = {0};
   UITable_t table = {0};
   bool table_needs_rebuild = true;
 
   TextWidget_t *connected_tw =
-      text_widget_create(_("Connected players:"), font->fonts[FONT_BOLD], get_color(COLOR_BLACK));
+      text_widget_create(_("Players"), font->fonts[FONT_BOLD], get_color(COLOR_BLACK));
   ui_register(&registry, &connected_tw->base);
-  connected_tw->base.rect.x = g_viewport.w * .1;
-  connected_tw->base.rect.y = g_viewport.h / 2;
+
+  TextWidget_t *dealer_label_tw =
+      text_widget_create(_("Dealer"), font->fonts[FONT_BOLD], get_color(COLOR_BLACK));
+  ui_register(&registry, &dealer_label_tw->base);
+
+  TextWidget_t *ping_label_tw =
+      text_widget_create(_("Ping"), font->fonts[FONT_BOLD], get_color(COLOR_BLACK));
+  ui_register(&registry, &ping_label_tw->base);
 
   TextWidget_t *waiting_players_tw = text_widget_create(
       _("Waiting for more players..."), font->fonts[FONT_DEFAULT], get_color(COLOR_WHITE));
@@ -189,6 +197,10 @@ static bool handle_game_selection(const PlayerConfig_t *player_config,
         ui_widget_destroy(&nick_widgets[i]->base);
         nick_widgets[i] = NULL;
 
+        ui_unregister(&registry, &dealer_widgets[i]->base);
+        ui_widget_destroy(&dealer_widgets[i]->base);
+        dealer_widgets[i] = NULL;
+
         ui_unregister(&registry, &ping_widgets[i]->base);
         ui_widget_destroy(&ping_widgets[i]->base);
         ping_widgets[i] = NULL;
@@ -203,48 +215,45 @@ static bool handle_game_selection(const PlayerConfig_t *player_config,
     static int8_t prev_dealer_id = -1;
 
     if (game_state->dealer_id != prev_dealer_id) {
-      // destroy both old and new dealer nick widgets so they get recreated with correct strings
-      if (prev_dealer_id >= 0 && nick_widgets[prev_dealer_id]) {
-        ui_unregister(&registry, &nick_widgets[prev_dealer_id]->base);
-        ui_widget_destroy(&nick_widgets[prev_dealer_id]->base);
-        nick_widgets[prev_dealer_id] = NULL;
-      }
-      if (nick_widgets[game_state->dealer_id]) {
-        ui_unregister(&registry, &nick_widgets[game_state->dealer_id]->base);
-        ui_widget_destroy(&nick_widgets[game_state->dealer_id]->base);
-        nick_widgets[game_state->dealer_id] = NULL;
+      for (int i = 0; i < MAX_PLAYERS; i++) {
+        if (dealer_widgets[i])
+          dealer_widget_set(dealer_widgets[i], game_state->dealer_id == i);
       }
       prev_dealer_id = game_state->dealer_id;
-      table_needs_rebuild = true;
     }
 
     // printf("game_state is connected %d\n", game_state->player[i].is_connected);
     if (table_needs_rebuild) {
-      ui_table_begin(&table, (g_viewport.w * .1) + 10, (g_viewport.h / 2) + 40, 2);
+      ui_table_begin(&table, g_viewport.w * .1, g_viewport.h / 2, 3);
+      ui_table_add(&table, 0, 0, &connected_tw->base);
+      ui_table_add(&table, 0, 1, &dealer_label_tw->base);
+      ui_table_add(&table, 0, 2, &ping_label_tw->base);
+
       Player_t *client = &game_state->player[my_id];
       Player_t *start = client;
       n_clients = 0;
-      int row = 0;
+      int row = 1;
 
       do {
         int id = client->id;
 
         /* nick */
         if (!nick_widgets[id]) {
-          char buf[SIZEOF_NICK + 32];
-          snprintf(buf, sizeof buf, "%s%s", client->nick,
-                   game_state->dealer_id == id ? _(" (Dealer)") : "");
-
           nick_widgets[id] =
-              nick_widget_create(buf, game_state->player[id].id, font->fonts[FONT_BOLD]);
+              nick_widget_create(client->nick, game_state->player[id].id, font->fonts[FONT_BOLD]);
           ui_register(&registry, &nick_widgets[id]->base);
+        }
+
+        /* dealer indicator */
+        if (!dealer_widgets[id]) {
+          dealer_widgets[id] = dealer_widget_create(game_state->dealer_id == id);
+          ui_register(&registry, &dealer_widgets[id]->base);
         }
 
         /* ping */
         if (!ping_widgets[id]) {
           ping_widgets[id] =
               ping_widget_create(client_state->ping_times[id], font->fonts[FONT_BOLD]);
-          ;
           ui_register(&registry, &ping_widgets[id]->base);
         }
 
@@ -255,7 +264,8 @@ static bool handle_game_selection(const PlayerConfig_t *player_config,
 
         /* table */
         ui_table_add(&table, row, 0, &nick_widgets[id]->base);
-        ui_table_add(&table, row, 1, &ping_widgets[id]->base);
+        ui_table_add(&table, row, 1, &dealer_widgets[id]->base);
+        ui_table_add(&table, row, 2, &ping_widgets[id]->base);
 
         row++;
         n_clients++;
@@ -280,10 +290,10 @@ static bool handle_game_selection(const PlayerConfig_t *player_config,
 
     if (table.dirty) {
       ui_table_layout(&table);
-      // shift ping column (col 1) to center x
+      // shift ping column (col 2) to center x
       int ping_x = g_center.x;
       for (int r = 0; r < table.rows; r++) {
-        UIWidget_t *w = table.cells[r][1];
+        UIWidget_t *w = table.cells[r][2];
         if (w)
           w->rect.x = ping_x;
       }
@@ -295,6 +305,7 @@ static bool handle_game_selection(const PlayerConfig_t *player_config,
     waiting_dealer_tw->base.enabled = dealing && (n_clients > 1 && game_state->dealer_id != my_id);
 
     ui_render_all(&registry);
+    ui_table_draw_row_separators(&table, sdl_context->renderer);
 
     // int wx, wy, rx, ry;
     // SDL_GetWindowSize(sdl_context->window, &wx, &wy);
