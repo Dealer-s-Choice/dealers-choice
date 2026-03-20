@@ -8,7 +8,7 @@ static void nick_widget_render(UIWidget_t *w) {
   if (nw->highlight || nw->selectable) {
     SDL_Renderer *r = g_sdl_context->renderer;
     SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_BLEND);
-    if (nw->selectable && nw->selected)
+    if (nw->selectable && w->selected)
       SDL_SetRenderDrawColor(r, 20, 20, 100, 220);
     else if (nw->selectable && w->hovered)
       SDL_SetRenderDrawColor(r, 0, 0, 0, 180);

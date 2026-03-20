@@ -12,7 +12,6 @@ typedef struct {
   SDL_Keycode hotkey;
   Clicked_t click;
   bool interactive;
-  bool selected;
 } ButtonWidget_t;
 
 ButtonWidget_t *button_widget_create(const char *text, EColor_t color, TTF_Font *font,

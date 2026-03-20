@@ -12,6 +12,7 @@ struct UIWidget_t {
   SDL_Rect rect;
   bool hovered;
   bool enabled;
+  bool selected;
 
   void (*render)(UIWidget_t *w);
   void (*destroy)(UIWidget_t *w);

@@ -28,7 +28,7 @@ static void button_widget_render(UIWidget_t *w) {
   SDL_RenderFillRect(r, &rect);
 
   float lighten = (bw->interactive && w->hovered) ? 0.7f : 0.3f;
-  float darken  = (bw->interactive && w->hovered) ? 0.5f : 0.9f;
+  float darken = (bw->interactive && w->hovered) ? 0.5f : 0.9f;
 
   Uint8 light_r = bw->color.bg.r + (Uint8)((255 - bw->color.bg.r) * lighten);
   Uint8 light_g = bw->color.bg.g + (Uint8)((255 - bw->color.bg.g) * lighten);
@@ -47,7 +47,7 @@ static void button_widget_render(UIWidget_t *w) {
     SDL_RenderDrawLine(r, rect.x + i, rect.y, rect.x + i, rect.y + rect.h - 1);
   }
 
-  if (bw->selected)
+  if (bw->base.selected)
     mark_selected(r, &rect);
 
   SDL_SetRenderDrawColor(r, dark_r, dark_g, dark_b, 255);

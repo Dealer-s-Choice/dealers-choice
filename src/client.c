@@ -190,7 +190,8 @@ static bool handle_game_selection(const PlayerConfig_t *player_config,
       game_choice_button[i].hovered = SDL_PointInRect(&mouse_pos, &game_choice_button[i].rect);
 
     button_deuces_wild->base.hovered =
-        SDL_PointInRect(&mouse_pos, &button_deuces_wild->base.rect) && button_deuces_wild->interactive;
+        SDL_PointInRect(&mouse_pos, &button_deuces_wild->base.rect) &&
+        button_deuces_wild->interactive;
 
     for (size_t i = 0; i < LINK_DEFS_COUNT; i++)
       links[i].hovered = SDL_PointInRect(&mouse_pos, &links[i].rect);
@@ -341,8 +342,8 @@ static bool handle_game_selection(const PlayerConfig_t *player_config,
           for (int i = 0; i < MAX_CHOICES; i++) {
             if (SDL_PointInRect(&mouse_pos, &game_choice_button[i].rect) &&
                 game_state->dealer_id == my_id) {
-              if (send_game_select(sock, game_choices[i].game_type, button_deuces_wild->selected) ==
-                  0) {
+              if (send_game_select(sock, game_choices[i].game_type,
+                                   button_deuces_wild->base.selected) == 0) {
                 dealing = false;
                 break;
               } else {
@@ -359,7 +360,7 @@ static bool handle_game_selection(const PlayerConfig_t *player_config,
           if (SDL_PointInRect(&mouse_pos, &button_deuces_wild->base.rect) &&
               button_deuces_wild->interactive) {
             button_deuces_wild->click.start_time = SDL_GetTicks();
-            button_deuces_wild->selected = !button_deuces_wild->selected;
+            button_deuces_wild->base.selected = !button_deuces_wild->base.selected;
           }
           if (game_state->player[my_id].is_admin) {
             for (int i = 0; i < MAX_PLAYERS; i++) {
@@ -368,10 +369,10 @@ static bool handle_game_selection(const PlayerConfig_t *player_config,
               if (SDL_PointInRect(&mouse_pos, &nick_widgets[i]->base.rect)) {
                 int8_t new_sel = (selected_nick == i) ? -1 : i;
                 if (selected_nick >= 0 && nick_widgets[selected_nick])
-                  nick_widgets[selected_nick]->selected = false;
+                  nick_widgets[selected_nick]->base.selected = false;
                 selected_nick = new_sel;
                 if (selected_nick >= 0)
-                  nick_widgets[selected_nick]->selected = true;
+                  nick_widgets[selected_nick]->base.selected = true;
                 break;
               }
             }
