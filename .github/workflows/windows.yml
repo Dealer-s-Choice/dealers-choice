@@ -4,6 +4,12 @@ concurrency:
   cancel-in-progress: true
 
 on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'version number'
+        required: false
+        type: string
   push:
     branches: [ trunk ]
     paths: &shared_paths
@@ -19,6 +25,10 @@ on:
 jobs:
   MSYS2:
     runs-on: windows-latest
+    permissions:
+      contents: write
+    env:
+      VERSION: ${{ inputs.version }}
     strategy:
       matrix:
         platform: ['UCRT64', 'CLANG64']
@@ -59,3 +69,75 @@ jobs:
       continue-on-error: false
       run: |
         PYTHONUTF8=1 meson test --no-stdsplit -v -C _build
+
+    - name: Stage installer files
+      if: matrix.platform == 'UCRT64'
+      shell: msys2 {0}
+      run: |
+        mkdir -p _staging/data
+        cp _build/dealers-choice.exe _staging/
+        cp -r data/images data/sounds _staging/data/
+        cp data/*.ttf data/server.conf _staging/data/
+        bash packaging/windows/collect-dlls.sh _staging/dealers-choice.exe _staging/
+
+    - name: Set version
+      if: matrix.platform == 'UCRT64'
+      shell: bash
+      run: |
+        if [[ -z "${VERSION}" ]]; then
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            VERSION="${GITHUB_REF#refs/tags/}"
+          else
+            VERSION="snapshot"
+          fi
+          echo "VERSION=${VERSION}" >> "$GITHUB_ENV"
+        fi
+
+    - name: Build installer
+      if: matrix.platform == 'UCRT64'
+      shell: pwsh
+      run: |
+        iscc /DVERSION=$env:VERSION packaging\windows\dealers-choice.iss
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+    - name: Checksum
+      if: matrix.platform == 'UCRT64'
+      shell: pwsh
+      run: |
+        $file = "dealers-choice-$env:VERSION-setup.exe"
+        $hash = (Get-FileHash $file -Algorithm SHA256).Hash.ToLower()
+        "$hash  $file" | Out-File -Encoding ascii "$file.sha256sum"
+
+    - name: Upload artifact
+      if: matrix.platform == 'UCRT64' && github.ref != 'refs/heads/trunk'
+      uses: actions/upload-artifact@v7
+      with:
+        name: dealers-choice-windows-installer
+        path: dealers-choice-${{ env.VERSION }}-setup.exe*
+        if-no-files-found: error
+
+    - name: Prerelease (trunk)
+      if: matrix.platform == 'UCRT64' && github.ref == 'refs/heads/trunk'
+      uses: ncipollo/release-action@v1
+      with:
+        artifacts: "dealers-choice-${{ env.VERSION }}-setup.exe*"
+        body: "Dealer's Choice Snapshot Release"
+        allowUpdates: true
+        prerelease: true
+        removeArtifacts: false
+        replacesArtifacts: true
+        omitBodyDuringUpdate: true
+        omitNameDuringUpdate: true
+        tag: snapshot
+        token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Release (tagged)
+      if: matrix.platform == 'UCRT64' && startsWith(github.ref, 'refs/tags/')
+      uses: ncipollo/release-action@v1
+      with:
+        artifacts: "dealers-choice-${{ env.VERSION }}-setup.exe*"
+        allowUpdates: true
+        prerelease: false
+        omitBodyDuringUpdate: true
+        omitNameDuringUpdate: true
+        token: ${{ secrets.GITHUB_TOKEN }}

@@ -63,6 +63,21 @@ void get_data_dir(Path_t *path) {
     snprintf(path->data, sizeof path->data, "%s", datadir);
     return;
   }
+
+#ifdef _WIN32
+  // Look for data/ next to the executable — correct for installed builds.
+  char exe_path[MAX_PATH];
+  if (GetModuleFileNameA(NULL, exe_path, sizeof exe_path) != 0) {
+    char *last_sep = strrchr(exe_path, '\\');
+    if (last_sep) {
+      *last_sep = '\0';
+      snprintf(path->data, sizeof path->data, "%s\\data", exe_path);
+      if (check_pathname_state(path->data) == PATH_EXISTS)
+        return;
+    }
+  }
+#endif
+
   // This will be changed before the first release. We'll look here and
   if (check_pathname_state("../data") == PATH_EXISTS) {
     strcpy(path->data, "../data");
