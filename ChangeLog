@@ -6,6 +6,10 @@
   + Admin can select other players in the lobby by clicking their nick
   + Play turn notification sound when local player becomes the dealer
   * Fix "waiting" messages sometimes rendering when they shouldn't
+  * pokeval: Fix wrong 5-card hand selected from 6- or 7-card hands when
+    multiple subsets share the same rank (kickers and best straight not
+    considered); also fix straight selection incorrectly favouring a wheel
+    over a higher straight when both are present
 
 2026-03-12
 
