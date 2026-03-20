@@ -153,6 +153,12 @@ int make_directory_recursive(const char *path) {
   if (len > 1 && tmp[len - 1] == PATH_SEP)
     tmp[len - 1] = '\0';
 
+#ifdef _WIN32
+  // Stop recursion at a Windows drive root ("C:" or "C:\") — cannot mkdir it.
+  if (tmp[1] == ':' && (tmp[2] == '\0' || (tmp[2] == PATH_SEP && tmp[3] == '\0')))
+    return 0;
+#endif
+
   // Recursively create parent directory
   char *slash = strrchr(tmp, PATH_SEP);
   if (slash) {

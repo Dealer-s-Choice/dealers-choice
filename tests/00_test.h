@@ -35,7 +35,8 @@ extern int n_passes;
   for (int i = 0; i < N_PLAYERS; i++) {                                                            \
     socket_cleanup(&socket_context[i]);                                                            \
   }                                                                                                \
-  SDLNet_Quit();
+  SDLNet_Quit();                                                                                   \
+  SDL_Quit();
 
 #define _RECEIVE_GAME_STATE()                                                                      \
   SDL_Delay(n_ms);                                                                                 \
@@ -49,6 +50,10 @@ extern int n_passes;
   }
 
 #define _SETUP_SOCKET_CONTEXT()                                                                    \
+  if (SDL_Init(0) == -1 || SDLNet_Init() == -1) {                                                 \
+    fprintf(stderr, "SDL/SDLNet init failed: %s\n", SDL_GetError());                              \
+    return 1;                                                                                      \
+  }                                                                                                \
   GameSettings_t game_settings[N_PLAYERS] = {0};                                                   \
   GameState_t game_state[N_PLAYERS] = {0};                                                         \
   ClientState_t client_state[N_PLAYERS] = {0};                                                     \
