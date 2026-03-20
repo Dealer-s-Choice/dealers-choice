@@ -1181,13 +1181,8 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
       layout_game_name_indicator(indicator_game_name);
     }
 
-    if (indicator_game_name) {
-      ui_widget_render(&indicator_game_name->base);
-    }
-
-    if (client_state.deuces_wild) {
-      ui_widget_render(&indicator_deuces_wild->base);
-    }
+    indicator_deuces_wild->base.enabled = client_state.deuces_wild;
+    ui_render_all(&registry);
 
     SDL_SetRenderDrawColor(sdl_context->renderer, 255, 255, 255, 255);
     SDL_RenderFillRect(sdl_context->renderer, &msg_panel);
