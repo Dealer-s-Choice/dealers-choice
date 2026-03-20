@@ -51,7 +51,7 @@ static const SDL_Color color_table[COLOR_COUNT] = {
     [COLOR_WHITE] = {255, 255, 255, 255}, [COLOR_LIGHTGRAY] = {200, 200, 200, 255},
     [COLOR_GRAY] = {128, 128, 128, 255},  [COLOR_DARKGRAY] = {64, 64, 64, 255},
     [COLOR_BLACK] = {0, 0, 0, 255},       [COLOR_RED] = {255, 0, 0, 255},
-    [COLOR_GREEN] = {0, 255, 0, 255},     [COLOR_GREEN_ONE] = {0, 125, 0, 255},
+    [COLOR_GREEN] = {0, 255, 0, 255},     [COLOR_TABLE_GREEN] = {0, 125, 0, 255},
     [COLOR_BLUE] = {0, 0, 255, 255},      [COLOR_YELLOW] = {255, 255, 0, 255},
     [COLOR_CYAN] = {0, 255, 255, 255},    [COLOR_MAGENTA] = {255, 0, 255, 255},
     [COLOR_ORANGE] = {255, 165, 0, 255},  [COLOR_PURPLE] = {128, 0, 128, 255},
@@ -76,8 +76,8 @@ const char *get_color_name(EColorName_t name) {
 }
 
 void clear_screen(SDL_Renderer *renderer) {
-  SDL_SetRenderDrawColor(renderer, get_color(COLOR_GREEN_ONE).r, get_color(COLOR_GREEN_ONE).g,
-                         get_color(COLOR_GREEN_ONE).b, get_color(COLOR_GREEN_ONE).a);
+  SDL_SetRenderDrawColor(renderer, get_color(COLOR_TABLE_GREEN).r, get_color(COLOR_TABLE_GREEN).g,
+                         get_color(COLOR_TABLE_GREEN).b, get_color(COLOR_TABLE_GREEN).a);
   SDL_RenderClear(renderer);
 }
 
