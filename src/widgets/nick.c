@@ -5,11 +5,19 @@ static void nick_widget_render(UIWidget_t *w) {
   NickWidget_t *nw = (NickWidget_t *)w;
   if (!nw->text)
     return;
-  if (nw->highlight) {
+  if (nw->highlight || nw->selectable) {
     SDL_Renderer *r = g_sdl_context->renderer;
     SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_BLEND);
-    SDL_SetRenderDrawColor(r, 0, 0, 0, 128);
+    if (nw->selectable && nw->selected)
+      SDL_SetRenderDrawColor(r, 20, 20, 100, 220);
+    else if (nw->selectable && w->hovered)
+      SDL_SetRenderDrawColor(r, 0, 0, 0, 180);
+    else if (nw->highlight)
+      SDL_SetRenderDrawColor(r, 0, 0, 0, 128);
+    else
+      goto skip_bg;
     SDL_RenderFillRect(r, &w->rect);
+  skip_bg:
     SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_NONE);
   }
   nw->text->base.rect.x = w->rect.x;

@@ -10,6 +10,8 @@ typedef struct {
   TextWidget_t *text;
   int id;
   bool highlight;
+  bool selectable;
+  bool selected;
 } NickWidget_t;
 
 NickWidget_t *nick_widget_create(const char *nick, const int8_t id, TTF_Font *font);

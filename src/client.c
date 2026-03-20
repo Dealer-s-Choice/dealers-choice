@@ -134,6 +134,7 @@ static bool handle_game_selection(const PlayerConfig_t *player_config,
   UIRegistry_t registry = {0};
   NickWidget_t *nick_widgets[MAX_PLAYERS] = {0};
   DealerWidget_t *dealer_widgets[MAX_PLAYERS] = {0};
+  int8_t selected_nick = -1;
   PingWidget_t *ping_widgets[MAX_PLAYERS] = {0};
   UITable_t table = {0};
   bool table_needs_rebuild = true;
@@ -195,6 +196,8 @@ static bool handle_game_selection(const PlayerConfig_t *player_config,
         ui_unregister(&registry, &nick_widgets[i]->base);
         ui_widget_destroy(&nick_widgets[i]->base);
         nick_widgets[i] = NULL;
+        if (selected_nick == i)
+          selected_nick = -1;
 
         ui_unregister(&registry, &dealer_widgets[i]->base);
         ui_widget_destroy(&dealer_widgets[i]->base);
@@ -243,6 +246,7 @@ static bool handle_game_selection(const PlayerConfig_t *player_config,
           nick_widgets[id] =
               nick_widget_create(client->nick, game_state->player[id].id, font->fonts[FONT_BOLD]);
           nick_widgets[id]->highlight = (id == my_id);
+          nick_widgets[id]->selectable = (game_state->player[my_id].is_admin && id != my_id);
           ui_register(&registry, &nick_widgets[id]->base);
         }
 
@@ -353,11 +357,15 @@ static bool handle_game_selection(const PlayerConfig_t *player_config,
           }
           if (game_state->player[my_id].is_admin) {
             for (int i = 0; i < MAX_PLAYERS; i++) {
-              if (i == my_id || !nick_widgets[i])
+              if (!nick_widgets[i] || !nick_widgets[i]->selectable)
                 continue;
               if (SDL_PointInRect(&mouse_pos, &nick_widgets[i]->base.rect)) {
-                printf("id: %d\n", nick_widgets[i]->id);
-                // send_kick_request(socket_context, game_state->player[i].id);
+                int8_t new_sel = (selected_nick == i) ? -1 : i;
+                if (selected_nick >= 0 && nick_widgets[selected_nick])
+                  nick_widgets[selected_nick]->selected = false;
+                selected_nick = new_sel;
+                if (selected_nick >= 0)
+                  nick_widgets[selected_nick]->selected = true;
                 break;
               }
             }
