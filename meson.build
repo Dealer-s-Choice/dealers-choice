@@ -42,6 +42,7 @@ extra_flags = [
   '-Werror=odr',
   '-Werror=lto-type-mismatch',
   '-Werror=strict-aliasing',
+  '-Werror=int-conversion',
 ]
 
 # To enable PATH_MAX and friends on Alpine Linux
@@ -57,7 +58,7 @@ canfigger_dep = dependency(
   'canfigger',
   version: '>=0.3.0',
   fallback: ['canfigger', 'canfigger_dep'],
-  default_options: 'default_library=static',
+  default_options: ['default_library=static'],
 )
 
 deckhandler_dep = dependency(
@@ -134,7 +135,7 @@ configure_file(output: 'config.h', configuration: conf)
 
 _lib = static_library(
   'game',
-  shared_src,
+  [shared_src, widgets_src],
   dependencies: shared_dep,
   include_directories: shared_inc,
 )

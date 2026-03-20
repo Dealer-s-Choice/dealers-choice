@@ -29,26 +29,21 @@
 #ifndef __IND_H
 #define __IND_H
 
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_ttf.h>
-
 #include "graphics.h"
+#include "text.h"
 #include "ui_widget.h"
 
 typedef struct {
-  UIWidget_t base; // <-- base widget for render/destroy + rect
+  UIWidget_t base;
+
+  TextWidget_t *text; // must be second member — see TextWrapperWidget_t
 
   SDL_Renderer *renderer;
-
-  SDL_Texture *text_tex;
-  SDL_Rect text_rect;
 
   SDL_Color bg_color;
 
   int cx, cy; // oval center
   int rx, ry; // oval radii
-
-  TTF_Font *font; // font reference
 } Indicator_t;
 /*
 ChatGPT:
@@ -62,8 +57,6 @@ color information is baked into the texture**. * You no longer need the
 the pre-created texture.
 
 */
-
-void render_indicator(const Indicator_t *ind);
 
 Indicator_t *create_indicator(const char *text, TTF_Font *font, EColorName_t bg_color,
                               EColorName_t fg_color);

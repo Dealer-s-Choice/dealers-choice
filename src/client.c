@@ -38,7 +38,11 @@
 #include "game.h"
 #include "globals.h"
 #include "graphics.h"
-#include "indicator.h"
+#include "widgets/button.h"
+#include "widgets/dealer.h"
+#include "widgets/indicator.h"
+#include "widgets/nick.h"
+#include "widgets/ping.h"
 
 #include "util.h"
 
@@ -79,70 +83,99 @@ static void ma_sound_start_wrap(ma_sound *pSound, const char *file, const int li
   }
 }
 
-static void update_layout(Button_t *gc_b, Button_t *dw_b) {
-  const uint8_t num_columns = 4;
-  const int column_spacing = 400;
-  const float row_spacing_factor = 1.2f;
-
-  SDL_Rect vp = g_viewport;
-  for (int i = 0; i < MAX_CHOICES; i++) {
-    int row = i / num_columns;
-    int column = i % num_columns;
-
-    gc_b[i].rect.x = vp.x + MARGIN + column * column_spacing;
-
-    int button_height = (int)(gc_b[i].rect.h * row_spacing_factor);
-    gc_b[i].rect.y = vp.y + MARGIN + (row * button_height);
-  }
-
-  dw_b->rect.x = g_viewport.x + 200;
-  dw_b->rect.y = g_viewport.y + 200;
-}
-
 static bool handle_game_selection(const PlayerConfig_t *player_config,
                                   SocketContext_t *socket_context, const int8_t my_id,
                                   GameState_t *game_state, ClientState_t *client_state,
                                   SdlContext_t *sdl_context, Font_t *font,
                                   const SoundContext_t *sound_context, Link_t *links) {
-  // This will likely get used later. For now, suppress the warning about "unused parameter"
-  (void)player_config;
+  // (void)player_config;
 
   uint8_t n_clients = 0;
 
-  Button_t game_choice_button[MAX_CHOICES];
+  ButtonWidget_t *game_choice_button[MAX_CHOICES] = {0};
 
-  for (int i = 0; i < MAX_CHOICES; i++)
-    game_choice_button[i] =
-        create_button(game_choices[i].str, (EColor_t){COLOR_BLACK, COLOR_YELLOW},
-                      font->fonts[FONT_BOLD], (SDL_Keycode)0);
-
-  Button_t button_deuces_wild =
-      // TRANSLATORS: Name of a poker variant. Usually left untranslated.
-      create_button(_("Deuces Wild"), (EColor_t){COLOR_WHITE, COLOR_BROWN}, font->fonts[FONT_BOLD],
-                    (SDL_Keycode)0);
-
-  //  create_deuces_wild_button(sdl_context->renderer, font);
+  // TRANSLATORS: Name of a poker variant. Usually left untranslated.
+  ButtonWidget_t *button_deuces_wild =
+      button_widget_create(_("Deuces Wild"), (EColor_t){COLOR_WHITE, COLOR_BROWN},
+                           font->fonts[FONT_BOLD], (SDL_Keycode)0);
 
   bool dealing = true;
 
   layout_links(links, LINK_DEFS_COUNT);
-  update_layout(game_choice_button, &button_deuces_wild);
 
   static uint8_t saved_n_clients = 0;
   TCPsocket sock = socket_context->sock;
 
+  UIRegistry_t registry = {0};
+  ui_register(&registry, &button_deuces_wild->base);
+
+  for (int i = 0; i < MAX_CHOICES; i++) {
+    game_choice_button[i] =
+        button_widget_create(game_choices[i].str, (EColor_t){COLOR_BLACK, COLOR_YELLOW},
+                             font->fonts[FONT_BOLD], (SDL_Keycode)0);
+    ui_register(&registry, &game_choice_button[i]->base);
+  }
+
+  UITable_t gc_table = {0};
+  ui_table_begin(&gc_table, 0, g_viewport.y + MARGIN, 2);
+  for (int i = 0; i < MAX_CHOICES; i++)
+    ui_table_add(&gc_table, i / 2, i % 2, &game_choice_button[i]->base);
+  int gc_total_w = gc_table.col_width[0] + gc_table.col_width[1] + gc_table.col_spacing;
+  gc_table.x = (g_viewport.w - gc_total_w) / 2;
+  ui_table_layout(&gc_table);
+
+  int gc_bottom = gc_table.y;
+  for (int r = 0; r < gc_table.rows; r++)
+    gc_bottom += gc_table.row_height[r] + gc_table.row_spacing;
+  gc_bottom -= gc_table.row_spacing;
+
+  button_deuces_wild->base.rect.x = (g_viewport.w - button_deuces_wild->base.rect.w) / 2;
+  button_deuces_wild->base.rect.y = gc_bottom + MARGIN;
+
+  NickWidget_t *nick_widgets[MAX_PLAYERS] = {0};
+  DealerWidget_t *dealer_widgets[MAX_PLAYERS] = {0};
+  int8_t selected_nick = -1;
+  PingWidget_t *ping_widgets[MAX_PLAYERS] = {0};
+  UITable_t table = {0};
+  bool table_needs_rebuild = true;
+
+  TextWidget_t *connected_tw =
+      text_widget_create(_("Players"), font->fonts[FONT_BOLD], get_color(COLOR_BLACK));
+  ui_register(&registry, &connected_tw->base);
+
+  TextWidget_t *dealer_label_tw =
+      text_widget_create(_("Dealer"), font->fonts[FONT_BOLD], get_color(COLOR_BLACK));
+  ui_register(&registry, &dealer_label_tw->base);
+
+  TextWidget_t *ping_label_tw =
+      text_widget_create(_("Ping"), font->fonts[FONT_BOLD], get_color(COLOR_BLACK));
+  ui_register(&registry, &ping_label_tw->base);
+
+  TextWidget_t *waiting_players_tw = text_widget_create(
+      _("Waiting for more players..."), font->fonts[FONT_DEFAULT], get_color(COLOR_WHITE));
+  ui_register(&registry, &waiting_players_tw->base);
+  waiting_players_tw->base.rect.x = g_center.x;
+  waiting_players_tw->base.rect.y = g_viewport.h - 200;
+
+  TextWidget_t *waiting_dealer_tw = text_widget_create(
+      _("Waiting for dealer to select game..."), font->fonts[FONT_DEFAULT], get_color(COLOR_WHITE));
+  ui_register(&registry, &waiting_dealer_tw->base);
+  waiting_dealer_tw->base.rect.x = g_center.x;
+  waiting_dealer_tw->base.rect.y = g_viewport.h - 200;
+
+  static bool was_connected[MAX_PLAYERS] = {0};
+
+  bool result = true;
+
   while (game_state->at_menu) {
     ERecvStatus_t recv_status = recv_game_state(socket_context, game_state, client_state, my_id);
-    if (recv_status == RECV_ERROR)
-      return false;
+    if (recv_status == RECV_ERROR) {
+      result = false;
+      goto cleanup;
+    }
 
-    bool dealing_enabled = game_state->dealer_id == my_id && n_clients > 1;
-    for (int i = 0; i < MAX_CHOICES; i++)
-      game_choice_button[i].enabled = dealing_enabled;
+    clear_screen(sdl_context->renderer);
 
-    button_deuces_wild.enabled = dealing_enabled;
-
-    /* --- update hover every frame --- */
     int mx, my;
     SDL_GetMouseState(&mx, &my);
 
@@ -152,49 +185,202 @@ static bool handle_game_selection(const PlayerConfig_t *player_config,
     SDL_Point mouse_pos = {(int)lx, (int)ly};
 
     for (int i = 0; i < MAX_CHOICES; i++)
-      game_choice_button[i].hovered = SDL_PointInRect(&mouse_pos, &game_choice_button[i].rect);
+      game_choice_button[i]->base.hovered =
+          SDL_PointInRect(&mouse_pos, &game_choice_button[i]->base.rect) &&
+          game_choice_button[i]->interactive;
 
-    button_deuces_wild.hovered =
-        SDL_PointInRect(&mouse_pos, &button_deuces_wild.rect) && button_deuces_wild.enabled;
+    button_deuces_wild->base.hovered =
+        SDL_PointInRect(&mouse_pos, &button_deuces_wild->base.rect) &&
+        button_deuces_wild->interactive;
 
     for (size_t i = 0; i < LINK_DEFS_COUNT; i++)
       links[i].hovered = SDL_PointInRect(&mouse_pos, &links[i].rect);
 
+    for (int i = 0; i < MAX_PLAYERS; i++) {
+      if (was_connected[i] && !game_state->player[i].is_connected) {
+        ui_unregister(&registry, &nick_widgets[i]->base);
+        ui_widget_destroy(&nick_widgets[i]->base);
+        nick_widgets[i] = NULL;
+        if (selected_nick == i)
+          selected_nick = -1;
+
+        ui_unregister(&registry, &dealer_widgets[i]->base);
+        ui_widget_destroy(&dealer_widgets[i]->base);
+        dealer_widgets[i] = NULL;
+
+        ui_unregister(&registry, &ping_widgets[i]->base);
+        ui_widget_destroy(&ping_widgets[i]->base);
+        ping_widgets[i] = NULL;
+
+        table_needs_rebuild = true;
+      }
+      if (game_state->player[i].is_connected != was_connected[i])
+        table_needs_rebuild = true;
+      was_connected[i] = game_state->player[i].is_connected;
+    }
+
+    static int8_t prev_dealer_id = -1;
+
+    if (game_state->dealer_id != prev_dealer_id) {
+      for (int i = 0; i < MAX_PLAYERS; i++) {
+        if (dealer_widgets[i])
+          dealer_widget_set(dealer_widgets[i], game_state->dealer_id == i);
+      }
+      if (game_state->dealer_id == my_id && player_config->turn_notify)
+        ma_sound_start_checked(&sound_context->sounds[SND_MY_TURN].sound);
+      prev_dealer_id = game_state->dealer_id;
+    }
+
+    // printf("game_state is connected %d\n", game_state->player[i].is_connected);
+    if (table_needs_rebuild) {
+      ui_table_begin(&table, g_viewport.w * .1, g_viewport.h / 2, 3);
+      ui_table_add(&table, 0, 0, &connected_tw->base);
+      ui_table_add(&table, 0, 1, &dealer_label_tw->base);
+      ui_table_add(&table, 0, 2, &ping_label_tw->base);
+
+      Player_t *client = &game_state->player[my_id];
+      Player_t *start = client;
+      n_clients = 0;
+      int row = 1;
+
+      do {
+        int id = client->id;
+
+        /* nick */
+        if (!nick_widgets[id]) {
+          nick_widgets[id] =
+              nick_widget_create(client->nick, game_state->player[id].id, font->fonts[FONT_BOLD]);
+          nick_widgets[id]->highlight = (id == my_id);
+          nick_widgets[id]->selectable = (game_state->player[my_id].is_admin && id != my_id);
+          ui_register(&registry, &nick_widgets[id]->base);
+        }
+
+        /* dealer indicator */
+        if (!dealer_widgets[id]) {
+          dealer_widgets[id] = dealer_widget_create(game_state->dealer_id == id);
+          ui_register(&registry, &dealer_widgets[id]->base);
+        }
+
+        /* ping */
+        if (!ping_widgets[id]) {
+          ping_widgets[id] =
+              ping_widget_create(client_state->ping_times[id], font->fonts[FONT_BOLD]);
+          ui_register(&registry, &ping_widgets[id]->base);
+        }
+
+        int old_w = ping_widgets[id]->base.rect.w;
+        ping_widget_update(ping_widgets[id], client_state->ping_times[id]);
+        if (ping_widgets[id]->base.rect.w != old_w)
+          table.dirty = true;
+
+        /* table */
+        ui_table_add(&table, row, 0, &nick_widgets[id]->base);
+        ui_table_add(&table, row, 1, &dealer_widgets[id]->base);
+        ui_table_add(&table, row, 2, &ping_widgets[id]->base);
+
+        row++;
+        n_clients++;
+
+        client = get_next_connected_client(game_state->player, client->id);
+      } while (client && client != start);
+      table.dirty = true; // force layout after rebuild
+      table_needs_rebuild = false;
+    }
+
+    for (int i = 0; i < MAX_PLAYERS; i++) {
+      if (!nick_widgets[i])
+        continue;
+      nick_widgets[i]->base.hovered = SDL_PointInRect(&mouse_pos, &nick_widgets[i]->base.rect);
+    }
+
+    bool dealing_enabled = game_state->dealer_id == my_id && n_clients > 1;
+    for (int i = 0; i < MAX_CHOICES; i++) {
+      game_choice_button[i]->base.enabled = dealing;
+      game_choice_button[i]->interactive = dealing_enabled;
+    }
+
+    button_deuces_wild->interactive = dealing_enabled;
+    button_deuces_wild->base.enabled = dealing;
+
+    if (table.dirty) {
+      ui_table_layout(&table);
+      // shift ping column (col 2) to center x
+      int ping_x = g_center.x;
+      for (int r = 0; r < table.rows; r++) {
+        UIWidget_t *w = table.cells[r][2];
+        if (w)
+          w->rect.x = ping_x;
+      }
+      table.dirty = false;
+      table_needs_rebuild = false;
+    }
+
+    waiting_players_tw->base.enabled = dealing && (n_clients == 1);
+    waiting_dealer_tw->base.enabled = dealing && (n_clients > 1 && game_state->dealer_id != my_id);
+
+    ui_render_all(&registry);
+    ui_table_draw_row_separators(&table, sdl_context->renderer);
+
+    // int wx, wy, rx, ry;
+    // SDL_GetWindowSize(sdl_context->window, &wx, &wy);
+    // SDL_GetRendererOutputSize(sdl_context->renderer, &rx, &ry);
+    // SDL_Log("window: %dx%d  renderer output: %dx%d  logical: %dx%d",
+    // wx, wy, rx, ry, LOGICAL_WIDTH, LOGICAL_HEIGHT);
+
+    // int lw, lh;
+    // SDL_RenderGetLogicalSize(sdl_context->renderer, &lw, &lh);
+    // SDL_Log("logical size from renderer: %dx%d", lw, lh);
+
     SDL_Event e;
     while (SDL_PollEvent(&e)) {
-
       switch (e.type) {
 
       case SDL_QUIT:
-        return false;
+        result = false;
+        goto cleanup;
 
       case SDL_MOUSEBUTTONDOWN: {
-        for (int i = 0; i < MAX_CHOICES; i++) {
-          if (SDL_PointInRect(&mouse_pos, &game_choice_button[i].rect) &&
-              game_state->dealer_id == my_id) {
-
-            if (send_game_select(sock, game_choices[i].game_type, button_deuces_wild.selected) ==
-                0) {
-              dealing = false;
-              break;
-            } else {
-              return false;
+        if (e.button.button == SDL_BUTTON_LEFT) {
+          for (int i = 0; i < MAX_CHOICES; i++) {
+            if (SDL_PointInRect(&mouse_pos, &game_choice_button[i]->base.rect) &&
+                game_state->dealer_id == my_id) {
+              if (send_game_select(sock, game_choices[i].game_type,
+                                   button_deuces_wild->base.selected) == 0) {
+                dealing = false;
+                break;
+              } else {
+                result = false;
+                goto cleanup;
+              }
+            }
+          }
+          for (size_t i = 0; i < LINK_DEFS_COUNT; i++) {
+            if (SDL_PointInRect(&mouse_pos, &links[i].rect))
+              if (SDL_OpenURL(links[i].url) == -1)
+                fputs(SDL_GetError(), stderr);
+          }
+          if (SDL_PointInRect(&mouse_pos, &button_deuces_wild->base.rect) &&
+              button_deuces_wild->interactive) {
+            button_deuces_wild->click.start_time = SDL_GetTicks();
+            button_deuces_wild->base.selected = !button_deuces_wild->base.selected;
+          }
+          if (game_state->player[my_id].is_admin) {
+            for (int i = 0; i < MAX_PLAYERS; i++) {
+              if (!nick_widgets[i] || !nick_widgets[i]->selectable)
+                continue;
+              if (SDL_PointInRect(&mouse_pos, &nick_widgets[i]->base.rect)) {
+                int8_t new_sel = (selected_nick == i) ? -1 : i;
+                if (selected_nick >= 0 && nick_widgets[selected_nick])
+                  nick_widgets[selected_nick]->base.selected = false;
+                selected_nick = new_sel;
+                if (selected_nick >= 0)
+                  nick_widgets[selected_nick]->base.selected = true;
+                break;
+              }
             }
           }
         }
-
-        for (size_t i = 0; i < LINK_DEFS_COUNT; i++) {
-          if (links[i].hovered && e.button.button == SDL_BUTTON_LEFT)
-            if (SDL_OpenURL(links[i].url) == -1)
-              fputs(SDL_GetError(), stderr);
-        }
-
-        if (button_deuces_wild.hovered) {
-          button_deuces_wild.click.start_time = SDL_GetTicks();
-          button_deuces_wild.selected = !button_deuces_wild.selected;
-        }
       } break;
-
       case SDL_KEYDOWN:
         switch (e.key.keysym.sym) {
 
@@ -216,70 +402,10 @@ static bool handle_game_selection(const PlayerConfig_t *player_config,
       }
     }
 
-    clear_screen(sdl_context->renderer);
     if (dealing == true) {
-      for (int i = 0; i < MAX_CHOICES; i++)
-        render_button(&game_choice_button[i]);
-
-      render_button(&button_deuces_wild);
-
-      int offset_x = g_viewport.w * .1;
-      int offset_y = g_viewport.h / 2;
-
-      SDL_Rect text_connected = {offset_x, offset_y, 0, 0};
-      render_text_plain(sdl_context->renderer, font->fonts[FONT_BOLD], _("Connected players:"),
-                        get_color(COLOR_BLACK), &text_connected);
-      offset_x += 10;
-
-      Player_t *client = &game_state->player[my_id];
-      Player_t *start = client;
-
-      n_clients = 0;
-      do {
-        int ping_column_x = g_center.x - 100; // fixed right edge for ping
-        offset_y += 40;
-
-        // Build nickname + dealer label
-        char nick_buf[SIZEOF_NICK + 256];
-        snprintf(nick_buf, sizeof nick_buf, "%s%s", client->nick,
-                 game_state->dealer_id == client->id ? _(" (Dealer)") : "");
-
-        // Build ping text
-        char ping_buf[32];
-        snprintf(ping_buf, sizeof ping_buf, "ping %ums", client_state->ping_times[client->id]);
-
-        // Render nick left-aligned
-        SDL_Rect nick_pos = {offset_x, offset_y, 0, 0};
-        render_text_plain(sdl_context->renderer, font->fonts[FONT_BOLD], nick_buf,
-                          get_color(COLOR_WHITE), &nick_pos);
-
-        // Measure ping text width
-        int ping_w = 0, ping_h = 0;
-        if (TTF_SizeUTF8(font->fonts[FONT_BOLD], ping_buf, &ping_w, &ping_h) != 0) {
-          fprintf(stderr, "TTF_SizeUTF8 failed: %s\n", TTF_GetError());
-          ping_w = 0;
-        }
-
-        // Render ping right-aligned at ping_column_x
-        SDL_Rect ping_pos = {ping_column_x - ping_w, offset_y, 0, 0};
-        render_text_plain(sdl_context->renderer, font->fonts[FONT_BOLD], ping_buf,
-                          get_color(COLOR_WHITE), &ping_pos);
-
-        n_clients++;
-        client = get_next_connected_client(game_state->player, client->id);
-      } while (client && client != start);
       if (saved_n_clients < n_clients && saved_n_clients != 0)
         ma_sound_start_checked(&sound_context->sounds[SND_SERVER_JOIN].sound);
       saved_n_clients = n_clients;
-
-      if (n_clients == 1)
-        render_text_plain(sdl_context->renderer, font->fonts[FONT_DEFAULT],
-                          _("Waiting for more players..."), get_color(COLOR_WHITE),
-                          &(SDL_Rect){g_center.x, g_viewport.h - 200, 0, 0});
-      if (game_state->dealer_id != my_id)
-        render_text_plain(sdl_context->renderer, font->fonts[FONT_DEFAULT],
-                          _("Waiting for dealer to select game..."), get_color(COLOR_WHITE),
-                          &(SDL_Rect){g_center.x, g_viewport.h - 200, 0, 0});
 
       for (size_t i = 0; i < LINK_DEFS_COUNT; i++)
         render_link(&links[i]);
@@ -291,7 +417,10 @@ static bool handle_game_selection(const PlayerConfig_t *player_config,
     SDL_RenderPresent(sdl_context->renderer);
     SDL_Delay(16);
   }
-  return true;
+
+cleanup:
+  ui_destroy_all(&registry);
+  return result;
 }
 
 // Card back pattern/color selection
@@ -752,9 +881,6 @@ static void layout_indicator(Indicator_t *ind, int x, int y) {
 
   ind->cx = ind->base.rect.x + ind->rx;
   ind->cy = ind->base.rect.y + ind->ry;
-
-  ind->text_rect.x = ind->cx - ind->text_rect.w / 2;
-  ind->text_rect.y = ind->cy - ind->text_rect.h / 2;
 }
 
 static void layout_game_name_indicator(Indicator_t *ind) {
@@ -911,8 +1037,11 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
   layout_wild_selection(card_faces, card_suits, ARRAY_SIZE(card_faces), ARRAY_SIZE(card_suits),
                         font);
 
+  UIRegistry_t registry = {0};
   Indicator_t *indicator_deuces_wild =
       create_indicator(("Deuces Wild"), font->fonts[FONT_BOLD], COLOR_WHITE, COLOR_BROWN);
+  ui_register(&registry, &indicator_deuces_wild->base);
+
   layout_deuces_wild_indicator(indicator_deuces_wild);
 
   Indicator_t *indicator_game_name = NULL;
@@ -1074,16 +1203,12 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
     if (!indicator_game_name && client_state.game_choice) {
       indicator_game_name = create_indicator(client_state.game_choice->str, font->fonts[FONT_BOLD],
                                              COLOR_WHITE, COLOR_BROWN);
+      ui_register(&registry, &indicator_game_name->base);
       layout_game_name_indicator(indicator_game_name);
     }
 
-    if (indicator_game_name) {
-      ui_widget_render(&indicator_game_name->base);
-    }
-
-    if (client_state.deuces_wild) {
-      ui_widget_render(&indicator_deuces_wild->base);
-    }
+    indicator_deuces_wild->base.enabled = client_state.deuces_wild;
+    ui_render_all(&registry);
 
     SDL_SetRenderDrawColor(sdl_context->renderer, 255, 255, 255, 255);
     SDL_RenderFillRect(sdl_context->renderer, &msg_panel);
@@ -1478,14 +1603,16 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
           uint8_t *data = serialize_hand(hand, &size);
           if (!data) {
             fprintf(stderr, "Failed to serialize hand\n");
-            return -1;
+            running = -1;
+            goto cleanup;
           }
 
           // Just send the serialized protobuf
           if (send_all_tcp_DEPRECATED(sock, data, size) != 0) {
             fprintf(stderr, "Failed to send hand\n");
             free(data);
-            return -1;
+            running = -1;
+            goto cleanup;
           } else
             verbose_puts("Wilds sent");
           free(data);
@@ -1493,9 +1620,9 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
       }
     } // End Poll event
   }
+cleanup:
   SDL_DestroyTexture(coin_tex_front);
-  ui_widget_destroy(&indicator_game_name->base);
-  ui_widget_destroy(&indicator_deuces_wild->base);
+  ui_destroy_all(&registry);
   return running;
 }
 

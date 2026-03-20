@@ -1,3 +1,12 @@
+
+- dealers-choice (in progress):
+  + Implement server authentication
+  + Add dealer indicator column to lobby player list (black square, red circle if dealer)
+  + Highlight local player's nick with a semi-transparent background in the lobby
+  + Admin can select other players in the lobby by clicking their nick
+  + Play turn notification sound when local player becomes the dealer
+  * Fix "waiting" messages sometimes rendering when they shouldn't
+
 2026-03-12
 
 - dealers-choice 0.0.9:
