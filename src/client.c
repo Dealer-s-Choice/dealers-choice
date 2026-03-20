@@ -107,8 +107,7 @@ static bool handle_game_selection(const PlayerConfig_t *player_config,
                                   GameState_t *game_state, ClientState_t *client_state,
                                   SdlContext_t *sdl_context, Font_t *font,
                                   const SoundContext_t *sound_context, Link_t *links) {
-  // This will likely get used later. For now, suppress the warning about "unused parameter"
-  (void)player_config;
+  // (void)player_config;
 
   uint8_t n_clients = 0;
 
@@ -219,6 +218,8 @@ static bool handle_game_selection(const PlayerConfig_t *player_config,
         if (dealer_widgets[i])
           dealer_widget_set(dealer_widgets[i], game_state->dealer_id == i);
       }
+      if (game_state->dealer_id == my_id && player_config->turn_notify)
+        ma_sound_start_checked(&sound_context->sounds[SND_MY_TURN].sound);
       prev_dealer_id = game_state->dealer_id;
     }
 
