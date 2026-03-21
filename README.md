@@ -30,8 +30,12 @@ file for details.
 
 The game is in alpha so you may encounter bugs.
 
-*Dealer's Choice* builds on Windows in an MSYS2 environment but [there is not an installer
-available yet](https://github.com/Dealer-s-Choice/dealers_choice/issues/68).
+Here's a proofread version with a couple of small fixes:
+
+*Dealer's Choice* builds on Windows in an MSYS2 environment and there is a
+development snapshot installer available on [the snapshots
+page](https://github.com/Dealer-s-Choice/dealers-choice/releases/tag/snapshot).
+A release version will be available when v0.0.10 is released.
 
 ### Games available
 
