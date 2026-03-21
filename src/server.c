@@ -755,6 +755,8 @@ static void award_last_player_in_game(ArgsBroadcastGameState_t *args, Player_t *
   if (!turn->is_connected || !turn->in) {
     // fprintf(stderr, "turn->id: %d | %d\n", turn->id, __LINE__);
     turn = get_next_player(args->game_state->player, 0);
+    if (!turn)
+      return;
   }
   turn->winner = true;
   char status_str[LEN_STATUS_STR] = {0};
