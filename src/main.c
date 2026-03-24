@@ -92,7 +92,11 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, u
   port_input->base.rect.y = host_input->base.rect.y + host_input->base.rect.h + 20;
 
   button_save.rect.x = x_margin + input_w + 12;
-  button_save.rect.y = host_input->base.rect.y;
+  {
+    int span_top = host_input->base.rect.y;
+    int span_bot = port_input->base.rect.y + port_input->base.rect.h;
+    button_save.rect.y = (span_top + span_bot) / 2 - button_save.rect.h / 2;
+  }
 
   SDL_Rect input_nick_pos = {x_margin, port_input->base.rect.y + port_input->base.rect.h + 20, 0, 0};
 
