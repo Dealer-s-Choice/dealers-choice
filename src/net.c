@@ -305,7 +305,7 @@ int send_all_tcp(TCPsocket sock, const void *data, size_t length) {
     total_sent += sent;
   }
 
-  return (int)total_sent;
+  return 0;
 }
 
 int recv_all_tcp(TCPsocket sock, void *buf, size_t len) {

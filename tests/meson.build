@@ -25,6 +25,7 @@ game_logic = [
   ['5_card_showdown', '22780'],
   ['5_card_draw',     '22781'],
   ['5_card_stud',     '22782'],
+  ['deuces_wild',     '22783'],
 ]
 
 foreach entry : game_logic

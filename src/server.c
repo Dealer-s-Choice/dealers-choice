@@ -195,7 +195,7 @@ RealHand_t deal_cards_to_players(GameState_t *game_state, DH_Deck *deck, const u
 
 int send_with_retries(TCPsocket sock, const void *data, size_t size) {
   for (int attempt = 0; attempt < SEND_RETRY_COUNT; ++attempt) {
-    if (send_all_tcp(sock, data, size) > 0)
+    if (send_all_tcp(sock, data, size) == 0)
       return 0;
     SDL_Delay(SEND_RETRY_DELAY_MS);
   }
@@ -273,7 +273,7 @@ int send_status_message(TCPsocket sock, const char *msg) {
   memcpy(&buffer[6], msg, msg_len);
 
   // Send total (size prefix + payload)
-  return send_all_tcp_DEPRECATED(sock, buffer, 6 + msg_len);
+  return send_all_tcp(sock, buffer, 6 + msg_len);
 }
 
 static void broadcast_status_message(const ArgsBroadcastGameState_t *args, const char *msg) {
@@ -333,7 +333,7 @@ static int send_turn_id(TCPsocket sock, const int8_t turn_id) {
 
   buffer[6] = (uint8_t)turn_id;
 
-  return send_all_tcp_DEPRECATED(sock, buffer, sizeof(buffer));
+  return send_all_tcp(sock, buffer, sizeof(buffer));
 }
 
 void broadcast_turn_id(const ArgsBroadcastGameState_t *args) {
@@ -384,7 +384,7 @@ static int send_opcode(TCPsocket sock, const uint16_t opcode) {
   uint16_t opcode_be = SDL_SwapBE16(opcode);
   memcpy(&buffer[4], &opcode_be, sizeof(opcode_be));
 
-  int sent = send_all_tcp_DEPRECATED(sock, buffer, sizeof(buffer));
+  int sent = send_all_tcp(sock, buffer, sizeof(buffer));
   if (sent == 0)
     verbose_puts("Sent opcode");
   return sent;
@@ -1406,7 +1406,7 @@ static void flush_client_socket(TCPsocket sock) {
 
 static int send_nonce(TCPsocket sock, unsigned char nonce[NONCE_SIZE]) {
   randombytes_buf(nonce, NONCE_SIZE);
-  return send_all_tcp_DEPRECATED(sock, nonce, NONCE_SIZE);
+  return send_all_tcp(sock, nonce, NONCE_SIZE);
 }
 
 static int verify_client_password(TCPsocket sock, const char *stored_password,
