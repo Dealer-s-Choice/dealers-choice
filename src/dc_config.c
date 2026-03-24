@@ -247,9 +247,11 @@ PlayerConfig_t get_player_config(void) {
         exit(EXIT_FAILURE);
       }
     } else {
+      /* File exists but couldn't be parsed (e.g., empty due to a race between
+       * parallel processes). Use defaults so the caller can proceed. */
       fprintf(stderr, "Error accessing %s\n", cfg_pathname);
-      free(cfg_pathname);
-      exit(EXIT_FAILURE);
+      for (size_t i = 0; i < player_config_entry_count; i++)
+        config_set_default(&config, &player_config_entries[i]);
     }
   } else {
     // Track which keys were found
