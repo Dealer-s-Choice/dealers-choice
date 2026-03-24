@@ -67,10 +67,20 @@ extern int n_passes;
                                                                                                    \
   ERecvStatus_t recv_status;                                                                       \
                                                                                                    \
+  uint16_t test_port = 22777;                                                                      \
+  {                                                                                                \
+    const char *dc_port_env = getenv("DC_PORT");                                                   \
+    if (dc_port_env) {                                                                             \
+      unsigned long port_val = strtoul(dc_port_env, NULL, 10);                                     \
+      if (port_val > 0 && port_val <= 65535)                                                       \
+        test_port = (uint16_t)port_val;                                                            \
+    }                                                                                              \
+  }                                                                                                \
+                                                                                                   \
   Link_t *links = NULL;                                                                            \
   for (int i = 0; i < N_PLAYERS; i++) {                                                            \
     socket_context[i] = get_socket_context_and_run_client(                                         \
-        &player_config, &cli_args, "127.0.0.1", 22777, NULL, NULL, &path, test_mode, links);       \
+        &player_config, &cli_args, "127.0.0.1", test_port, NULL, NULL, &path, test_mode, links);   \
     assert(socket_context[i].sock != NULL);                                                        \
     recv_game_settings(socket_context[i].sock, socket_context[i].set, &game_settings[i]);          \
     SDL_Delay(n_ms);                                                                               \

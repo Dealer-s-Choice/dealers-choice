@@ -41,16 +41,18 @@ def main():
     test_binary = os.path.join(test_root, sys.argv[1])
     server_binary = os.path.join(build_root, "dealers-choice")
 
+    port = int(os.environ.get("DC_PORT", "22777"))
+
     # Launch the server in test mode
     server_proc = subprocess.Popen(
-        [server_binary, "--server", "---test"],
+        [server_binary, "--server", "---test", "--port", str(port)],
         stdout=sys.stderr,  # redirect stdout to stderr
         stderr=sys.stderr
     )
 
     try:
-        # Wait until the server is ready on port 22777
-        if not wait_for_server("127.0.0.1", 22777):
+        # Wait until the server is ready
+        if not wait_for_server("127.0.0.1", port):
             print("Server did not become ready in time", file=sys.stderr)
             cleanup(server_proc)
             sys.exit(1)
