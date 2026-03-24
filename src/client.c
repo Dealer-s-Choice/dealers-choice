@@ -1712,7 +1712,7 @@ SocketContext_t get_socket_context_and_run_client(PlayerConfig_t *player_config,
   if (SDLNet_TCP_AddSocket(socket_context.set, sock) == -1)
     fputs("Socket set full\n", stderr);
 
-  if (!test_mode && send_protocol_header(sock) != 0) {
+  if (send_protocol_header(sock) != 0) {
     fputs("Failed to send protocol\n", stderr);
     goto cleanup;
   }

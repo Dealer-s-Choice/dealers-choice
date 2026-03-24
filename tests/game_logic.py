@@ -1,22 +1,9 @@
 #!/usr/bin/env python3
 
-import socket
-import time
 import subprocess
 import sys
 import os
-import signal
-
-def wait_for_server(host, port, timeout=10):
-    """Wait until a TCP server is listening on (host, port)."""
-    start_time = time.time()
-    while time.time() - start_time < timeout:
-        try:
-            with socket.create_connection((host, port), timeout=1):
-                return True
-        except (ConnectionRefusedError, OSError):
-            time.sleep(0.2)
-    return False
+import time
 
 def cleanup(server_proc):
     print("Cleaning up server...")
@@ -43,21 +30,19 @@ def main():
 
     port = int(os.environ.get("DC_PORT", "22777"))
 
-    # Launch the server in test mode
+    # Launch the server in test mode, then wait briefly for it to start.
+    # A TCP probe connection is not used because the server would accept it as
+    # a real client slot.  The test binary retries connections internally if
+    # the server is not yet ready within this window.
     server_proc = subprocess.Popen(
         [server_binary, "--server", "---test", "--port", str(port)],
-        stdout=sys.stderr,  # redirect stdout to stderr
+        stdout=sys.stderr,
         stderr=sys.stderr
     )
 
-    try:
-        # Wait until the server is ready
-        if not wait_for_server("127.0.0.1", port):
-            print("Server did not become ready in time", file=sys.stderr)
-            cleanup(server_proc)
-            sys.exit(1)
+    time.sleep(1)
 
-        # Run the test client
+    try:
         result = subprocess.run([test_binary], stdout=sys.stdout, stderr=sys.stderr)
         exit_code = result.returncode
     finally:
