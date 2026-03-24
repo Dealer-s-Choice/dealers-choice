@@ -1,8 +1,8 @@
 # Config
 
-When you run the client, you'll see the path to your config file. You will
-need to manually edit the file, as there is not yet a way to make changes from
-the gui.
+When you run the client from a terminal, you'll see the path to your config
+file. You can edit settings from the Settings menu on the startup screen, or
+by editing the file directly.
 
 ## Sound
 
