@@ -1369,7 +1369,7 @@ static int recv_and_validate_protocol_header(TCPsocket sock) {
 }
 
 static void do_socket_cleanup(TCPsocket sock, SDLNet_SocketSet socket_set, bool *slot_taken,
-                              const bool slot, Player_t *p) {
+                              const int slot, Player_t *p) {
   SDLNet_TCP_DelSocket(socket_set, sock);
   SDLNet_TCP_Close(sock);
   slot_taken[slot] = false;
