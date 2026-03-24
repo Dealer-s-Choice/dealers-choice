@@ -1469,7 +1469,7 @@ static ELoop_t register_new_client(ArgsBroadcastGameState_t *args) {
                sizeof(POKEVAL_Hand_7));
       }
 
-      if (recv_and_validate_protocol_header(new_client) != 0) {
+      if (!args->cli_args->test_mode && recv_and_validate_protocol_header(new_client) != 0) {
         do_socket_cleanup(new_client, args->socket_set, args->slot_taken, slot, NULL);
         return LOOP_CONTINUE;
       }
