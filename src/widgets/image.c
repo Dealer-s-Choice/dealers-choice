@@ -5,6 +5,7 @@ static void image_widget_render(UIWidget_t *w) {
   ImageWidget_t *iw = (ImageWidget_t *)w;
   if (!iw->tex)
     return;
+  SDL_SetTextureAlphaMod(iw->tex, w->hovered ? 160 : 255);
   SDL_RenderCopy(iw->renderer, iw->tex, NULL, &w->rect);
 }
 
