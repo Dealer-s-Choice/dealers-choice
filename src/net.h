@@ -137,6 +137,7 @@ POKEVAL_Hand_7 deserialize_hand(const uint8_t *data, size_t size);
 uint8_t *serialize_player(const Player_t *src, size_t *size_out);
 Player_t deserialize_player(const uint8_t *data, size_t size);
 
+__attribute__((deprecated("use send_all_tcp instead")))
 int send_all_tcp_DEPRECATED(TCPsocket sock, const void *data, size_t length);
 
 int send_all_tcp(TCPsocket sock, const void *data, size_t length);
