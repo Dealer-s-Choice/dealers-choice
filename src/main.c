@@ -35,6 +35,7 @@
 #include "button.h"
 #include "client.h"
 #include "config.h"
+#include "dc_config.h"
 #include "game.h"
 #include "getlongopt.h"
 #include "globals.h"
@@ -44,18 +45,22 @@
 #include "server.h"
 #include "widgets/input.h"
 
-enum { RUN_CLIENT = 20 };
+enum { RUN_CLIENT = 20, RUN_SETTINGS = 21 };
 
 static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, const uint16_t port,
                                 SdlContext_t *sdl_context, Font_t *font, Link_t *links) {
   Button_t button_connect = create_button(_("Connect"), (EColor_t){COLOR_BLACK, COLOR_YELLOW},
                                           font->fonts[FONT_BOLD], (SDL_Keycode)0);
+  Button_t button_settings = create_button(_("Settings"), (EColor_t){COLOR_BLACK, COLOR_YELLOW},
+                                           font->fonts[FONT_BOLD], (SDL_Keycode)0);
 
   SDL_Rect title_rect = {g_center.x / 1.5, 60, 0, 0};
 
   int x_margin = g_viewport.x + 100;
   button_connect.rect.x = x_margin;
   button_connect.rect.y = g_viewport.y + 160;
+  button_settings.rect.x = x_margin + button_connect.rect.w + 20;
+  button_settings.rect.y = g_viewport.y + 160;
 
   int input_w;
   if (TTF_SizeUTF8(font->fonts[FONT_DEFAULT], "255.255.255.255", &input_w, NULL) != 0)
@@ -77,12 +82,14 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, c
 
   layout_links(links, LINK_DEFS_COUNT);
   bool run_client = false;
+  bool run_settings = false;
   bool running = true;
   while (running) {
     SDL_Event e;
     while (SDL_PollEvent(&e)) {
       SDL_Point mouse_pos = {e.button.x, e.button.y};
       button_connect.hovered = SDL_PointInRect(&mouse_pos, &button_connect.rect);
+      button_settings.hovered = SDL_PointInRect(&mouse_pos, &button_settings.rect);
       for (size_t i = 0; i < LINK_DEFS_COUNT; i++) {
         links[i].hovered = SDL_PointInRect(&mouse_pos, &links[i].rect);
       }
@@ -91,6 +98,9 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, c
       } else if (e.type == SDL_MOUSEBUTTONDOWN) {
         if (SDL_PointInRect(&mouse_pos, &button_connect.rect)) {
           run_client = true;
+          running = false;
+        } else if (SDL_PointInRect(&mouse_pos, &button_settings.rect)) {
+          run_settings = true;
           running = false;
         }
         for (size_t i = 0; i < LINK_DEFS_COUNT; i++) {
@@ -127,6 +137,7 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, c
 
     clear_screen(sdl_context->renderer);
     render_button(&button_connect);
+    render_button(&button_settings);
 
     ui_widget_render(&host_input->base);
 
@@ -163,7 +174,168 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, c
 
   ui_widget_destroy(&host_input->base);
 
-  return run_client == true ? RUN_CLIENT : 0;
+  if (run_client)
+    return RUN_CLIENT;
+  if (run_settings)
+    return RUN_SETTINGS;
+  return 0;
+}
+
+static void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *sdl_context,
+                                   Font_t *font) {
+  /* Two-column layout: left col has entries 0,2,4; right col has 1,3,5 */
+  const int x_left = g_viewport.x + 100;
+  const int x_right = g_viewport.x + 700;
+  const int row_y[3] = {g_viewport.y + 160, g_viewport.y + 360, g_viewport.y + 560};
+  const int input_y_offset = 40;
+  const int input_w = 350;
+
+  Button_t btn_save = create_button(_("Save"), (EColor_t){COLOR_BLACK, COLOR_YELLOW},
+                                    font->fonts[FONT_BOLD], (SDL_Keycode)0);
+  Button_t btn_back = create_button(_("Back"), (EColor_t){COLOR_BLACK, COLOR_YELLOW},
+                                    font->fonts[FONT_BOLD], (SDL_Keycode)0);
+  btn_save.rect.x = x_left;
+  btn_save.rect.y = g_viewport.y + 750;
+  btn_back.rect.x = x_left + btn_save.rect.w + 20;
+  btn_back.rect.y = g_viewport.y + 750;
+
+  /* Convert current config values to strings for initial widget state */
+  char init_str[player_config_entry_count][MAX_INPUT_LENGTH];
+  for (size_t i = 0; i < player_config_entry_count; i++) {
+    const void *field = (const uint8_t *)player_config + player_config_entries[i].offset;
+    switch (player_config_entries[i].type) {
+    case CFG_TYPE_STRING:
+      snprintf(init_str[i], sizeof(init_str[i]), "%s", (const char *)field);
+      break;
+    case CFG_TYPE_INT:
+      snprintf(init_str[i], sizeof(init_str[i]), "%d", *(const int *)field);
+      break;
+    case CFG_TYPE_UINT16:
+      snprintf(init_str[i], sizeof(init_str[i]), "%u", (unsigned)*(const uint16_t *)field);
+      break;
+    case CFG_TYPE_BOOL:
+      snprintf(init_str[i], sizeof(init_str[i]), "%s", *(const bool *)field ? "yes" : "no");
+      break;
+    default:
+      snprintf(init_str[i], sizeof(init_str[i]), "%s",
+               player_config_entries[i].default_value);
+      break;
+    }
+  }
+
+  InputWidget_t *inputs[player_config_entry_count];
+  for (size_t i = 0; i < player_config_entry_count; i++) {
+    inputs[i] = input_widget_create(init_str[i], font->fonts[FONT_DEFAULT], input_w,
+                                    player_config_entries[i].type);
+    if (!inputs[i]) {
+      for (size_t j = 0; j < i; j++)
+        ui_widget_destroy(&inputs[j]->base);
+      return;
+    }
+    int col = (int)(i % 2);
+    int row = (int)(i / 2);
+    inputs[i]->base.rect.x = (col == 0) ? x_left : x_right;
+    inputs[i]->base.rect.y = row_y[row] + input_y_offset;
+    inputs[i]->focused = (i == 0);
+  }
+
+  SDL_Rect title_rect = {g_center.x / 1.5, 60, 0, 0};
+  int focused_idx = 0;
+
+  SDL_StartTextInput();
+  bool running = true;
+  bool saved = false;
+
+  while (running) {
+    SDL_Event e;
+    while (SDL_PollEvent(&e)) {
+      SDL_Point mouse_pos = {e.button.x, e.button.y};
+      btn_save.hovered = SDL_PointInRect(&mouse_pos, &btn_save.rect);
+      btn_back.hovered = SDL_PointInRect(&mouse_pos, &btn_back.rect);
+
+      if (e.type == SDL_QUIT) {
+        running = false;
+      } else if (e.type == SDL_MOUSEBUTTONDOWN && e.button.button == SDL_BUTTON_LEFT) {
+        if (SDL_PointInRect(&mouse_pos, &btn_save.rect)) {
+          saved = true;
+          running = false;
+        } else if (SDL_PointInRect(&mouse_pos, &btn_back.rect)) {
+          running = false;
+        } else {
+          for (size_t i = 0; i < player_config_entry_count; i++) {
+            if (SDL_PointInRect(&mouse_pos, &inputs[i]->base.rect)) {
+              inputs[focused_idx]->focused = false;
+              focused_idx = (int)i;
+              inputs[focused_idx]->focused = true;
+              break;
+            }
+          }
+        }
+      } else if (e.type == SDL_TEXTINPUT) {
+        input_widget_append(inputs[focused_idx], e.text.text);
+      } else if (e.type == SDL_KEYDOWN) {
+        switch (e.key.keysym.sym) {
+        case SDLK_RETURN:
+          saved = true;
+          running = false;
+          break;
+        case SDLK_ESCAPE:
+          running = false;
+          break;
+        case SDLK_TAB: {
+          inputs[focused_idx]->focused = false;
+          int dir = (e.key.keysym.mod & KMOD_SHIFT) ? -1 : 1;
+          focused_idx =
+              (int)((focused_idx + dir + (int)player_config_entry_count) %
+                    (int)player_config_entry_count);
+          inputs[focused_idx]->focused = true;
+          break;
+        }
+        case SDLK_BACKSPACE:
+          input_widget_backspace(inputs[focused_idx]);
+          break;
+        case SDLK_F11:
+          toggle_fullscreen(sdl_context);
+          break;
+        default:
+          break;
+        }
+      }
+    }
+
+    clear_screen(sdl_context->renderer);
+
+    render_text_plain(sdl_context->renderer, font->fonts[FONT_TITLE], _("Settings"),
+                      get_color(COLOR_BLACK), &title_rect);
+
+    for (size_t i = 0; i < player_config_entry_count; i++) {
+      int col = (int)(i % 2);
+      int row = (int)(i / 2);
+      int lx = (col == 0) ? x_left : x_right;
+      int ly = row_y[row];
+      SDL_Rect label_rect = {lx, ly, 0, 0};
+      render_text_plain(sdl_context->renderer, font->fonts[FONT_DEFAULT],
+                        player_config_entries[i].key, get_color(COLOR_BLACK), &label_rect);
+      ui_widget_render(&inputs[i]->base);
+    }
+
+    render_button(&btn_save);
+    render_button(&btn_back);
+
+    SDL_RenderPresent(sdl_context->renderer);
+    SDL_Delay(16);
+  }
+
+  SDL_StopTextInput();
+
+  if (saved) {
+    for (size_t i = 0; i < player_config_entry_count; i++)
+      player_config_set_field(player_config, i, input_widget_get_text(inputs[i]));
+    save_player_config(player_config);
+  }
+
+  for (size_t i = 0; i < player_config_entry_count; i++)
+    ui_widget_destroy(&inputs[i]->base);
 }
 
 static void print_version(void) {
@@ -407,8 +579,18 @@ int main(int argc, char *argv[]) {
   snprintf(host_str, sizeof(host_str), "%s", (cli_args.host) ? cli_args.host : player_config.host);
 
   uint16_t port = (cli_args.port != 0) ? cli_args.port : player_config.port;
-  if (menu_display_connect(&player_config, host_str, port, &sdl_context, &font, links) ==
-      RUN_CLIENT) {
+  int connect_result;
+  do {
+    connect_result =
+        menu_display_connect(&player_config, host_str, port, &sdl_context, &font, links);
+    if (connect_result == RUN_SETTINGS) {
+      menu_display_settings(&player_config, &sdl_context, &font);
+      snprintf(host_str, sizeof(host_str), "%s", player_config.host);
+      port = player_config.port;
+    }
+  } while (connect_result == RUN_SETTINGS);
+
+  if (connect_result == RUN_CLIENT) {
     char tmp[256] = {0};
     snprintf(tmp, sizeof(tmp), _("Attempting connection to: %s..."), host_str);
     render_text_plain(sdl_context.renderer, font.fonts[FONT_DEFAULT], tmp, get_color(COLOR_WHITE),
