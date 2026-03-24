@@ -40,6 +40,7 @@
 #include "graphics.h"
 #include "widgets/button.h"
 #include "widgets/dealer.h"
+#include "widgets/image.h"
 #include "widgets/indicator.h"
 #include "widgets/nick.h"
 #include "widgets/ping.h"
@@ -83,11 +84,18 @@ static void ma_sound_start_wrap(ma_sound *pSound, const char *file, const int li
   }
 }
 
-static bool handle_game_selection(const PlayerConfig_t *player_config,
+typedef enum {
+  GAME_SEL_ERROR = 0,
+  GAME_SEL_SUCCESS = 1,
+  GAME_SEL_BACK = 2,
+} EGameSelResult_t;
+
+static EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_config,
                                   SocketContext_t *socket_context, const int8_t my_id,
                                   GameState_t *game_state, ClientState_t *client_state,
                                   SdlContext_t *sdl_context, Font_t *font,
-                                  const SoundContext_t *sound_context, Link_t *links) {
+                                  const SoundContext_t *sound_context, Link_t *links,
+                                  const Path_t *path) {
   // (void)player_config;
 
   uint8_t n_clients = 0;
@@ -165,12 +173,25 @@ static bool handle_game_selection(const PlayerConfig_t *player_config,
 
   static bool was_connected[MAX_PLAYERS] = {0};
 
-  bool result = true;
+  EGameSelResult_t result = GAME_SEL_SUCCESS;
+
+  const int back_btn_size = 64;
+  PathconfLimits_t img_limits = {0};
+  get_pathconf_limits(path->data, &img_limits);
+  char *back_img_path =
+      join_paths(img_limits.path_max, path->data, "images", "arrow_back.png");
+  ImageWidget_t *back_img = image_widget_create(back_img_path, back_btn_size, back_btn_size);
+  free(back_img_path);
+  if (back_img) {
+    back_img->base.rect.x = g_viewport.x + 20;
+    back_img->base.rect.y = g_viewport.y + 20;
+    ui_register(&registry, &back_img->base);
+  }
 
   while (game_state->at_menu) {
     ERecvStatus_t recv_status = recv_game_state(socket_context, game_state, client_state, my_id);
     if (recv_status == RECV_ERROR) {
-      result = false;
+      result = GAME_SEL_ERROR;
       goto cleanup;
     }
 
@@ -192,6 +213,9 @@ static bool handle_game_selection(const PlayerConfig_t *player_config,
     button_deuces_wild->base.hovered =
         SDL_PointInRect(&mouse_pos, &button_deuces_wild->base.rect) &&
         button_deuces_wild->interactive;
+
+    if (back_img)
+      back_img->base.hovered = SDL_PointInRect(&mouse_pos, &back_img->base.rect);
 
     for (size_t i = 0; i < LINK_DEFS_COUNT; i++)
       links[i].hovered = SDL_PointInRect(&mouse_pos, &links[i].rect);
@@ -341,6 +365,10 @@ static bool handle_game_selection(const PlayerConfig_t *player_config,
 
       case SDL_MOUSEBUTTONDOWN: {
         if (e.button.button == SDL_BUTTON_LEFT) {
+          if (back_img && SDL_PointInRect(&mouse_pos, &back_img->base.rect)) {
+            result = GAME_SEL_BACK;
+            goto cleanup;
+          }
           for (int i = 0; i < MAX_CHOICES; i++) {
             if (SDL_PointInRect(&mouse_pos, &game_choice_button[i]->base.rect) &&
                 game_state->dealer_id == my_id) {
@@ -349,7 +377,7 @@ static bool handle_game_selection(const PlayerConfig_t *player_config,
                 dealing = false;
                 break;
               } else {
-                result = false;
+                result = GAME_SEL_ERROR;
                 goto cleanup;
               }
             }
@@ -1653,17 +1681,18 @@ int authenticate_with_server(TCPsocket sock, const char *password) {
   return 0;
 }
 
-SocketContext_t get_socket_context_and_run_client(PlayerConfig_t *player_config,
-                                                  const CliArgs_t *cli_args, const char *host_str,
-                                                  const uint16_t port, SdlContext_t *sdl_context,
-                                                  Font_t *font, Path_t *path, const bool test_mode,
-                                                  Link_t *links) {
+bool get_socket_context_and_run_client(PlayerConfig_t *player_config,
+                                       const CliArgs_t *cli_args, const char *host_str,
+                                       const uint16_t port, SdlContext_t *sdl_context,
+                                       Font_t *font, Path_t *path, const bool test_mode,
+                                       Link_t *links,
+                                       SocketContext_t *out_socket_context) {
   IPaddress server_ip;
   SocketContext_t socket_context = {0};
 
   if (SDLNet_ResolveHost(&server_ip, host_str, port) == -1) {
     fprintf(stderr, "Failed to resolve server: %s\n", SDLNet_GetError());
-    return socket_context;
+    return false;
   }
 
   uint8_t attempts;
@@ -1698,7 +1727,7 @@ SocketContext_t get_socket_context_and_run_client(PlayerConfig_t *player_config,
 
   if (!socket_context.sock) {
     printf("All %d attempts failed. Giving up.\n", attempts);
-    return socket_context;
+    return false;
   }
 
   TCPsocket sock = socket_context.sock;
@@ -1706,7 +1735,7 @@ SocketContext_t get_socket_context_and_run_client(PlayerConfig_t *player_config,
   if (!socket_context.set) {
     fprintf(stderr, "Failed to allocate socket set: %s\n", SDLNet_GetError());
     SDLNet_TCP_Close(sock);
-    return socket_context;
+    return false;
   }
 
   if (SDLNet_TCP_AddSocket(socket_context.set, sock) == -1)
@@ -1828,11 +1857,16 @@ SocketContext_t get_socket_context_and_run_client(PlayerConfig_t *player_config,
     }
 
     bool running = true;
+    bool went_back = false;
     do {
-      running = handle_game_selection(player_config, &socket_context, game_settings.client_id,
-                                      &game_state, &client_state, sdl_context, font, &sound_context,
-                                      links);
-      if (!running)
+      EGameSelResult_t sel = handle_game_selection(
+          player_config, &socket_context, game_settings.client_id, &game_state, &client_state,
+          sdl_context, font, &sound_context, links, path);
+      if (sel == GAME_SEL_BACK) {
+        went_back = true;
+        break;
+      }
+      if (sel == GAME_SEL_ERROR)
         break;
 
       running = handle_game_logic(player_config, &socket_context, &game_settings, &game_state,
@@ -1843,13 +1877,19 @@ SocketContext_t get_socket_context_and_run_client(PlayerConfig_t *player_config,
     for (i = 0; i < ARRAY_SIZE(coin_hit_sounds); i++)
       ma_sound_uninit(&coin_hit_sounds[i].sound);
     ma_engine_uninit(&sound_context.engine);
-  } else
-    return socket_context;
+    socket_cleanup(&socket_context);
+    SDLNet_Quit();
+    return went_back;
+  } else {
+    if (out_socket_context)
+      *out_socket_context = socket_context;
+    return false;
+  }
 
 cleanup:
   socket_cleanup(&socket_context);
   SDLNet_Quit();
-  return socket_context;
+  return false;
 }
 
 void do_sdl_cleanup(SdlContext_t *sdl_context) {

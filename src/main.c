@@ -35,6 +35,7 @@
 #include "button.h"
 #include "client.h"
 #include "config.h"
+#include "dc_config.h"
 #include "game.h"
 #include "getlongopt.h"
 #include "globals.h"
@@ -42,20 +43,29 @@
 #include "links.h"
 #include "main.h"
 #include "server.h"
+#include "util.h"
+#include "widgets/checkbox.h"
+#include "widgets/image.h"
 #include "widgets/input.h"
 
-enum { RUN_CLIENT = 20 };
+enum { RUN_CLIENT = 20, RUN_SETTINGS = 21 };
 
-static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, const uint16_t port,
+static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, uint16_t *port,
                                 SdlContext_t *sdl_context, Font_t *font, Link_t *links) {
   Button_t button_connect = create_button(_("Connect"), (EColor_t){COLOR_BLACK, COLOR_YELLOW},
                                           font->fonts[FONT_BOLD], (SDL_Keycode)0);
+  Button_t button_settings = create_button(_("Settings"), (EColor_t){COLOR_BLACK, COLOR_YELLOW},
+                                           font->fonts[FONT_BOLD], (SDL_Keycode)0);
+  Button_t button_save = create_button(_("Save"), (EColor_t){COLOR_BLACK, COLOR_YELLOW},
+                                       font->fonts[FONT_BOLD], (SDL_Keycode)0);
 
   SDL_Rect title_rect = {g_center.x / 1.5, 60, 0, 0};
 
   int x_margin = g_viewport.x + 100;
   button_connect.rect.x = x_margin;
   button_connect.rect.y = g_viewport.y + 160;
+  button_settings.rect.x = x_margin + button_connect.rect.w + 20;
+  button_settings.rect.y = g_viewport.y + 160;
 
   int input_w;
   if (TTF_SizeUTF8(font->fonts[FONT_DEFAULT], "255.255.255.255", &input_w, NULL) != 0)
@@ -70,19 +80,42 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, c
   host_input->base.rect.y = g_viewport.y + 220;
   host_input->focused = true;
 
-  SDL_Rect port_rect = {x_margin, host_input->base.rect.y + host_input->base.rect.h + 12, 0, 0};
-  SDL_Rect input_nick_pos = {x_margin, g_viewport.y + 380, 0, 0};
+  char port_init[16] = {0};
+  snprintf(port_init, sizeof(port_init), "%u", (unsigned)*port);
+  InputWidget_t *port_input =
+      input_widget_create(port_init, font->fonts[FONT_DEFAULT], input_w, CFG_TYPE_UINT16);
+  if (!port_input) {
+    ui_widget_destroy(&host_input->base);
+    return 0;
+  }
+  port_input->base.rect.x = x_margin;
+  port_input->base.rect.y = host_input->base.rect.y + host_input->base.rect.h + 20;
+
+  button_save.rect.x = x_margin + input_w + 12;
+  {
+    int span_top = host_input->base.rect.y;
+    int span_bot = port_input->base.rect.y + port_input->base.rect.h;
+    button_save.rect.y = (span_top + span_bot) / 2 - button_save.rect.h / 2;
+  }
+
+  SDL_Rect input_nick_pos = {x_margin, port_input->base.rect.y + port_input->base.rect.h + 20, 0, 0};
+
+  InputWidget_t *focused_inputs[2] = {host_input, port_input};
+  int focused_slot = 0;
 
   SDL_StartTextInput();
 
   layout_links(links, LINK_DEFS_COUNT);
   bool run_client = false;
+  bool run_settings = false;
   bool running = true;
   while (running) {
     SDL_Event e;
     while (SDL_PollEvent(&e)) {
       SDL_Point mouse_pos = {e.button.x, e.button.y};
       button_connect.hovered = SDL_PointInRect(&mouse_pos, &button_connect.rect);
+      button_settings.hovered = SDL_PointInRect(&mouse_pos, &button_settings.rect);
+      button_save.hovered = SDL_PointInRect(&mouse_pos, &button_save.rect);
       for (size_t i = 0; i < LINK_DEFS_COUNT; i++) {
         links[i].hovered = SDL_PointInRect(&mouse_pos, &links[i].rect);
       }
@@ -92,6 +125,21 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, c
         if (SDL_PointInRect(&mouse_pos, &button_connect.rect)) {
           run_client = true;
           running = false;
+        } else if (SDL_PointInRect(&mouse_pos, &button_settings.rect)) {
+          run_settings = true;
+          running = false;
+        } else if (SDL_PointInRect(&mouse_pos, &button_save.rect)) {
+          player_config_set_field(player_config, 1, input_widget_get_text(host_input));
+          player_config_set_field(player_config, 2, input_widget_get_text(port_input));
+          save_player_config(player_config);
+        } else if (SDL_PointInRect(&mouse_pos, &host_input->base.rect)) {
+          focused_inputs[focused_slot]->focused = false;
+          focused_slot = 0;
+          focused_inputs[focused_slot]->focused = true;
+        } else if (SDL_PointInRect(&mouse_pos, &port_input->base.rect)) {
+          focused_inputs[focused_slot]->focused = false;
+          focused_slot = 1;
+          focused_inputs[focused_slot]->focused = true;
         }
         for (size_t i = 0; i < LINK_DEFS_COUNT; i++) {
           if (links[i].hovered && e.button.button == SDL_BUTTON_LEFT)
@@ -99,7 +147,7 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, c
               fputs(SDL_GetError(), stderr);
         }
       } else if (e.type == SDL_TEXTINPUT) {
-        input_widget_append(host_input, e.text.text);
+        input_widget_append(focused_inputs[focused_slot], e.text.text);
       } else if (e.type == SDL_KEYDOWN) {
         switch (e.key.keysym.sym) {
         case SDLK_RETURN:
@@ -115,8 +163,16 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, c
           toggle_fullscreen(sdl_context);
           break;
 
+        case SDLK_TAB: {
+          focused_inputs[focused_slot]->focused = false;
+          int dir = (e.key.keysym.mod & KMOD_SHIFT) ? -1 : 1;
+          focused_slot = (focused_slot + dir + 2) % 2;
+          focused_inputs[focused_slot]->focused = true;
+          break;
+        }
+
         case SDLK_BACKSPACE:
-          input_widget_backspace(host_input);
+          input_widget_backspace(focused_inputs[focused_slot]);
           break;
 
         default:
@@ -127,13 +183,11 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, c
 
     clear_screen(sdl_context->renderer);
     render_button(&button_connect);
+    render_button(&button_settings);
+    render_button(&button_save);
 
     ui_widget_render(&host_input->base);
-
-    char port_str[24] = {0};
-    snprintf(port_str, sizeof(port_str), _("port: %" PRIu16), port);
-    render_text_plain(sdl_context->renderer, font->fonts[FONT_DEFAULT], port_str,
-                      get_color(COLOR_BLACK), &port_rect);
+    ui_widget_render(&port_input->base);
 
     render_text_plain(sdl_context->renderer, font->fonts[FONT_DEFAULT], player_config->nick,
                       get_color(COLOR_BLACK), &input_nick_pos);
@@ -156,14 +210,249 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, c
 
   SDL_StopTextInput();
 
-  /* Copy the final text back to host_str before destroying the widget */
-  const char *final = input_widget_get_text(host_input);
-  strncpy(host_str, final, MAX_INPUT_LENGTH - 1);
+  /* Copy final values back to the caller's variables */
+  const char *final_host = input_widget_get_text(host_input);
+  strncpy(host_str, final_host, MAX_INPUT_LENGTH - 1);
   host_str[MAX_INPUT_LENGTH - 1] = '\0';
 
-  ui_widget_destroy(&host_input->base);
+  const char *final_port = input_widget_get_text(port_input);
+  if (final_port && *final_port)
+    *port = (uint16_t)strtoul(final_port, NULL, 10);
 
-  return run_client == true ? RUN_CLIENT : 0;
+  ui_widget_destroy(&host_input->base);
+  ui_widget_destroy(&port_input->base);
+
+  if (run_client)
+    return RUN_CLIENT;
+  if (run_settings)
+    return RUN_SETTINGS;
+  return 0;
+}
+
+static void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *sdl_context,
+                                   Font_t *font, const Path_t *path) {
+  /* Two-column layout for nick, language, volume, turn_notify (host/port on startup screen) */
+  const int x_left = g_viewport.x + 100;
+  const int x_right = g_viewport.x + 700;
+  const int row_y[2] = {g_viewport.y + 160, g_viewport.y + 360};
+  const int input_y_offset = 40;
+  const int input_w = 350;
+
+  /* Back arrow image (top-left) */
+  const int back_size = 64;
+  PathconfLimits_t img_limits = {0};
+  get_pathconf_limits(path->data, &img_limits);
+  char *back_img_path = join_paths(img_limits.path_max, path->data, "images", "arrow_back.png");
+  ImageWidget_t *back_img = image_widget_create(back_img_path, back_size, back_size);
+  free(back_img_path);
+  if (back_img) {
+    back_img->base.rect.x = g_viewport.x + 20;
+    back_img->base.rect.y = g_viewport.y + 20;
+  }
+
+  Button_t btn_save = create_button(_("Save"), (EColor_t){COLOR_BLACK, COLOR_YELLOW},
+                                    font->fonts[FONT_BOLD], (SDL_Keycode)0);
+  btn_save.rect.x = x_left;
+  btn_save.rect.y = g_viewport.y + 750;
+
+  /* Build input widgets; host(1) and port(2) are on the startup screen, not here.
+   * BOOL entries get a CheckboxWidget_t instead of an InputWidget_t. */
+  const size_t bool_idx = 5;
+
+  /* Checkbox for the bool entry */
+  const bool init_checked =
+      *(const bool *)((const uint8_t *)player_config + player_config_entries[bool_idx].offset);
+  int checkbox_size;
+  TTF_SizeUTF8(font->fonts[FONT_DEFAULT], "Ag", NULL, &checkbox_size);
+  checkbox_size += 16;
+  CheckboxWidget_t *turn_cb = checkbox_widget_create(init_checked, checkbox_size);
+
+  /* Text inputs for displayed non-bool entries (skip host=1, port=2) */
+  char init_str[player_config_entry_count][MAX_INPUT_LENGTH];
+  InputWidget_t *inputs[player_config_entry_count];
+  size_t n_text_inputs = 0;
+  size_t display_pos = 0;
+  for (size_t i = 0; i < player_config_entry_count; i++) {
+    if (i == 1 || i == 2) {
+      inputs[i] = NULL;
+      continue;
+    }
+    if (i == bool_idx) {
+      if (turn_cb) {
+        int col = (int)(display_pos % 2);
+        int row = (int)(display_pos / 2);
+        turn_cb->base.rect.x = (col == 0) ? x_left : x_right;
+        turn_cb->base.rect.y = row_y[row] + input_y_offset;
+      }
+      inputs[i] = NULL;
+      display_pos++;
+      continue;
+    }
+    const void *field = (const uint8_t *)player_config + player_config_entries[i].offset;
+    switch (player_config_entries[i].type) {
+    case CFG_TYPE_STRING:
+      snprintf(init_str[i], sizeof(init_str[i]), "%s", (const char *)field);
+      break;
+    case CFG_TYPE_INT:
+      snprintf(init_str[i], sizeof(init_str[i]), "%d", *(const int *)field);
+      break;
+    case CFG_TYPE_UINT16:
+      snprintf(init_str[i], sizeof(init_str[i]), "%u", (unsigned)*(const uint16_t *)field);
+      break;
+    default:
+      snprintf(init_str[i], sizeof(init_str[i]), "%s", player_config_entries[i].default_value);
+      break;
+    }
+    inputs[i] = input_widget_create(init_str[i], font->fonts[FONT_DEFAULT], input_w,
+                                    player_config_entries[i].type);
+    if (!inputs[i]) {
+      for (size_t j = 0; j < i; j++)
+        if (inputs[j])
+          ui_widget_destroy(&inputs[j]->base);
+      if (turn_cb)
+        ui_widget_destroy(&turn_cb->base);
+      if (back_img)
+        ui_widget_destroy(&back_img->base);
+      return;
+    }
+    int col = (int)(display_pos % 2);
+    int row = (int)(display_pos / 2);
+    inputs[i]->base.rect.x = (col == 0) ? x_left : x_right;
+    inputs[i]->base.rect.y = row_y[row] + input_y_offset;
+    inputs[i]->focused = (n_text_inputs == 0);
+    if (player_config_entries[i].type == CFG_TYPE_INT)
+      inputs[i]->max_val = 10;
+    n_text_inputs++;
+    display_pos++;
+  }
+
+  /* focused_slot indexes only the text input slots (skips host, port, bool_idx) */
+  size_t text_input_indices[player_config_entry_count];
+  size_t n_ti = 0;
+  for (size_t i = 0; i < player_config_entry_count; i++)
+    if (i != bool_idx && i != 1 && i != 2)
+      text_input_indices[n_ti++] = i;
+  int focused_slot = 0; /* index into text_input_indices */
+
+  SDL_Rect title_rect = {g_center.x / 1.5, 60, 0, 0};
+
+  SDL_StartTextInput();
+  bool running = true;
+  bool saved = false;
+
+  while (running) {
+    SDL_Event e;
+    while (SDL_PollEvent(&e)) {
+      SDL_Point mouse_pos = {e.button.x, e.button.y};
+      btn_save.hovered = SDL_PointInRect(&mouse_pos, &btn_save.rect);
+      if (back_img)
+        back_img->base.hovered = SDL_PointInRect(&mouse_pos, &back_img->base.rect);
+      if (turn_cb)
+        turn_cb->base.hovered = SDL_PointInRect(&mouse_pos, &turn_cb->base.rect);
+
+      if (e.type == SDL_QUIT) {
+        running = false;
+      } else if (e.type == SDL_MOUSEBUTTONDOWN && e.button.button == SDL_BUTTON_LEFT) {
+        if (SDL_PointInRect(&mouse_pos, &btn_save.rect)) {
+          saved = true;
+          running = false;
+        } else if (back_img && SDL_PointInRect(&mouse_pos, &back_img->base.rect)) {
+          running = false;
+        } else if (turn_cb && SDL_PointInRect(&mouse_pos, &turn_cb->base.rect)) {
+          turn_cb->checked = !turn_cb->checked;
+        } else {
+          for (size_t s = 0; s < n_ti; s++) {
+            size_t i = text_input_indices[s];
+            if (SDL_PointInRect(&mouse_pos, &inputs[i]->base.rect)) {
+              inputs[text_input_indices[focused_slot]]->focused = false;
+              focused_slot = (int)s;
+              inputs[text_input_indices[focused_slot]]->focused = true;
+              break;
+            }
+          }
+        }
+      } else if (e.type == SDL_TEXTINPUT) {
+        input_widget_append(inputs[text_input_indices[focused_slot]], e.text.text);
+      } else if (e.type == SDL_KEYDOWN) {
+        switch (e.key.keysym.sym) {
+        case SDLK_RETURN:
+          saved = true;
+          running = false;
+          break;
+        case SDLK_ESCAPE:
+          running = false;
+          break;
+        case SDLK_TAB: {
+          inputs[text_input_indices[focused_slot]]->focused = false;
+          int dir = (e.key.keysym.mod & KMOD_SHIFT) ? -1 : 1;
+          focused_slot = (int)((focused_slot + dir + (int)n_ti) % (int)n_ti);
+          inputs[text_input_indices[focused_slot]]->focused = true;
+          break;
+        }
+        case SDLK_BACKSPACE:
+          input_widget_backspace(inputs[text_input_indices[focused_slot]]);
+          break;
+        case SDLK_F11:
+          toggle_fullscreen(sdl_context);
+          break;
+        default:
+          break;
+        }
+      }
+    }
+
+    clear_screen(sdl_context->renderer);
+
+    render_text_plain(sdl_context->renderer, font->fonts[FONT_TITLE], _("Settings"),
+                      get_color(COLOR_BLACK), &title_rect);
+
+    size_t rpos = 0;
+    for (size_t i = 0; i < player_config_entry_count; i++) {
+      if (i == 1 || i == 2)
+        continue;
+      int col = (int)(rpos % 2);
+      int row = (int)(rpos / 2);
+      int lx = (col == 0) ? x_left : x_right;
+      SDL_Rect label_rect = {lx, row_y[row], 0, 0};
+      render_text_plain(sdl_context->renderer, font->fonts[FONT_DEFAULT],
+                        player_config_entries[i].key, get_color(COLOR_BLACK), &label_rect);
+      if (i == bool_idx) {
+        if (turn_cb)
+          ui_widget_render(&turn_cb->base);
+      } else {
+        if (inputs[i])
+          ui_widget_render(&inputs[i]->base);
+      }
+      rpos++;
+    }
+
+    render_button(&btn_save);
+    if (back_img)
+      ui_widget_render(&back_img->base);
+
+    SDL_RenderPresent(sdl_context->renderer);
+    SDL_Delay(16);
+  }
+
+  SDL_StopTextInput();
+
+  if (saved) {
+    for (size_t i = 0; i < player_config_entry_count; i++) {
+      if (i == bool_idx)
+        player_config_set_field(player_config, i, turn_cb && turn_cb->checked ? "yes" : "no");
+      else if (inputs[i])
+        player_config_set_field(player_config, i, input_widget_get_text(inputs[i]));
+    }
+    save_player_config(player_config);
+  }
+
+  for (size_t i = 0; i < player_config_entry_count; i++)
+    if (inputs[i])
+      ui_widget_destroy(&inputs[i]->base);
+  if (turn_cb)
+    ui_widget_destroy(&turn_cb->base);
+  if (back_img)
+    ui_widget_destroy(&back_img->base);
 }
 
 static void print_version(void) {
@@ -407,16 +696,30 @@ int main(int argc, char *argv[]) {
   snprintf(host_str, sizeof(host_str), "%s", (cli_args.host) ? cli_args.host : player_config.host);
 
   uint16_t port = (cli_args.port != 0) ? cli_args.port : player_config.port;
-  if (menu_display_connect(&player_config, host_str, port, &sdl_context, &font, links) ==
-      RUN_CLIENT) {
-    char tmp[256] = {0};
-    snprintf(tmp, sizeof(tmp), _("Attempting connection to: %s..."), host_str);
-    render_text_plain(sdl_context.renderer, font.fonts[FONT_DEFAULT], tmp, get_color(COLOR_WHITE),
-                      &(SDL_Rect){10, g_center.y, 0, 0});
-    SDL_RenderPresent(sdl_context.renderer);
+  bool loop_to_connect = true;
+  while (loop_to_connect) {
+    loop_to_connect = false;
+    int connect_result;
+    do {
+      connect_result =
+          menu_display_connect(&player_config, host_str, &port, &sdl_context, &font, links);
+      if (connect_result == RUN_SETTINGS)
+        menu_display_settings(&player_config, &sdl_context, &font, &path);
+    } while (connect_result == RUN_SETTINGS);
 
-    get_socket_context_and_run_client(&player_config, &cli_args, host_str, port, &sdl_context,
-                                      &font, &path, cli_args.test_mode, links);
+    if (connect_result == RUN_CLIENT) {
+      char tmp[256] = {0};
+      snprintf(tmp, sizeof(tmp), _("Attempting connection to: %s..."), host_str);
+      render_text_plain(sdl_context.renderer, font.fonts[FONT_DEFAULT], tmp, get_color(COLOR_WHITE),
+                        &(SDL_Rect){10, g_center.y, 0, 0});
+      SDL_RenderPresent(sdl_context.renderer);
+
+      bool went_back = get_socket_context_and_run_client(&player_config, &cli_args, host_str, port,
+                                                         &sdl_context, &font, &path,
+                                                         cli_args.test_mode, links, NULL);
+      if (went_back)
+        loop_to_connect = true;
+    }
   }
 
   for (int i = 0; i < NUM_FONTS; ++i)

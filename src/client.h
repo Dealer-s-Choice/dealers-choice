@@ -58,11 +58,12 @@ typedef struct {
 
 extern const GameChoice_t game_choices[];
 
-SocketContext_t get_socket_context_and_run_client(PlayerConfig_t *player_config,
-                                                  const CliArgs_t *cli_args, const char *host_str,
-                                                  const uint16_t port, SdlContext_t *sdl_context,
-                                                  Font_t *font, Path_t *path, const bool test_mode,
-                                                  Link_t *links);
+bool get_socket_context_and_run_client(PlayerConfig_t *player_config,
+                                       const CliArgs_t *cli_args, const char *host_str,
+                                       const uint16_t port, SdlContext_t *sdl_context,
+                                       Font_t *font, Path_t *path, const bool test_mode,
+                                       Link_t *links,
+                                       SocketContext_t *out_socket_context);
 
 int8_t send_player_action(ClientState_t *client_state, TCPsocket sock, uint8_t action,
                           uint32_t amount);

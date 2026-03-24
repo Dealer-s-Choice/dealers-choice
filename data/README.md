@@ -40,6 +40,13 @@ ArchaiOptix, [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0), via
 [Classical Numismatic Group Inc.](http://www.cngcoins.com), [CC BY-SA 2.5](https://creativecommons.org/licenses/by-sa/2.5), via Wikimedia Commons
 
 
+* arrow_back.png
+
+Adapted from [File:Arrow_curved_left.png](https://commons.wikimedia.org/wiki/File:Arrow_curved_left.png)
+
+Public domain (PD-user — own work by original uploader), via Wikimedia Commons
+
+
 ## Fonts
 
 * LiberationSans-Bold.ttf

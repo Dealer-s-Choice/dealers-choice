@@ -12,6 +12,7 @@ typedef struct {
   bool focused;
   ConfigType type;
   TTF_Font *font;
+  long max_val; /* for numeric types: upper bound (0 = no limit) */
 } InputWidget_t;
 
 /* Create an input widget with an optional initial value, font, pixel width,

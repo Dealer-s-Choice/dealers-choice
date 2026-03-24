@@ -81,6 +81,60 @@ static void config_set_from_string_real(void *cfg, const ConfigEntry *entry, con
   }
 }
 
+static void config_field_to_string(const void *cfg, const ConfigEntry *entry, char *out,
+                                   size_t out_size) {
+  const void *field = (const uint8_t *)cfg + entry->offset;
+  switch (entry->type) {
+  case CFG_TYPE_STRING:
+    snprintf(out, out_size, "%s", (const char *)field);
+    break;
+  case CFG_TYPE_INT:
+    snprintf(out, out_size, "%d", *(const int *)field);
+    break;
+  case CFG_TYPE_UINT8:
+    snprintf(out, out_size, "%u", (unsigned)*(const uint8_t *)field);
+    break;
+  case CFG_TYPE_UINT16:
+    snprintf(out, out_size, "%u", (unsigned)*(const uint16_t *)field);
+    break;
+  case CFG_TYPE_UINT32:
+    snprintf(out, out_size, "%u", (unsigned)*(const uint32_t *)field);
+    break;
+  case CFG_TYPE_BOOL:
+    snprintf(out, out_size, "%s", *(const bool *)field ? "yes" : "no");
+    break;
+  }
+}
+
+void save_player_config(const PlayerConfig_t *config) {
+  char *cfgdir = get_config_dir();
+  if (!cfgdir) {
+    fprintf(stderr, "Unable to determine config directory.\n");
+    return;
+  }
+
+  PathconfLimits_t limits = {0};
+  get_pathconf_limits(cfgdir, &limits);
+  char *cfg_pathname = calloc_wrap(limits.path_max, 1);
+  snprintf(cfg_pathname, limits.path_max, "%s/player.conf", cfgdir);
+  free(cfgdir);
+
+  FILE *fp = fopen(cfg_pathname, "w");
+  if (!fp) {
+    perror("fopen");
+    free(cfg_pathname);
+    return;
+  }
+
+  char val_str[MAX_INPUT_LENGTH];
+  for (size_t i = 0; i < player_config_entry_count; i++) {
+    config_field_to_string(config, &player_config_entries[i], val_str, sizeof(val_str));
+    fprintf(fp, "%s = %s\n", player_config_entries[i].key, val_str);
+  }
+  fclose(fp);
+  free(cfg_pathname);
+}
+
 static void server_config_set_from_string(ServerConfig_t *cfg, const ConfigEntry *entry,
                                           const char *val) {
   config_set_from_string_real(cfg, entry, val);
@@ -89,6 +143,12 @@ static void server_config_set_from_string(ServerConfig_t *cfg, const ConfigEntry
 static void player_config_set_from_string(PlayerConfig_t *cfg, const ConfigEntry *entry,
                                           const char *val) {
   config_set_from_string_real(cfg, entry, val);
+}
+
+void player_config_set_field(PlayerConfig_t *cfg, size_t entry_idx, const char *val) {
+  if (entry_idx >= player_config_entry_count)
+    return;
+  player_config_set_from_string(cfg, &player_config_entries[entry_idx], val);
 }
 
 ServerConfig_t get_server_config(Path_t *path, const CliArgs_t *cli_args) {
@@ -187,9 +247,11 @@ PlayerConfig_t get_player_config(void) {
         exit(EXIT_FAILURE);
       }
     } else {
+      /* File exists but couldn't be parsed (e.g., empty due to a race between
+       * parallel processes). Use defaults so the caller can proceed. */
       fprintf(stderr, "Error accessing %s\n", cfg_pathname);
-      free(cfg_pathname);
-      exit(EXIT_FAILURE);
+      for (size_t i = 0; i < player_config_entry_count; i++)
+        config_set_default(&config, &player_config_entries[i]);
     }
   } else {
     // Track which keys were found

@@ -122,4 +122,8 @@ ServerConfig_t get_server_config(Path_t *path, const CliArgs_t *cli_args);
 
 PlayerConfig_t get_player_config(void);
 
+void player_config_set_field(PlayerConfig_t *cfg, size_t entry_idx, const char *val);
+
+void save_player_config(const PlayerConfig_t *config);
+
 #endif

@@ -1,5 +1,6 @@
 #include "input.h"
 #include "globals.h"
+#include <stdlib.h>
 
 #define CURSOR_BLINK_MS 500
 
@@ -146,6 +147,16 @@ bool input_widget_append(InputWidget_t *iw, const char *text) {
   memcpy(iw->buf + iw->len, text, add_len);
   iw->len += add_len;
   iw->buf[iw->len] = '\0';
+
+  if (iw->max_val != 0) {
+    long v = strtol(iw->buf, NULL, 10);
+    if (v > iw->max_val) {
+      iw->len -= add_len;
+      iw->buf[iw->len] = '\0';
+      return false;
+    }
+  }
+
   return true;
 }
 
