@@ -42,6 +42,7 @@
 #include "links.h"
 #include "main.h"
 #include "server.h"
+#include "widgets/input.h"
 
 enum { RUN_CLIENT = 20 };
 
@@ -56,26 +57,22 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, c
   button_connect.rect.x = x_margin;
   button_connect.rect.y = g_viewport.y + 160;
 
-  int text_w, text_h;
+  int input_w;
+  if (TTF_SizeUTF8(font->fonts[FONT_DEFAULT], "255.255.255.255", &input_w, NULL) != 0)
+    input_w = 150;
+  input_w += 20;
 
-  if (TTF_SizeUTF8(font->fonts[FONT_DEFAULT], "255.255.255.255", &text_w, &text_h) != 0) {
-    SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "TTF_SizeUTF8 failed: %s", TTF_GetError());
+  InputWidget_t *host_input =
+      input_widget_create(host_str, font->fonts[FONT_DEFAULT], input_w, CFG_TYPE_STRING);
+  if (!host_input)
+    return 0;
+  host_input->base.rect.x = x_margin;
+  host_input->base.rect.y = g_viewport.y + 220;
+  host_input->focused = true;
 
-    /* fallback size */
-    text_w = 150;
-    text_h = 20;
-  }
-  SDL_Rect input_box = {x_margin, g_viewport.y + 220, text_w + 20, text_h + 16};
+  SDL_Rect port_rect = {x_margin, host_input->base.rect.y + host_input->base.rect.h + 12, 0, 0};
+  SDL_Rect input_nick_pos = {x_margin, g_viewport.y + 380, 0, 0};
 
-  SDL_Rect input_text_pos = {input_box.x + 10, input_box.y + (input_box.h - text_h) / 2, 0, 0};
-
-  SDL_Rect port_rect = {input_box.x, input_box.y + 60, 0, 0};
-
-  // TODO: Create a 'input_box' struct similar to CardContext_t. It will
-  // be used for inputs such as the host ip, nick, and port
-  // This isn't actually an input yet.
-  SDL_Rect input_nick = (SDL_Rect){x_margin, g_viewport.y + 380, 300, 40};
-  SDL_Rect input_nick_pos = {input_nick.x, input_nick.y, 0, 0};
   SDL_StartTextInput();
 
   layout_links(links, LINK_DEFS_COUNT);
@@ -102,9 +99,7 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, c
               fputs(SDL_GetError(), stderr);
         }
       } else if (e.type == SDL_TEXTINPUT) {
-        if (strlen(host_str) + strlen(e.text.text) < MAX_INPUT_LENGTH) {
-          strcat(host_str, e.text.text);
-        }
+        input_widget_append(host_input, e.text.text);
       } else if (e.type == SDL_KEYDOWN) {
         switch (e.key.keysym.sym) {
         case SDLK_RETURN:
@@ -121,8 +116,7 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, c
           break;
 
         case SDLK_BACKSPACE:
-          if (strlen(host_str) > 0)
-            host_str[strlen(host_str) - 1] = '\0';
+          input_widget_backspace(host_input);
           break;
 
         default:
@@ -134,11 +128,7 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, c
     clear_screen(sdl_context->renderer);
     render_button(&button_connect);
 
-    SDL_SetRenderDrawColor(sdl_context->renderer, 255, 255, 255, 255);
-    draw_rect_border(sdl_context->renderer, input_box);
-
-    render_text(sdl_context->renderer, font->fonts[FONT_DEFAULT], host_str, get_color(COLOR_WHITE),
-                &input_text_pos);
+    ui_widget_render(&host_input->base);
 
     char port_str[24] = {0};
     snprintf(port_str, sizeof(port_str), _("port: %" PRIu16), port);
@@ -165,6 +155,14 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, c
   }
 
   SDL_StopTextInput();
+
+  /* Copy the final text back to host_str before destroying the widget */
+  const char *final = input_widget_get_text(host_input);
+  strncpy(host_str, final, MAX_INPUT_LENGTH - 1);
+  host_str[MAX_INPUT_LENGTH - 1] = '\0';
+
+  ui_widget_destroy(&host_input->base);
+
   return run_client == true ? RUN_CLIENT : 0;
 }
 
