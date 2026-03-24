@@ -267,6 +267,8 @@ static void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *s
     inputs[i]->base.rect.x = (col == 0) ? x_left : x_right;
     inputs[i]->base.rect.y = row_y[row] + input_y_offset;
     inputs[i]->focused = (n_text_inputs == 0);
+    if (player_config_entries[i].type == CFG_TYPE_INT)
+      inputs[i]->max_val = 10;
     n_text_inputs++;
   }
 
