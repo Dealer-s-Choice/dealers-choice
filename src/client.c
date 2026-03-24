@@ -73,7 +73,7 @@ static int send_protocol_header(TCPsocket sock) {
   snprintf(hdr.magic, sizeof(hdr.magic), "%s", GAME_PROTOCOL_MAGIC);
   hdr.version = SDL_SwapBE16(GAME_PROTOCOL_VERSION);
 
-  return send_all_tcp_DEPRECATED(sock, &hdr, sizeof(hdr));
+  return send_all_tcp(sock, &hdr, sizeof(hdr));
 }
 
 static void ma_sound_start_wrap(ma_sound *pSound, const char *file, const int line) {
@@ -565,7 +565,7 @@ int8_t send_player_action(ClientState_t *client_state, TCPsocket sock, uint8_t a
   client_state->bet_check_fold = false;
   client_state->call_raise_fold = false;
 
-  return send_all_tcp_DEPRECATED(sock, buffer, sizeof(buffer));
+  return send_all_tcp(sock, buffer, sizeof(buffer));
 }
 
 int8_t send_discards_request_new_cards(TCPsocket sock, const uint8_t *discard_indices,
@@ -581,7 +581,7 @@ int8_t send_discards_request_new_cards(TCPsocket sock, const uint8_t *discard_in
   for (int i = 0; i < 4; ++i)
     buffer[3 + i] = (i < count) ? discard_indices[i] : 0xFF;
 
-  return send_all_tcp_DEPRECATED(sock, buffer, sizeof(buffer));
+  return send_all_tcp(sock, buffer, sizeof(buffer));
 }
 
 typedef struct {
@@ -1608,7 +1608,7 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
           }
 
           // Just send the serialized protobuf
-          if (send_all_tcp_DEPRECATED(sock, data, size) != 0) {
+          if (send_all_tcp(sock, data, size) != 0) {
             fprintf(stderr, "Failed to send hand\n");
             free(data);
             running = -1;
@@ -1645,7 +1645,7 @@ int authenticate_with_server(TCPsocket sock, const char *password) {
   crypto_hash_sha256_final(&state, hash);
 
   /* send response */
-  if (send_all_tcp_DEPRECATED(sock, hash, HASH_SIZE) < 0) {
+  if (send_all_tcp(sock, hash, HASH_SIZE) != 0) {
     fprintf(stderr, "Failed to send authentication response\n");
     return -1;
   }
@@ -1728,8 +1728,8 @@ SocketContext_t get_socket_context_and_run_client(PlayerConfig_t *player_config,
     char *nick = player_config->nick;
     uint16_t len = strlen(nick) + 1;
     uint16_t net_len = SDL_SwapBE16(len);
-    send_all_tcp_DEPRECATED(sock, &net_len, sizeof(net_len));
-    if (send_all_tcp_DEPRECATED(sock, player_config->nick, len) != 0)
+    send_all_tcp(sock, &net_len, sizeof(net_len));
+    if (send_all_tcp(sock, player_config->nick, len) != 0)
       fprintf(stderr, "Failed to send player nick to server\n");
 
     const Uint32 timeout = 2000;    // 2 seconds

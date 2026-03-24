@@ -289,19 +289,23 @@ int send_all_tcp_DEPRECATED(TCPsocket sock, const void *data, size_t length) {
 }
 
 int send_all_tcp(TCPsocket sock, const void *data, size_t length) {
-  int sent = SDLNet_TCP_Send(sock, data, (int)length);
+  const uint8_t *buf = (const uint8_t *)data;
+  size_t total_sent = 0;
 
-  if (sent < 0) {
-    fprintf(stderr, "SDLNet_TCP_Send failed: %s\n", SDLNet_GetError());
-    return -1;
+  while (total_sent < length) {
+    int sent = SDLNet_TCP_Send(sock, buf + total_sent, (int)(length - total_sent));
+    if (sent < 0) {
+      fprintf(stderr, "SDLNet_TCP_Send failed: %s\n", SDLNet_GetError());
+      return -1;
+    }
+    if (sent == 0) {
+      fprintf(stderr, "SDLNet_TCP_Send: connection closed\n");
+      return -1;
+    }
+    total_sent += sent;
   }
 
-  if (sent < (int)length) {
-    fprintf(stderr, "Short send: %d of %zu bytes\n", sent, length);
-    return -1;
-  }
-
-  return sent;
+  return 0;
 }
 
 int recv_all_tcp(TCPsocket sock, void *buf, size_t len) {
