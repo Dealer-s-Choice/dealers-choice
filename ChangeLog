@@ -1,5 +1,6 @@
 
 - dealers-choice (in progress):
+  + Add two animated card backs: lava lamp and sunset (#178)
   * bugfix: Client freezes (infinite loop in layout_cards) when slot-0
     player disconnects during a game (#195)
   + Implement server authentication
