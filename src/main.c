@@ -150,10 +150,12 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, u
           run_settings = true;
           running = false;
         } else if (SDL_PointInRect(&mouse_pos, &button_save->base.rect)) {
+          button_save->click.start_time = SDL_GetTicks();
           player_config_set_field(player_config, 1, input_widget_get_text(host_input));
           player_config_set_field(player_config, 2, input_widget_get_text(port_input));
           save_player_config(player_config);
         } else if (SDL_PointInRect(&mouse_pos, &button_defaults->base.rect)) {
+          button_defaults->click.start_time = SDL_GetTicks();
           input_widget_set_text(host_input, player_config_entries[1].default_value);
           input_widget_set_text(port_input, player_config_entries[2].default_value);
         } else if (SDL_PointInRect(&mouse_pos, &host_input->base.rect)) {
@@ -392,9 +394,11 @@ static void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *s
         running = false;
       } else if (e.type == SDL_MOUSEBUTTONDOWN && e.button.button == SDL_BUTTON_LEFT) {
         if (SDL_PointInRect(&mouse_pos, &btn_save->base.rect)) {
+          btn_save->click.start_time = SDL_GetTicks();
           saved = true;
           running = false;
         } else if (SDL_PointInRect(&mouse_pos, &btn_defaults->base.rect)) {
+          btn_defaults->click.start_time = SDL_GetTicks();
           for (size_t i = 0; i < player_config_entry_count; i++) {
             if (i == 0 || i == 1 || i == 2)
               continue;
