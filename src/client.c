@@ -382,17 +382,12 @@ static EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_confi
       switch (e.type) {
 
       case SDL_QUIT:
-        show_loading_screen(sdl_context->renderer, font->fonts[FONT_TITLE], _("Disconnecting..."));
-        SDL_RenderPresent(sdl_context->renderer);
         result = false;
         goto cleanup;
 
       case SDL_MOUSEBUTTONDOWN: {
         if (e.button.button == SDL_BUTTON_LEFT) {
 if (back_img && SDL_PointInRect(&mouse_pos, &back_img->base.rect)) {
-            show_loading_screen(sdl_context->renderer, font->fonts[FONT_TITLE],
-                                _("Returning to menu..."));
-            SDL_RenderPresent(sdl_context->renderer);
             result = GAME_SEL_BACK;
             goto cleanup;
           }
