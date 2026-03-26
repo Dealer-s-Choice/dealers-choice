@@ -502,8 +502,7 @@ static CardBackStyle_t card_back_styles[] = {
 static int selected_card_back = -1;
 
 static void select_card_back_for_game(void) {
-  selected_card_back =
-      pcg32_boundedrand_r(&rng, sizeof(card_back_styles) / sizeof(card_back_styles[0]));
+  selected_card_back = pcg32_boundedrand_r(&rng, ARRAY_SIZE(card_back_styles));
 }
 
 static void draw_card_back_pattern(SDL_Renderer *renderer, SDL_Rect *card_rect) {
@@ -646,9 +645,9 @@ static void draw_card_back_pattern(SDL_Renderer *renderer, SDL_Rect *card_rect) 
     SDL_RenderSetClipRect(renderer, NULL);
     break;
   }
-  case 6: { // sunset (animated) — 60-second repeating arc
+  case 6: { // sunset (animated) — 30-second repeating arc
     float t  = (float)SDL_GetTicks() * 0.001f;
-    float ph = fmodf(t, 60.0f) / 60.0f; // 0..1 over 60 seconds
+    float ph = fmodf(t, 30.0f) / 30.0f; // 0..1 over 30 seconds
 
     // Sky color: bright blue -> sunset orange -> night
     Uint8 sky_r, sky_g, sky_b;
@@ -659,8 +658,8 @@ static void draw_card_back_pattern(SDL_Renderer *renderer, SDL_Rect *card_rect) 
       sky_b = (Uint8)(210 - p *  40);
     } else if (ph < 0.75f) {
       float p = (ph - 0.55f) / 0.20f;
-      sky_r = (Uint8)(190 + p *  65);
-      sky_g = (Uint8)(140 - p * 100);
+      sky_r = (Uint8)(190 + p *  30);  // peak 220, not 255
+      sky_g = (Uint8)(140 - p *  60);  // peak 80, stays orange not red
       sky_b = (Uint8)(170 - p * 160);
     } else {
       float p = (ph - 0.75f) / 0.25f;
@@ -703,22 +702,33 @@ static void draw_card_back_pattern(SDL_Renderer *renderer, SDL_Rect *card_rect) 
       }
     }
 
-    // Sun: arcs from top-left toward bottom-right, fades as it sets
+    // Sun: arcs from top-left toward bottom-right, disappears behind horizon
     float sun_fx = 0.15f + ph * 0.70f;
     float sun_fy = ph;
     int sun_cx = card_rect->x + (int)(sun_fx * card_rect->w);
     int sun_cy = card_rect->y + 4 + (int)(sun_fy * (card_rect->h - 8));
     int sun_rad = 5;
-    Uint8 sun_g  = ph < 0.60f ? 230 : (Uint8)(230 - (ph - 0.60f) / 0.40f * 180);
-    Uint8 sun_b  = ph < 0.60f ?  80 : 0;
-    Uint8 sun_a  = ph < 0.85f ? 255 : (Uint8)(255 * (1.0f - (ph - 0.85f) / 0.15f));
-    SDL_SetRenderDrawColor(renderer, 255, sun_g, sun_b, sun_a);
+    Uint8 sun_g = ph < 0.60f ? 230 : (Uint8)(230 - (ph - 0.60f) / 0.40f * 180);
+    Uint8 sun_b = ph < 0.60f ?  80 : 0;
+    SDL_SetRenderDrawColor(renderer, 255, sun_g, sun_b, 255);
     for (int dy = -sun_rad; dy <= sun_rad; dy++) {
       float inside = (float)(sun_rad * sun_rad - dy * dy);
       if (inside < 0.0f) continue;
       int dx = (int)(sqrtf(inside) + 0.5f);
       SDL_RenderDrawLine(renderer, sun_cx - dx, sun_cy + dy, sun_cx + dx, sun_cy + dy);
     }
+
+    // Horizon: dark ground at bottom, 7px tall on left edge, 13px on right,
+    // drawn on top of everything so the sun sinks behind it naturally.
+    SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+    for (int row = 0; row < 13; row++) {
+      int y      = card_rect->y + card_rect->h - 1 - row;
+      int x_start = row <= 7 ? 0 : (row - 7) * card_rect->w / 6;
+      SDL_RenderDrawLine(renderer, card_rect->x + x_start, y,
+                         card_rect->x + card_rect->w - 1, y);
+    }
+    SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
 
     // Stars: fade in after sunset
     if (ph > 0.78f) {
