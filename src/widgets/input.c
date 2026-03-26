@@ -175,3 +175,12 @@ void input_widget_backspace(InputWidget_t *iw) {
 const char *input_widget_get_text(const InputWidget_t *iw) {
   return iw ? iw->buf : "";
 }
+
+void input_widget_set_text(InputWidget_t *iw, const char *text) {
+  if (!iw)
+    return;
+  iw->len = 0;
+  iw->buf[0] = '\0';
+  if (text && *text)
+    input_widget_append(iw, text);
+}
