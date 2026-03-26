@@ -270,8 +270,8 @@ static void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *s
   ImageWidget_t *back_img = image_widget_create(back_img_path, back_size, back_size);
   free(back_img_path);
   if (back_img) {
-    back_img->base.rect.x = g_viewport.x + 20;
-    back_img->base.rect.y = g_viewport.y + 20;
+    back_img->base.rect.x = g_viewport.x + g_viewport.w - back_size - 20;
+    back_img->base.rect.y = g_viewport.y + g_viewport.h / 2;
     ui_register(&reg, &back_img->base);
   }
 
@@ -374,6 +374,7 @@ static void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *s
   ui_register(&reg, &btn_defaults->base);
 
   SDL_Rect title_rect = {g_center.x / 1.5, 60, 0, 0};
+  Uint32 anim_start = SDL_GetTicks();
 
   SDL_StartTextInput();
   bool running = true;
@@ -477,6 +478,15 @@ static void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *s
       render_text_plain(sdl_context->renderer, font->fonts[FONT_DEFAULT],
                         player_config_entries[i].key, get_color(COLOR_BLACK), &label_rect);
       rpos++;
+    }
+
+    if (back_img) {
+      float t = (SDL_GetTicks() - anim_start) / 2000.0f;
+      if (t > 1.0f)
+        t = 1.0f;
+      int start_y = g_viewport.y + g_viewport.h / 2;
+      int end_y   = g_viewport.y + g_viewport.h - back_size - 20;
+      back_img->base.rect.y = start_y + (int)(t * (end_y - start_y));
     }
 
     ui_render_all(&reg);
