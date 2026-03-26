@@ -393,6 +393,7 @@ static void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *s
         turn_cb->base.hovered = SDL_PointInRect(&mouse_pos, &turn_cb->base.rect);
 
       if (e.type == SDL_QUIT) {
+        SDL_PushEvent(&e);
         running = false;
       } else if (e.type == SDL_MOUSEBUTTONDOWN && e.button.button == SDL_BUTTON_LEFT) {
         if (SDL_PointInRect(&mouse_pos, &btn_save->base.rect)) {
