@@ -183,10 +183,12 @@ static EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_confi
   ImageWidget_t *back_img = image_widget_create(back_img_path, back_btn_size, back_btn_size);
   free(back_img_path);
   if (back_img) {
-    back_img->base.rect.x = g_viewport.x + 20;
-    back_img->base.rect.y = g_viewport.y + 20;
+    back_img->base.rect.x = g_viewport.x + g_viewport.w - back_btn_size - 20;
+    back_img->base.rect.y = g_viewport.y + g_viewport.h / 2;
     ui_register(&registry, &back_img->base);
   }
+
+  Uint32 anim_start = SDL_GetTicks();
 
   while (game_state->at_menu) {
     ERecvStatus_t recv_status = recv_game_state(socket_context, game_state, client_state, my_id);
@@ -341,6 +343,15 @@ static EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_confi
 
     waiting_players_tw->base.enabled = dealing && (n_clients == 1);
     waiting_dealer_tw->base.enabled = dealing && (n_clients > 1 && game_state->dealer_id != my_id);
+
+    if (back_img) {
+      float t = (SDL_GetTicks() - anim_start) / 2000.0f;
+      if (t > 1.0f)
+        t = 1.0f;
+      int start_y = g_viewport.y + g_viewport.h / 2;
+      int end_y   = g_viewport.y + g_viewport.h - back_btn_size - 20;
+      back_img->base.rect.y = start_y + (int)(t * (end_y - start_y));
+    }
 
     ui_render_all(&registry);
     ui_table_draw_row_separators(&table, sdl_context->renderer);
