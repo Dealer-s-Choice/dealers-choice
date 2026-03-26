@@ -207,6 +207,15 @@ static EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_confi
 
     SDL_Point mouse_pos = {(int)lx, (int)ly};
 
+    if (back_img) {
+      float t = (SDL_GetTicks() - anim_start) / 2000.0f;
+      if (t > 1.0f)
+        t = 1.0f;
+      int start_y = g_viewport.y + g_viewport.h / 2;
+      int end_y   = g_viewport.y + g_viewport.h - back_btn_size - 20;
+      back_img->base.rect.y = start_y + (int)(t * (end_y - start_y));
+    }
+
     for (int i = 0; i < MAX_CHOICES; i++)
       game_choice_button[i]->base.hovered =
           SDL_PointInRect(&mouse_pos, &game_choice_button[i]->base.rect) &&
@@ -344,15 +353,6 @@ static EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_confi
     waiting_players_tw->base.enabled = dealing && (n_clients == 1);
     waiting_dealer_tw->base.enabled = dealing && (n_clients > 1 && game_state->dealer_id != my_id);
 
-    if (back_img) {
-      float t = (SDL_GetTicks() - anim_start) / 2000.0f;
-      if (t > 1.0f)
-        t = 1.0f;
-      int start_y = g_viewport.y + g_viewport.h / 2;
-      int end_y   = g_viewport.y + g_viewport.h - back_btn_size - 20;
-      back_img->base.rect.y = start_y + (int)(t * (end_y - start_y));
-    }
-
     ui_render_all(&registry);
     ui_table_draw_row_separators(&table, sdl_context->renderer);
 
@@ -366,6 +366,17 @@ static EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_confi
     // SDL_RenderGetLogicalSize(sdl_context->renderer, &lw, &lh);
     // SDL_Log("logical size from renderer: %dx%d", lw, lh);
 
+    /* Refresh mouse_pos immediately before event polling so click checks
+     * use the most current position, not the one from the top of the frame. */
+    {
+      int rmx, rmy;
+      SDL_GetMouseState(&rmx, &rmy);
+      float rlx, rly;
+      SDL_RenderWindowToLogical(sdl_context->renderer, rmx, rmy, &rlx, &rly);
+      mouse_pos.x = (int)rlx;
+      mouse_pos.y = (int)rly;
+    }
+
     SDL_Event e;
     while (SDL_PollEvent(&e)) {
       switch (e.type) {
@@ -376,7 +387,7 @@ static EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_confi
 
       case SDL_MOUSEBUTTONDOWN: {
         if (e.button.button == SDL_BUTTON_LEFT) {
-          if (back_img && SDL_PointInRect(&mouse_pos, &back_img->base.rect)) {
+if (back_img && SDL_PointInRect(&mouse_pos, &back_img->base.rect)) {
             result = GAME_SEL_BACK;
             goto cleanup;
           }
@@ -1810,19 +1821,16 @@ bool get_socket_context_and_run_client(PlayerConfig_t *player_config,
     if (player_config->volume == 0 || cli_args->disable_audio) {
       ma_engine_config_init();
       sound_context.engineConfig.noDevice = MA_TRUE;
-      sound_context.engineConfig.channels = 2;       // Must be set when not using a device.
-      sound_context.engineConfig.sampleRate = 48000; // Must be set when not using a device.
-    } else // Obviously the engine gets initialized unconditionally, but I don't see
-      // any reason to show this and confuse a user who has their volume set to 0
+      sound_context.engineConfig.channels = 2;
+      sound_context.engineConfig.sampleRate = 48000;
+    } else
       verbose_puts("Initializing audio engine (powered by miniaudio: https://miniaud.io/)");
-
     sound_context.result = ma_engine_init(&sound_context.engineConfig, &sound_context.engine);
     if (sound_context.result != MA_SUCCESS) {
       fprintf(stderr, "Error: Failed to initialize miniaudio engine (code: %d).\n",
               sound_context.result);
       exit(EXIT_FAILURE);
     }
-
     ma_engine_set_volume(&sound_context.engine, player_config->volume * .1f);
 
     // Using {0} or {{0}} for the The ma_sound field initializer doesn't work so
@@ -1883,13 +1891,20 @@ bool get_socket_context_and_run_client(PlayerConfig_t *player_config,
       running = handle_game_logic(player_config, &socket_context, &game_settings, &game_state,
                                   sdl_context, font, path, &sound_context);
     } while (running);
+    show_loading_screen(sdl_context->renderer, font->fonts[FONT_TITLE],
+                        went_back ? _("Returning to menu...") : _("Disconnecting..."));
+    SDL_RenderPresent(sdl_context->renderer);
+
     for (i = 0; i < SND_NUM_SOUNDS; i++)
       ma_sound_uninit(&sounds[i].sound);
     for (i = 0; i < ARRAY_SIZE(coin_hit_sounds); i++)
       ma_sound_uninit(&coin_hit_sounds[i].sound);
-    ma_engine_uninit(&sound_context.engine);
+    if (!went_back)
+      ma_engine_uninit(&sound_context.engine);
     socket_cleanup(&socket_context);
     SDLNet_Quit();
+    SDL_FlushEvents(SDL_FIRSTEVENT, SDL_LASTEVENT);
+
     return went_back;
   } else {
     if (out_socket_context)

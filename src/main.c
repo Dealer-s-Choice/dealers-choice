@@ -51,6 +51,7 @@
 
 enum { RUN_CLIENT = 20, RUN_SETTINGS = 21 };
 
+
 static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, uint16_t *port,
                                 SdlContext_t *sdl_context, Font_t *font, Link_t *links) {
   Button_t button_connect = create_button(_("Connect"), (EColor_t){COLOR_BLACK, COLOR_YELLOW},
