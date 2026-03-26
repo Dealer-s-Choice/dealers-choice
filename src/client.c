@@ -183,10 +183,12 @@ static EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_confi
   ImageWidget_t *back_img = image_widget_create(back_img_path, back_btn_size, back_btn_size);
   free(back_img_path);
   if (back_img) {
-    back_img->base.rect.x = g_viewport.x + 20;
-    back_img->base.rect.y = g_viewport.y + 20;
+    back_img->base.rect.x = g_viewport.x + g_viewport.w - back_btn_size - 20;
+    back_img->base.rect.y = g_viewport.y + g_viewport.h / 2;
     ui_register(&registry, &back_img->base);
   }
+
+  Uint32 anim_start = SDL_GetTicks();
 
   while (game_state->at_menu) {
     ERecvStatus_t recv_status = recv_game_state(socket_context, game_state, client_state, my_id);
@@ -204,6 +206,15 @@ static EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_confi
     SDL_RenderWindowToLogical(sdl_context->renderer, mx, my, &lx, &ly);
 
     SDL_Point mouse_pos = {(int)lx, (int)ly};
+
+    if (back_img) {
+      float t = (SDL_GetTicks() - anim_start) / 1000.0f;
+      if (t > 1.0f)
+        t = 1.0f;
+      int start_y = g_viewport.y + g_viewport.h * 2 / 3;
+      int end_y   = g_viewport.y + g_viewport.h - back_btn_size - 20;
+      back_img->base.rect.y = start_y + (int)(t * (end_y - start_y));
+    }
 
     for (int i = 0; i < MAX_CHOICES; i++)
       game_choice_button[i]->base.hovered =
@@ -355,6 +366,17 @@ static EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_confi
     // SDL_RenderGetLogicalSize(sdl_context->renderer, &lw, &lh);
     // SDL_Log("logical size from renderer: %dx%d", lw, lh);
 
+    /* Refresh mouse_pos immediately before event polling so click checks
+     * use the most current position, not the one from the top of the frame. */
+    {
+      int rmx, rmy;
+      SDL_GetMouseState(&rmx, &rmy);
+      float rlx, rly;
+      SDL_RenderWindowToLogical(sdl_context->renderer, rmx, rmy, &rlx, &rly);
+      mouse_pos.x = (int)rlx;
+      mouse_pos.y = (int)rly;
+    }
+
     SDL_Event e;
     while (SDL_PollEvent(&e)) {
       switch (e.type) {
@@ -365,7 +387,7 @@ static EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_confi
 
       case SDL_MOUSEBUTTONDOWN: {
         if (e.button.button == SDL_BUTTON_LEFT) {
-          if (back_img && SDL_PointInRect(&mouse_pos, &back_img->base.rect)) {
+if (back_img && SDL_PointInRect(&mouse_pos, &back_img->base.rect)) {
             result = GAME_SEL_BACK;
             goto cleanup;
           }
@@ -1681,6 +1703,7 @@ int authenticate_with_server(TCPsocket sock, const char *password) {
   return 0;
 }
 
+
 bool get_socket_context_and_run_client(PlayerConfig_t *player_config,
                                        const CliArgs_t *cli_args, const char *host_str,
                                        const uint16_t port, SdlContext_t *sdl_context,
@@ -1799,19 +1822,16 @@ bool get_socket_context_and_run_client(PlayerConfig_t *player_config,
     if (player_config->volume == 0 || cli_args->disable_audio) {
       ma_engine_config_init();
       sound_context.engineConfig.noDevice = MA_TRUE;
-      sound_context.engineConfig.channels = 2;       // Must be set when not using a device.
-      sound_context.engineConfig.sampleRate = 48000; // Must be set when not using a device.
-    } else // Obviously the engine gets initialized unconditionally, but I don't see
-      // any reason to show this and confuse a user who has their volume set to 0
+      sound_context.engineConfig.channels = 2;
+      sound_context.engineConfig.sampleRate = 48000;
+    } else
       verbose_puts("Initializing audio engine (powered by miniaudio: https://miniaud.io/)");
-
     sound_context.result = ma_engine_init(&sound_context.engineConfig, &sound_context.engine);
     if (sound_context.result != MA_SUCCESS) {
       fprintf(stderr, "Error: Failed to initialize miniaudio engine (code: %d).\n",
               sound_context.result);
       exit(EXIT_FAILURE);
     }
-
     ma_engine_set_volume(&sound_context.engine, player_config->volume * .1f);
 
     // Using {0} or {{0}} for the The ma_sound field initializer doesn't work so
@@ -1879,6 +1899,7 @@ bool get_socket_context_and_run_client(PlayerConfig_t *player_config,
     ma_engine_uninit(&sound_context.engine);
     socket_cleanup(&socket_context);
     SDLNet_Quit();
+
     return went_back;
   } else {
     if (out_socket_context)

@@ -25,6 +25,9 @@ bool input_widget_append(InputWidget_t *iw, const char *text);
 /* Remove the last UTF-8 character. */
 void input_widget_backspace(InputWidget_t *iw);
 
+/* Replace the buffer contents with the given text. */
+void input_widget_set_text(InputWidget_t *iw, const char *text);
+
 /* Get the current buffer contents. */
 const char *input_widget_get_text(const InputWidget_t *iw);
 
