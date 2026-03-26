@@ -1,4 +1,4 @@
-unit_tests = ['serialization', 'get_next_player', 'debug_print_cards']
+unit_tests = ['serialization', 'get_next_player', 'debug_print_cards', 'layout_cards']
 
 base_env = {
   'DEALERSCHOICE_DATADIR': join_paths(meson.project_source_root(), 'data'),

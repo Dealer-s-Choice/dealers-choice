@@ -64,7 +64,7 @@ static const SDL_Rect card_area = {0, 0, 80, 50};
 #endif
 
 // What's the max this needs to be to support the unicode suit symbol?
-#define SIZEOF_CARD_TEXT 20
+// SIZEOF_CARD_TEXT is defined in client.h
 
 #define MAX_POT_COINS 40
 
@@ -634,16 +634,7 @@ int8_t send_discards_request_new_cards(TCPsocket sock, const uint8_t *discard_in
   return send_all_tcp(sock, buffer, sizeof(buffer));
 }
 
-typedef struct {
-  char text[SIZEOF_CARD_TEXT];
-  SDL_Color textColor;
-  SDL_Renderer *renderer;
-  // SDL_Color bg_color;
-  // SDL_Color fg_color;
-  SDL_Rect rect;
-  bool hovered, selected, is_back, is_null;
-  bool is_wild;
-} CardContext_t;
+// CardContext_t is defined in client.h
 
 static void render_card(CardContext_t *context, TTF_Font *font, const bool my_card,
                         const bool do_wild_exchange) {
@@ -771,11 +762,19 @@ static void create_card_context(CardContext_t card_context[MAX_PLAYERS][MAX_HAND
   } while (turn && turn != starting_turn);
 }
 
-static void layout_cards(CardContext_t card_context[MAX_PLAYERS][MAX_HAND_SIZE],
-                         Player_t *players_array, const SDL_Point *player_pos) {
+void layout_cards(CardContext_t card_context[MAX_PLAYERS][MAX_HAND_SIZE],
+                  Player_t *players_array, const SDL_Point *player_pos) {
 
-  Player_t *turn = &players_array[0];
-  Player_t *starting_turn = turn;
+  Player_t *starting_turn = NULL;
+  for (int i = 0; i < MAX_PLAYERS; i++) {
+    if (players_array[i].is_connected) {
+      starting_turn = &players_array[i];
+      break;
+    }
+  }
+  if (!starting_turn)
+    return;
+  Player_t *turn = starting_turn;
   do {
     for (int card_n = 0; card_n < MAX_HAND_SIZE; card_n++) {
       const int id = turn->id;
