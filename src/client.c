@@ -1708,16 +1708,16 @@ int authenticate_with_server(TCPsocket sock, const char *password) {
   return 0;
 }
 
-/* The engine is kept alive across back/reconnect cycles and uninited at
- * process exit. ma_engine_uninit blocks ~30s on some systems (PipeWire
- * timeout), so doing it at exit keeps the back-button transition instant
- * and the window already closed before the delay is noticeable. LSAN
- * runs after atexit handlers, so no leaks are reported. */
+/* The engine is initialized once and kept alive across back/reconnect
+ * cycles; do_audio_cleanup() uninits it once at program exit. */
 static SoundContext_t s_sound_context;
 static bool s_audio_initialized = false;
 
-static void audio_engine_uninit_atexit(void) {
-  ma_engine_uninit(&s_sound_context.engine);
+void do_audio_cleanup(void) {
+  if (s_audio_initialized) {
+    ma_engine_uninit(&s_sound_context.engine);
+    s_audio_initialized = false;
+  }
 }
 
 bool get_socket_context_and_run_client(PlayerConfig_t *player_config,
@@ -1851,7 +1851,6 @@ bool get_socket_context_and_run_client(PlayerConfig_t *player_config,
         exit(EXIT_FAILURE);
       }
       s_audio_initialized = true;
-      atexit(audio_engine_uninit_atexit);
     }
     ma_engine_set_volume(&sound_context->engine, player_config->volume * .1f);
 

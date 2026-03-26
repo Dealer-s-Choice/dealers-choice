@@ -778,6 +778,7 @@ int main(int argc, char *argv[]) {
     }
   }
 
+  do_audio_cleanup();
   for (int i = 0; i < NUM_FONTS; ++i)
     TTF_CloseFont(font.fonts[i]);
   TTF_Quit();
