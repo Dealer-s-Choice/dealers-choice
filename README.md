@@ -71,6 +71,21 @@ file](https://github.com/Dealer-s-Choice/dealers_choice/tree/trunk/docker) or
 To run the client, simply run the binary without any arguments. A game can not
 be started until there is more than one player connected.
 
+## Hardware Requirements
+
+Dealer's Choice is a lightweight 2D application and runs on modest hardware.
+
+| Component | Minimum |
+|-----------|---------|
+| OS        | Linux (kernel 4.x+), macOS 14, Windows 10 |
+| CPU       | 1 GHz single-core |
+| RAM       | 256 MB |
+| Graphics  | Any GPU or integrated graphics with OpenGL 2.0 support |
+| Storage   | 100 MB |
+| Network   | LAN or internet connection to reach a server |
+| Audio     | Optional — any audio output device |
+| Display   | 1280 × 720 minimum, 1920 × 1080 recommended |
+
 ## Player Config
 
 See [docs/CONFIG.md](docs/CONFIG.md) for details.
