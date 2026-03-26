@@ -208,10 +208,10 @@ static EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_confi
     SDL_Point mouse_pos = {(int)lx, (int)ly};
 
     if (back_img) {
-      float t = (SDL_GetTicks() - anim_start) / 2000.0f;
+      float t = (SDL_GetTicks() - anim_start) / 1000.0f;
       if (t > 1.0f)
         t = 1.0f;
-      int start_y = g_viewport.y + g_viewport.h / 2;
+      int start_y = g_viewport.y + g_viewport.h * 2 / 3;
       int end_y   = g_viewport.y + g_viewport.h - back_btn_size - 20;
       back_img->base.rect.y = start_y + (int)(t * (end_y - start_y));
     }
@@ -1708,17 +1708,6 @@ int authenticate_with_server(TCPsocket sock, const char *password) {
   return 0;
 }
 
-/* The engine is initialized once and kept alive across back/reconnect
- * cycles; do_audio_cleanup() uninits it once at program exit. */
-static SoundContext_t s_sound_context;
-static bool s_audio_initialized = false;
-
-void do_audio_cleanup(void) {
-  if (s_audio_initialized) {
-    ma_engine_uninit(&s_sound_context.engine);
-    s_audio_initialized = false;
-  }
-}
 
 bool get_socket_context_and_run_client(PlayerConfig_t *player_config,
                                        const CliArgs_t *cli_args, const char *host_str,
@@ -1834,25 +1823,21 @@ bool get_socket_context_and_run_client(PlayerConfig_t *player_config,
     if (recv_status != RECV_SUCCESS)
       exit(EXIT_FAILURE);
 
-    SoundContext_t *sound_context = &s_sound_context;
-    if (!s_audio_initialized) {
-      if (player_config->volume == 0 || cli_args->disable_audio) {
-        ma_engine_config_init();
-        sound_context->engineConfig.noDevice = MA_TRUE;
-        sound_context->engineConfig.channels = 2;
-        sound_context->engineConfig.sampleRate = 48000;
-      } else
-        verbose_puts("Initializing audio engine (powered by miniaudio: https://miniaud.io/)");
-      sound_context->result =
-          ma_engine_init(&sound_context->engineConfig, &sound_context->engine);
-      if (sound_context->result != MA_SUCCESS) {
-        fprintf(stderr, "Error: Failed to initialize miniaudio engine (code: %d).\n",
-                sound_context->result);
-        exit(EXIT_FAILURE);
-      }
-      s_audio_initialized = true;
+    SoundContext_t sound_context = {0};
+    if (player_config->volume == 0 || cli_args->disable_audio) {
+      ma_engine_config_init();
+      sound_context.engineConfig.noDevice = MA_TRUE;
+      sound_context.engineConfig.channels = 2;
+      sound_context.engineConfig.sampleRate = 48000;
+    } else
+      verbose_puts("Initializing audio engine (powered by miniaudio: https://miniaud.io/)");
+    sound_context.result = ma_engine_init(&sound_context.engineConfig, &sound_context.engine);
+    if (sound_context.result != MA_SUCCESS) {
+      fprintf(stderr, "Error: Failed to initialize miniaudio engine (code: %d).\n",
+              sound_context.result);
+      exit(EXIT_FAILURE);
     }
-    ma_engine_set_volume(&sound_context->engine, player_config->volume * .1f);
+    ma_engine_set_volume(&sound_context.engine, player_config->volume * .1f);
 
     // Using {0} or {{0}} for the The ma_sound field initializer doesn't work so
     // using 'ma_tmp' instead
@@ -1867,17 +1852,17 @@ bool get_socket_context_and_run_client(PlayerConfig_t *player_config,
         {"coin_hit_007.wav", ma_tmp},
     };
 
-    sound_context->coin_array_size = ARRAY_SIZE(coin_hit_sounds);
+    sound_context.coin_array_size = ARRAY_SIZE(coin_hit_sounds);
 
-    sound_context->sounds = sounds;
-    sound_context->coin_hit_sounds = coin_hit_sounds;
+    sound_context.sounds = sounds;
+    sound_context.coin_hit_sounds = coin_hit_sounds;
 
     PathconfLimits_t limits;
     get_pathconf_limits(path->data, &limits);
     size_t i;
     for (i = 0; i < SND_NUM_SOUNDS; i++) {
       char *snd_path = join_paths(limits.path_max, path->data, "sounds", sounds[i].filename);
-      if (ma_sound_init_from_file(&sound_context->engine, snd_path, 0, NULL, NULL,
+      if (ma_sound_init_from_file(&sound_context.engine, snd_path, 0, NULL, NULL,
                                   &sounds[i].sound) != MA_SUCCESS) {
         fprintf(stderr, "Failed to init sound %zd\n", i);
         exit(EXIT_FAILURE);
@@ -1888,7 +1873,7 @@ bool get_socket_context_and_run_client(PlayerConfig_t *player_config,
     for (i = 0; i < ARRAY_SIZE(coin_hit_sounds); i++) {
       char *snd_path =
           join_paths(limits.path_max, path->data, "sounds/coin", coin_hit_sounds[i].filename);
-      if (ma_sound_init_from_file(&sound_context->engine, snd_path, 0, NULL, NULL,
+      if (ma_sound_init_from_file(&sound_context.engine, snd_path, 0, NULL, NULL,
                                   &coin_hit_sounds[i].sound) != MA_SUCCESS) {
         fprintf(stderr, "Failed to init sound %zd\n", i);
         exit(EXIT_FAILURE);
@@ -1901,7 +1886,7 @@ bool get_socket_context_and_run_client(PlayerConfig_t *player_config,
     do {
       EGameSelResult_t sel = handle_game_selection(
           player_config, &socket_context, game_settings.client_id, &game_state, &client_state,
-          sdl_context, font, sound_context, links, path);
+          sdl_context, font, &sound_context, links, path);
       if (sel == GAME_SEL_BACK) {
         went_back = true;
         break;
@@ -1910,15 +1895,15 @@ bool get_socket_context_and_run_client(PlayerConfig_t *player_config,
         break;
 
       running = handle_game_logic(player_config, &socket_context, &game_settings, &game_state,
-                                  sdl_context, font, path, sound_context);
+                                  sdl_context, font, path, &sound_context);
     } while (running);
     for (i = 0; i < SND_NUM_SOUNDS; i++)
       ma_sound_uninit(&sounds[i].sound);
     for (i = 0; i < ARRAY_SIZE(coin_hit_sounds); i++)
       ma_sound_uninit(&coin_hit_sounds[i].sound);
+    ma_engine_uninit(&sound_context.engine);
     socket_cleanup(&socket_context);
     SDLNet_Quit();
-    SDL_FlushEvents(SDL_FIRSTEVENT, SDL_LASTEVENT);
 
     return went_back;
   } else {

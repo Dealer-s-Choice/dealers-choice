@@ -69,7 +69,6 @@ int8_t send_player_action(ClientState_t *client_state, TCPsocket sock, uint8_t a
                           uint32_t amount);
 
 void do_sdl_cleanup(SdlContext_t *sdl_context);
-void do_audio_cleanup(void);
 
 int8_t send_discards_request_new_cards(TCPsocket sock, const uint8_t *discard_indices,
                                        uint8_t count);

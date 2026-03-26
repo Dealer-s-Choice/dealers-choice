@@ -482,10 +482,10 @@ static void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *s
     }
 
     if (back_img) {
-      float t = (SDL_GetTicks() - anim_start) / 2000.0f;
+      float t = (SDL_GetTicks() - anim_start) / 1000.0f;
       if (t > 1.0f)
         t = 1.0f;
-      int start_y = g_viewport.y + g_viewport.h / 2;
+      int start_y = g_viewport.y + g_viewport.h * 2 / 3;
       int end_y   = g_viewport.y + g_viewport.h - back_size - 20;
       back_img->base.rect.y = start_y + (int)(t * (end_y - start_y));
     }
@@ -778,7 +778,6 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  do_audio_cleanup();
   for (int i = 0; i < NUM_FONTS; ++i)
     TTF_CloseFont(font.fonts[i]);
   TTF_Quit();
