@@ -26,6 +26,8 @@
 
 */
 
+#include <math.h>
+
 #include <deckhandler.h>
 #include <sodium.h>
 #include <stdio.h>
@@ -493,13 +495,14 @@ static CardBackStyle_t card_back_styles[] = {
      {255, 255, 255, 255},
      {255, 200, 255, 255},
      4}, // purple with light stripes
+    {{0, 0, 0, 255}, {0, 0, 0, 255}, {0, 0, 0, 255}, 5},   // lava lamp (animated)
+    {{0, 0, 0, 255}, {0, 0, 0, 255}, {0, 0, 0, 255}, 6},   // sunset (animated)
 };
 
 static int selected_card_back = -1;
 
 static void select_card_back_for_game(void) {
-  selected_card_back =
-      pcg32_boundedrand_r(&rng, sizeof(card_back_styles) / sizeof(card_back_styles[0]));
+  selected_card_back = pcg32_boundedrand_r(&rng, ARRAY_SIZE(card_back_styles));
 }
 
 static void draw_card_back_pattern(SDL_Renderer *renderer, SDL_Rect *card_rect) {
@@ -592,6 +595,156 @@ static void draw_card_back_pattern(SDL_Renderer *renderer, SDL_Rect *card_rect) 
       int y2 = top + (x - h >= 0 ? h : x);
       SDL_RenderDrawLine(renderer, x1, y1, x2, y2);
     }
+    break;
+  }
+  case 5: { // lava lamp (animated)
+    float t = (float)SDL_GetTicks() * 0.001f;
+
+    // Dark purple background
+    SDL_SetRenderDrawColor(renderer, 18, 0, 35, 255);
+    SDL_RenderFillRect(renderer, card_rect);
+    SDL_SetRenderDrawColor(renderer, 70, 0, 90, 255);
+    SDL_RenderDrawRect(renderer, card_rect);
+
+    SDL_RenderSetClipRect(renderer, card_rect);
+    SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+
+    static const struct {
+      float speed, phase_y, phase_x;
+      Uint8 r, g, b;
+      int radius;
+    } blobs[] = {
+      { 0.40f, 0.00f, 1.30f, 220,  55,   0, 10 },
+      { 0.65f, 1.80f, 0.70f, 200, 130,   0,  9 },
+      { 0.30f, 3.50f, 2.10f, 170,   0,  55, 11 },
+      { 0.75f, 0.90f, 4.20f, 240,  75,   0,  8 },
+      { 0.50f, 2.70f, 3.00f, 155,  15,  80, 10 },
+    };
+
+    int cx0 = card_rect->x + card_rect->w / 2;
+    int cy0 = card_rect->y + card_rect->h / 2;
+    int hy  = card_rect->h / 2 - 4;
+    int hx  = card_rect->w / 5;
+
+    for (int i = 0; i < 5; i++) {
+      float ay = t * blobs[i].speed + blobs[i].phase_y;
+      float ax = t * blobs[i].speed * 0.4f + blobs[i].phase_x;
+      int cx = cx0 + (int)(sinf(ax) * hx);
+      int cy = cy0 + (int)(sinf(ay) * hy);
+      int r  = blobs[i].radius;
+      SDL_SetRenderDrawColor(renderer, blobs[i].r, blobs[i].g, blobs[i].b, 210);
+      for (int dy = -r; dy <= r; dy++) {
+        float inside = (float)(r * r - dy * dy);
+        if (inside < 0.0f) continue;
+        int dx = (int)(sqrtf(inside) + 0.5f);
+        SDL_RenderDrawLine(renderer, cx - dx, cy + dy, cx + dx, cy + dy);
+      }
+    }
+
+    SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);
+    SDL_RenderSetClipRect(renderer, NULL);
+    break;
+  }
+  case 6: { // sunset (animated) — 30-second repeating arc
+    float t  = (float)SDL_GetTicks() * 0.001f;
+    float ph = fmodf(t, 30.0f) / 30.0f; // 0..1 over 30 seconds
+
+    // Sky color: bright blue -> sunset orange -> night
+    Uint8 sky_r, sky_g, sky_b;
+    if (ph < 0.55f) {
+      float p = ph / 0.55f;
+      sky_r = (Uint8)(70  + p * 120);
+      sky_g = (Uint8)(130 + p *  10);
+      sky_b = (Uint8)(210 - p *  40);
+    } else if (ph < 0.75f) {
+      float p = (ph - 0.55f) / 0.20f;
+      sky_r = (Uint8)(190 + p *  30);  // peak 220, not 255
+      sky_g = (Uint8)(140 - p *  60);  // peak 80, stays orange not red
+      sky_b = (Uint8)(170 - p * 160);
+    } else {
+      float p = (ph - 0.75f) / 0.25f;
+      if (p > 1.0f) p = 1.0f;
+      sky_r = (Uint8)(64  * (1.0f - p) +  5 * p);
+      sky_g = (Uint8)(40  * (1.0f - p) +  5 * p);
+      sky_b = (Uint8)(10  * (1.0f - p) + 20 * p);
+    }
+
+    SDL_SetRenderDrawColor(renderer, sky_r, sky_g, sky_b, 255);
+    SDL_RenderFillRect(renderer, card_rect);
+    SDL_SetRenderDrawColor(renderer, sky_r / 2, sky_g / 2, sky_b / 2, 255);
+    SDL_RenderDrawRect(renderer, card_rect);
+
+    SDL_RenderSetClipRect(renderer, card_rect);
+    SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+
+    // Clouds: tinted by sky, drift left-to-right, fade out at sunset
+    if (ph < 0.80f) {
+      float cf = ph < 0.65f ? 1.0f : (0.80f - ph) / 0.15f;
+      Uint8 ca = (Uint8)(180 * cf);
+      Uint8 cr = ph < 0.55f ? 240 : 255;
+      Uint8 cg = ph < 0.55f ? 240 : (Uint8)(240 - (ph - 0.55f) / 0.25f * 100);
+      Uint8 cb = ph < 0.55f ? 240 : (Uint8)(240 - (ph - 0.55f) / 0.25f * 220);
+      static const struct { float speed, phase; int dy_off, rx, ry; } clouds[] = {
+        { 0.025f, 0.10f,  8, 14, 4 },
+        { 0.018f, 0.55f, 18,  9, 3 },
+      };
+      SDL_SetRenderDrawColor(renderer, cr, cg, cb, ca);
+      for (int i = 0; i < 2; i++) {
+        float fx = fmodf(clouds[i].phase + t * clouds[i].speed, 1.0f);
+        int cx = card_rect->x + (int)(fx * (card_rect->w + clouds[i].rx * 2)) - clouds[i].rx;
+        int cy = card_rect->y + clouds[i].dy_off;
+        for (int dy = -clouds[i].ry; dy <= clouds[i].ry; dy++) {
+          float inside = 1.0f - (float)(dy * dy) / (float)(clouds[i].ry * clouds[i].ry);
+          if (inside < 0.0f) continue;
+          int dx = (int)(clouds[i].rx * sqrtf(inside) + 0.5f);
+          SDL_RenderDrawLine(renderer, cx - dx, cy + dy, cx + dx, cy + dy);
+        }
+      }
+    }
+
+    // Sun: arcs from top-left toward bottom-right, disappears behind horizon
+    float sun_fx = 0.15f + ph * 0.70f;
+    float sun_fy = ph;
+    int sun_cx = card_rect->x + (int)(sun_fx * card_rect->w);
+    int sun_cy = card_rect->y + 4 + (int)(sun_fy * (card_rect->h - 8));
+    int sun_rad = 5;
+    Uint8 sun_g = ph < 0.60f ? 230 : (Uint8)(230 - (ph - 0.60f) / 0.40f * 180);
+    Uint8 sun_b = ph < 0.60f ?  80 : 0;
+    SDL_SetRenderDrawColor(renderer, 255, sun_g, sun_b, 255);
+    for (int dy = -sun_rad; dy <= sun_rad; dy++) {
+      float inside = (float)(sun_rad * sun_rad - dy * dy);
+      if (inside < 0.0f) continue;
+      int dx = (int)(sqrtf(inside) + 0.5f);
+      SDL_RenderDrawLine(renderer, sun_cx - dx, sun_cy + dy, sun_cx + dx, sun_cy + dy);
+    }
+
+    // Horizon: dark ground at bottom, 7px tall on left edge, 13px on right,
+    // drawn on top of everything so the sun sinks behind it naturally.
+    SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+    for (int row = 0; row < 13; row++) {
+      int y      = card_rect->y + card_rect->h - 1 - row;
+      int x_start = row <= 7 ? 0 : (row - 7) * card_rect->w / 6;
+      SDL_RenderDrawLine(renderer, card_rect->x + x_start, y,
+                         card_rect->x + card_rect->w - 1, y);
+    }
+    SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+
+    // Stars: fade in after sunset
+    if (ph > 0.78f) {
+      float sf = (ph - 0.78f) / 0.10f;
+      if (sf > 1.0f) sf = 1.0f;
+      Uint8 sa = (Uint8)(220 * sf);
+      SDL_SetRenderDrawColor(renderer, 255, 255, 200, sa);
+      static const SDL_Point stars[] = {
+        {5,5},{20,8},{35,3},{55,12},{70,6},{12,18},{45,22},{62,15},{28,25},
+      };
+      for (int i = 0; i < 9; i++)
+        SDL_RenderDrawPoint(renderer, card_rect->x + stars[i].x, card_rect->y + stars[i].y);
+    }
+
+    SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);
+    SDL_RenderSetClipRect(renderer, NULL);
     break;
   }
   default:
