@@ -395,8 +395,14 @@ static void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *s
       } else if (e.type == SDL_MOUSEBUTTONDOWN && e.button.button == SDL_BUTTON_LEFT) {
         if (SDL_PointInRect(&mouse_pos, &btn_save->base.rect)) {
           btn_save->click.start_time = SDL_GetTicks();
-          saved = true;
-          running = false;
+          for (size_t i = 0; i < player_config_entry_count; i++) {
+            if (i == bool_idx)
+              player_config_set_field(player_config, i,
+                                      turn_cb && turn_cb->checked ? "yes" : "no");
+            else if (inputs[i])
+              player_config_set_field(player_config, i, input_widget_get_text(inputs[i]));
+          }
+          save_player_config(player_config);
         } else if (SDL_PointInRect(&mouse_pos, &btn_defaults->base.rect)) {
           btn_defaults->click.start_time = SDL_GetTicks();
           for (size_t i = 0; i < player_config_entry_count; i++) {
