@@ -1,0 +1,58 @@
+# Pre-release
+
+## One-time / carry-forward notes
+  Remove manual instances of libminiaudio removal from packaging scripts.
+  libsodium is optional but recommended; pass -Dsodium=enabled to meson setup
+  to require it, or -Dsodium=disabled to build without authentication support
+
+  Update README to note new Windows installer for this release
+
+## Every release
+
+- Ensure all CI workflows are passing on trunk
+- Run the full test suite locally: meson test
+- Update ChangeLog: set the release date and version (replace "in progress")
+- Bump version in meson.build (remove -dev suffix)
+- Update po and pot files:
+    meson compile dealers-choice-pot
+    ninja dealers-choice-update-po
+- Comment out in meson.build:
+    'b_sanitize=address,undefined',
+    'b_lundef=false'
+- Commit the above changes, tag the release:
+    git tag -s v0.x.y -m "Release 0.x.y"
+    git push origin trunk --tags
+- Create GitHub release from the tag, paste the ChangeLog entry as notes
+- Close milestone (https://github.com/Dealer-s-Choice/dealers_choice/milestones)
+
+## Slackbuild
+
+Use slackware-full:latest, OTHERWISE
+
+Create the queue for newer version of meson
+
+sqg -p python3-meson-opt
+sbopkg -i python3-meson-opt
+
+## Check
+sbo-maintainer-tools (sbolint and sbopkglint for SBo maintainers)
+
+These are "lint" tools to make life easier for SlackBuilds.org
+maintainers and admins:
+
+sbolint: checks your SlackBuild, README, .info file, and slack-desc.
+sbopkglint: checks your package, after it's built.
+sbofixinfo: attempts to fix common problems with SBo .info files.
+pre-commit-sbolint: git hook you should use, that automatically calls
+sbolint and stops you from committing bad code.
+sbodl: downloads source URLs, optionally using the SBo source archive.
+
+
+# Post-release
+
+- Uncomment in meson.build:
+    'b_sanitize=address,undefined',
+    'b_lundef=false'
+- Bump version in meson.build to next -dev (e.g. 0.x.(y+1)-dev)
+- Add new "in progress" section to top of ChangeLog
+- Commit: "Begin development of 0.x.(y+1)"
