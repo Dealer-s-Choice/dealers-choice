@@ -83,6 +83,8 @@ __attribute__((packed)) GameProtocolHeader_t;
 #define MSG_BET_CHECK_FOLD 0x000C
 #define MSG_CALL_RAISE_FOLD 0x000D
 #define MSG_TURN_ID 0x000E
+#define MSG_KICK_PLAYER 0x000F  // Admin kicks a player
+#define MSG_BAN_PLAYER  0x0010  // Admin bans a player by IP
 
 #define DEFAULT_PORT "22777"
 

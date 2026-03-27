@@ -28,6 +28,20 @@ DC_PASSWORD=mysecretpassword ./dealers-choice --server
 
 Clients must also have `DC_PASSWORD` set to the same value in order to connect.
 
+### Admin controls
+
+The first client to authenticate with the server password is granted admin
+status for that session.  An admin can kick or ban other players during a game
+via the Kick / Ban buttons in the player list.
+
+- **Kick** — the target player is immediately disconnected and their coins are
+  reset to the starting amount.
+- **Ban** — same as kick, but the player's IP address is added to an in-memory
+  ban list so they cannot reconnect for the duration of the server session.
+  Bans are not persisted to disk and are cleared when the server restarts.
+
+An admin cannot kick or ban themselves.
+
 ---
 
 ## Player Config

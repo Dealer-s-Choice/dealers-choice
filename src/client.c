@@ -186,6 +186,19 @@ static EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_confi
   waiting_dealer_tw->base.rect.x = g_center.x;
   waiting_dealer_tw->base.rect.y = g_viewport.h - 200;
 
+  ButtonWidget_t *btn_kick =
+      button_widget_create(_("Kick"), (EColor_t){COLOR_WHITE, COLOR_BROWN},
+                           font->fonts[FONT_BOLD], (SDL_Keycode)0);
+  ButtonWidget_t *btn_ban =
+      button_widget_create(_("Ban"), (EColor_t){COLOR_WHITE, COLOR_BROWN},
+                           font->fonts[FONT_BOLD], (SDL_Keycode)0);
+  btn_kick->base.rect.x = g_viewport.w * 0.1;
+  btn_kick->base.rect.y = g_viewport.h * 0.82;
+  btn_ban->base.rect.x  = btn_kick->base.rect.x + btn_kick->base.rect.w + 16;
+  btn_ban->base.rect.y  = btn_kick->base.rect.y;
+  ui_register(&registry, &btn_kick->base);
+  ui_register(&registry, &btn_ban->base);
+
   static bool was_connected[MAX_PLAYERS] = {0};
 
   EGameSelResult_t result = GAME_SEL_SUCCESS;
@@ -350,6 +363,16 @@ static EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_confi
       nick_widgets[i]->base.hovered = SDL_PointInRect(&mouse_pos, &nick_widgets[i]->base.rect);
     }
 
+    bool admin = game_state->player[my_id].is_admin;
+    btn_kick->base.enabled = admin && selected_nick >= 0;
+    btn_kick->interactive  = admin && selected_nick >= 0;
+    btn_kick->base.hovered = btn_kick->interactive &&
+                             SDL_PointInRect(&mouse_pos, &btn_kick->base.rect);
+    btn_ban->base.enabled  = admin && selected_nick >= 0;
+    btn_ban->interactive   = admin && selected_nick >= 0;
+    btn_ban->base.hovered  = btn_ban->interactive &&
+                             SDL_PointInRect(&mouse_pos, &btn_ban->base.rect);
+
     bool dealing_enabled = game_state->dealer_id == my_id && n_clients > 1;
     for (int i = 0; i < MAX_CHOICES; i++) {
       game_choice_button[i]->base.enabled = dealing;
@@ -448,6 +471,17 @@ if (back_img && SDL_PointInRect(&mouse_pos, &back_img->base.rect)) {
                 if (selected_nick >= 0)
                   nick_widgets[selected_nick]->base.selected = true;
                 break;
+              }
+            }
+            if (selected_nick >= 0) {
+              if (btn_kick->interactive &&
+                  SDL_PointInRect(&mouse_pos, &btn_kick->base.rect)) {
+                send_kick_player(sock, selected_nick);
+                selected_nick = -1;
+              } else if (btn_ban->interactive &&
+                         SDL_PointInRect(&mouse_pos, &btn_ban->base.rect)) {
+                send_ban_player(sock, selected_nick);
+                selected_nick = -1;
               }
             }
           }
@@ -1272,6 +1306,20 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
                         font);
 
   UIRegistry_t registry = {0};
+
+  ButtonWidget_t *game_btn_kick =
+      button_widget_create(_("Kick"), (EColor_t){COLOR_WHITE, COLOR_BROWN},
+                           font->fonts[FONT_BOLD], (SDL_Keycode)0);
+  ButtonWidget_t *game_btn_ban =
+      button_widget_create(_("Ban"), (EColor_t){COLOR_WHITE, COLOR_BROWN},
+                           font->fonts[FONT_BOLD], (SDL_Keycode)0);
+  game_btn_kick->base.rect.x = g_viewport.w * 0.1;
+  game_btn_kick->base.rect.y = g_viewport.h * 0.82;
+  game_btn_ban->base.rect.x  = game_btn_kick->base.rect.x + game_btn_kick->base.rect.w + 16;
+  game_btn_ban->base.rect.y  = game_btn_kick->base.rect.y;
+  ui_register(&registry, &game_btn_kick->base);
+  ui_register(&registry, &game_btn_ban->base);
+
   Indicator_t *indicator_deuces_wild =
       create_indicator(("Deuces Wild"), font->fonts[FONT_BOLD], COLOR_WHITE, COLOR_BROWN);
   ui_register(&registry, &indicator_deuces_wild->base);
@@ -1441,6 +1489,16 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
             game_nick_widgets[i]->selectable &&
             SDL_PointInRect(&mouse_pos, &game_nick_widgets[i]->base.rect);
     }
+
+    bool game_admin = game_state->player[my_id].is_admin;
+    game_btn_kick->base.enabled = game_admin && selected_nick >= 0;
+    game_btn_kick->interactive  = game_admin && selected_nick >= 0;
+    game_btn_kick->base.hovered = game_btn_kick->interactive &&
+                                  SDL_PointInRect(&mouse_pos, &game_btn_kick->base.rect);
+    game_btn_ban->base.enabled  = game_admin && selected_nick >= 0;
+    game_btn_ban->interactive   = game_admin && selected_nick >= 0;
+    game_btn_ban->base.hovered  = game_btn_ban->interactive &&
+                                  SDL_PointInRect(&mouse_pos, &game_btn_ban->base.rect);
 
     if (game_state->prev_bet_amount == 0)
       for (size_t i = 0; i < n_bet_amounts; i++)
@@ -1811,6 +1869,17 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
             if (selected_nick >= 0)
               game_nick_widgets[selected_nick]->base.selected = true;
             break;
+          }
+        }
+        if (selected_nick >= 0) {
+          if (game_btn_kick->interactive &&
+              SDL_PointInRect(&mouse_pos, &game_btn_kick->base.rect)) {
+            send_kick_player(sock, selected_nick);
+            selected_nick = -1;
+          } else if (game_btn_ban->interactive &&
+                     SDL_PointInRect(&mouse_pos, &game_btn_ban->base.rect)) {
+            send_ban_player(sock, selected_nick);
+            selected_nick = -1;
           }
         }
       }

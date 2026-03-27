@@ -1,4 +1,4 @@
-unit_tests = ['serialization', 'get_next_player', 'debug_print_cards', 'layout_cards', 'sodium_compat']
+unit_tests = ['serialization', 'get_next_player', 'debug_print_cards', 'layout_cards']
 
 base_env = {
   'DEALERSCHOICE_DATADIR': join_paths(meson.project_source_root(), 'data'),
@@ -16,6 +16,18 @@ foreach name : unit_tests
   test('test_' + name, exe, env: environment(base_env))
 endforeach
 
+# sodium_compat binds a TCP socket and needs a dedicated port so it does not
+# collide with the game-logic tests (which use 22778-22784).
+sodium_compat_exe = executable(
+  'test_sodium_compat',
+  ['sodium_compat.c', '00_test.c'],
+  dependencies: game_dep,
+  override_options: ['b_lto=false'],
+)
+sodium_compat_env = environment(base_env)
+sodium_compat_env.set('DC_PORT', '22785')
+test('test_sodium_compat', sodium_compat_exe, env: sodium_compat_env)
+
 # Each game logic test gets a unique port so they can run in parallel.
 game_logic_script = files(join_paths(meson.current_source_dir(), 'game_logic.py'))
 
@@ -26,6 +38,7 @@ game_logic = [
   ['5_card_draw',     '22781'],
   ['5_card_stud',     '22782'],
   ['deuces_wild',     '22783'],
+  ['kick_ban',        '22784'],
 ]
 
 foreach entry : game_logic

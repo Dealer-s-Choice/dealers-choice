@@ -141,6 +141,16 @@ int8_t send_game_select(TCPsocket sock, uint8_t game_type, bool deuces_wild) {
   return result;
 }
 
+int send_kick_player(TCPsocket sock, int8_t target_id) {
+  uint8_t payload = (uint8_t)target_id;
+  return send_message(sock, MSG_KICK_PLAYER, &payload, sizeof(payload));
+}
+
+int send_ban_player(TCPsocket sock, int8_t target_id) {
+  uint8_t payload = (uint8_t)target_id;
+  return send_message(sock, MSG_BAN_PLAYER, &payload, sizeof(payload));
+}
+
 bool get_game_select_payload(uint8_t *buffer, const uint32_t size, const int client_id,
                              GameSelectPayload_t *out) {
   if (!buffer || !out)

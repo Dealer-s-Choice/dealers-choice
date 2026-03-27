@@ -109,6 +109,8 @@ typedef struct {
   int8_t turn_id;
   bool deuces_wild;
   uint8_t player_timeouts[MAX_PLAYERS];
+  Uint32 ban_list[64];
+  int ban_count;
 } ArgsBroadcastGameState_t;
 
 struct GameChoice_t;

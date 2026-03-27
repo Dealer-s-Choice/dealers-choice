@@ -61,6 +61,8 @@ typedef struct {
 
 static void remove_disconnected_player(ArgsBroadcastGameState_t *args, const int8_t id);
 
+static void kick_player(ArgsBroadcastGameState_t *args, int8_t id);
+static void ban_player(ArgsBroadcastGameState_t *args, int8_t id);
 static bool handle_disconnections(ArgsBroadcastGameState_t *args);
 
 static uint8_t count_active_clients(const bool *slot_taken);
@@ -996,24 +998,89 @@ static void remove_disconnected_player(ArgsBroadcastGameState_t *args, const int
   broadcast_game_state(args);
 }
 
+static void kick_player(ArgsBroadcastGameState_t *args, int8_t id) {
+  if (id < 0 || id >= MAX_CLIENTS || !args->slot_taken[id])
+    return;
+  char status_str[LEN_STATUS_STR] = {0};
+  snprintf(status_str, sizeof status_str, _("%s was kicked"), args->game_state->player[id].nick);
+  remove_disconnected_player(args, id);
+  broadcast_status_message(args, status_str);
+  broadcast_game_state(args);
+}
+
+static void ban_player(ArgsBroadcastGameState_t *args, int8_t id) {
+  if (id < 0 || id >= MAX_CLIENTS || !args->slot_taken[id])
+    return;
+  if (args->ban_count < (int)(sizeof(args->ban_list) / sizeof(args->ban_list[0]))) {
+    IPaddress *remote_ip = SDLNet_TCP_GetPeerAddress(args->clients[id]);
+    if (remote_ip) {
+      args->ban_list[args->ban_count++] = remote_ip->host;
+      printf("Banned IP: %u\n", remote_ip->host);
+    }
+  }
+  char status_str[LEN_STATUS_STR] = {0};
+  snprintf(status_str, sizeof status_str, _("%s was banned"), args->game_state->player[id].nick);
+  remove_disconnected_player(args, id);
+  broadcast_status_message(args, status_str);
+  broadcast_game_state(args);
+}
+
 static bool handle_disconnections(ArgsBroadcastGameState_t *args) {
   bool someone_disconnected = false;
   for (int i = 0; i < MAX_CLIENTS; i++) {
     if (!args->slot_taken[i])
       continue;
+    if (!SDLNet_SocketReady(args->clients[i]))
+      continue;
 
-    if (SDLNet_SocketReady(args->clients[i])) {
-      char tmp;
-      int result = SDLNet_TCP_Recv(args->clients[i], &tmp, 1);
-      if (result <= 0) {
+    /* Read the length prefix to determine if this is a disconnect or a message. */
+    uint32_t len_be;
+    int r = SDLNet_TCP_Recv(args->clients[i], &len_be, sizeof(len_be));
+    if (r <= 0) {
+      remove_disconnected_player(args, i);
+      someone_disconnected = true;
+      continue;
+    }
+
+    uint32_t msg_len = SDL_SwapBE32(len_be);
+    if (msg_len < OPCODE_SIZE || msg_len > 256) {
+      remove_disconnected_player(args, i);
+      someone_disconnected = true;
+      continue;
+    }
+
+    uint16_t opcode_be;
+    r = SDLNet_TCP_Recv(args->clients[i], &opcode_be, sizeof(opcode_be));
+    if (r <= 0) {
+      remove_disconnected_player(args, i);
+      someone_disconnected = true;
+      continue;
+    }
+    uint16_t opcode = SDL_SwapBE16(opcode_be);
+
+    uint32_t payload_len = msg_len - OPCODE_SIZE;
+    uint8_t payload[32] = {0};
+    if (payload_len > 0) {
+      r = SDLNet_TCP_Recv(args->clients[i], payload, payload_len < sizeof(payload)
+                                                          ? payload_len : sizeof(payload));
+      if (r <= 0) {
         remove_disconnected_player(args, i);
         someone_disconnected = true;
-        // Clear more fields if your struct includes game progress, bet, etc.
-      } else {
-        // Optional: put `tmp` in a buffer if you want to process it later
-        // In this case, it might be better to queue it per client
+        continue;
       }
     }
+
+    if (!args->game_state->player[i].is_admin || payload_len < 1)
+      continue;
+
+    int8_t target_id = (int8_t)payload[0];
+    if (target_id == i) /* admin can't kick/ban themselves */
+      continue;
+
+    if (opcode == MSG_KICK_PLAYER)
+      kick_player(args, target_id);
+    else if (opcode == MSG_BAN_PLAYER)
+      ban_player(args, target_id);
   }
   return someone_disconnected;
 }
@@ -1454,6 +1521,17 @@ static ELoop_t register_new_client(ArgsBroadcastGameState_t *args) {
   // checks for and accepts incoming connections
   TCPsocket new_client = SDLNet_TCP_Accept(*args->server_sock);
   if (new_client) {
+    IPaddress *peer_ip = SDLNet_TCP_GetPeerAddress(new_client);
+    if (peer_ip) {
+      for (int b = 0; b < args->ban_count; b++) {
+        if (args->ban_list[b] == peer_ip->host) {
+          printf("Rejected banned client\n");
+          SDLNet_TCP_Close(new_client);
+          return LOOP_CONTINUE;
+        }
+      }
+    }
+
     int slot = -1;
     for (int i = 0; i < MAX_CLIENTS; i++) {
       if (!args->slot_taken[i]) {
@@ -1542,6 +1620,10 @@ static ELoop_t register_new_client(ArgsBroadcastGameState_t *args) {
         player->nick[len] = '\0';
         verbose_printf("received nick: %s\n", player->nick);
         ensure_unique_nick(args->game_state, player, slot);
+      } else {
+        /* In test mode all clients are granted admin so that kick/ban
+         * functionality can be exercised from any position in the test suite. */
+        slot_id->is_admin = true;
       }
 
       args->game_settings->client_id = slot;
@@ -1634,6 +1716,10 @@ int run_server(const CliArgs_t *cli_args, Path_t *path) {
   uint32_t last_ping_time = SDL_GetTicks();
   uint32_t ping_times[MAX_CLIENTS] = {0};
 
+  /* Ban list lives outside the loop so bans persist across game rounds. */
+  Uint32 session_ban_list[64] = {0};
+  int session_ban_count = 0;
+
   while (!game_started) {
     ArgsBroadcastGameState_t args_broadcast_game_state = {
         .clients = clients,
@@ -1648,7 +1734,10 @@ int run_server(const CliArgs_t *cli_args, Path_t *path) {
         .game_type = 0,
         .starting_turn = NULL,
         .turn_id = 0,
+        .ban_count = session_ban_count,
     };
+    memcpy(args_broadcast_game_state.ban_list, session_ban_list,
+           sizeof(session_ban_list));
 
     uint8_t active_clients = count_active_clients(slot_taken);
     int8_t *dealer_id = &game_state.dealer_id;
@@ -1786,6 +1875,10 @@ int run_server(const CliArgs_t *cli_args, Path_t *path) {
               }
 
               init_game(&args_broadcast_game_state, &deck);
+              /* Persist any new bans added during the game. */
+              memcpy(session_ban_list, args_broadcast_game_state.ban_list,
+                     sizeof(session_ban_list));
+              session_ban_count = args_broadcast_game_state.ban_count;
               dealer_timeout_start = 0;
             } else {
               fprintf(stderr, "Non-dealer client %d sent MSG_GAME_SELECT (ignored)\n", i);
