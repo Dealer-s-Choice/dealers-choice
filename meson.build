@@ -69,12 +69,13 @@ deckhandler_dep = dependency(
 pokeval_dep = dependency('pokeval', default_options: 'default_library=static')
 protobuf_dep = dependency('libprotobuf-c')
 
-cmake = import('cmake')
+conf = configuration_data()
 
-cmake_opts = cmake.subproject_options()
-cmake_opts.add_cmake_defines({'MINIAUDIO_INSTALL': 'OFF'})
-sub_proj = cmake.subproject('miniaudio', options: cmake_opts)
-miniaudio_dep = sub_proj.dependency('miniaudio')
+# Homebrew may discourage vendoring dependencies that are available as
+# formulae. Link against the installed miniaudio if found; otherwise
+# fall back to the bundled copy in subprojects/.
+miniaudio_dep = dependency('miniaudio', required: false,
+  fallback: ['miniaudio', 'miniaudio_dep'])
 
 shared_dep = [
   canfigger_dep,
@@ -108,7 +109,6 @@ endforeach
 
 shared_inc = [include_directories(['src', 'src/protobuf'])]
 
-conf = configuration_data()
 subdir('po')
 conf.set_quoted(
   'DEALERSCHOICE_LOCALEDIR',

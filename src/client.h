@@ -27,7 +27,7 @@
 */
 
 #include <deckhandler.h>
-#include <miniaudio.h>
+#include <miniaudio/miniaudio.h>
 
 #include "dc_config.h"
 #include "graphics.h"
