@@ -15,4 +15,8 @@ typedef struct {
  * that size; otherwise the image's natural dimensions are used. */
 ImageWidget_t *image_widget_create(const char *path, int w, int h);
 
+/* Wrap an existing SDL_Texture without taking ownership. The texture is
+ * NOT destroyed when the widget is destroyed. */
+ImageWidget_t *image_widget_from_texture(SDL_Texture *tex, int w, int h);
+
 #endif

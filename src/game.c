@@ -131,7 +131,7 @@ int8_t send_game_select(TCPsocket sock, uint8_t game_type, bool deuces_wild) {
   int result = send_all_tcp(sock, buffer, sizeof(buffer));
 
   const GameChoice_t *choice = find_game_choice_by_type(game_type);
-  if (result > 0) {
+  if (result == 0) {
     verbose_printf("Game type sent: %s (Deuces wild: %s)\n", choice ? choice->str : "Unknown",
                    deuces_wild ? "Yes" : "No");
     return 0;

@@ -13,6 +13,7 @@ typedef struct {
   bool selectable;
 } NickWidget_t;
 
-NickWidget_t *nick_widget_create(const char *nick, const int8_t id, TTF_Font *font);
+NickWidget_t *nick_widget_create(const char *nick, const int8_t id, TTF_Font *font,
+                                 SDL_Color color);
 
 #endif
