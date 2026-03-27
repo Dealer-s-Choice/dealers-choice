@@ -29,7 +29,6 @@
 #include <math.h>
 
 #include <deckhandler.h>
-#include <sodium.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -48,6 +47,10 @@
 #include "widgets/ping.h"
 
 #include "util.h"
+
+#ifdef HAVE_LIBSODIUM
+#include <sodium.h>
+#endif
 
 const uint8_t MAX_CONNECTION_ATTEMPTS = 12;
 static const uint8_t coin_px = 96;
@@ -1839,12 +1842,18 @@ int authenticate_with_server(TCPsocket sock, const char *password) {
   }
 
   /* compute SHA256(password + nonce) */
+#ifdef HAVE_LIBSODIUM
   crypto_hash_sha256_state state;
 
   crypto_hash_sha256_init(&state);
   crypto_hash_sha256_update(&state, (const unsigned char *)password, strlen(password));
   crypto_hash_sha256_update(&state, nonce, NONCE_SIZE);
   crypto_hash_sha256_final(&state, hash);
+#else
+  (void)password;
+  (void)nonce;
+  memset(hash, 0, HASH_SIZE);
+#endif
 
   /* send response */
   if (send_all_tcp(sock, hash, HASH_SIZE) != 0) {

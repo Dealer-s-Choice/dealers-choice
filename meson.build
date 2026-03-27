@@ -86,9 +86,14 @@ shared_dep = [
   cc.find_library('m'),
 ]
 
+sodium_dep = dependency('libsodium', required: get_option('sodium'))
+if sodium_dep.found()
+  conf.set('HAVE_LIBSODIUM', 1)
+  shared_dep += sodium_dep
+endif
+
 dep_names = [
   'libprotobuf-c',
-  'libsodium',
   'SDL2',
   'SDL2_ttf',
   'SDL2_net',

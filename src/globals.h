@@ -31,6 +31,7 @@
 
 #include <pcg_basic.h>
 
+#include "config.h"
 #include "graphics.h"
 
 extern pcg32_random_t rng;
