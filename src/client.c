@@ -1389,7 +1389,7 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
       snprintf(coins_str, sizeof coins_str, "%" PRId32, game_state->player[id].coins);
       game_nick_widgets[id] =
           nick_widget_create(game_state->player[id].nick, id, font->fonts[FONT_BOLD],
-                             get_color(COLOR_BLACK));
+                             get_color(COLOR_WHITE));
       game_nick_widgets[id]->highlight = (id == my_id);
       game_nick_widgets[id]->selectable = (game_state->player[my_id].is_admin && id != my_id);
       game_coin_widgets[id] =
@@ -1498,10 +1498,10 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
 
     indicator_deuces_wild->base.enabled = client_state.deuces_wild;
 
+    SDL_Rect turn_outline = {0};
     for (int id = 0; id < MAX_PLAYERS; id++) {
       if (!game_nick_widgets[id] || !game_coin_widgets[id] || !game_coins_tw[id])
         continue;
-      game_nick_widgets[id]->is_turn = (id == turn->id && !game_state->winner_declared);
       if (game_state->player[id].coins != prev_coins[id]) {
         char coins_str[24] = {0};
         snprintf(coins_str, sizeof coins_str, "%" PRId32, game_state->player[id].coins);
@@ -1515,9 +1515,23 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
       ui_table_add(&player_table, 0, 1, &game_coin_widgets[id]->base);
       ui_table_add(&player_table, 0, 2, &game_coins_tw[id]->base);
       ui_table_layout(&player_table);
+      if (id == turn->id && !game_state->winner_declared) {
+        int total_w = 0;
+        for (int c = 0; c < player_table.cols; c++)
+          total_w += player_table.col_width[c] + player_table.col_spacing;
+        total_w -= player_table.col_spacing;
+        const int pad = 4;
+        turn_outline = (SDL_Rect){player_table.x - pad, player_table.y - pad,
+                                  total_w + pad * 2, player_table.row_height[0] + pad * 2};
+      }
     }
 
     ui_render_all(&registry);
+
+    if (turn_outline.w > 0) {
+      SDL_SetRenderDrawColor(sdl_context->renderer, 255, 215, 0, 255);
+      SDL_RenderDrawRect(sdl_context->renderer, &turn_outline);
+    }
 
     SDL_SetRenderDrawColor(sdl_context->renderer, 255, 255, 255, 255);
     SDL_RenderFillRect(sdl_context->renderer, &msg_panel);

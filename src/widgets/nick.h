@@ -11,7 +11,6 @@ typedef struct {
   int id;
   bool highlight;
   bool selectable;
-  bool is_turn;
 } NickWidget_t;
 
 NickWidget_t *nick_widget_create(const char *nick, const int8_t id, TTF_Font *font,
