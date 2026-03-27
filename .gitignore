@@ -1,6 +1,10 @@
 # Ignore everything in subprojects
 subprojects/**
 
+# Allow specific directories/files
+!subprojects/miniaudio/
+!subprojects/miniaudio/**
+
 # Allow traversal into packagefiles
 !subprojects/packagefiles/
 !subprojects/packagefiles/**
