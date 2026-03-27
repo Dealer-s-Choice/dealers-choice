@@ -89,6 +89,16 @@ static void ma_sound_start_wrap(ma_sound *pSound, const char *file, const int li
   }
 }
 
+static void detect_player_changes(const GameState_t *gs, bool was_connected[MAX_PLAYERS],
+                                   bool joined[MAX_PLAYERS], bool left[MAX_PLAYERS]) {
+  for (int i = 0; i < MAX_PLAYERS; i++) {
+    bool now = gs->player[i].is_connected;
+    joined[i] = !was_connected[i] && now;
+    left[i]   =  was_connected[i] && !now;
+    was_connected[i] = now;
+  }
+}
+
 typedef enum {
   GAME_SEL_ERROR = 0,
   GAME_SEL_SUCCESS = 1,
@@ -236,27 +246,33 @@ static EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_confi
     for (size_t i = 0; i < LINK_DEFS_COUNT; i++)
       links[i].hovered = SDL_PointInRect(&mouse_pos, &links[i].rect);
 
+    bool joined[MAX_PLAYERS] = {0};
+    bool left[MAX_PLAYERS] = {0};
+    detect_player_changes(game_state, was_connected, joined, left);
     for (int i = 0; i < MAX_PLAYERS; i++) {
-      if (was_connected[i] && !game_state->player[i].is_connected) {
-        ui_unregister(&registry, &nick_widgets[i]->base);
-        ui_widget_destroy(&nick_widgets[i]->base);
-        nick_widgets[i] = NULL;
+      if (left[i]) {
+        if (nick_widgets[i]) {
+          ui_unregister(&registry, &nick_widgets[i]->base);
+          ui_widget_destroy(&nick_widgets[i]->base);
+          nick_widgets[i] = NULL;
+        }
         if (selected_nick == i)
           selected_nick = -1;
 
-        ui_unregister(&registry, &dealer_widgets[i]->base);
-        ui_widget_destroy(&dealer_widgets[i]->base);
-        dealer_widgets[i] = NULL;
+        if (dealer_widgets[i]) {
+          ui_unregister(&registry, &dealer_widgets[i]->base);
+          ui_widget_destroy(&dealer_widgets[i]->base);
+          dealer_widgets[i] = NULL;
+        }
 
-        ui_unregister(&registry, &ping_widgets[i]->base);
-        ui_widget_destroy(&ping_widgets[i]->base);
-        ping_widgets[i] = NULL;
-
-        table_needs_rebuild = true;
+        if (ping_widgets[i]) {
+          ui_unregister(&registry, &ping_widgets[i]->base);
+          ui_widget_destroy(&ping_widgets[i]->base);
+          ping_widgets[i] = NULL;
+        }
       }
-      if (game_state->player[i].is_connected != was_connected[i])
+      if (joined[i] || left[i])
         table_needs_rebuild = true;
-      was_connected[i] = game_state->player[i].is_connected;
     }
 
     static int8_t prev_dealer_id = -1;
@@ -289,7 +305,8 @@ static EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_confi
         /* nick */
         if (!nick_widgets[id]) {
           nick_widgets[id] =
-              nick_widget_create(client->nick, game_state->player[id].id, font->fonts[FONT_BOLD]);
+              nick_widget_create(client->nick, game_state->player[id].id, font->fonts[FONT_BOLD],
+                                 get_color(COLOR_WHITE));
           nick_widgets[id]->highlight = (id == my_id);
           nick_widgets[id]->selectable = (game_state->player[my_id].is_admin && id != my_id);
           ui_register(&registry, &nick_widgets[id]->base);
@@ -1189,6 +1206,18 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
 
   ClientState_t client_state = {0};
 
+  NickWidget_t *game_nick_widgets[MAX_PLAYERS] = {0};
+  ImageWidget_t *game_coin_widgets[MAX_PLAYERS] = {0};
+  TextWidget_t *game_coins_tw[MAX_PLAYERS] = {0};
+  int8_t selected_nick = -1;
+
+  bool was_connected[MAX_PLAYERS];
+  int32_t prev_coins[MAX_PLAYERS];
+  for (int i = 0; i < MAX_PLAYERS; i++) {
+    was_connected[i] = game_state->player[i].is_connected;
+    prev_coins[i] = game_state->player[i].coins;
+  }
+
   SDL_Point player_pos[MAX_PLAYERS] = {0};
   layout_player_pos(player_pos);
 
@@ -1329,6 +1358,49 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
     }
 
     turn = &game_state->player[*turn_id];
+
+    bool joined[MAX_PLAYERS] = {0};
+    bool left[MAX_PLAYERS] = {0};
+    detect_player_changes(game_state, was_connected, joined, left);
+
+    for (int id = 0; id < MAX_PLAYERS; id++) {
+      if (left[id]) {
+        if (selected_nick == id)
+          selected_nick = -1;
+        if (game_nick_widgets[id]) {
+          ui_unregister(&registry, &game_nick_widgets[id]->base);
+          ui_widget_destroy(&game_nick_widgets[id]->base);
+          game_nick_widgets[id] = NULL;
+        }
+        if (game_coin_widgets[id]) {
+          ui_unregister(&registry, &game_coin_widgets[id]->base);
+          ui_widget_destroy(&game_coin_widgets[id]->base);
+          game_coin_widgets[id] = NULL;
+        }
+        if (game_coins_tw[id]) {
+          ui_unregister(&registry, &game_coins_tw[id]->base);
+          ui_widget_destroy(&game_coins_tw[id]->base);
+          game_coins_tw[id] = NULL;
+        }
+      }
+      if (!game_state->player[id].is_connected || game_nick_widgets[id])
+        continue;
+      char coins_str[24] = {0};
+      snprintf(coins_str, sizeof coins_str, "%" PRId32, game_state->player[id].coins);
+      game_nick_widgets[id] =
+          nick_widget_create(game_state->player[id].nick, id, font->fonts[FONT_BOLD],
+                             get_color(COLOR_BLACK));
+      game_nick_widgets[id]->highlight = (id == my_id);
+      game_nick_widgets[id]->selectable = (game_state->player[my_id].is_admin && id != my_id);
+      game_coin_widgets[id] =
+          image_widget_from_texture(coin_tex_front, coin_px / 2, coin_px / 2);
+      game_coins_tw[id] =
+          text_widget_create(coins_str, font->fonts[FONT_BOLD], get_color(COLOR_BLACK));
+      ui_register(&registry, &game_nick_widgets[id]->base);
+      ui_register(&registry, &game_coin_widgets[id]->base);
+      ui_register(&registry, &game_coins_tw[id]->base);
+      prev_coins[id] = game_state->player[id].coins;
+    }
     // printf("turn id: %d\n", turn->id);
 
     if (strcmp(client_state.server_status_str, status_msgs[SIZEOF_STATUS_MSGS - 1]) != 0) {
@@ -1356,7 +1428,19 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
     }
 
     clear_screen(sdl_context->renderer);
-    // bool fullscreen_toggled = false;
+
+    int mx, my;
+    SDL_GetMouseState(&mx, &my);
+    float lx, ly;
+    SDL_RenderWindowToLogical(sdl_context->renderer, mx, my, &lx, &ly);
+    SDL_Point mouse_pos = {(int)lx, (int)ly};
+
+    for (int i = 0; i < MAX_PLAYERS; i++) {
+      if (game_nick_widgets[i])
+        game_nick_widgets[i]->base.hovered =
+            game_nick_widgets[i]->selectable &&
+            SDL_PointInRect(&mouse_pos, &game_nick_widgets[i]->base.rect);
+    }
 
     if (game_state->prev_bet_amount == 0)
       for (size_t i = 0; i < n_bet_amounts; i++)
@@ -1413,6 +1497,26 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
     }
 
     indicator_deuces_wild->base.enabled = client_state.deuces_wild;
+
+    for (int id = 0; id < MAX_PLAYERS; id++) {
+      if (!game_nick_widgets[id] || !game_coin_widgets[id] || !game_coins_tw[id])
+        continue;
+      game_nick_widgets[id]->is_turn = (id == turn->id && !game_state->winner_declared);
+      if (game_state->player[id].coins != prev_coins[id]) {
+        char coins_str[24] = {0};
+        snprintf(coins_str, sizeof coins_str, "%" PRId32, game_state->player[id].coins);
+        text_widget_set_text(game_coins_tw[id], coins_str);
+        prev_coins[id] = game_state->player[id].coins;
+      }
+      UITable_t player_table = {0};
+      ui_table_begin(&player_table, player_pos[id].x + card_area.w / 2,
+                     player_pos[id].y + (int)(card_area.h * 1.2), 3);
+      ui_table_add(&player_table, 0, 0, &game_nick_widgets[id]->base);
+      ui_table_add(&player_table, 0, 1, &game_coin_widgets[id]->base);
+      ui_table_add(&player_table, 0, 2, &game_coins_tw[id]->base);
+      ui_table_layout(&player_table);
+    }
+
     ui_render_all(&registry);
 
     SDL_SetRenderDrawColor(sdl_context->renderer, 255, 255, 255, 255);
@@ -1560,33 +1664,6 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
     snprintf(buffer, sizeof(buffer), "%" PRIu32, game_state->pot);
     render_text_pot(buffer, table_center, font);
 
-    player_ptr = starting_turn;
-    do {
-      // printf("%d\n", __LINE__);
-      int id = player_ptr->id;
-      char name_text[sizeof(player_ptr->nick)] = {0};
-      snprintf(name_text, sizeof name_text, "%s", player_ptr->nick);
-      SDL_Rect name_rect = {player_pos[id].x + card_area.w / 2,
-                            player_pos[id].y + (card_area.h * 1.2), 0, 0};
-
-      bool blink = id == turn->id && !game_state->winner_declared;
-      render_nick(sdl_context->renderer, font->fonts[FONT_BOLD], name_text, get_color(COLOR_BLACK),
-                  &name_rect, blink);
-
-      if (TTF_SizeUTF8(font->fonts[FONT_BOLD], name_text, &name_rect.w, &name_rect.h) != 0)
-        fprintf(stderr, "TTF_SizeUTF8 error: %s\n", TTF_GetError());
-      SDL_Rect coin_rect = {
-          .x = name_rect.x + name_rect.w + 10, .y = name_rect.y, coin_px / 2, coin_px / 2};
-      SDL_RenderCopy(sdl_context->renderer, coin_tex_front, NULL, &coin_rect);
-      char coins_text[24] = {0};
-      snprintf(coins_text, sizeof coins_text, "%" PRId32, player_ptr->coins);
-      SDL_Rect coin_text_rect = {coin_rect.x + coin_rect.w * 1.2, name_rect.y, 0, 0};
-      render_text_plain(sdl_context->renderer, font->fonts[FONT_BOLD], coins_text,
-                        get_color(COLOR_BLACK), &coin_text_rect);
-
-      player_ptr = get_next_connected_client(players_array, player_ptr->id);
-    } while (player_ptr && player_ptr != starting_turn);
-
     if (client_state.deuces_wild && client_state.do_exchange_wilds) {
       for (size_t i = 0; i < ARRAY_SIZE(card_faces); i++)
         render_button(&card_faces[i]);
@@ -1704,6 +1781,23 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
       }
       if (amount_selected)
         break;
+
+      if (event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_LEFT &&
+          game_state->player[my_id].is_admin) {
+        for (int i = 0; i < MAX_PLAYERS; i++) {
+          if (!game_nick_widgets[i] || !game_nick_widgets[i]->selectable)
+            continue;
+          if (SDL_PointInRect(&mouse_pos, &game_nick_widgets[i]->base.rect)) {
+            int8_t new_sel = (selected_nick == i) ? -1 : i;
+            if (selected_nick >= 0 && game_nick_widgets[selected_nick])
+              game_nick_widgets[selected_nick]->base.selected = false;
+            selected_nick = new_sel;
+            if (selected_nick >= 0)
+              game_nick_widgets[selected_nick]->base.selected = true;
+            break;
+          }
+        }
+      }
 
       if (event.type == SDL_QUIT) {
         running = false;

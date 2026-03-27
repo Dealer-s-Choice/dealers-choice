@@ -16,6 +16,27 @@ static void image_widget_destroy(UIWidget_t *w) {
   free(iw);
 }
 
+static void image_widget_destroy_no_tex(UIWidget_t *w) {
+  free(w);
+}
+
+ImageWidget_t *image_widget_from_texture(SDL_Texture *tex, int w, int h) {
+  if (!tex)
+    return NULL;
+
+  ImageWidget_t *iw = calloc(1, sizeof(*iw));
+  if (!iw)
+    return NULL;
+
+  iw->renderer = g_sdl_context->renderer;
+  iw->tex = tex;
+  iw->base.rect.w = w;
+  iw->base.rect.h = h;
+  iw->base.render = image_widget_render;
+  iw->base.destroy = image_widget_destroy_no_tex;
+  return iw;
+}
+
 ImageWidget_t *image_widget_create(const char *path, int w, int h) {
   SDL_Renderer *renderer = g_sdl_context->renderer;
   if (!renderer || !path)
