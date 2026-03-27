@@ -47,7 +47,7 @@ jobs:
         GETTEXT_PREFIX=$(brew --prefix gettext)
         echo $GETTEXT_PREFIX
         # PKG_CONFIG_PATH="$GETTEXT_PREFIX/lib/pkgconfig:$PKG_CONFIG_PATH"
-        CFLAGS="-Werror" meson setup _build
+        CFLAGS="-Werror" meson setup _build -Dsodium=enabled
 
     - name: Build
       run: meson compile -v -C _build

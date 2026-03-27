@@ -36,7 +36,7 @@
 #include "types.h"
 
 #define NONCE_SIZE 32
-#define HASH_SIZE crypto_hash_sha256_BYTES
+#define HASH_SIZE 32  /* SHA-256 output size, matches crypto_hash_sha256_BYTES */
 
 #ifndef MAX_HAND_SIZE
 #define MAX_HAND_SIZE 7

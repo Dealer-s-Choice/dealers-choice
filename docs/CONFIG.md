@@ -8,6 +8,9 @@ on startup (or the file specified via `--server-conf`).
 
 ### Password
 
+Password authentication requires libsodium. If the build was compiled without
+it, any configured password is ignored and a warning is printed at startup.
+
 To require players to authenticate before joining, set a password:
 
 ```

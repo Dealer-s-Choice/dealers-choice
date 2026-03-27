@@ -48,7 +48,7 @@ jobs:
       run: .github/scripts/install_ubuntu_deps.sh
 
     - name: Meson setup
-      run: CFLAGS="-Werror" meson setup _build
+      run: CFLAGS="-Werror" meson setup _build -Dsodium=enabled
 
     - name: Build
       run: meson compile -C _build

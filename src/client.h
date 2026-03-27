@@ -86,3 +86,5 @@ int8_t send_discards_request_new_cards(TCPsocket sock, const uint8_t *discard_in
 
 void layout_cards(CardContext_t card_context[MAX_PLAYERS][MAX_HAND_SIZE],
                   Player_t *players_array, const SDL_Point *player_pos);
+
+int authenticate_with_server(TCPsocket sock, const char *password);
