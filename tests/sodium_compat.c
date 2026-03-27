@@ -69,7 +69,9 @@ static int SDLCALL server_thread(void *data) {
   return args->result;
 }
 
-int main(void) {
+int main(int argc, char *argv[]) {
+  (void)argc;
+  (void)argv;
   if (SDL_Init(0) != 0 || SDLNet_Init() != 0) {
     fprintf(stderr, "SDL/SDLNet init failed: %s\n", SDL_GetError());
     return 1;
