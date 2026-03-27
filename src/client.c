@@ -1691,7 +1691,9 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
 
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
-      SDL_Point mouse_pos = {event.button.x, event.button.y};
+      float elx, ely;
+      SDL_RenderWindowToLogical(sdl_context->renderer, event.button.x, event.button.y, &elx, &ely);
+      mouse_pos = (SDL_Point){(int)elx, (int)ely};
       for (int card_n = 0; card_n < MAX_HAND_SIZE; card_n++) {
         DH_Card *card = &turn->hand.card[card_n];
         if (!DH_is_card_null(*card) || !DH_is_card_null(*card)) {
