@@ -49,6 +49,7 @@ typedef struct ServerConfig_t {
   uint32_t bet_median;
   uint32_t bet_maximum;
   uint8_t action_timeout_max;
+  char password[256];
 } ServerConfig_t;
 
 typedef struct {
@@ -114,7 +115,9 @@ static const ConfigEntry server_config_entries[] = {
     {"bet_maximum", CFG_TYPE_UINT32, "500", offsetof(ServerConfig_t, bet_maximum),
      sizeof(uint32_t)},
     {"action_timeout_max", CFG_TYPE_UINT8, "3", offsetof(ServerConfig_t, action_timeout_max),
-     sizeof(uint8_t)}};
+     sizeof(uint8_t)},
+    {"password", CFG_TYPE_STRING, "", offsetof(ServerConfig_t, password),
+     sizeof(((ServerConfig_t *)0)->password)}};
 
 static const size_t server_config_entry_count = ARRAY_SIZE(server_config_entries);
 

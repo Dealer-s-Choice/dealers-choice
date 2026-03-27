@@ -192,6 +192,12 @@ ServerConfig_t get_server_config(Path_t *path, const CliArgs_t *cli_args) {
 
     canfigger_free_current_key_node_advance(&cfg_node);
   }
+
+  // DC_PASSWORD env var takes precedence over server.conf
+  const char *env_pw = getenv("DC_PASSWORD");
+  if (env_pw)
+    snprintf(config.password, sizeof(config.password), "%s", env_pw);
+
   return config;
 }
 
