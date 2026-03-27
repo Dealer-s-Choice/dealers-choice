@@ -66,6 +66,9 @@ the [docker-compose
 file](https://github.com/Dealer-s-Choice/dealers_choice/tree/trunk/docker) or
 [tmux](https://coderwall.com/p/purqma/use-tmux-for-a-poor-man-s-daemon).
 
+See [docs/CONFIG.md](docs/CONFIG.md) for server configuration options including
+password protection.
+
 ## Client
 
 To run the client, simply run the binary without any arguments. A game can not

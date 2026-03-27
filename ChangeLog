@@ -3,7 +3,7 @@
   + Add two animated card backs: lava lamp and sunset (#178)
   * bugfix: Client freezes (infinite loop in layout_cards) when slot-0
     player disconnects during a game (#195)
-  + Implement server authentication
+  + Server password set via server.conf or DC_PASSWORD env var (#187)
   + Add dealer indicator column to lobby player list (black square, red circle if dealer)
   + Highlight local player's nick with a semi-transparent background in the lobby
   + Admin can select other players in the lobby by clicking their nick
