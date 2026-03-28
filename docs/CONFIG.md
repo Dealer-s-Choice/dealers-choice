@@ -30,9 +30,10 @@ Clients must also have `DC_PASSWORD` set to the same value in order to connect.
 
 ### Admin controls
 
-The first client to authenticate with the server password is granted admin
-status for that session.  An admin can kick or ban other players during a game
-via the Kick / Ban buttons in the player list.
+Any client that authenticates with the server password is granted admin
+status for that session.  The server operator controls who has admin access
+by deciding who to share the password with.  An admin can kick or ban other
+players during a lobby or game via the Kick / Ban buttons in the player list.
 
 - **Kick** — the target player is immediately disconnected and their coins are
   reset to the starting amount.

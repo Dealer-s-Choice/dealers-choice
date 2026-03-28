@@ -13,6 +13,17 @@
     multiple subsets share the same rank (kickers and best straight not
     considered); also fix straight selection incorrectly favouring a wheel
     over a higher straight when both are present
+  + Multiple clients may connect as admin simultaneously; the server
+    operator controls access by deciding who to share the password with
+  + Admin kick/ban now works during a game, not only in the lobby
+  * bugfix: Server did not dispatch kick/ban messages received during
+    the lobby waiting loop
+  * bugfix: Game-phase kick/ban buttons were rendered beneath the status
+    message panel and therefore invisible
+  * bugfix: Mouse coordinates in the game event loop were read from the
+    wrong source, causing nick clicks and button hovers to misfire
+  * bugfix: Out-of-bounds read when the last bet-amount button was
+    disabled while selected (CID 644890)
 
 2026-03-12
 
