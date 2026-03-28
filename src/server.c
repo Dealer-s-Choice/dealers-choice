@@ -413,16 +413,6 @@ static ETurnMsg_t recv_turn_player_msg(TCPsocket sock, PlayerActionMsg_t *out_ac
   return TURN_MSG_DISCONNECT;
 }
 
-static int recv_player_action(TCPsocket sock, PlayerActionMsg_t *out_action) {
-  PlayerActionMsg_t action = {0};
-  uint16_t kb_opcode = 0;
-  int8_t target_id   = 0;
-  ETurnMsg_t t = recv_turn_player_msg(sock, &action, &kb_opcode, &target_id);
-  if (t != TURN_MSG_ACTION)
-    return -1;
-  *out_action = action;
-  return 7; /* sizeof the 7-byte player-action wire format */
-}
 
 static int send_opcode(TCPsocket sock, const uint16_t opcode) {
   uint8_t buffer[6];
