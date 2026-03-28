@@ -5,23 +5,13 @@
     player disconnects during a game (#195)
   + Server password set via server.conf or DC_PASSWORD env var (#187)
   + Add dealer indicator column to lobby player list (black square, red circle if dealer)
-  + Highlight local player's nick with a semi-transparent background in the lobby
-  + Admin can select other players in the lobby by clicking their nick
   + Play turn notification sound when local player becomes the dealer
   * Fix "waiting" messages sometimes rendering when they shouldn't
   * pokeval: Fix wrong 5-card hand selected from 6- or 7-card hands when
     multiple subsets share the same rank (kickers and best straight not
     considered); also fix straight selection incorrectly favouring a wheel
     over a higher straight when both are present
-  + Multiple clients may connect as admin simultaneously; the server
-    operator controls access by deciding who to share the password with
-  + Admin kick/ban now works during a game, not only in the lobby
-  * bugfix: Server did not dispatch kick/ban messages received during
-    the lobby waiting loop
-  * bugfix: Game-phase kick/ban buttons were rendered beneath the status
-    message panel and therefore invisible
-  * bugfix: Mouse coordinates in the game event loop were read from the
-    wrong source, causing nick clicks and button hovers to misfire
+  + Implemented Admin kick/ban in the lobby and during the game
   * bugfix: Out-of-bounds read when the last bet-amount button was
     disabled while selected (CID 644890)
 
