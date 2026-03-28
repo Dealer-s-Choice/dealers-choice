@@ -1,7 +1,7 @@
 [wrap-git]
 url = https://github.com/andy5995/canfigger.git
 
-revision = c948456a189128b4c2075d1dcd7092eb03ccf614
+revision = trunk
 #revision = v0.3.0
 depth = 1
 
