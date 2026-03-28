@@ -10,9 +10,6 @@ on:
     - '**'
     - '!**.yml'
     - '**/codeql.yml'
-  pull_request:
-    branches: trunk
-    paths: *shared_paths
 
 jobs:
   analyze:
