@@ -155,9 +155,8 @@ uint8_t *serialize_game_settings(const GameSettings_t *src, size_t *size_out) {
   msg.action_timeout_ms = src->action_timeout_ms;
   msg.wild_exchange_timeout_ms = src->wild_exchange_timeout_ms;
   msg.end_of_game_timeout_ms = src->end_of_game_timeout_ms;
-  msg.bet_minimum = src->bet_minimum;
-  msg.bet_median = src->bet_median;
-  msg.bet_maximum = src->bet_maximum;
+  msg.n_bet_amounts = src->bet_amount_count;
+  msg.bet_amounts = (uint32_t *)src->bet_amounts;
 
   // Serialize to buffer
   *size_out = game_settings__get_packed_size(&msg);
@@ -184,9 +183,9 @@ GameSettings_t deserialize_game_settings(const uint8_t *data, size_t size) {
   result.action_timeout_ms = msg->action_timeout_ms;
   result.wild_exchange_timeout_ms = msg->wild_exchange_timeout_ms;
   result.end_of_game_timeout_ms = msg->end_of_game_timeout_ms;
-  result.bet_minimum = msg->bet_minimum;
-  result.bet_median = msg->bet_median;
-  result.bet_maximum = msg->bet_maximum;
+  result.bet_amount_count = (uint8_t)msg->n_bet_amounts;
+  for (size_t i = 0; i < msg->n_bet_amounts && i < MAX_BET_AMOUNTS; i++)
+    result.bet_amounts[i] = msg->bet_amounts[i];
 
   game_settings__free_unpacked(msg, NULL);
   return result;

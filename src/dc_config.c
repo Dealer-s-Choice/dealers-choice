@@ -177,21 +177,43 @@ ServerConfig_t get_server_config(Path_t *path, const CliArgs_t *cli_args) {
   bool found_keys[server_config_entry_count];
   memset(found_keys, 0, sizeof(found_keys));
 
+  bool found_bet_amounts = false;
+
   while (cfg_node) {
-    for (size_t i = 0; i < server_config_entry_count; i++) {
-      if (strcasecmp(cfg_node->key, server_config_entries[i].key) == 0) {
-        server_config_set_from_string(&config, &server_config_entries[i], cfg_node->value);
-        found_keys[i] = true;
-        break;
+    if (strcasecmp(cfg_node->key, "bet_amounts") == 0) {
+      found_bet_amounts = true;
+      char *attr = NULL;
+      canfigger_free_current_attr_str_advance(cfg_node->attributes, &attr);
+      while (attr && config.bet_amount_count < MAX_BET_AMOUNTS) {
+        unsigned long v;
+        parse_unsigned(attr, UINT32_MAX, &v);
+        config.bet_amounts[config.bet_amount_count++] = (uint32_t)v;
+        canfigger_free_current_attr_str_advance(cfg_node->attributes, &attr);
+      }
+    } else {
+      for (size_t i = 0; i < server_config_entry_count; i++) {
+        if (strcasecmp(cfg_node->key, server_config_entries[i].key) == 0) {
+          server_config_set_from_string(&config, &server_config_entries[i], cfg_node->value);
+          found_keys[i] = true;
+          break;
+        }
       }
     }
-    for (size_t i = 0; i < server_config_entry_count; i++)
-      if (!found_keys[i])
-        server_config_set_from_string(&config, &server_config_entries[i],
-                                      server_config_entries[i].default_value);
 
     canfigger_free_current_key_node_advance(&cfg_node);
   }
+
+  if (!found_bet_amounts) {
+    config.bet_amounts[0] = 100;
+    config.bet_amounts[1] = 250;
+    config.bet_amounts[2] = 500;
+    config.bet_amount_count = 3;
+  }
+
+  for (size_t i = 0; i < server_config_entry_count; i++)
+    if (!found_keys[i])
+      server_config_set_from_string(&config, &server_config_entries[i],
+                                    server_config_entries[i].default_value);
 
   // DC_PASSWORD env var takes precedence over server.conf
   const char *env_pw = getenv("DC_PASSWORD");
