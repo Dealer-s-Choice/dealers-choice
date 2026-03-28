@@ -362,28 +362,66 @@ void broadcast_turn_id(const ArgsBroadcastGameState_t *args) {
   }
 }
 
+typedef enum {
+  TURN_MSG_ACTION,    /* MSG_PLAYER_ACTION — game action from the turn player */
+  TURN_MSG_KICK_BAN,  /* MSG_KICK_PLAYER / MSG_BAN_PLAYER from an admin who happens to be on turn */
+  TURN_MSG_DISCONNECT,/* connection closed or unrecognised data */
+} ETurnMsg_t;
+
+/*
+ * Read one message from the turn player's socket and classify it.
+ *
+ * Player-action messages are 7 bytes with no length prefix:
+ *   [0-1] opcode (MSG_PLAYER_ACTION)  [2] action  [3-6] amount
+ *
+ * Kick/ban messages are sent via send_message() which prepends a 4-byte BE
+ * length, giving the same 7-byte total on the wire:
+ *   [0-3] length (BE, == 3)  [4-5] opcode  [6] target_id
+ *
+ * We tell them apart by checking bytes [0-1]: MSG_PLAYER_ACTION == 0x0002,
+ * whereas the length prefix for a 1-byte kick/ban payload starts with 0x00 0x00.
+ */
+static ETurnMsg_t recv_turn_player_msg(TCPsocket sock, PlayerActionMsg_t *out_action,
+                                       uint16_t *out_kb_opcode, int8_t *out_target_id) {
+  uint8_t buf[7];
+  if (recv_all_tcp(sock, buf, sizeof(buf)) <= 0)
+    return TURN_MSG_DISCONNECT;
+
+  uint16_t opcode = (buf[0] << 8) | buf[1];
+
+  if (opcode == MSG_PLAYER_ACTION) {
+    out_action->action = buf[2];
+    out_action->amount = ((uint32_t)buf[3] << 24) | ((uint32_t)buf[4] << 16) |
+                         ((uint32_t)buf[5] << 8)  | (uint32_t)buf[6];
+    verbose_printf("Received action %u with amount %" PRIu32 "\n",
+                   out_action->action, out_action->amount);
+    return TURN_MSG_ACTION;
+  }
+
+  /* A kick/ban message starts with a 4-byte BE length (== 3 for a 1-byte
+   * payload). The real opcode is at bytes [4-5] and target_id at byte [6]. */
+  if (opcode == 0x0000) {
+    uint16_t kb_opcode = (buf[4] << 8) | buf[5];
+    if (kb_opcode == MSG_KICK_PLAYER || kb_opcode == MSG_BAN_PLAYER) {
+      *out_kb_opcode  = kb_opcode;
+      *out_target_id  = (int8_t)buf[6];
+      return TURN_MSG_KICK_BAN;
+    }
+  }
+
+  fprintf(stderr, "[recv_turn_player_msg] Unrecognised opcode 0x%04X\n", opcode);
+  return TURN_MSG_DISCONNECT;
+}
+
 static int recv_player_action(TCPsocket sock, PlayerActionMsg_t *out_action) {
-  uint8_t buffer[7];
-
-  int n_bytes;
-  if ((n_bytes = recv_all_tcp(sock, buffer, sizeof(buffer))) <= 0) {
-    fputs("Failed to receive player action\n", stderr);
-    return n_bytes;
-  }
-
-  uint16_t opcode = (buffer[0] << 8) | buffer[1];
-  if (opcode != MSG_PLAYER_ACTION) {
-    fprintf(stderr, "[%s] Incorrect opcode\n", __func__);
+  PlayerActionMsg_t action = {0};
+  uint16_t kb_opcode = 0;
+  int8_t target_id   = 0;
+  ETurnMsg_t t = recv_turn_player_msg(sock, &action, &kb_opcode, &target_id);
+  if (t != TURN_MSG_ACTION)
     return -1;
-  }
-
-  out_action->action = buffer[2];
-  out_action->amount = ((uint32_t)buffer[3] << 24) | ((uint32_t)buffer[4] << 16) |
-                       ((uint32_t)buffer[5] << 8) | ((uint32_t)buffer[6]);
-
-  verbose_printf("Received action %u with amount %" PRIu32 "\n", out_action->action,
-                 out_action->amount);
-  return n_bytes;
+  *out_action = action;
+  return 7; /* sizeof the 7-byte player-action wire format */
 }
 
 static int send_opcode(TCPsocket sock, const uint16_t opcode) {
@@ -828,9 +866,22 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args) {
         // If this socket is ready (the player who's turn it is), they either
         // disconnected, or have sent an action.
         if (SDLNet_SocketReady(args->clients[turn->id])) {
-          // puts("socket ready");
-          // char tmp[sizeof args->game_state->status_str];
-          if (recv_player_action(args->clients[turn->id], &action) > 0) {
+          uint16_t kb_opcode = 0;
+          int8_t   kb_target = -1;
+          ETurnMsg_t msg_type = recv_turn_player_msg(args->clients[turn->id], &action,
+                                                     &kb_opcode, &kb_target);
+          if (msg_type == TURN_MSG_KICK_BAN) {
+            /* Admin is on-turn and sent a kick/ban instead of a game action.
+             * Process it and keep waiting for their game action. */
+            if (kb_target >= 0 && kb_target != turn->id) {
+              if (kb_opcode == MSG_KICK_PLAYER)
+                kick_player(args, kb_target);
+              else
+                ban_player(args, kb_target);
+              broadcast_game_state(args);
+            }
+            continue;
+          } else if (msg_type == TURN_MSG_ACTION) {
             if (opcode == MSG_BET_CHECK_FOLD) {
               switch (action.action) {
               case ACTION_CHECK:
@@ -875,7 +926,7 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args) {
                 remove_disconnected_player(args, turn->id);
               }
             }
-          } else {
+          } else { /* TURN_MSG_DISCONNECT */
             remove_disconnected_player(args, args->turn_id);
             break;
           }
