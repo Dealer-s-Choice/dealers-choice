@@ -5,26 +5,9 @@
 
 ## Changing the number of game passes
 
-The default is 3 passes for the `5_card_{stud,showdown}` tests. To run with
-1 pass:
-
-### Using the meson test setup
+The default is 3 passes. To run with 1 pass:
 
     meson test -v --setup=One_pass
-
-### Manually
-
-Run the server in one terminal:
-
-    ./dealers-choice --test --server
-
-Then, from the build directory in another terminal:
-
-    tests/test_5_card_showdown 1
-
-Check the return code to verify success:
-
-    echo $?
 
 ## Troubleshooting: port already in use
 
