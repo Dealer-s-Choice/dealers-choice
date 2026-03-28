@@ -89,7 +89,7 @@ ServerConfig_t init_game_state(GameState_t *game_state, Path_t *path, const CliA
 
 #ifndef HAVE_LIBSODIUM
   if (*config.password)
-    fprintf(stderr, _("Warning: password is set but this build lacks libsodium — "
+    fprintf(stderr, _("Warning: password is set but this build lacks libsodium; "
                       "authentication is disabled and the password will be ignored.\n"));
 #endif
 
