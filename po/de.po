@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: dealers-choice\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-03-12 14:40-0500\n"
+"POT-Creation-Date: 2026-03-28 01:54-0500\n"
 "PO-Revision-Date: 2025-06-19 21:52-0500\n"
 "Last-Translator: Andy <andy@prometheus.localhost.localdomain>\n"
 "Language-Team: German <translation-team-de@lists.sourceforge.net>\n"
@@ -17,74 +17,92 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#. TRANSLATORS: Name of a poker variant. Usually left untranslated.
-#: src/client.c:119 src/client.c:896
+#: src/client.c:122
 msgid "Deuces Wild"
 msgstr ""
 
-#: src/client.c:228
-msgid "Connected players:"
-msgstr "Anwesende Spieler"
-
-#: src/client.c:243
-msgid " (Dealer)"
+#: src/client.c:166
+msgid "Players"
 msgstr ""
 
-#: src/client.c:275
+#: src/client.c:170
+msgid "Dealer"
+msgstr ""
+
+#: src/client.c:174
+msgid "Ping"
+msgstr ""
+
+#: src/client.c:178
 msgid "Waiting for more players..."
 msgstr ""
 
-#: src/client.c:279
+#: src/client.c:184
 msgid "Waiting for dealer to select game..."
 msgstr ""
 
+#: src/client.c:190 src/client.c:1311
+msgid "Kick"
+msgstr ""
+
+#: src/client.c:193 src/client.c:1314
+msgid "Ban"
+msgstr ""
+
 #. Show dealing screen immediately after click
-#: src/client.c:287
+#: src/client.c:521
 msgid "Dealing..."
 msgstr ""
 
-#: src/client.c:688
+#: src/client.c:1075
 msgid "Check"
 msgstr "Prüfen"
 
-#: src/client.c:688
+#: src/client.c:1075
 msgid "Bet"
 msgstr "Setzen"
 
-#: src/client.c:689
+#: src/client.c:1076
 msgid "Fold"
 msgstr "Aufgeben"
 
-#: src/client.c:689
+#: src/client.c:1076
 msgid "Call"
 msgstr "Mitgehen"
 
-#: src/client.c:690
+#: src/client.c:1077
 msgid "Raise"
 msgstr "Erhöhen"
 
-#: src/client.c:690
+#: src/client.c:1077
 msgid "Discard"
 msgstr "Ablegen"
 
-#: src/client.c:691
+#: src/client.c:1078
 msgid "Exchange"
 msgstr ""
 
-#: src/client.c:1157
+#: src/client.c:1684
 msgid "Click a 2, then choose value and suit to assign."
 msgstr ""
 
-#: src/main.c:49
+#: src/main.c:59
 msgid "Connect"
 msgstr "verbinden"
 
-#: src/main.c:143
-#, c-format
-msgid "port: %<PRIu16>"
+#: src/main.c:61 src/main.c:471
+msgid "Settings"
 msgstr ""
 
-#: src/main.c:403
+#: src/main.c:99 src/main.c:358
+msgid "Save"
+msgstr ""
+
+#: src/main.c:108 src/main.c:369
+msgid "Load Defaults"
+msgstr ""
+
+#: src/main.c:767
 #, c-format
 msgid "Attempting connection to: %s..."
 msgstr ""
@@ -99,5 +117,54 @@ msgstr " Discord Channel (on Lazarus Project Server) "
 msgid "Website"
 msgstr ""
 
-#~ msgid "folded"
-#~ msgstr "Hat aufgegeben"
+#: src/server.c:92
+#, c-format
+msgid ""
+"Warning: password is set but this build lacks libsodium; authentication is "
+"disabled and the password will be ignored.\n"
+msgstr ""
+
+#: src/server.c:680
+#, fuzzy
+msgid "checked"
+msgstr "Prüfen"
+
+#: src/server.c:694
+msgid "folded"
+msgstr "Hat aufgegeben"
+
+#: src/server.c:883
+msgid "bet "
+msgstr ""
+
+#: src/server.c:897
+msgid "called"
+msgstr ""
+
+#: src/server.c:903
+#, fuzzy
+msgid "raised "
+msgstr "Erhöhen"
+
+#: src/server.c:1030
+#, c-format
+msgid "%s disconnected"
+msgstr ""
+
+#: src/server.c:1046
+#, c-format
+msgid "%s was kicked"
+msgstr ""
+
+#: src/server.c:1063
+#, c-format
+msgid "%s was banned"
+msgstr ""
+
+#: src/server.c:1334
+#, c-format
+msgid "Game: %s%s"
+msgstr ""
+
+#~ msgid "Connected players:"
+#~ msgstr "Anwesende Spieler"
