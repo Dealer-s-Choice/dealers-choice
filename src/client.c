@@ -1839,8 +1839,9 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
       for (size_t i = 0; i < n_bet_amounts; i++) {
         if (!amount_button[i].enabled && amount_button[i].selected) {
           amount_button[i].selected = false;
-          amount_button[i + 1].selected = true;
-          client_state.selected_amount = atoi(amount_button[i + 1].text);
+          size_t next = (i + 1 < n_bet_amounts) ? i + 1 : 0;
+          amount_button[next].selected = true;
+          client_state.selected_amount = atoi(amount_button[next].text);
         }
 
         amount_button[i].hovered = SDL_PointInRect(&mouse_pos, &amount_button[i].rect);
