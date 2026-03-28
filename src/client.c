@@ -1314,7 +1314,8 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
       button_widget_create(_("Ban"), (EColor_t){COLOR_WHITE, COLOR_BROWN},
                            font->fonts[FONT_BOLD], (SDL_Keycode)0);
   game_btn_kick->base.rect.x = g_viewport.w * 0.1;
-  game_btn_kick->base.rect.y = g_viewport.h * 0.82;
+  /* Position above the status message panel, which starts at g_center.y */
+  game_btn_kick->base.rect.y = g_center.y - game_btn_kick->base.rect.h - 20;
   game_btn_ban->base.rect.x  = game_btn_kick->base.rect.x + game_btn_kick->base.rect.w + 16;
   game_btn_ban->base.rect.y  = game_btn_kick->base.rect.y;
   ui_register(&registry, &game_btn_kick->base);
@@ -1747,11 +1748,17 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
     SDL_RenderPresent(sdl_context->renderer);
     SDL_Delay(16);
 
+    {
+      int rmx, rmy;
+      SDL_GetMouseState(&rmx, &rmy);
+      float rlx, rly;
+      SDL_RenderWindowToLogical(sdl_context->renderer, rmx, rmy, &rlx, &rly);
+      mouse_pos.x = (int)rlx;
+      mouse_pos.y = (int)rly;
+    }
+
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
-      float elx, ely;
-      SDL_RenderWindowToLogical(sdl_context->renderer, event.button.x, event.button.y, &elx, &ely);
-      mouse_pos = (SDL_Point){(int)elx, (int)ely};
       for (int card_n = 0; card_n < MAX_HAND_SIZE; card_n++) {
         DH_Card *card = &turn->hand.card[card_n];
         if (!DH_is_card_null(*card) || !DH_is_card_null(*card)) {

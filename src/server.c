@@ -1886,6 +1886,26 @@ int run_server(const CliArgs_t *cli_args, Path_t *path) {
             break;
           }
 
+          case MSG_KICK_PLAYER:
+          case MSG_BAN_PLAYER: {
+            if (!args_broadcast_game_state.game_state->player[i].is_admin)
+              break;
+            if (size <= OPCODE_SIZE)
+              break;
+            int8_t target_id = (int8_t)buffer[OPCODE_SIZE];
+            if (target_id == i) /* admin can't kick/ban themselves */
+              break;
+            if (opcode == MSG_KICK_PLAYER)
+              kick_player(&args_broadcast_game_state, target_id);
+            else
+              ban_player(&args_broadcast_game_state, target_id);
+            /* Persist any bans added in the lobby. */
+            session_ban_count = args_broadcast_game_state.ban_count;
+            memcpy(session_ban_list, args_broadcast_game_state.ban_list,
+                   sizeof(session_ban_list));
+            break;
+          }
+
           default:
             // Ignore or log
             fprintf(stderr, "[NET] Unknown opcode %04X from client %d\n", opcode, i);
