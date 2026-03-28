@@ -538,7 +538,7 @@ typedef struct {
 } CardBackStyle_t;
 
 // pattern_type comments: 0: crosshatch, 1: dots, 2: diagonal stripes, 3: grid,
-//                        4: diamond, 5: lava lamp, 6: sunset, 7: horse
+//                        4: diamond, 5: lava lamp, 6: sunset, 7: horse, 8: ocean waves
 static CardBackStyle_t card_back_styles[] = {
     {{0, 0, 128, 255}, {255, 255, 255, 255}, {200, 200, 255, 255}, 0},   // blue crosshatch
     {{128, 0, 0, 255}, {255, 255, 255, 255}, {255, 200, 200, 255}, 0},   // red crosshatch
@@ -554,6 +554,7 @@ static CardBackStyle_t card_back_styles[] = {
     {{0, 0, 0, 255}, {0, 0, 0, 255}, {0, 0, 0, 255}, 5},   // lava lamp (animated)
     {{0, 0, 0, 255}, {0, 0, 0, 255}, {0, 0, 0, 255}, 6},   // sunset (animated)
     {{0, 0, 0, 255}, {0, 0, 0, 255}, {0, 0, 0, 255}, 7},   // horse walking (animated)
+    {{0, 0, 0, 255}, {0, 0, 0, 255}, {0, 0, 0, 255}, 8},   // ocean waves (animated)
 };
 
 static int selected_card_back = -1;
@@ -563,7 +564,7 @@ static void select_card_back_for_game(void) {
 }
 
 static void draw_card_back_pattern(SDL_Renderer *renderer, SDL_Rect *card_rect) {
-  int style_idx = selected_card_back >= 0 ? selected_card_back : 0;
+  const int style_idx = selected_card_back >= 0 ? selected_card_back : 0;
   CardBackStyle_t style = card_back_styles[style_idx];
 
   // Fill card with base color
@@ -909,6 +910,56 @@ static void draw_card_back_pattern(SDL_Renderer *renderer, SDL_Rect *card_rect) 
     SDL_RenderDrawLine(renderer,
       horse_cx - 18 + (int)tail_sw, horse_y + 11,
       horse_cx - 20 + (int)(tail_sw * 0.6f), horse_y + 16);
+
+    SDL_RenderSetClipRect(renderer, NULL);
+    break;
+  }
+  case 8: { // ocean waves — angled top-down view
+    // Perspective: y=0 is the far horizon, y=h-1 is the near water surface.
+    // Wave bands compress toward the top (quadratic depth mapping).
+    float t = (float)SDL_GetTicks() * 0.001f;
+    SDL_RenderSetClipRect(renderer, card_rect);
+
+    for (int py = 0; py < card_rect->h; py++) {
+      float persp = (float)py / (float)(card_rect->h - 1); // 0=far, 1=near
+      float depth  = persp * persp * 15.0f; // world depth units (quadratic = perspective)
+
+      // Base water color: dark blue at horizon, more teal at the near edge
+      float base_r = 8.0f  + persp * 25.0f;
+      float base_g = 55.0f + persp * 45.0f;
+      float base_b = 130.0f + persp * 40.0f;
+
+      for (int px = 0; px < card_rect->w; px++) {
+        // Diagonal wave fronts: combine depth and x so crests run SW to NE,
+        // traveling toward the bottom-left (toward the viewer)
+        float wave = sinf(depth * 2.8f + (float)px * 0.25f - t * 2.2f);
+
+        float r = base_r, g = base_g, b = base_b;
+
+        if (wave > 0.65f) {
+          // Whitecap / foam
+          float f = (wave - 0.65f) / 0.35f;
+          r = base_r + f * (225.0f - base_r);
+          g = base_g + f * (235.0f - base_g);
+          b = base_b + f * (245.0f - base_b);
+        } else if (wave > 0.1f) {
+          // Crest face: brighter teal
+          float f = (wave - 0.1f) / 0.55f;
+          r = base_r + f * 10.0f;
+          g = base_g + f * 35.0f;
+          b = base_b + f * 20.0f;
+        } else if (wave < -0.4f) {
+          // Trough: deeper, darker
+          float f = (-wave - 0.4f) / 0.6f;
+          r = base_r * (1.0f - f * 0.35f);
+          g = base_g * (1.0f - f * 0.35f);
+          b = base_b * (1.0f - f * 0.15f);
+        }
+
+        SDL_SetRenderDrawColor(renderer, (Uint8)r, (Uint8)g, (Uint8)b, 255);
+        SDL_RenderDrawPoint(renderer, card_rect->x + px, card_rect->y + py);
+      }
+    }
 
     SDL_RenderSetClipRect(renderer, NULL);
     break;
