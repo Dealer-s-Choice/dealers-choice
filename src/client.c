@@ -537,6 +537,8 @@ typedef struct {
   int pattern_type; // 0: crosshatch, 1: dots, 2: diagonal stripes, 3: grid
 } CardBackStyle_t;
 
+// pattern_type comments: 0: crosshatch, 1: dots, 2: diagonal stripes, 3: grid,
+//                        4: diamond, 5: lava lamp, 6: sunset, 7: horse
 static CardBackStyle_t card_back_styles[] = {
     {{0, 0, 128, 255}, {255, 255, 255, 255}, {200, 200, 255, 255}, 0},   // blue crosshatch
     {{128, 0, 0, 255}, {255, 255, 255, 255}, {255, 200, 200, 255}, 0},   // red crosshatch
@@ -551,6 +553,7 @@ static CardBackStyle_t card_back_styles[] = {
      4}, // purple with light stripes
     {{0, 0, 0, 255}, {0, 0, 0, 255}, {0, 0, 0, 255}, 5},   // lava lamp (animated)
     {{0, 0, 0, 255}, {0, 0, 0, 255}, {0, 0, 0, 255}, 6},   // sunset (animated)
+    {{0, 0, 0, 255}, {0, 0, 0, 255}, {0, 0, 0, 255}, 7},   // horse walking (animated)
 };
 
 static int selected_card_back = -1;
@@ -798,6 +801,115 @@ static void draw_card_back_pattern(SDL_Renderer *renderer, SDL_Rect *card_rect) 
     }
 
     SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);
+    SDL_RenderSetClipRect(renderer, NULL);
+    break;
+  }
+  case 7: { // horse walking (animated)
+    float t = (float)SDL_GetTicks() * 0.001f;
+
+    // Sky
+    SDL_SetRenderDrawColor(renderer, 120, 185, 230, 255);
+    SDL_RenderFillRect(renderer, card_rect);
+
+    SDL_RenderSetClipRect(renderer, card_rect);
+
+    // Grass strip — bottom 12 rows
+    int grass_top = card_rect->y + card_rect->h - 12;
+    SDL_SetRenderDrawColor(renderer, 55, 140, 45, 255);
+    SDL_Rect grass = { card_rect->x, grass_top, card_rect->w, 12 };
+    SDL_RenderFillRect(renderer, &grass);
+    // Darker grass tufts
+    SDL_SetRenderDrawColor(renderer, 35, 100, 28, 255);
+    for (int gx = 0; gx < card_rect->w; gx += 7) {
+      SDL_RenderDrawLine(renderer,
+        card_rect->x + gx, grass_top,
+        card_rect->x + gx, grass_top - 2);
+    }
+
+    // Horse position: walks left-to-right, wrapping
+    int wrap_w = card_rect->w + 44;
+    float walk_speed = 14.0f; // pixels per second
+    int horse_cx = card_rect->x - 22 + (int)fmodf(t * walk_speed, (float)wrap_w);
+    int horse_y  = grass_top - 8; // bottom of body
+
+    // Walk cycle: two leg pairs in opposite phase
+    float stride = fmodf(t * 4.5f, (float)(2 * M_PI));
+    int p1 = (int)(5.0f * sinf(stride));        // near pair
+    int p2 = (int)(5.0f * sinf(stride + 3.14f)); // far pair
+
+    // Far legs (drawn behind body — darker brown)
+    SDL_SetRenderDrawColor(renderer, 72, 45, 12, 255);
+    // far front leg
+    SDL_RenderDrawLine(renderer, horse_cx + 5, horse_y + 8,
+                       horse_cx + 5 + p2, horse_y + 8 + 8);
+    // far hind leg
+    SDL_RenderDrawLine(renderer, horse_cx - 5, horse_y + 8,
+                       horse_cx - 5 - p2, horse_y + 8 + 8);
+
+    // Body
+    SDL_SetRenderDrawColor(renderer, 105, 68, 28, 255);
+    SDL_Rect body = { horse_cx - 12, horse_y, 24, 9 };
+    SDL_RenderFillRect(renderer, &body);
+    // Highlight stripe along top of body
+    SDL_SetRenderDrawColor(renderer, 140, 95, 48, 255);
+    SDL_RenderDrawLine(renderer, horse_cx - 11, horse_y + 1,
+                       horse_cx + 11, horse_y + 1);
+
+    // Neck: 4 lines going up-right from front of body
+    SDL_SetRenderDrawColor(renderer, 105, 68, 28, 255);
+    for (int ni = 0; ni < 4; ni++) {
+      SDL_RenderDrawLine(renderer,
+        horse_cx + 10 + ni, horse_y + 7 - ni,
+        horse_cx + 14 + ni, horse_y - 5 - ni);
+    }
+
+    // Head
+    SDL_Rect head = { horse_cx + 14, horse_y - 9, 8, 5 };
+    SDL_RenderFillRect(renderer, &head);
+
+    // Mane: dark strip along neck
+    SDL_SetRenderDrawColor(renderer, 38, 18, 4, 255);
+    for (int ni = 0; ni < 4; ni++) {
+      SDL_RenderDrawPoint(renderer, horse_cx + 11 + ni, horse_y + 6 - ni);
+    }
+
+    // White blaze on nose
+    SDL_SetRenderDrawColor(renderer, 230, 225, 215, 255);
+    SDL_RenderDrawLine(renderer, horse_cx + 20, horse_y - 8,
+                       horse_cx + 20, horse_y - 6);
+
+    // Eye
+    SDL_SetRenderDrawColor(renderer, 15, 10, 5, 255);
+    SDL_RenderDrawPoint(renderer, horse_cx + 16, horse_y - 7);
+
+    // Nostril
+    SDL_RenderDrawPoint(renderer, horse_cx + 21, horse_y - 5);
+
+    // Near legs (drawn in front of body)
+    SDL_SetRenderDrawColor(renderer, 105, 68, 28, 255);
+    // near front leg
+    SDL_RenderDrawLine(renderer, horse_cx + 6, horse_y + 8,
+                       horse_cx + 6 + p1, horse_y + 8 + 8);
+    // near hind leg
+    SDL_RenderDrawLine(renderer, horse_cx - 4, horse_y + 8,
+                       horse_cx - 4 - p1, horse_y + 8 + 8);
+
+    // White sock on near front leg bottom
+    SDL_SetRenderDrawColor(renderer, 210, 205, 195, 255);
+    int sock_bx = horse_cx + 6 + p1;
+    int sock_by = horse_y + 16;
+    SDL_RenderDrawLine(renderer, sock_bx, sock_by, sock_bx, sock_by + 1);
+
+    // Tail: swishing at the rear
+    SDL_SetRenderDrawColor(renderer, 38, 18, 4, 255);
+    float tail_sw = sinf(t * 1.8f) * 5.0f;
+    SDL_RenderDrawLine(renderer,
+      horse_cx - 12, horse_y + 2,
+      horse_cx - 18 + (int)tail_sw, horse_y + 11);
+    SDL_RenderDrawLine(renderer,
+      horse_cx - 18 + (int)tail_sw, horse_y + 11,
+      horse_cx - 20 + (int)(tail_sw * 0.6f), horse_y + 16);
+
     SDL_RenderSetClipRect(renderer, NULL);
     break;
   }
