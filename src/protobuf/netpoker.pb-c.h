@@ -102,13 +102,12 @@ struct  GameSettings
   uint32_t action_timeout_ms;
   uint32_t wild_exchange_timeout_ms;
   uint32_t end_of_game_timeout_ms;
-  uint32_t bet_minimum;
-  uint32_t bet_median;
-  uint32_t bet_maximum;
+  size_t n_bet_amounts;
+  uint32_t *bet_amounts;
 };
 #define GAME_SETTINGS__INIT \
  { PROTOBUF_C_MESSAGE_INIT (&game_settings__descriptor) \
-, 0, 0, 0, 0, 0, 0, 0 }
+, 0, 0, 0, 0, 0,NULL }
 
 
 struct  PingRequest

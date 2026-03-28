@@ -37,6 +37,10 @@ to disable; see `action_timeout_max` in server.conf).
 | x   | exchange (wild cards)|
 
 
+The bet amount hotkeys correspond to the amounts configured in `bet_amounts`
+in server.conf, in order, starting from key `1`. Up to 8 amounts are
+supported (keys `1`–`8`). With the default configuration:
+
 |      |   Amount   |
 |------|------------|
 | 1    |    100     |

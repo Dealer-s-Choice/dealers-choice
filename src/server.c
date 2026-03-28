@@ -121,21 +121,14 @@ ServerConfig_t init_game_state(GameState_t *game_state, Path_t *path, const CliA
 }
 
 GameSettings_t init_game_settings(const ServerConfig_t *config, const CliArgs_t *cli_args) {
-  const unsigned int max_bet_amounts = 9999999;
-  if (config->bet_minimum > max_bet_amounts || config->bet_median > max_bet_amounts ||
-      config->bet_maximum > max_bet_amounts) {
-    fprintf(stderr, "Bet amounts must be <= %d.\n", max_bet_amounts);
-    exit(EXIT_FAILURE);
-  }
-
   GameSettings_t game_settings = {
       .action_timeout_ms = config->action_timeout_ms,
       .wild_exchange_timeout_ms = config->wild_exchange_timeout_ms,
       .end_of_game_timeout_ms = (cli_args->test_mode) ? 500 : config->end_of_game_timeout_ms,
-      .bet_minimum = config->bet_minimum,
-      .bet_median = config->bet_median,
-      .bet_maximum = config->bet_maximum,
+      .bet_amount_count = config->bet_amount_count,
   };
+  memcpy(game_settings.bet_amounts, config->bet_amounts,
+         config->bet_amount_count * sizeof(uint32_t));
   return game_settings;
 }
 

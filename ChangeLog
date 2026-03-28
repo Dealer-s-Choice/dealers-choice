@@ -14,6 +14,9 @@
   + Implemented Admin kick/ban in the lobby and during the game
   * bugfix: Out-of-bounds read when the last bet-amount button was
     disabled while selected (CID 644890)
+  ! BREAKING: server.conf bet_minimum/bet_median/bet_maximum replaced by
+    a single variable-length list: bet_amounts = list, 100, 250, 500
+    (up to 8 values, hotkeys 1-8).
 
 2026-03-12
 

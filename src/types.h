@@ -37,6 +37,7 @@
 #define MAX_CLIENTS 5
 #define SIZEOF_NICK 15
 #define MAX_INPUT_LENGTH 64
+#define MAX_BET_AMOUNTS 8
 
 #define LEN_STATUS_STR 100
 
@@ -84,7 +85,8 @@ typedef struct {
   uint32_t action_timeout_ms;
   uint32_t wild_exchange_timeout_ms;
   uint32_t end_of_game_timeout_ms;
-  uint32_t bet_minimum, bet_median, bet_maximum;
+  uint32_t bet_amounts[MAX_BET_AMOUNTS];
+  uint8_t bet_amount_count;
 } GameSettings_t;
 
 typedef struct {

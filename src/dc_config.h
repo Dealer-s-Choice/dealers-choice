@@ -45,9 +45,8 @@ typedef struct ServerConfig_t {
   uint32_t ante;
   int32_t starting_coins;
   uint32_t max_raises;
-  uint32_t bet_minimum;
-  uint32_t bet_median;
-  uint32_t bet_maximum;
+  uint32_t bet_amounts[MAX_BET_AMOUNTS];
+  uint8_t bet_amount_count;
   uint8_t action_timeout_max;
   char password[256];
 } ServerConfig_t;
@@ -109,11 +108,6 @@ static const ConfigEntry server_config_entries[] = {
     {"starting_coins", CFG_TYPE_INT, "20000", offsetof(ServerConfig_t, starting_coins),
      sizeof(int32_t)},
     {"max_raises", CFG_TYPE_UINT32, "3", offsetof(ServerConfig_t, max_raises), sizeof(uint32_t)},
-    {"bet_minimum", CFG_TYPE_UINT32, "100", offsetof(ServerConfig_t, bet_minimum),
-     sizeof(uint32_t)},
-    {"bet_median", CFG_TYPE_UINT32, "250", offsetof(ServerConfig_t, bet_median), sizeof(uint32_t)},
-    {"bet_maximum", CFG_TYPE_UINT32, "500", offsetof(ServerConfig_t, bet_maximum),
-     sizeof(uint32_t)},
     {"action_timeout_max", CFG_TYPE_UINT8, "3", offsetof(ServerConfig_t, action_timeout_max),
      sizeof(uint8_t)},
     {"password", CFG_TYPE_STRING, "", offsetof(ServerConfig_t, password),

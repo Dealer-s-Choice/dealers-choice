@@ -37,9 +37,7 @@ message GameSettings {
   uint32 action_timeout_ms = 2;
   uint32 wild_exchange_timeout_ms = 3;
   uint32 end_of_game_timeout_ms = 4;
-  uint32 bet_minimum = 5;
-  uint32 bet_median = 6;
-  uint32 bet_maximum = 7;
+  repeated uint32 bet_amounts = 5;
 }
 
 enum MessageType {

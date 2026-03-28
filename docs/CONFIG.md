@@ -42,6 +42,18 @@ game via the Kick / Ban buttons in the player list.
 
 An admin cannot kick or ban themselves.
 
+### Bet amounts
+
+The bet amount buttons shown during a game are configured as a
+comma-separated list:
+
+```
+bet_amounts = list, 100, 250, 500
+```
+
+Up to 8 values are supported. The hotkeys `1`–`8` map to each amount in
+order. The first value is also used to scale the coin display in the pot.
+
 ---
 
 ## Player Config

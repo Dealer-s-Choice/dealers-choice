@@ -1266,20 +1266,25 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
   }
   layout_action_buttons(action_button, action_button_attrs);
 
-  const struct Amount_t {
-    const uint32_t value;
-    const SDL_Keycode hotkey;
-  } amount[] = {{game_settings->bet_minimum, SDLK_1},
-                {game_settings->bet_median, SDLK_2},
-                {game_settings->bet_maximum, SDLK_3}};
+  static const SDL_Keycode bet_hotkeys[MAX_BET_AMOUNTS] = {
+      SDLK_1, SDLK_2, SDLK_3, SDLK_4, SDLK_5, SDLK_6, SDLK_7, SDLK_8,
+  };
+  const size_t n_bet_amounts = game_settings->bet_amount_count;
+  struct Amount_t {
+    uint32_t value;
+    SDL_Keycode hotkey;
+  } amount[MAX_BET_AMOUNTS];
+  for (size_t i = 0; i < n_bet_amounts; i++) {
+    amount[i].value = game_settings->bet_amounts[i];
+    amount[i].hotkey = bet_hotkeys[i];
+  }
 
-  const size_t n_bet_amounts = ARRAY_SIZE(amount);
-  Button_t amount_button[n_bet_amounts];
+  Button_t amount_button[MAX_BET_AMOUNTS];
 
   SDL_Point timer = {0};
   layout_timer(&timer);
 
-  char amount_str[n_bet_amounts][16]; // enough for uint32_t
+  char amount_str[MAX_BET_AMOUNTS][16]; // enough for uint32_t
 
   for (size_t i = 0; i < n_bet_amounts; i++) {
     snprintf(amount_str[i], sizeof(amount_str[i]), "%" PRIu32, amount[i].value);
@@ -1507,7 +1512,7 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
 
     bool new_coin = false;
 
-    if (game_state->pot > coins * game_settings->bet_minimum && coins < MAX_POT_COINS) {
+    if (game_state->pot > coins * game_settings->bet_amounts[0] && coins < MAX_POT_COINS) {
       coin_in_pot[coins].offset.x = pcg32_boundedrand_r(&rng, POT_BOUNDARY) - POT_BOUNDARY / 2;
       coin_in_pot[coins].offset.y = pcg32_boundedrand_r(&rng, POT_BOUNDARY) - POT_BOUNDARY / 2;
       coins++;
