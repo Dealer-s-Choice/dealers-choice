@@ -2253,13 +2253,15 @@ bool get_socket_context_and_run_client(PlayerConfig_t *player_config,
   static const Uint32 ATTEMPT_TIMEOUT_MS = 5000;
   static const Uint32 RETRY_DELAY_MS     = 2000;
 
-  Button_t btn_cancel = create_button(_("Cancel"), (EColor_t){COLOR_BLACK, COLOR_YELLOW},
-                                      font->fonts[FONT_BOLD], SDLK_ESCAPE);
-  btn_cancel.rect.x = g_center.x - btn_cancel.rect.w / 2;
-  btn_cancel.rect.y = g_center.y + 60;
-
-  TextWidget_t *status_tw = text_widget_create("", font->fonts[FONT_DEFAULT],
-                                               get_color(COLOR_WHITE));
+  Button_t btn_cancel = {0};
+  TextWidget_t *status_tw = NULL;
+  if (sdl_context && font) {
+    btn_cancel = create_button(_("Cancel"), (EColor_t){COLOR_BLACK, COLOR_YELLOW},
+                               font->fonts[FONT_BOLD], SDLK_ESCAPE);
+    btn_cancel.rect.x = g_center.x - btn_cancel.rect.w / 2;
+    btn_cancel.rect.y = g_center.y + 60;
+    status_tw = text_widget_create("", font->fonts[FONT_DEFAULT], get_color(COLOR_WHITE));
+  }
 
   bool cancelled = false;
   bool sdl_quit  = false;
@@ -2296,11 +2298,14 @@ bool get_socket_context_and_run_client(PlayerConfig_t *player_config,
         timed_out = true;
         break;
       }
-      clear_screen(sdl_context->renderer);
-      if (status_tw)
-        status_tw->base.render(&status_tw->base);
-      render_button(&btn_cancel);
-      SDL_RenderPresent(sdl_context->renderer);
+      if (sdl_context) {
+        clear_screen(sdl_context->renderer);
+        if (status_tw)
+          status_tw->base.render(&status_tw->base);
+        if (btn_cancel.active)
+          render_button(&btn_cancel);
+        SDL_RenderPresent(sdl_context->renderer);
+      }
       SDL_Event e;
       while (SDL_PollEvent(&e)) {
         SDL_Point mp = {e.button.x, e.button.y};
