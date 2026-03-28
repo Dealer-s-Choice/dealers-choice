@@ -4,13 +4,20 @@ concurrency:
   cancel-in-progress: true
 
 on:
-  workflow_run:
-    workflows: ["Linux"]
-    types: [completed]
+  push:
+    branches: [ trunk ]
+    paths: &shared_paths
+    - '**'
+    - '!**.yml'
+    - '!**.md'
+    - '**/macos.yml'
+
+  pull_request:
+    branches: [ trunk ]
+    paths: *shared_paths
 
 jobs:
   MacOS:
-    if: github.event.workflow_run.conclusion == 'success'
     strategy:
       fail-fast: false
       matrix:

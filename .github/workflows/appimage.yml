@@ -13,17 +13,20 @@ on:
   push:
     tags:
       - 'v*'
+    branches: trunk
+    paths: &shared_paths
+    - '**'
+    - '!**.md'
+    - '!**.yml'
+    - 'packaging/appimage/**'
+    - '**/appimage.yml'
 
-  workflow_run:
-    workflows: ["Linux"]
-    types: [completed]
+  pull_request:
+    branches: trunk
+    paths: *shared_paths
 
 jobs:
   build-appimage:
-    if: >-
-      github.event_name == 'workflow_dispatch' ||
-      github.event_name == 'push' ||
-      github.event.workflow_run.conclusion == 'success'
     runs-on: ${{ matrix.os }}
     permissions:
       contents: write
