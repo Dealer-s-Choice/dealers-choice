@@ -18,7 +18,23 @@ on:
 
 
 jobs:
+  gate:
+    runs-on: ubuntu-24.04
+    env:
+      CC: gcc
+    steps:
+    - uses: actions/checkout@v6
+    - name: Install Dependencies
+      run: .github/scripts/install_ubuntu_deps.sh
+    - name: Meson setup
+      run: CFLAGS="-Werror" meson setup _build -Dsodium=enabled
+    - name: Build
+      run: meson compile -C _build
+    - name: Test
+      run: meson test --no-stdsplit -v -C _build
+
   Ubuntu:
+    needs: gate
     strategy:
       matrix:
         name: [default]

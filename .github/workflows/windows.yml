@@ -10,20 +10,15 @@ on:
         description: 'version number'
         required: false
         type: string
-  push:
-    branches: [ trunk ]
-    paths: &shared_paths
-    - '**'
-    - '!**.yml'
-    - '!**.md'
-    - '**/windows.yml'
-
-  pull_request:
-    branches: [ trunk ]
-    paths: *shared_paths
+  workflow_run:
+    workflows: ["Linux"]
+    types: [completed]
 
 jobs:
   MSYS2:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
     runs-on: windows-latest
     permissions:
       contents: write
