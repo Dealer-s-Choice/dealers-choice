@@ -26,39 +26,23 @@ Check the return code to verify success:
 
     echo $?
 
-## Port assignments
-
-Each network test binds a dedicated TCP port so tests can run in parallel.
-Ports are assigned sequentially from `base_port` (22778) in `meson.build`:
-
-| Test              | Port  |
-|-------------------|-------|
-| sodium_compat     | 22778 |
-| fold              | 22779 |
-| check             | 22780 |
-| 5_card_showdown   | 22781 |
-| 5_card_draw       | 22782 |
-| 5_card_stud       | 22783 |
-| deuces_wild       | 22784 |
-| kick_ban          | 22785 |
-
 ## Troubleshooting: port already in use
 
-If a test server process was left running after a crash or interrupt, its port
-will still be occupied and the next test run will fail immediately on that
-test. The other tests are unaffected.
+Each network test binds a dedicated TCP port (assigned sequentially from
+`base_port` in `meson.build`) so tests can run in parallel. If a test server
+process was left running after a crash or interrupt, its port will still be
+occupied and the next test run will fail on that test. The other tests are
+unaffected.
 
-To find and kill the leftover process:
-
-    ss -tlnp | grep 2278
-    # or
-    lsof -i :22779
-
-Then kill the PID shown, or kill all leftover server processes at once:
+Kill the leftover process:
 
     pkill -f "dealers-choice.*--server"
 
-On Windows, use:
+Or look it up first:
 
-    netstat -ano | findstr 2278
+    ss -tlnp | grep <port>
+
+On Windows:
+
+    netstat -ano | findstr <port>
     taskkill /PID <pid> /F
