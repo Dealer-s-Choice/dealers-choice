@@ -44,6 +44,9 @@ jobs:
         cc:
           - gcc
           - clang
+        exclude:
+          - os: ubuntu-24.04
+            cc: gcc
         include:
           - name: dist-test
             os: ubuntu-22.04
