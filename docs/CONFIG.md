@@ -69,6 +69,12 @@ sound.volume = 7 # You can use a range of 0 - 10
 sound.notify.turn = yes # Use "no" to disable your turn audio notification
 ```
 
+## Connection
+
+```
+connect.attempts = 6 # Number of connection attempts before giving up
+```
+
 ## Language
 
 To use a language that is different from your system's default:

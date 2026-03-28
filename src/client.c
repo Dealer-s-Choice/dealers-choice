@@ -52,7 +52,6 @@
 #include <sodium.h>
 #endif
 
-const uint8_t MAX_CONNECTION_ATTEMPTS = 12;
 static const uint8_t coin_px = 96;
 
 static const SDL_Rect card_area = {0, 0, 80, 50};
@@ -2186,6 +2185,19 @@ cleanup:
   return running;
 }
 
+typedef struct {
+  IPaddress server_ip;
+  TCPsocket sock;
+  SDL_atomic_t done;
+} ConnectAttempt_t;
+
+static int connect_thread_fn(void *data) {
+  ConnectAttempt_t *ca = data;
+  ca->sock = SDLNet_TCP_Open(&ca->server_ip);
+  SDL_AtomicSet(&ca->done, 1);
+  return 0;
+}
+
 int authenticate_with_server(TCPsocket sock, const char *password) {
   unsigned char nonce[NONCE_SIZE];
   unsigned char hash[HASH_SIZE];
@@ -2234,39 +2246,135 @@ bool get_socket_context_and_run_client(PlayerConfig_t *player_config,
     return false;
   }
 
+  // SDLNet_TCP_Open blocks for the OS TCP timeout on unreachable hosts.
+  // Run each attempt on a background thread; heap-allocate the state so we
+  // can safely SDL_DetachThread (rather than WaitThread) on cancel/timeout.
+  // Per-attempt timeout keeps the counter advancing on slow/unreachable hosts.
+  static const Uint32 ATTEMPT_TIMEOUT_MS = 5000;
+  static const Uint32 RETRY_DELAY_MS     = 2000;
+
+  Button_t btn_cancel = create_button(_("Cancel"), (EColor_t){COLOR_BLACK, COLOR_YELLOW},
+                                      font->fonts[FONT_BOLD], SDLK_ESCAPE);
+  btn_cancel.rect.x = g_center.x - btn_cancel.rect.w / 2;
+  btn_cancel.rect.y = g_center.y + 60;
+
+  TextWidget_t *status_tw = text_widget_create("", font->fonts[FONT_DEFAULT],
+                                               get_color(COLOR_WHITE));
+
+  bool cancelled = false;
+  bool sdl_quit  = false;
   uint8_t attempts;
-  for (attempts = 0; attempts < MAX_CONNECTION_ATTEMPTS; ++attempts) {
-    socket_context.sock = SDLNet_TCP_Open(&server_ip);
-    if (socket_context.sock) {
-      break; // Success
+  for (attempts = 0; attempts < player_config->connect_attempts; ++attempts) {
+    if (status_tw) {
+      char tmp[256] = {0};
+      snprintf(tmp, sizeof(tmp), _("Attempting connection to: %s... (%d/%d)"),
+               host_str, attempts + 1, player_config->connect_attempts);
+      text_widget_set_text(status_tw, tmp);
+      status_tw->base.rect.x = 10;
+      status_tw->base.rect.y = g_center.y;
     }
 
-    fprintf(stderr, "Attempt %d: Failed to connect to server: %s\n", attempts + 1,
-            SDLNet_GetError());
+    ConnectAttempt_t *ca = SDL_malloc(sizeof(ConnectAttempt_t));
+    if (!ca)
+      break;
+    ca->server_ip = server_ip;
+    ca->sock      = NULL;
+    SDL_AtomicSet(&ca->done, 0);
 
-    bool quit = false;
-    if (attempts < MAX_CONNECTION_ATTEMPTS - 1) {
-      Uint32 start = SDL_GetTicks();
-      while (SDL_GetTicks() - start < 5000) {
-        SDL_Event e;
-        while (SDL_PollEvent(&e)) {
-          if (e.type == SDL_QUIT)
-            quit = true;
+    SDL_Thread *thread = SDL_CreateThread(connect_thread_fn, "tcp_connect", ca);
+    if (!thread) {
+      // Fallback: blocking connect with no event handling this attempt
+      ca->sock = SDLNet_TCP_Open(&server_ip);
+      SDL_AtomicSet(&ca->done, 1);
+    }
+
+    Uint32 attempt_start = SDL_GetTicks();
+    bool timed_out = false;
+
+    while (!SDL_AtomicGet(&ca->done) && !cancelled && !sdl_quit) {
+      if (SDL_GetTicks() - attempt_start >= ATTEMPT_TIMEOUT_MS) {
+        timed_out = true;
+        break;
+      }
+      clear_screen(sdl_context->renderer);
+      if (status_tw)
+        status_tw->base.render(&status_tw->base);
+      render_button(&btn_cancel);
+      SDL_RenderPresent(sdl_context->renderer);
+      SDL_Event e;
+      while (SDL_PollEvent(&e)) {
+        SDL_Point mp = {e.button.x, e.button.y};
+        if (e.type == SDL_QUIT) {
+          sdl_quit = true;
+        } else if (e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_ESCAPE) {
+          cancelled = true;
+        } else if (e.type == SDL_MOUSEBUTTONDOWN && e.button.button == SDL_BUTTON_LEFT) {
+          if (SDL_PointInRect(&mp, &btn_cancel.rect))
+            cancelled = true;
+        } else if (e.type == SDL_MOUSEMOTION) {
+          SDL_Point mmp = {e.motion.x, e.motion.y};
+          btn_cancel.hovered = SDL_PointInRect(&mmp, &btn_cancel.rect);
         }
-        SDL_Delay(16);
-        if (quit)
-          break;
+      }
+      SDL_Delay(16);
+    }
+
+    if (thread && !SDL_AtomicGet(&ca->done)) {
+      // Thread is still running (cancelled or timed out). Detach it and leave
+      // ca allocated — the thread will write to it and exit on its own.
+      SDL_DetachThread(thread);
+      thread = NULL;
+    } else {
+      // Thread finished normally; safe to wait and free.
+      if (thread)
+        SDL_WaitThread(thread, NULL);
+      TCPsocket s = ca->sock;
+      SDL_free(ca);
+      ca = NULL;
+      if (s) {
+        socket_context.sock = s;
+        break;
       }
     }
-    if (quit) {
-      attempts++;
+
+    if (cancelled || sdl_quit)
       break;
+
+    if (!timed_out)
+      fprintf(stderr, "Attempt %d: Failed to connect to server: %s\n", attempts + 1,
+              SDLNet_GetError());
+
+    // Brief pause between retries (skip if this was the last attempt)
+    if (attempts < (uint8_t)(player_config->connect_attempts - 1)) {
+      Uint32 start = SDL_GetTicks();
+      while (SDL_GetTicks() - start < RETRY_DELAY_MS && !cancelled && !sdl_quit) {
+        SDL_Event e;
+        while (SDL_PollEvent(&e)) {
+          SDL_Point mp = {e.button.x, e.button.y};
+          if (e.type == SDL_QUIT) {
+            sdl_quit = true;
+          } else if (e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_ESCAPE) {
+            cancelled = true;
+          } else if (e.type == SDL_MOUSEBUTTONDOWN && e.button.button == SDL_BUTTON_LEFT) {
+            if (SDL_PointInRect(&mp, &btn_cancel.rect))
+              cancelled = true;
+          } else if (e.type == SDL_MOUSEMOTION) {
+            SDL_Point mmp = {e.motion.x, e.motion.y};
+            btn_cancel.hovered = SDL_PointInRect(&mmp, &btn_cancel.rect);
+          }
+        }
+        SDL_Delay(16);
+      }
     }
   }
 
+  if (status_tw)
+    ui_widget_destroy(&status_tw->base);
+
   if (!socket_context.sock) {
-    printf("All %d attempts failed. Giving up.\n", attempts);
-    return false;
+    if (!cancelled && !sdl_quit)
+      printf("All %d attempts failed.\n", attempts);
+    return !sdl_quit;
   }
 
   TCPsocket sock = socket_context.sock;
