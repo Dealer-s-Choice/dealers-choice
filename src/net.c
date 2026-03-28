@@ -435,7 +435,7 @@ ERecvStatus_t recv_game_state(SocketContext_t *socket_context, GameState_t *game
       int player_id = pb->entries[i]->player_id;
       if (player_id >= 0 && player_id < MAX_CLIENTS) {
         client_state->ping_times[player_id] = pb->entries[i]->ping_ms;
-        verbose_printf("Player %d ping: %u ms\n", player_id, pb->entries[i]->ping_ms);
+        // verbose_printf("[PING] Player %d: %u ms\n", player_id, pb->entries[i]->ping_ms);
       }
     }
 

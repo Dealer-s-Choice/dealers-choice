@@ -1805,8 +1805,8 @@ int run_server(const CliArgs_t *cli_args, Path_t *path) {
             continue;
           if (send_ping_request(clients[i]) < 0) {
             fprintf(stderr, "[PING] Failed to send ping request to client %d\n", i);
-          } else
-            verbose_printf("[PING] sent to %d\n", i);
+          } // else
+            // verbose_printf("[PING] sent to %d\n", i);
         }
         last_ping_time = now;
         // Broadcast ping times
