@@ -2260,14 +2260,21 @@ bool get_socket_context_and_run_client(PlayerConfig_t *player_config,
                                font->fonts[FONT_BOLD], SDLK_ESCAPE);
     btn_cancel.rect.x = g_center.x - btn_cancel.rect.w / 2;
     btn_cancel.rect.y = g_center.y + 60;
-    status_tw = text_widget_create("", font->fonts[FONT_DEFAULT], get_color(COLOR_WHITE));
+    char initial_status[256] = {0};
+    snprintf(initial_status, sizeof(initial_status), _("Attempting connection to: %s... (%d/%d)"),
+             host_str, 1, player_config->connect_attempts);
+    status_tw = text_widget_create(initial_status, font->fonts[FONT_DEFAULT], get_color(COLOR_WHITE));
+    if (status_tw) {
+      status_tw->base.rect.x = 10;
+      status_tw->base.rect.y = g_center.y;
+    }
   }
 
   bool cancelled = false;
   bool sdl_quit  = false;
   uint8_t attempts;
   for (attempts = 0; attempts < player_config->connect_attempts; ++attempts) {
-    if (status_tw) {
+    if (status_tw && attempts > 0) {
       char tmp[256] = {0};
       snprintf(tmp, sizeof(tmp), _("Attempting connection to: %s... (%d/%d)"),
                host_str, attempts + 1, player_config->connect_attempts);
