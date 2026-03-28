@@ -42,7 +42,9 @@ static void drain_all(SocketContext_t *sc, GameState_t *gs, ClientState_t *cs,
   }
 }
 
-int main(void) {
+int main(int argc, char *argv[]) {
+  (void)argc;
+  (void)argv;
   if (SDL_Init(0) == -1 || SDLNet_Init() == -1) {
     fprintf(stderr, "[kick_ban] SDL/SDLNet init failed: %s\n", SDL_GetError());
     return 1;
