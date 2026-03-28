@@ -1,4 +1,5 @@
-unit_tests = ['serialization', 'get_next_player', 'debug_print_cards', 'layout_cards', 'sodium_compat']
+
+unit_tests = ['serialization', 'get_next_player', 'debug_print_cards', 'layout_cards']
 
 base_env = {
   'DEALERSCHOICE_DATADIR': join_paths(meson.project_source_root(), 'data'),
@@ -16,22 +17,35 @@ foreach name : unit_tests
   test('test_' + name, exe, env: environment(base_env))
 endforeach
 
-# Each game logic test gets a unique port so they can run in parallel.
+# All tests that bind a TCP socket get a unique port derived from base_port so
+# they can run in parallel without colliding.  Add new entries to game_logic
+# below and they will receive the next port automatically.
+base_port = 22778
+
+sodium_compat_exe = executable(
+  'test_sodium_compat',
+  ['sodium_compat.c', '00_test.c'],
+  dependencies: game_dep,
+  override_options: ['b_lto=false'],
+)
+sodium_compat_env = environment(base_env)
+sodium_compat_env.set('DC_PORT', base_port.to_string())
+test('test_sodium_compat', sodium_compat_exe, env: sodium_compat_env)
+
 game_logic_script = files(join_paths(meson.current_source_dir(), 'game_logic.py'))
 
 game_logic = [
-  ['fold',            '22778'],
-  ['check',           '22779'],
-  ['5_card_showdown', '22780'],
-  ['5_card_draw',     '22781'],
-  ['5_card_stud',     '22782'],
-  ['deuces_wild',     '22783'],
+  'fold',
+  'check',
+  '5_card_showdown',
+  '5_card_draw',
+  '5_card_stud',
+  'deuces_wild',
+  'kick_ban',
 ]
 
-foreach entry : game_logic
-  name = entry[0]
-  port = entry[1]
-
+port = base_port + 1
+foreach name : game_logic
   exe = executable(
     'test_' + name,
     [name + '.c', '00_test.c'],
@@ -40,7 +54,7 @@ foreach entry : game_logic
   )
 
   env = environment(base_env)
-  env.set('DC_PORT', port)
+  env.set('DC_PORT', port.to_string())
 
   test(
     'test_' + name,
@@ -50,6 +64,8 @@ foreach entry : game_logic
     timeout: 90,
     depends: [_lib, exe_target],
   )
+
+  port += 1
 endforeach
 
 add_test_setup(

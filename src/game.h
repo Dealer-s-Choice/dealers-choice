@@ -73,6 +73,9 @@ const GameChoice_t *find_game_choice_by_type(const uint8_t type);
 
 int8_t send_game_select(TCPsocket sock, uint8_t game_type, bool deuces_wild);
 
+int send_kick_player(TCPsocket sock, int8_t target_id);
+int send_ban_player(TCPsocket sock, int8_t target_id);
+
 bool get_game_select_payload(uint8_t *buffer, const uint32_t size, const int client_id,
                              GameSelectPayload_t *out);
 

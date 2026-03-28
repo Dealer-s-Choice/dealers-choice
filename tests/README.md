@@ -1,22 +1,31 @@
 
-##
-To change the number of passes to 1 (default is 3 when using `meson test`) for
-the 5_card_{stud,showdown} tests:
+## Running tests
 
-### Using additional meson test setup
+    meson test -v
+
+## Changing the number of game passes
+
+The default is 3 passes. To run with 1 pass:
 
     meson test -v --setup=One_pass
 
-### Manually
+## Troubleshooting: port already in use
 
-Run the server:
+Each network test binds a dedicated TCP port (assigned sequentially from
+`base_port` in `meson.build`) so tests can run in parallel. If a test server
+process was left running after a crash or interrupt, its port will still be
+occupied and the next test run will fail on that test. The other tests are
+unaffected.
 
-    ./dealers-choice ---test --server
+Kill the leftover process:
 
-In another terminal, from the build directory:
+    pkill -f "dealers-choice.*--server"
 
-    tests/test_5_card_showdown 1
+Or look it up first:
 
-To verify a completely successful check the return code:
+    ss -tlnp | grep <port>
 
-    echo $?
+On Windows:
+
+    netstat -ano | findstr <port>
+    taskkill /PID <pid> /F
