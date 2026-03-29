@@ -178,6 +178,10 @@ RealHand_t deal_cards_to_players(GameState_t *game_state, DH_Deck *deck, const u
   Player_t *starting_turn = turn;
 
   const GameChoice_t *choice = find_game_choice_by_type(game_type);
+  if (!choice) {
+    fprintf(stderr, "deal_cards_to_players: unknown game_type 0x%02x\n", game_type);
+    return real_hand;
+  }
 
   for (int i = 0; i < MAX_HAND_SIZE; i++)
     do {
@@ -529,6 +533,16 @@ static void handle_sort_hand(POKEVAL_Hand_7 *real_hand, const bool is_lowball) {
   real_hand->card[6] = DH_card_null;
 }
 
+/* Sort the 5 community cards (positions 2-6) without touching hole cards (0-1). */
+static void sort_community_cards(POKEVAL_Hand_7 *real_hand) {
+  POKEVAL_Hand_5 tmp;
+  for (int i = 0; i < 5; i++)
+    tmp.card[i] = real_hand->card[i + 2];
+  POKEVAL_sort_hand(&tmp);
+  for (int i = 0; i < 5; i++)
+    real_hand->card[i + 2] = tmp.card[i];
+}
+
 static ELoop_t handle_draw(ArgsBroadcastGameState_t *args, TCPsocket sock, const int id,
                            DH_Deck *deck) {
   verbose_puts("sending draw prompt");
@@ -723,11 +737,19 @@ static void determine_winner(ArgsBroadcastGameState_t *args, RoundResults *resul
   }
 
   ptr = *args->starting_turn;
-  do {
-    handle_sort_hand(&args->real_hand->player[ptr->id],
-                     args->game_type == game_choices[CALIFORNIA_LOWBALL].game_type);
-    ptr = get_next_player(args->game_state->player, ptr->id);
-  } while (ptr && ptr != *args->starting_turn);
+  if (args->game_type == game_choices[TEXAS_HOLDEM].game_type) {
+    /* Sort only the 5 shared community cards; leave hole cards (0-1) in place. */
+    do {
+      sort_community_cards(&args->real_hand->player[ptr->id]);
+      ptr = get_next_player(args->game_state->player, ptr->id);
+    } while (ptr && ptr != *args->starting_turn);
+  } else {
+    do {
+      handle_sort_hand(&args->real_hand->player[ptr->id],
+                       args->game_type == game_choices[CALIFORNIA_LOWBALL].game_type);
+      ptr = get_next_player(args->game_state->player, ptr->id);
+    } while (ptr && ptr != *args->starting_turn);
+  }
 
   // When set to true, the opponents` cards will be revealed to all the players the next
   // time broadcast_game_state is called
@@ -1236,6 +1258,53 @@ void game_stud(GAME_ARGS) {
   args->real_hand->player[0].card[6].face_val = DH_CARD_TWO;
   */
 
+  determine_winner(args, &results);
+}
+
+static void deal_community_cards(ArgsBroadcastGameState_t *args, Player_t *players_array,
+                                 DH_Deck *deck, uint8_t start_pos, uint8_t count) {
+  for (uint8_t i = 0; i < count; i++) {
+    uint8_t pos = start_pos + i;
+    DH_Card card = DH_deal_top_card(deck);
+    for (int p = 0; p < MAX_PLAYERS; p++) {
+      if (!players_array[p].is_connected)
+        continue;
+      args->real_hand->player[p].card[pos] = card;
+      players_array[p].hand.card[pos] = card;
+    }
+  }
+}
+
+void game_texas_holdem(GAME_ARGS) {
+  server_handle_ante(args->game_state, args->config->ante);
+
+  RoundResults results = {0};
+
+  /* Pre-flop betting (2 hole cards already dealt by play_game) */
+  results = handle_round();
+  if (results.n_winners > 0)
+    goto done;
+
+  /* Flop: 3 community cards at positions 2-4 */
+  deal_community_cards(args, players_array, deck, 2, 3);
+  broadcast_game_state(args);
+  results = handle_round();
+  if (results.n_winners > 0)
+    goto done;
+
+  /* Turn: 1 community card at position 5 */
+  deal_community_cards(args, players_array, deck, 5, 1);
+  broadcast_game_state(args);
+  results = handle_round();
+  if (results.n_winners > 0)
+    goto done;
+
+  /* River: 1 community card at position 6 */
+  deal_community_cards(args, players_array, deck, 6, 1);
+  broadcast_game_state(args);
+  results = handle_round();
+
+done:
   determine_winner(args, &results);
 }
 
