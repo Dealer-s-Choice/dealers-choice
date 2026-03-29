@@ -1270,24 +1270,16 @@ void game_texas_holdem(GAME_ARGS) {
   if (results.n_winners > 0)
     goto done;
 
-  /* Flop: 3 community cards at positions 2-4 */
-  deal_community_cards(args, players_array, deck, 2, 3);
-  broadcast_game_state(args);
-  results = handle_round();
-  if (results.n_winners > 0)
-    goto done;
-
-  /* Turn: 1 community card at position 5 */
-  deal_community_cards(args, players_array, deck, 5, 1);
-  broadcast_game_state(args);
-  results = handle_round();
-  if (results.n_winners > 0)
-    goto done;
-
-  /* River: 1 community card at position 6 */
-  deal_community_cards(args, players_array, deck, 6, 1);
-  broadcast_game_state(args);
-  results = handle_round();
+  /* Flop (3 cards), Turn (1), River (1) */
+  const uint8_t street_start[] = {2, 5, 6};
+  const uint8_t street_count[] = {3, 1, 1};
+  for (size_t s = 0; s < ARRAY_SIZE(street_start); s++) {
+    deal_community_cards(args, players_array, deck, street_start[s], street_count[s]);
+    broadcast_game_state(args);
+    results = handle_round();
+    if (results.n_winners > 0)
+      goto done;
+  }
 
 done:
   determine_winner(args, &results);
