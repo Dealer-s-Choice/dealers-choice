@@ -1,8 +1,14 @@
 
 - dealers-choice (in progress):
   + Add Texas Hold'em
-  + Add two animated card backs: lava lamp and sunset (#178)
   * bugfix: Client freezes (infinite loop in layout_cards) when slot-0
+  + Connection screen: cancel button, per-attempt timeout, configurable
+    retry count (connect.attempts in player config), return to menu on
+    failure (#204)
+  * bugfix: Windows path handling — shell32 now linked for
+    SHGetFolderPathA; check_pathname_state verifies FILE_ATTRIBUTE_DIRECTORY
+  * bugfix: .desktop and XDG icon installs skipped on Windows
+  + Add animated card backs
     player disconnects during a game (#195)
   + Server password set via server.conf or DC_PASSWORD env var (#187)
   + Add dealer indicator column to lobby player list (black square, red circle if dealer)
