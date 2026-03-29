@@ -9,6 +9,7 @@ on:
     paths: &shared_paths
     - '**'
     - '!**.yml'
+    - '!**.md'
     - '**/codeql.yml'
 
 jobs:
