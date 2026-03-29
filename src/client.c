@@ -1546,6 +1546,80 @@ static void render_hourglass(SDL_Renderer *renderer, SDL_Point center, float fil
 }
 /* end hourglass ------------------------------------------------------------ */
 
+/*
+ * word_wrap_status - break `text` into lines that fit within `max_w` pixels
+ * using `font`.  Writes at most `max_lines` NUL-terminated strings into `out`
+ * (each slot is LEN_STATUS_STR bytes).  Returns the number of lines produced.
+ *
+ * Words are split on spaces.  A single word that is wider than `max_w` is
+ * placed on its own line anyway (no mid-word break at this resolution).
+ */
+static int word_wrap_status(TTF_Font *font, const char *text, int max_w, char out[][LEN_STATUS_STR],
+                            int max_lines) {
+  int n = 0;
+  const char *p = text;
+
+  while (*p && n < max_lines) {
+    const char *line_start = p;
+    const char *last_break = p; /* end of last word-run that still fits */
+
+    while (*p) {
+      /* skip whitespace then scan one word */
+      const char *ws = p;
+      while (*ws == ' ')
+        ws++;
+      const char *we = ws;
+      while (*we && *we != ' ')
+        we++;
+
+      /* measure from line_start to end of this word */
+      int span = (int)(we - line_start);
+      if (span >= LEN_STATUS_STR)
+        span = LEN_STATUS_STR - 1;
+
+      char tmp[LEN_STATUS_STR];
+      memcpy(tmp, line_start, (size_t)span);
+      tmp[span] = '\0';
+
+      int w = 0;
+      TTF_SizeUTF8(font, tmp, &w, NULL);
+
+      if (w <= max_w || last_break == line_start) {
+        /* fits (or it's the very first word — always accept it) */
+        last_break = we;
+        p = we;
+        if (!*p)
+          break;
+      } else {
+        /* this word pushes over; wrap before it */
+        break;
+      }
+    }
+
+    /* copy [line_start, last_break) trimming trailing spaces */
+    int len = (int)(last_break - line_start);
+    while (len > 0 && line_start[len - 1] == ' ')
+      len--;
+    if (len >= LEN_STATUS_STR)
+      len = LEN_STATUS_STR - 1;
+    memcpy(out[n], line_start, (size_t)len);
+    out[n][len] = '\0';
+    n++;
+
+    /* advance past whitespace before the next line */
+    p = last_break;
+    while (*p == ' ')
+      p++;
+  }
+
+  if (n == 0) {
+    out[0][0] = '\0';
+    n = 1;
+  }
+
+  return n;
+}
+
 static void render_text_pot(const char *text, const SDL_Point center, const Font_t *font) {
   if (!text)
     text = "";
@@ -1612,6 +1686,7 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
 
 #define SIZEOF_STATUS_MSGS 16
   char status_msgs[SIZEOF_STATUS_MSGS][LEN_STATUS_STR] = {0};
+  char last_status_str[LEN_STATUS_STR] = {0};
 
   Button_t action_button[MAX_ACTIONS];
   for (int i = 0; i < MAX_ACTIONS; i++) {
@@ -1809,13 +1884,18 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
     }
     // printf("turn id: %d\n", turn->id);
 
-    if (strcmp(client_state.server_status_str, status_msgs[SIZEOF_STATUS_MSGS - 1]) != 0) {
-      // Shift messages up by one slot: [1]..[7] → [0]..[6]
-      memmove(status_msgs, status_msgs + 1, sizeof(status_msgs[0]) * (SIZEOF_STATUS_MSGS - 1));
+    if (strcmp(client_state.server_status_str, last_status_str) != 0) {
+      snprintf(last_status_str, LEN_STATUS_STR, "%s", client_state.server_status_str);
 
-      // Copy new message to the bottom
-      snprintf(status_msgs[SIZEOF_STATUS_MSGS - 1], sizeof(client_state.server_status_str), "%s",
-               client_state.server_status_str);
+      int max_w = msg_panel.w - pad_x * 2;
+      char wrapped[SIZEOF_STATUS_MSGS][LEN_STATUS_STR];
+      int n = word_wrap_status(font->fonts[FONT_STATUS_MSG], client_state.server_status_str, max_w,
+                               wrapped, SIZEOF_STATUS_MSGS);
+
+      /* Shift existing lines up by n to make room at the bottom */
+      memmove(status_msgs, status_msgs + n, sizeof(status_msgs[0]) * (SIZEOF_STATUS_MSGS - n));
+      for (int i = 0; i < n; i++)
+        memcpy(status_msgs[SIZEOF_STATUS_MSGS - n + i], wrapped[i], LEN_STATUS_STR);
     }
 
     // debug_print_cards(&game_state->player[0].hand);
