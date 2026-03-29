@@ -1458,7 +1458,7 @@ static void render_hourglass(SDL_Renderer *renderer, SDL_Point center, float fil
       SDL_RenderDrawLine(renderer, HG_CX - h + 3, y, HG_CX + h - 3, y);
   }
   /* shimmer at accumulated water surface */
-  if (accum_h > 2 && accum_start > HG_GLASS_TOP_Y) {
+  if (accum_h > 2 && accum_h < HG_GLASS_MID_Y - HG_GLASS_TOP_Y) {
     int h = hg_half(accum_start);
     SDL_SetRenderDrawColor(renderer, 255, 210, 60, 130);
     if (h > 3)
@@ -1469,17 +1469,21 @@ static void render_hourglass(SDL_Renderer *renderer, SDL_Point center, float fil
   if (drain_h > 10) {
     SDL_SetRenderDrawColor(renderer, 255, 240, 130, 190);
     for (int b = 0; b < 16; b++) {
-      uint32_t cycle_ms = 700 + (uint32_t)(b * 130);
+      /* Use unsigned arithmetic to avoid signed-overflow analysis on b*130 */
+      uint32_t cycle_ms = 700u + (uint32_t)b * 130u;
       float phase = (float)b * (1.0f / 16.0f);
       float tb = fmodf((float)(now % cycle_ms) / (float)cycle_ms + phase, 1.0f);
-      int by = HG_GLASS_MID_Y + (int)(tb * (drain_h - 2));
+      /* Compare the offset b_dy directly — avoids X+C cmp C pattern on `by` */
+      int b_dy = (int)(tb * (float)(drain_h - 2));
+      int by = HG_GLASS_MID_Y + b_dy;
       float x_off = sinf((float)b * 1.37f) * (float)(HG_GLASS_WIDE - HG_GLASS_NECK) * 0.45f;
       int bx = HG_CX + (int)(x_off * fill_ratio);
       int brad = 2 + (b & 1);
-      if (by >= HG_GLASS_MID_Y && by < drain_end) {
+      if (b_dy >= 0 && b_dy < drain_h) {
         int h = hg_half(by);
-        int min_bx = HG_CX - h + brad + 4;
-        int max_bx = HG_CX + h - brad - 4;
+        int inner = h - brad - 4;
+        int min_bx = HG_CX - inner;
+        int max_bx = HG_CX + inner;
         if (bx < min_bx)
           bx = min_bx;
         if (bx > max_bx)
@@ -1510,7 +1514,7 @@ static void render_hourglass(SDL_Renderer *renderer, SDL_Point center, float fil
 
   /* ---- frame outline (amber/gold, 3 px thick) ---- */
   SDL_SetRenderDrawColor(renderer, 178, 138, 68, 245);
-  for (int y = HG_GLASS_TOP_Y; y <= HG_GLASS_BOT_Y; y++) {
+  for (int y = HG_GLASS_TOP_Y; y < HG_GLASS_BOT_Y + 1; y++) {
     int h = hg_half(y);
     SDL_RenderDrawLine(renderer, HG_CX - h, y, HG_CX - h + 2, y);
     SDL_RenderDrawLine(renderer, HG_CX + h - 2, y, HG_CX + h, y);
@@ -1525,14 +1529,15 @@ static void render_hourglass(SDL_Renderer *renderer, SDL_Point center, float fil
 
   /* ---- side handles (protrusions from the glass outline at the equator) ---- */
   const int handle_ext = 19;
-  const int handle_range = 8;
-  for (int y = HG_GLASS_MID_Y - handle_range; y <= HG_GLASS_MID_Y + handle_range; y++) {
+  const int handle_lo = HG_GLASS_MID_Y - 8;
+  const int handle_hi = HG_GLASS_MID_Y + 8 + 1; /* exclusive upper bound */
+  for (int y = handle_lo; y < handle_hi; y++) {
     int h = hg_half(y);
     SDL_RenderDrawLine(renderer, HG_CX - h - handle_ext, y, HG_CX - h - 1, y);
     SDL_RenderDrawLine(renderer, HG_CX + h + 1, y, HG_CX + h + handle_ext, y);
   }
   /* handle outer caps */
-  for (int y = HG_GLASS_MID_Y - handle_range; y <= HG_GLASS_MID_Y + handle_range; y++) {
+  for (int y = handle_lo; y < handle_hi; y++) {
     int h = hg_half(y);
     SDL_RenderDrawPoint(renderer, HG_CX - h - handle_ext, y);
     SDL_RenderDrawPoint(renderer, HG_CX + h + handle_ext, y);
