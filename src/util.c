@@ -133,7 +133,7 @@ EPathState check_pathname_state(const char *pathname) {
     return (GetLastError() == ERROR_FILE_NOT_FOUND || GetLastError() == ERROR_PATH_NOT_FOUND)
                ? PATH_NOT_FOUND
                : PATH_ERROR;
-  return PATH_EXISTS;
+  return (attrs & FILE_ATTRIBUTE_DIRECTORY) ? PATH_EXISTS : PATH_ERROR;
 #else
   struct stat sb;
   if (stat(pathname, &sb) == 0 && S_ISDIR(sb.st_mode))
@@ -281,8 +281,8 @@ char *real_join_paths(long path_max, const char *first, ...) {
     }
 
     // Add separator if needed
-    if (len > 0 && path[len - 1] != '/' && segment[0] != '/') {
-      path[len++] = '/';
+    if (len > 0 && path[len - 1] != PATH_SEP && segment[0] != PATH_SEP) {
+      path[len++] = PATH_SEP;
     }
 
     strcpy(path + len, segment);
