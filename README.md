@@ -60,9 +60,8 @@ The server uses port 22777 by default. To run it:
 
     ./dealers-choice --server
 
-There is not a native option to run the server as a daemon (future
-implementation is planned). If you wish to daemonize the server, you can use
-the [docker-compose
+There is not a native option to run the server as a daemon. If you wish to
+daemonize the server, you can use the [docker-compose
 file](https://github.com/Dealer-s-Choice/dealers_choice/tree/trunk/docker) or
 [tmux](https://coderwall.com/p/purqma/use-tmux-for-a-poor-man-s-daemon).
 
@@ -95,7 +94,8 @@ See [docs/CONFIG.md](docs/CONFIG.md) for details.
 
 ## Dedicated Servers
 
-There are no dedicated public servers yet.
+There are no dedicated public servers yet (See
+[Project](https://github.com/orgs/Dealer-s-Choice/projects/1) for road map).
 
 ## Building
 
