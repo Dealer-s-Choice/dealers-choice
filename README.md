@@ -45,6 +45,7 @@ A release version will be available when v0.0.10 is released.
 * [6-card stud](https://en.wikipedia.org/wiki/Stud_poker#Six-card_stud) (not all the rules have been implemented yet, such as the bring-in bet)
 * [7-card stud](https://en.wikipedia.org/wiki/Seven-card_stud) (not all the rules have been implemented yet, such as the bring-in bet)
 * [California lowball](https://en.wikipedia.org/wiki/Lowball_(poker))
+* [Texas Hold'em](https://en.wikipedia.org/wiki/Texas_hold_%27em)
 
 Any of the games above can be played with the [Deuces (Twos) Wild
 option](https://dealer-s-choice.github.io/docs/GAME_PLAY.html#using-wild-cards)

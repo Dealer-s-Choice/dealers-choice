@@ -98,7 +98,18 @@ const GameChoice_t game_choices[] = {{FIVE_CARD_DRAW,
                                       2,
                                       1,
                                       5,
-                                      {false, false, false, false, false, false, false}}};
+                                      {false, false, false, false, false, false, false}},
+                                     {TEXAS_HOLDEM,
+                                      // TRANSLATORS: Name of a poker variant. Usually left
+                                      // untranslated.
+                                      "Texas Hold'em",
+                                      0x08,
+                                      game_texas_holdem,
+                                      7,
+                                      4,
+                                      0,
+                                      2,
+                                      {false, false, true, true, true, true, true}}};
 
 const GameChoice_t *find_game_choice_by_type(const uint8_t type) {
   for (size_t i = 0; i < sizeof(game_choices) / sizeof(game_choices[0]); ++i) {

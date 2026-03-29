@@ -178,6 +178,10 @@ RealHand_t deal_cards_to_players(GameState_t *game_state, DH_Deck *deck, const u
   Player_t *starting_turn = turn;
 
   const GameChoice_t *choice = find_game_choice_by_type(game_type);
+  if (!choice) {
+    fprintf(stderr, "deal_cards_to_players: unknown game_type 0x%02x\n", game_type);
+    return real_hand;
+  }
 
   for (int i = 0; i < MAX_HAND_SIZE; i++)
     do {
@@ -723,11 +727,13 @@ static void determine_winner(ArgsBroadcastGameState_t *args, RoundResults *resul
   }
 
   ptr = *args->starting_turn;
-  do {
-    handle_sort_hand(&args->real_hand->player[ptr->id],
-                     args->game_type == game_choices[CALIFORNIA_LOWBALL].game_type);
-    ptr = get_next_player(args->game_state->player, ptr->id);
-  } while (ptr && ptr != *args->starting_turn);
+  if (args->game_type != game_choices[TEXAS_HOLDEM].game_type) {
+    do {
+      handle_sort_hand(&args->real_hand->player[ptr->id],
+                       args->game_type == game_choices[CALIFORNIA_LOWBALL].game_type);
+      ptr = get_next_player(args->game_state->player, ptr->id);
+    } while (ptr && ptr != *args->starting_turn);
+  }
 
   // When set to true, the opponents` cards will be revealed to all the players the next
   // time broadcast_game_state is called
@@ -1236,6 +1242,46 @@ void game_stud(GAME_ARGS) {
   args->real_hand->player[0].card[6].face_val = DH_CARD_TWO;
   */
 
+  determine_winner(args, &results);
+}
+
+static void deal_community_cards(ArgsBroadcastGameState_t *args, Player_t *players_array,
+                                 DH_Deck *deck, uint8_t start_pos, uint8_t count) {
+  for (uint8_t i = 0; i < count; i++) {
+    uint8_t pos = start_pos + i;
+    DH_Card card = DH_deal_top_card(deck);
+    for (int p = 0; p < MAX_PLAYERS; p++) {
+      if (!players_array[p].is_connected)
+        continue;
+      args->real_hand->player[p].card[pos] = card;
+      players_array[p].hand.card[pos] = card;
+    }
+  }
+}
+
+void game_texas_holdem(GAME_ARGS) {
+  (void)choice;
+  server_handle_ante(args->game_state, args->config->ante);
+
+  RoundResults results = {0};
+
+  /* Pre-flop betting (2 hole cards already dealt by play_game) */
+  results = handle_round();
+  if (results.n_winners > 0)
+    goto done;
+
+  /* Flop (3 cards), Turn (1), River (1) */
+  const uint8_t street_start[] = {2, 5, 6};
+  const uint8_t street_count[] = {3, 1, 1};
+  for (size_t s = 0; s < ARRAY_SIZE(street_start); s++) {
+    deal_community_cards(args, players_array, deck, street_start[s], street_count[s]);
+    broadcast_game_state(args);
+    results = handle_round();
+    if (results.n_winners > 0)
+      goto done;
+  }
+
+done:
   determine_winner(args, &results);
 }
 

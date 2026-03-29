@@ -1119,6 +1119,28 @@ static void create_card_context(CardContext_t card_context[MAX_PLAYERS][MAX_HAND
   } while (turn && turn != starting_turn);
 }
 
+/* Reposition community cards (positions 2-6) to the board area below player 0
+ * and suppress those positions from all other player hand slots. */
+static void layout_board_cards(CardContext_t card_context[MAX_PLAYERS][MAX_HAND_SIZE],
+                               const int board_player_id, const SDL_Point *player_pos) {
+  const int board_x = player_pos[0].x + (int)(card_area.w * 0.5f);
+  /* Position one card-height above the status panel (which starts at g_center.y) */
+  const int board_y = g_center.y - card_area.h * 2;
+
+  for (int card_n = 2; card_n < MAX_HAND_SIZE; card_n++) {
+    int slot = card_n - 2;
+    SDL_Rect rect = {board_x + slot * (card_area.w + PADDING_BETWEEN_CARDS), board_y, card_area.w,
+                     card_area.h};
+    card_context[board_player_id][card_n].rect = rect;
+
+    for (int i = 0; i < MAX_PLAYERS; i++) {
+      if (i == board_player_id)
+        continue;
+      card_context[i][card_n].is_null = true;
+    }
+  }
+}
+
 void layout_cards(CardContext_t card_context[MAX_PLAYERS][MAX_HAND_SIZE], Player_t *players_array,
                   const SDL_Point *player_pos) {
 
@@ -1624,6 +1646,9 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
       create_card_context(card_context, starting_turn->id, players_array, player_pos,
                           sdl_context->renderer, client_state.deuces_wild);
       layout_cards(card_context, players_array, player_pos);
+      if (client_state.game_choice &&
+          client_state.game_choice->game_type == game_choices[TEXAS_HOLDEM].game_type)
+        layout_board_cards(card_context, starting_turn->id, player_pos);
       cards_created = true;
     }
 
