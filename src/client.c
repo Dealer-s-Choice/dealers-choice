@@ -1343,9 +1343,13 @@ static void layout_wild_selection(Button_t *card_faces, Button_t *card_suits, co
   }
 }
 
+/* Hourglass dimensions — needed by layout_timer below */
+#define HG_H 160
+
 static void layout_timer(SDL_Point *p) {
   p->x = g_center.x;
-  p->y = g_viewport.h - 200;
+  /* Bottom of hourglass (HG_H/2 below center) aligns with MARGIN from viewport bottom */
+  p->y = g_viewport.h - MARGIN - HG_H / 2;
 }
 
 static void draw_filled_circle(SDL_Renderer *r, int cx, int cy, int radius) {
@@ -1362,6 +1366,185 @@ static void draw_filled_circle(SDL_Renderer *r, int cx, int cy, int radius) {
     SDL_RenderDrawLine(r, cx - x, cy + y, cx + x, cy + y);
   }
 }
+
+/* Hourglass timer ---------------------------------------------------------- */
+#define HG_W 214
+/* HG_H 160 — defined earlier, used by layout_timer */
+#define HG_ROTATE_MS 500
+
+/* Glass geometry (texture-local coords) */
+#define HG_CX 107
+#define HG_GLASS_TOP_Y 4
+#define HG_GLASS_MID_Y 80
+#define HG_GLASS_BOT_Y 156
+#define HG_GLASS_WIDE 69
+#define HG_GLASS_NECK 7
+
+static SDL_Texture *s_hourglass_tex = NULL;
+
+/*
+ * Rounded hourglass profile using cos²: smooth curve that is wide at top/bottom
+ * and narrows to HG_GLASS_NECK at the equator.
+ */
+static inline int hg_half(int y) {
+  float t = (float)(y - HG_GLASS_TOP_Y) / (float)(HG_GLASS_BOT_Y - HG_GLASS_TOP_Y);
+  float c = cosf(t * (float)M_PI); /* 1 at top, 0 at mid, -1 at bottom */
+  return (int)((float)HG_GLASS_NECK + (float)(HG_GLASS_WIDE - HG_GLASS_NECK) * (c * c) + 0.5f);
+}
+
+/*
+ * render_hourglass - draw a 320×160 hourglass timer.
+ *
+ * fill_ratio : 1.0 = full (just started), 0.0 = empty (time up)
+ * angle      : rotation in degrees (0→180 during the startup spin)
+ * now        : SDL_GetTicks() for bubble animation
+ */
+static void render_hourglass(SDL_Renderer *renderer, SDL_Point center, float fill_ratio,
+                             double angle, uint32_t now) {
+  if (!s_hourglass_tex) {
+    s_hourglass_tex =
+        SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, HG_W, HG_H);
+    if (!s_hourglass_tex)
+      return;
+    SDL_SetTextureBlendMode(s_hourglass_tex, SDL_BLENDMODE_BLEND);
+  }
+
+  SDL_SetRenderTarget(renderer, s_hourglass_tex);
+  SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+
+  /* clear to transparent */
+  SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
+  SDL_RenderClear(renderer);
+
+  /* ---- translucent glass body (very faint blue tint — lets table show through) ---- */
+  SDL_SetRenderDrawColor(renderer, 170, 210, 245, 38);
+  for (int y = HG_GLASS_TOP_Y + 1; y < HG_GLASS_BOT_Y; y++) {
+    int h = hg_half(y);
+    if (h > 3)
+      SDL_RenderDrawLine(renderer, HG_CX - h + 3, y, HG_CX + h - 3, y);
+  }
+
+  /*
+   * Water in the draining chamber (lower texture = visual top after 180°).
+   * The water boundary in texture-y:  [HG_GLASS_MID_Y, drain_end].
+   */
+  int drain_h = (int)(fill_ratio * (HG_GLASS_BOT_Y - HG_GLASS_MID_Y) + 0.5f);
+  int drain_end = HG_GLASS_MID_Y + drain_h;
+
+  SDL_SetRenderDrawColor(renderer, 215, 175, 25, 185);
+  for (int y = HG_GLASS_MID_Y; y < drain_end; y++) {
+    int h = hg_half(y);
+    if (h > 3)
+      SDL_RenderDrawLine(renderer, HG_CX - h + 3, y, HG_CX + h - 3, y);
+  }
+  /* water surface shimmer */
+  if (drain_h > 2 && drain_h < HG_GLASS_BOT_Y - HG_GLASS_MID_Y) {
+    int h = hg_half(drain_end);
+    SDL_SetRenderDrawColor(renderer, 255, 225, 80, 160);
+    if (h > 3)
+      SDL_RenderDrawLine(renderer, HG_CX - h + 3, drain_end, HG_CX + h - 3, drain_end);
+  }
+
+  /*
+   * Accumulated water in upper texture chamber (= visual bottom after 180°).
+   */
+  int accum_h = (int)((1.0f - fill_ratio) * (HG_GLASS_MID_Y - HG_GLASS_TOP_Y) + 0.5f);
+  int accum_start = HG_GLASS_MID_Y - accum_h;
+
+  SDL_SetRenderDrawColor(renderer, 190, 150, 18, 185);
+  for (int y = accum_start; y < HG_GLASS_MID_Y; y++) {
+    int h = hg_half(y);
+    if (h > 3)
+      SDL_RenderDrawLine(renderer, HG_CX - h + 3, y, HG_CX + h - 3, y);
+  }
+  /* shimmer at accumulated water surface */
+  if (accum_h > 2 && accum_start > HG_GLASS_TOP_Y) {
+    int h = hg_half(accum_start);
+    SDL_SetRenderDrawColor(renderer, 255, 210, 60, 130);
+    if (h > 3)
+      SDL_RenderDrawLine(renderer, HG_CX - h + 3, accum_start, HG_CX + h - 3, accum_start);
+  }
+
+  /* ---- bubbles in the draining chamber ---- */
+  if (drain_h > 10) {
+    SDL_SetRenderDrawColor(renderer, 255, 240, 130, 190);
+    for (int b = 0; b < 16; b++) {
+      uint32_t cycle_ms = 700 + (uint32_t)(b * 130);
+      float phase = (float)b * (1.0f / 16.0f);
+      float tb = fmodf((float)(now % cycle_ms) / (float)cycle_ms + phase, 1.0f);
+      int by = HG_GLASS_MID_Y + (int)(tb * (drain_h - 2));
+      float x_off = sinf((float)b * 1.37f) * (float)(HG_GLASS_WIDE - HG_GLASS_NECK) * 0.45f;
+      int bx = HG_CX + (int)(x_off * fill_ratio);
+      int brad = 2 + (b & 1);
+      if (by >= HG_GLASS_MID_Y && by < drain_end) {
+        int h = hg_half(by);
+        int min_bx = HG_CX - h + brad + 4;
+        int max_bx = HG_CX + h - brad - 4;
+        if (bx < min_bx)
+          bx = min_bx;
+        if (bx > max_bx)
+          bx = max_bx;
+        draw_filled_circle(renderer, bx, by, brad);
+      }
+    }
+  }
+
+  /* ---- water drip at neck ---- */
+  if (fill_ratio > 0.02f && fill_ratio < 0.98f) {
+    SDL_SetRenderDrawColor(renderer, 215, 175, 25, 200);
+    draw_filled_circle(renderer, HG_CX, HG_GLASS_MID_Y + 2, 3);
+  }
+
+  /* ---- glass highlight strip (reflection on left side of each chamber) ---- */
+  SDL_SetRenderDrawColor(renderer, 235, 245, 255, 55);
+  for (int y = HG_GLASS_TOP_Y + 1; y < HG_GLASS_BOT_Y; y++) {
+    int h = hg_half(y);
+    if (h <= 3)
+      continue;
+    int inner_w = h - 3; /* usable half-width inside the glass wall */
+    int hl_w = inner_w / 4;
+    if (hl_w < 2)
+      hl_w = 2;
+    SDL_RenderDrawLine(renderer, HG_CX - h + 3, y, HG_CX - h + 3 + hl_w, y);
+  }
+
+  /* ---- frame outline (amber/gold, 3 px thick) ---- */
+  SDL_SetRenderDrawColor(renderer, 178, 138, 68, 245);
+  for (int y = HG_GLASS_TOP_Y; y <= HG_GLASS_BOT_Y; y++) {
+    int h = hg_half(y);
+    SDL_RenderDrawLine(renderer, HG_CX - h, y, HG_CX - h + 2, y);
+    SDL_RenderDrawLine(renderer, HG_CX + h - 2, y, HG_CX + h, y);
+  }
+  /* top & bottom caps (3 px) */
+  for (int dy = 0; dy < 3; dy++) {
+    SDL_RenderDrawLine(renderer, HG_CX - HG_GLASS_WIDE, HG_GLASS_TOP_Y + dy, HG_CX + HG_GLASS_WIDE,
+                       HG_GLASS_TOP_Y + dy);
+    SDL_RenderDrawLine(renderer, HG_CX - HG_GLASS_WIDE, HG_GLASS_BOT_Y - dy, HG_CX + HG_GLASS_WIDE,
+                       HG_GLASS_BOT_Y - dy);
+  }
+
+  /* ---- side handles (protrusions from the glass outline at the equator) ---- */
+  const int handle_ext = 19;
+  const int handle_range = 8;
+  for (int y = HG_GLASS_MID_Y - handle_range; y <= HG_GLASS_MID_Y + handle_range; y++) {
+    int h = hg_half(y);
+    SDL_RenderDrawLine(renderer, HG_CX - h - handle_ext, y, HG_CX - h - 1, y);
+    SDL_RenderDrawLine(renderer, HG_CX + h + 1, y, HG_CX + h + handle_ext, y);
+  }
+  /* handle outer caps */
+  for (int y = HG_GLASS_MID_Y - handle_range; y <= HG_GLASS_MID_Y + handle_range; y++) {
+    int h = hg_half(y);
+    SDL_RenderDrawPoint(renderer, HG_CX - h - handle_ext, y);
+    SDL_RenderDrawPoint(renderer, HG_CX + h + handle_ext, y);
+  }
+
+  SDL_SetRenderTarget(renderer, NULL);
+  SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);
+
+  SDL_Rect dst = {center.x - HG_W / 2, center.y - HG_H / 2, HG_W, HG_H};
+  SDL_RenderCopyEx(renderer, s_hourglass_tex, NULL, &dst, angle, NULL, SDL_FLIP_NONE);
+}
+/* end hourglass ------------------------------------------------------------ */
 
 static void render_text_pot(const char *text, const SDL_Point center, const Font_t *font) {
   if (!text)
@@ -1552,6 +1735,7 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
                         (line_h + 2) * SIZEOF_STATUS_MSGS + pad_y * 2};
 
   client_state.timer_start = SDL_GetTicks();
+  client_state.hourglass_rotate_start = client_state.timer_start;
 
   const int8_t my_id = game_settings->client_id;
   TCPsocket sock = socket_context->sock;
@@ -1804,6 +1988,7 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
     if (client_state.turn_switch || game_state->winner_declared) {
       if (!client_state.end_game_timer_set) {
         client_state.timer_start = SDL_GetTicks();
+        client_state.hourglass_rotate_start = client_state.timer_start;
 
         if (game_state->winner_declared)
           client_state.end_game_timer_set = true;
@@ -1900,13 +2085,27 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
       }
     }
 
-    if (remaining_ms > 0) {
-      int elapsed = remaining_ms / 1000;
-      char elapsed_str[8] = {0};
-      snprintf(elapsed_str, sizeof(elapsed_str), "%d", elapsed);
+    if (remaining_ms > 0 && client_state.hourglass_rotate_start != 0) {
+      uint32_t timeout_ms = game_state->winner_declared ? game_settings->end_of_game_timeout_ms
+                                                        : game_settings->action_timeout_ms;
 
-      render_text_plain(sdl_context->renderer, font->fonts[FONT_BOLD], elapsed_str,
-                        get_color(COLOR_WHITE), &(SDL_Rect){timer.x, timer.y, 0, 0});
+      uint32_t rotate_elapsed = now - client_state.hourglass_rotate_start;
+      double hg_angle;
+      float fill_ratio;
+
+      if (rotate_elapsed < HG_ROTATE_MS) {
+        /* Startup spin: bottom-full, rotating 0→180° */
+        hg_angle = 180.0 * (double)rotate_elapsed / (double)HG_ROTATE_MS;
+        fill_ratio = 1.0f;
+      } else {
+        hg_angle = 180.0;
+        uint32_t drain_elapsed = rotate_elapsed - HG_ROTATE_MS;
+        fill_ratio = 1.0f - (float)drain_elapsed / (float)timeout_ms;
+        if (fill_ratio < 0.0f)
+          fill_ratio = 0.0f;
+      }
+
+      render_hourglass(sdl_context->renderer, timer, fill_ratio, hg_angle, now);
     }
 
     char buffer[128];

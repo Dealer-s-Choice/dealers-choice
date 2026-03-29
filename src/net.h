@@ -108,6 +108,7 @@ typedef struct {
   uint8_t n_cards_selected;
   uint32_t selected_amount;
   uint32_t timer_start;
+  uint32_t hourglass_rotate_start;
   bool end_game_timer_set;
   char server_status_str[LEN_STATUS_STR];
   bool play_coin_sound;
