@@ -1123,8 +1123,8 @@ static void create_card_context(CardContext_t card_context[MAX_PLAYERS][MAX_HAND
  * and suppress those positions from all other player hand slots. */
 static void layout_board_cards(CardContext_t card_context[MAX_PLAYERS][MAX_HAND_SIZE],
                                const int board_player_id, const SDL_Point *player_pos) {
-  const int board_x = player_pos[0].x + (int)(card_area.w * 1.5f);
-  const int board_y = player_pos[0].y + card_area.h + MARGIN;
+  const int board_x = player_pos[0].x + (int)(card_area.w * 0.5f);
+  const int board_y = player_pos[0].y + card_area.h * 2;
 
   for (int card_n = 2; card_n < MAX_HAND_SIZE; card_n++) {
     int slot = card_n - 2;

@@ -533,16 +533,6 @@ static void handle_sort_hand(POKEVAL_Hand_7 *real_hand, const bool is_lowball) {
   real_hand->card[6] = DH_card_null;
 }
 
-/* Sort the 5 community cards (positions 2-6) without touching hole cards (0-1). */
-static void sort_community_cards(POKEVAL_Hand_7 *real_hand) {
-  POKEVAL_Hand_5 tmp;
-  for (int i = 0; i < 5; i++)
-    tmp.card[i] = real_hand->card[i + 2];
-  POKEVAL_sort_hand(&tmp);
-  for (int i = 0; i < 5; i++)
-    real_hand->card[i + 2] = tmp.card[i];
-}
-
 static ELoop_t handle_draw(ArgsBroadcastGameState_t *args, TCPsocket sock, const int id,
                            DH_Deck *deck) {
   verbose_puts("sending draw prompt");
@@ -737,13 +727,7 @@ static void determine_winner(ArgsBroadcastGameState_t *args, RoundResults *resul
   }
 
   ptr = *args->starting_turn;
-  if (args->game_type == game_choices[TEXAS_HOLDEM].game_type) {
-    /* Sort only the 5 shared community cards; leave hole cards (0-1) in place. */
-    do {
-      sort_community_cards(&args->real_hand->player[ptr->id]);
-      ptr = get_next_player(args->game_state->player, ptr->id);
-    } while (ptr && ptr != *args->starting_turn);
-  } else {
+  if (args->game_type != game_choices[TEXAS_HOLDEM].game_type) {
     do {
       handle_sort_hand(&args->real_hand->player[ptr->id],
                        args->game_type == game_choices[CALIFORNIA_LOWBALL].game_type);
