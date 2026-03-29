@@ -48,7 +48,7 @@ extra_flags = [
 # To enable PATH_MAX and friends on Alpine Linux
 definitions = [
   '-D_XOPEN_SOURCE',
-  '-D_POSIX_C_SOURCE=200112L' # enable setenv() on Ubuntu Jammy
+  '-D_POSIX_C_SOURCE=200112L',  # enable setenv() on Ubuntu Jammy
 ]
 
 add_project_arguments(cc.get_supported_arguments(extra_flags), language: 'c')
@@ -74,8 +74,11 @@ conf = configuration_data()
 # Homebrew may discourage vendoring dependencies that are available as
 # formulae. Link against the installed miniaudio if found; otherwise
 # fall back to the bundled copy in subprojects/.
-miniaudio_dep = dependency('miniaudio', required: false,
-  fallback: ['miniaudio', 'miniaudio_dep'])
+miniaudio_dep = dependency(
+  'miniaudio',
+  required: false,
+  fallback: ['miniaudio', 'miniaudio_dep'],
+)
 
 shared_dep = [
   canfigger_dep,
@@ -200,7 +203,7 @@ foreach size : icon_sizes
       'icons',
       'hicolor',
       '@0@x@0@'.format(size),
-      'apps'
+      'apps',
     ),
   )
 endforeach
@@ -212,7 +215,7 @@ install_data(
     'icons',
     'hicolor',
     'scalable',
-    'apps'
+    'apps',
   ),
 )
 

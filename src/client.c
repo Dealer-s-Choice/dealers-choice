@@ -89,11 +89,11 @@ static void ma_sound_start_wrap(ma_sound *pSound, const char *file, const int li
 }
 
 static void detect_player_changes(const GameState_t *gs, bool was_connected[MAX_PLAYERS],
-                                   bool joined[MAX_PLAYERS], bool left[MAX_PLAYERS]) {
+                                  bool joined[MAX_PLAYERS], bool left[MAX_PLAYERS]) {
   for (int i = 0; i < MAX_PLAYERS; i++) {
     bool now = gs->player[i].is_connected;
     joined[i] = !was_connected[i] && now;
-    left[i]   =  was_connected[i] && !now;
+    left[i] = was_connected[i] && !now;
     was_connected[i] = now;
   }
 }
@@ -105,11 +105,11 @@ typedef enum {
 } EGameSelResult_t;
 
 static EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_config,
-                                  SocketContext_t *socket_context, const int8_t my_id,
-                                  GameState_t *game_state, ClientState_t *client_state,
-                                  SdlContext_t *sdl_context, Font_t *font,
-                                  const SoundContext_t *sound_context, Link_t *links,
-                                  const Path_t *path) {
+                                              SocketContext_t *socket_context, const int8_t my_id,
+                                              GameState_t *game_state, ClientState_t *client_state,
+                                              SdlContext_t *sdl_context, Font_t *font,
+                                              const SoundContext_t *sound_context, Link_t *links,
+                                              const Path_t *path) {
   // (void)player_config;
 
   uint8_t n_clients = 0;
@@ -185,16 +185,14 @@ static EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_confi
   waiting_dealer_tw->base.rect.x = g_center.x;
   waiting_dealer_tw->base.rect.y = g_viewport.h - 200;
 
-  ButtonWidget_t *btn_kick =
-      button_widget_create(_("Kick"), (EColor_t){COLOR_WHITE, COLOR_BROWN},
-                           font->fonts[FONT_BOLD], (SDL_Keycode)0);
-  ButtonWidget_t *btn_ban =
-      button_widget_create(_("Ban"), (EColor_t){COLOR_WHITE, COLOR_BROWN},
-                           font->fonts[FONT_BOLD], (SDL_Keycode)0);
+  ButtonWidget_t *btn_kick = button_widget_create(_("Kick"), (EColor_t){COLOR_WHITE, COLOR_BROWN},
+                                                  font->fonts[FONT_BOLD], (SDL_Keycode)0);
+  ButtonWidget_t *btn_ban = button_widget_create(_("Ban"), (EColor_t){COLOR_WHITE, COLOR_BROWN},
+                                                 font->fonts[FONT_BOLD], (SDL_Keycode)0);
   btn_kick->base.rect.x = g_viewport.w * 0.1;
   btn_kick->base.rect.y = g_viewport.h * 0.82;
-  btn_ban->base.rect.x  = btn_kick->base.rect.x + btn_kick->base.rect.w + 16;
-  btn_ban->base.rect.y  = btn_kick->base.rect.y;
+  btn_ban->base.rect.x = btn_kick->base.rect.x + btn_kick->base.rect.w + 16;
+  btn_ban->base.rect.y = btn_kick->base.rect.y;
   ui_register(&registry, &btn_kick->base);
   ui_register(&registry, &btn_ban->base);
 
@@ -205,8 +203,7 @@ static EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_confi
   const int back_btn_size = 64;
   PathconfLimits_t img_limits = {0};
   get_pathconf_limits(path->data, &img_limits);
-  char *back_img_path =
-      join_paths(img_limits.path_max, path->data, "images", "arrow_back.png");
+  char *back_img_path = join_paths(img_limits.path_max, path->data, "images", "arrow_back.png");
   ImageWidget_t *back_img = image_widget_create(back_img_path, back_btn_size, back_btn_size);
   free(back_img_path);
   if (back_img) {
@@ -239,7 +236,7 @@ static EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_confi
       if (t > 1.0f)
         t = 1.0f;
       int start_y = g_viewport.y + g_viewport.h * 2 / 3;
-      int end_y   = g_viewport.y + g_viewport.h - back_btn_size - 20;
+      int end_y = g_viewport.y + g_viewport.h - back_btn_size - 20;
       back_img->base.rect.y = start_y + (int)(t * (end_y - start_y));
     }
 
@@ -316,9 +313,8 @@ static EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_confi
 
         /* nick */
         if (!nick_widgets[id]) {
-          nick_widgets[id] =
-              nick_widget_create(client->nick, game_state->player[id].id, font->fonts[FONT_BOLD],
-                                 get_color(COLOR_WHITE));
+          nick_widgets[id] = nick_widget_create(client->nick, game_state->player[id].id,
+                                                font->fonts[FONT_BOLD], get_color(COLOR_WHITE));
           nick_widgets[id]->highlight = (id == my_id);
           nick_widgets[id]->selectable = (game_state->player[my_id].is_admin && id != my_id);
           ui_register(&registry, &nick_widgets[id]->base);
@@ -364,13 +360,13 @@ static EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_confi
 
     bool admin = game_state->player[my_id].is_admin;
     btn_kick->base.enabled = admin && selected_nick >= 0;
-    btn_kick->interactive  = admin && selected_nick >= 0;
-    btn_kick->base.hovered = btn_kick->interactive &&
-                             SDL_PointInRect(&mouse_pos, &btn_kick->base.rect);
-    btn_ban->base.enabled  = admin && selected_nick >= 0;
-    btn_ban->interactive   = admin && selected_nick >= 0;
-    btn_ban->base.hovered  = btn_ban->interactive &&
-                             SDL_PointInRect(&mouse_pos, &btn_ban->base.rect);
+    btn_kick->interactive = admin && selected_nick >= 0;
+    btn_kick->base.hovered =
+        btn_kick->interactive && SDL_PointInRect(&mouse_pos, &btn_kick->base.rect);
+    btn_ban->base.enabled = admin && selected_nick >= 0;
+    btn_ban->interactive = admin && selected_nick >= 0;
+    btn_ban->base.hovered =
+        btn_ban->interactive && SDL_PointInRect(&mouse_pos, &btn_ban->base.rect);
 
     bool dealing_enabled = game_state->dealer_id == my_id && n_clients > 1;
     for (int i = 0; i < MAX_CHOICES; i++) {
@@ -431,7 +427,7 @@ static EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_confi
 
       case SDL_MOUSEBUTTONDOWN: {
         if (e.button.button == SDL_BUTTON_LEFT) {
-if (back_img && SDL_PointInRect(&mouse_pos, &back_img->base.rect)) {
+          if (back_img && SDL_PointInRect(&mouse_pos, &back_img->base.rect)) {
             result = GAME_SEL_BACK;
             goto cleanup;
           }
@@ -473,12 +469,10 @@ if (back_img && SDL_PointInRect(&mouse_pos, &back_img->base.rect)) {
               }
             }
             if (selected_nick >= 0) {
-              if (btn_kick->interactive &&
-                  SDL_PointInRect(&mouse_pos, &btn_kick->base.rect)) {
+              if (btn_kick->interactive && SDL_PointInRect(&mouse_pos, &btn_kick->base.rect)) {
                 send_kick_player(sock, selected_nick);
                 selected_nick = -1;
-              } else if (btn_ban->interactive &&
-                         SDL_PointInRect(&mouse_pos, &btn_ban->base.rect)) {
+              } else if (btn_ban->interactive && SDL_PointInRect(&mouse_pos, &btn_ban->base.rect)) {
                 send_ban_player(sock, selected_nick);
                 selected_nick = -1;
               }
@@ -549,11 +543,11 @@ static CardBackStyle_t card_back_styles[] = {
     {{128, 0, 128, 255},
      {255, 255, 255, 255},
      {255, 200, 255, 255},
-     4}, // purple with light stripes
-    {{0, 0, 0, 255}, {0, 0, 0, 255}, {0, 0, 0, 255}, 5},   // lava lamp (animated)
-    {{0, 0, 0, 255}, {0, 0, 0, 255}, {0, 0, 0, 255}, 6},   // sunset (animated)
-    {{0, 0, 0, 255}, {0, 0, 0, 255}, {0, 0, 0, 255}, 7},   // horse walking (animated)
-    {{0, 0, 0, 255}, {0, 0, 0, 255}, {0, 0, 0, 255}, 8},   // ocean waves (animated)
+     4},                                                 // purple with light stripes
+    {{0, 0, 0, 255}, {0, 0, 0, 255}, {0, 0, 0, 255}, 5}, // lava lamp (animated)
+    {{0, 0, 0, 255}, {0, 0, 0, 255}, {0, 0, 0, 255}, 6}, // sunset (animated)
+    {{0, 0, 0, 255}, {0, 0, 0, 255}, {0, 0, 0, 255}, 7}, // horse walking (animated)
+    {{0, 0, 0, 255}, {0, 0, 0, 255}, {0, 0, 0, 255}, 8}, // ocean waves (animated)
 };
 
 static int selected_card_back = -1;
@@ -671,28 +665,27 @@ static void draw_card_back_pattern(SDL_Renderer *renderer, SDL_Rect *card_rect) 
       Uint8 r, g, b;
       int radius;
     } blobs[] = {
-      { 0.40f, 0.00f, 1.30f, 220,  55,   0, 10 },
-      { 0.65f, 1.80f, 0.70f, 200, 130,   0,  9 },
-      { 0.30f, 3.50f, 2.10f, 170,   0,  55, 11 },
-      { 0.75f, 0.90f, 4.20f, 240,  75,   0,  8 },
-      { 0.50f, 2.70f, 3.00f, 155,  15,  80, 10 },
+        {0.40f, 0.00f, 1.30f, 220, 55, 0, 10},  {0.65f, 1.80f, 0.70f, 200, 130, 0, 9},
+        {0.30f, 3.50f, 2.10f, 170, 0, 55, 11},  {0.75f, 0.90f, 4.20f, 240, 75, 0, 8},
+        {0.50f, 2.70f, 3.00f, 155, 15, 80, 10},
     };
 
     int cx0 = card_rect->x + card_rect->w / 2;
     int cy0 = card_rect->y + card_rect->h / 2;
-    int hy  = card_rect->h / 2 - 4;
-    int hx  = card_rect->w / 5;
+    int hy = card_rect->h / 2 - 4;
+    int hx = card_rect->w / 5;
 
     for (int i = 0; i < 5; i++) {
       float ay = t * blobs[i].speed + blobs[i].phase_y;
       float ax = t * blobs[i].speed * 0.4f + blobs[i].phase_x;
       int cx = cx0 + (int)(sinf(ax) * hx);
       int cy = cy0 + (int)(sinf(ay) * hy);
-      int r  = blobs[i].radius;
+      int r = blobs[i].radius;
       SDL_SetRenderDrawColor(renderer, blobs[i].r, blobs[i].g, blobs[i].b, 210);
       for (int dy = -r; dy <= r; dy++) {
         float inside = (float)(r * r - dy * dy);
-        if (inside < 0.0f) continue;
+        if (inside < 0.0f)
+          continue;
         int dx = (int)(sqrtf(inside) + 0.5f);
         SDL_RenderDrawLine(renderer, cx - dx, cy + dy, cx + dx, cy + dy);
       }
@@ -703,27 +696,28 @@ static void draw_card_back_pattern(SDL_Renderer *renderer, SDL_Rect *card_rect) 
     break;
   }
   case 6: { // sunset (animated) — 30-second repeating arc
-    float t  = (float)SDL_GetTicks() * 0.001f;
+    float t = (float)SDL_GetTicks() * 0.001f;
     float ph = fmodf(t, 30.0f) / 30.0f; // 0..1 over 30 seconds
 
     // Sky color: bright blue -> sunset orange -> night
     Uint8 sky_r, sky_g, sky_b;
     if (ph < 0.55f) {
       float p = ph / 0.55f;
-      sky_r = (Uint8)(70  + p * 120);
-      sky_g = (Uint8)(130 + p *  10);
-      sky_b = (Uint8)(210 - p *  40);
+      sky_r = (Uint8)(70 + p * 120);
+      sky_g = (Uint8)(130 + p * 10);
+      sky_b = (Uint8)(210 - p * 40);
     } else if (ph < 0.75f) {
       float p = (ph - 0.55f) / 0.20f;
-      sky_r = (Uint8)(190 + p *  30);  // peak 220, not 255
-      sky_g = (Uint8)(140 - p *  60);  // peak 80, stays orange not red
+      sky_r = (Uint8)(190 + p * 30); // peak 220, not 255
+      sky_g = (Uint8)(140 - p * 60); // peak 80, stays orange not red
       sky_b = (Uint8)(170 - p * 160);
     } else {
       float p = (ph - 0.75f) / 0.25f;
-      if (p > 1.0f) p = 1.0f;
-      sky_r = (Uint8)(64  * (1.0f - p) +  5 * p);
-      sky_g = (Uint8)(40  * (1.0f - p) +  5 * p);
-      sky_b = (Uint8)(10  * (1.0f - p) + 20 * p);
+      if (p > 1.0f)
+        p = 1.0f;
+      sky_r = (Uint8)(64 * (1.0f - p) + 5 * p);
+      sky_g = (Uint8)(40 * (1.0f - p) + 5 * p);
+      sky_b = (Uint8)(10 * (1.0f - p) + 20 * p);
     }
 
     SDL_SetRenderDrawColor(renderer, sky_r, sky_g, sky_b, 255);
@@ -741,9 +735,12 @@ static void draw_card_back_pattern(SDL_Renderer *renderer, SDL_Rect *card_rect) 
       Uint8 cr = ph < 0.55f ? 240 : 255;
       Uint8 cg = ph < 0.55f ? 240 : (Uint8)(240 - (ph - 0.55f) / 0.25f * 100);
       Uint8 cb = ph < 0.55f ? 240 : (Uint8)(240 - (ph - 0.55f) / 0.25f * 220);
-      static const struct { float speed, phase; int dy_off, rx, ry; } clouds[] = {
-        { 0.025f, 0.10f,  8, 14, 4 },
-        { 0.018f, 0.55f, 18,  9, 3 },
+      static const struct {
+        float speed, phase;
+        int dy_off, rx, ry;
+      } clouds[] = {
+          {0.025f, 0.10f, 8, 14, 4},
+          {0.018f, 0.55f, 18, 9, 3},
       };
       SDL_SetRenderDrawColor(renderer, cr, cg, cb, ca);
       for (int i = 0; i < 2; i++) {
@@ -752,7 +749,8 @@ static void draw_card_back_pattern(SDL_Renderer *renderer, SDL_Rect *card_rect) 
         int cy = card_rect->y + clouds[i].dy_off;
         for (int dy = -clouds[i].ry; dy <= clouds[i].ry; dy++) {
           float inside = 1.0f - (float)(dy * dy) / (float)(clouds[i].ry * clouds[i].ry);
-          if (inside < 0.0f) continue;
+          if (inside < 0.0f)
+            continue;
           int dx = (int)(clouds[i].rx * sqrtf(inside) + 0.5f);
           SDL_RenderDrawLine(renderer, cx - dx, cy + dy, cx + dx, cy + dy);
         }
@@ -766,11 +764,12 @@ static void draw_card_back_pattern(SDL_Renderer *renderer, SDL_Rect *card_rect) 
     int sun_cy = card_rect->y + 4 + (int)(sun_fy * (card_rect->h - 8));
     int sun_rad = 5;
     Uint8 sun_g = ph < 0.60f ? 230 : (Uint8)(230 - (ph - 0.60f) / 0.40f * 180);
-    Uint8 sun_b = ph < 0.60f ?  80 : 0;
+    Uint8 sun_b = ph < 0.60f ? 80 : 0;
     SDL_SetRenderDrawColor(renderer, 255, sun_g, sun_b, 255);
     for (int dy = -sun_rad; dy <= sun_rad; dy++) {
       float inside = (float)(sun_rad * sun_rad - dy * dy);
-      if (inside < 0.0f) continue;
+      if (inside < 0.0f)
+        continue;
       int dx = (int)(sqrtf(inside) + 0.5f);
       SDL_RenderDrawLine(renderer, sun_cx - dx, sun_cy + dy, sun_cx + dx, sun_cy + dy);
     }
@@ -780,21 +779,21 @@ static void draw_card_back_pattern(SDL_Renderer *renderer, SDL_Rect *card_rect) 
     SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
     for (int row = 0; row < 13; row++) {
-      int y      = card_rect->y + card_rect->h - 1 - row;
+      int y = card_rect->y + card_rect->h - 1 - row;
       int x_start = row <= 7 ? 0 : (row - 7) * card_rect->w / 6;
-      SDL_RenderDrawLine(renderer, card_rect->x + x_start, y,
-                         card_rect->x + card_rect->w - 1, y);
+      SDL_RenderDrawLine(renderer, card_rect->x + x_start, y, card_rect->x + card_rect->w - 1, y);
     }
     SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
 
     // Stars: fade in after sunset
     if (ph > 0.78f) {
       float sf = (ph - 0.78f) / 0.10f;
-      if (sf > 1.0f) sf = 1.0f;
+      if (sf > 1.0f)
+        sf = 1.0f;
       Uint8 sa = (Uint8)(220 * sf);
       SDL_SetRenderDrawColor(renderer, 255, 255, 200, sa);
       static const SDL_Point stars[] = {
-        {5,5},{20,8},{35,3},{55,12},{70,6},{12,18},{45,22},{62,15},{28,25},
+          {5, 5}, {20, 8}, {35, 3}, {55, 12}, {70, 6}, {12, 18}, {45, 22}, {62, 15}, {28, 25},
       };
       for (int i = 0; i < 9; i++)
         SDL_RenderDrawPoint(renderer, card_rect->x + stars[i].x, card_rect->y + stars[i].y);
@@ -816,55 +815,49 @@ static void draw_card_back_pattern(SDL_Renderer *renderer, SDL_Rect *card_rect) 
     // Grass strip — bottom 12 rows
     int grass_top = card_rect->y + card_rect->h - 12;
     SDL_SetRenderDrawColor(renderer, 55, 140, 45, 255);
-    SDL_Rect grass = { card_rect->x, grass_top, card_rect->w, 12 };
+    SDL_Rect grass = {card_rect->x, grass_top, card_rect->w, 12};
     SDL_RenderFillRect(renderer, &grass);
     // Darker grass tufts
     SDL_SetRenderDrawColor(renderer, 35, 100, 28, 255);
     for (int gx = 0; gx < card_rect->w; gx += 7) {
-      SDL_RenderDrawLine(renderer,
-        card_rect->x + gx, grass_top,
-        card_rect->x + gx, grass_top - 2);
+      SDL_RenderDrawLine(renderer, card_rect->x + gx, grass_top, card_rect->x + gx, grass_top - 2);
     }
 
     // Horse position: walks left-to-right, wrapping
     int wrap_w = card_rect->w + 44;
     float walk_speed = 14.0f; // pixels per second
     int horse_cx = card_rect->x - 22 + (int)fmodf(t * walk_speed, (float)wrap_w);
-    int horse_y  = grass_top - 8; // bottom of body
+    int horse_y = grass_top - 8; // bottom of body
 
     // Walk cycle: two leg pairs in opposite phase
     float stride = fmodf(t * 4.5f, (float)(2 * M_PI));
-    int p1 = (int)(5.0f * sinf(stride));        // near pair
+    int p1 = (int)(5.0f * sinf(stride));         // near pair
     int p2 = (int)(5.0f * sinf(stride + 3.14f)); // far pair
 
     // Far legs (drawn behind body — darker brown)
     SDL_SetRenderDrawColor(renderer, 72, 45, 12, 255);
     // far front leg
-    SDL_RenderDrawLine(renderer, horse_cx + 5, horse_y + 8,
-                       horse_cx + 5 + p2, horse_y + 8 + 8);
+    SDL_RenderDrawLine(renderer, horse_cx + 5, horse_y + 8, horse_cx + 5 + p2, horse_y + 8 + 8);
     // far hind leg
-    SDL_RenderDrawLine(renderer, horse_cx - 5, horse_y + 8,
-                       horse_cx - 5 - p2, horse_y + 8 + 8);
+    SDL_RenderDrawLine(renderer, horse_cx - 5, horse_y + 8, horse_cx - 5 - p2, horse_y + 8 + 8);
 
     // Body
     SDL_SetRenderDrawColor(renderer, 105, 68, 28, 255);
-    SDL_Rect body = { horse_cx - 12, horse_y, 24, 9 };
+    SDL_Rect body = {horse_cx - 12, horse_y, 24, 9};
     SDL_RenderFillRect(renderer, &body);
     // Highlight stripe along top of body
     SDL_SetRenderDrawColor(renderer, 140, 95, 48, 255);
-    SDL_RenderDrawLine(renderer, horse_cx - 11, horse_y + 1,
-                       horse_cx + 11, horse_y + 1);
+    SDL_RenderDrawLine(renderer, horse_cx - 11, horse_y + 1, horse_cx + 11, horse_y + 1);
 
     // Neck: 4 lines going up-right from front of body
     SDL_SetRenderDrawColor(renderer, 105, 68, 28, 255);
     for (int ni = 0; ni < 4; ni++) {
-      SDL_RenderDrawLine(renderer,
-        horse_cx + 10 + ni, horse_y + 7 - ni,
-        horse_cx + 14 + ni, horse_y - 5 - ni);
+      SDL_RenderDrawLine(renderer, horse_cx + 10 + ni, horse_y + 7 - ni, horse_cx + 14 + ni,
+                         horse_y - 5 - ni);
     }
 
     // Head
-    SDL_Rect head = { horse_cx + 14, horse_y - 9, 8, 5 };
+    SDL_Rect head = {horse_cx + 14, horse_y - 9, 8, 5};
     SDL_RenderFillRect(renderer, &head);
 
     // Mane: dark strip along neck
@@ -875,8 +868,7 @@ static void draw_card_back_pattern(SDL_Renderer *renderer, SDL_Rect *card_rect) 
 
     // White blaze on nose
     SDL_SetRenderDrawColor(renderer, 230, 225, 215, 255);
-    SDL_RenderDrawLine(renderer, horse_cx + 20, horse_y - 8,
-                       horse_cx + 20, horse_y - 6);
+    SDL_RenderDrawLine(renderer, horse_cx + 20, horse_y - 8, horse_cx + 20, horse_y - 6);
 
     // Eye
     SDL_SetRenderDrawColor(renderer, 15, 10, 5, 255);
@@ -888,11 +880,9 @@ static void draw_card_back_pattern(SDL_Renderer *renderer, SDL_Rect *card_rect) 
     // Near legs (drawn in front of body)
     SDL_SetRenderDrawColor(renderer, 105, 68, 28, 255);
     // near front leg
-    SDL_RenderDrawLine(renderer, horse_cx + 6, horse_y + 8,
-                       horse_cx + 6 + p1, horse_y + 8 + 8);
+    SDL_RenderDrawLine(renderer, horse_cx + 6, horse_y + 8, horse_cx + 6 + p1, horse_y + 8 + 8);
     // near hind leg
-    SDL_RenderDrawLine(renderer, horse_cx - 4, horse_y + 8,
-                       horse_cx - 4 - p1, horse_y + 8 + 8);
+    SDL_RenderDrawLine(renderer, horse_cx - 4, horse_y + 8, horse_cx - 4 - p1, horse_y + 8 + 8);
 
     // White sock on near front leg bottom
     SDL_SetRenderDrawColor(renderer, 210, 205, 195, 255);
@@ -903,12 +893,10 @@ static void draw_card_back_pattern(SDL_Renderer *renderer, SDL_Rect *card_rect) 
     // Tail: swishing at the rear
     SDL_SetRenderDrawColor(renderer, 38, 18, 4, 255);
     float tail_sw = sinf(t * 1.8f) * 5.0f;
-    SDL_RenderDrawLine(renderer,
-      horse_cx - 12, horse_y + 2,
-      horse_cx - 18 + (int)tail_sw, horse_y + 11);
-    SDL_RenderDrawLine(renderer,
-      horse_cx - 18 + (int)tail_sw, horse_y + 11,
-      horse_cx - 20 + (int)(tail_sw * 0.6f), horse_y + 16);
+    SDL_RenderDrawLine(renderer, horse_cx - 12, horse_y + 2, horse_cx - 18 + (int)tail_sw,
+                       horse_y + 11);
+    SDL_RenderDrawLine(renderer, horse_cx - 18 + (int)tail_sw, horse_y + 11,
+                       horse_cx - 20 + (int)(tail_sw * 0.6f), horse_y + 16);
 
     SDL_RenderSetClipRect(renderer, NULL);
     break;
@@ -921,10 +909,10 @@ static void draw_card_back_pattern(SDL_Renderer *renderer, SDL_Rect *card_rect) 
 
     for (int py = 0; py < card_rect->h; py++) {
       float persp = (float)py / (float)(card_rect->h - 1); // 0=far, 1=near
-      float depth  = persp * persp * 15.0f; // world depth units (quadratic = perspective)
+      float depth = persp * persp * 15.0f; // world depth units (quadratic = perspective)
 
       // Base water color: dark blue at horizon, more teal at the near edge
-      float base_r = 8.0f  + persp * 25.0f;
+      float base_r = 8.0f + persp * 25.0f;
       float base_g = 55.0f + persp * 45.0f;
       float base_b = 130.0f + persp * 40.0f;
 
@@ -1131,8 +1119,8 @@ static void create_card_context(CardContext_t card_context[MAX_PLAYERS][MAX_HAND
   } while (turn && turn != starting_turn);
 }
 
-void layout_cards(CardContext_t card_context[MAX_PLAYERS][MAX_HAND_SIZE],
-                  Player_t *players_array, const SDL_Point *player_pos) {
+void layout_cards(CardContext_t card_context[MAX_PLAYERS][MAX_HAND_SIZE], Player_t *players_array,
+                  const SDL_Point *player_pos) {
 
   Player_t *starting_turn = NULL;
   for (int i = 0; i < MAX_PLAYERS; i++) {
@@ -1474,17 +1462,15 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
 
   UIRegistry_t registry = {0};
 
-  ButtonWidget_t *game_btn_kick =
-      button_widget_create(_("Kick"), (EColor_t){COLOR_WHITE, COLOR_BROWN},
-                           font->fonts[FONT_BOLD], (SDL_Keycode)0);
-  ButtonWidget_t *game_btn_ban =
-      button_widget_create(_("Ban"), (EColor_t){COLOR_WHITE, COLOR_BROWN},
-                           font->fonts[FONT_BOLD], (SDL_Keycode)0);
+  ButtonWidget_t *game_btn_kick = button_widget_create(
+      _("Kick"), (EColor_t){COLOR_WHITE, COLOR_BROWN}, font->fonts[FONT_BOLD], (SDL_Keycode)0);
+  ButtonWidget_t *game_btn_ban = button_widget_create(
+      _("Ban"), (EColor_t){COLOR_WHITE, COLOR_BROWN}, font->fonts[FONT_BOLD], (SDL_Keycode)0);
   game_btn_kick->base.rect.x = g_viewport.w * 0.1;
   /* Position above the status message panel, which starts at g_center.y */
   game_btn_kick->base.rect.y = g_center.y - game_btn_kick->base.rect.h - 20;
-  game_btn_ban->base.rect.x  = game_btn_kick->base.rect.x + game_btn_kick->base.rect.w + 16;
-  game_btn_ban->base.rect.y  = game_btn_kick->base.rect.y;
+  game_btn_ban->base.rect.x = game_btn_kick->base.rect.x + game_btn_kick->base.rect.w + 16;
+  game_btn_ban->base.rect.y = game_btn_kick->base.rect.y;
   ui_register(&registry, &game_btn_kick->base);
   ui_register(&registry, &game_btn_ban->base);
 
@@ -1603,13 +1589,11 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
         continue;
       char coins_str[24] = {0};
       snprintf(coins_str, sizeof coins_str, "%" PRId32, game_state->player[id].coins);
-      game_nick_widgets[id] =
-          nick_widget_create(game_state->player[id].nick, id, font->fonts[FONT_BOLD],
-                             get_color(COLOR_WHITE));
+      game_nick_widgets[id] = nick_widget_create(game_state->player[id].nick, id,
+                                                 font->fonts[FONT_BOLD], get_color(COLOR_WHITE));
       game_nick_widgets[id]->highlight = (id == my_id);
       game_nick_widgets[id]->selectable = (game_state->player[my_id].is_admin && id != my_id);
-      game_coin_widgets[id] =
-          image_widget_from_texture(coin_tex_front, coin_px / 2, coin_px / 2);
+      game_coin_widgets[id] = image_widget_from_texture(coin_tex_front, coin_px / 2, coin_px / 2);
       game_coins_tw[id] =
           text_widget_create(coins_str, font->fonts[FONT_BOLD], get_color(COLOR_BLACK));
       ui_register(&registry, &game_nick_widgets[id]->base);
@@ -1660,13 +1644,13 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
 
     bool game_admin = game_state->player[my_id].is_admin;
     game_btn_kick->base.enabled = game_admin && selected_nick >= 0;
-    game_btn_kick->interactive  = game_admin && selected_nick >= 0;
-    game_btn_kick->base.hovered = game_btn_kick->interactive &&
-                                  SDL_PointInRect(&mouse_pos, &game_btn_kick->base.rect);
-    game_btn_ban->base.enabled  = game_admin && selected_nick >= 0;
-    game_btn_ban->interactive   = game_admin && selected_nick >= 0;
-    game_btn_ban->base.hovered  = game_btn_ban->interactive &&
-                                  SDL_PointInRect(&mouse_pos, &game_btn_ban->base.rect);
+    game_btn_kick->interactive = game_admin && selected_nick >= 0;
+    game_btn_kick->base.hovered =
+        game_btn_kick->interactive && SDL_PointInRect(&mouse_pos, &game_btn_kick->base.rect);
+    game_btn_ban->base.enabled = game_admin && selected_nick >= 0;
+    game_btn_ban->interactive = game_admin && selected_nick >= 0;
+    game_btn_ban->base.hovered =
+        game_btn_ban->interactive && SDL_PointInRect(&mouse_pos, &game_btn_ban->base.rect);
 
     if (game_state->prev_bet_amount == 0)
       for (size_t i = 0; i < n_bet_amounts; i++)
@@ -1747,8 +1731,8 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
           total_w += player_table.col_width[c] + player_table.col_spacing;
         total_w -= player_table.col_spacing;
         const int pad = 4;
-        turn_outline = (SDL_Rect){player_table.x - pad, player_table.y - pad,
-                                  total_w + pad * 2, player_table.row_height[0] + pad * 2};
+        turn_outline = (SDL_Rect){player_table.x - pad, player_table.y - pad, total_w + pad * 2,
+                                  player_table.row_height[0] + pad * 2};
       }
     }
 
@@ -2231,12 +2215,10 @@ int authenticate_with_server(TCPsocket sock, const char *password) {
   return 0;
 }
 
-
-bool get_socket_context_and_run_client(PlayerConfig_t *player_config,
-                                       const CliArgs_t *cli_args, const char *host_str,
-                                       const uint16_t port, SdlContext_t *sdl_context,
-                                       Font_t *font, Path_t *path, const bool test_mode,
-                                       Link_t *links,
+bool get_socket_context_and_run_client(PlayerConfig_t *player_config, const CliArgs_t *cli_args,
+                                       const char *host_str, const uint16_t port,
+                                       SdlContext_t *sdl_context, Font_t *font, Path_t *path,
+                                       const bool test_mode, Link_t *links,
                                        SocketContext_t *out_socket_context) {
   IPaddress server_ip;
   SocketContext_t socket_context = {0};
@@ -2251,7 +2233,7 @@ bool get_socket_context_and_run_client(PlayerConfig_t *player_config,
   // can safely SDL_DetachThread (rather than WaitThread) on cancel/timeout.
   // Per-attempt timeout keeps the counter advancing on slow/unreachable hosts.
   static const Uint32 ATTEMPT_TIMEOUT_MS = 5000;
-  static const Uint32 RETRY_DELAY_MS     = 2000;
+  static const Uint32 RETRY_DELAY_MS = 2000;
 
   Button_t btn_cancel = {0};
   TextWidget_t *status_tw = NULL;
@@ -2263,7 +2245,8 @@ bool get_socket_context_and_run_client(PlayerConfig_t *player_config,
     char initial_status[256] = {0};
     snprintf(initial_status, sizeof(initial_status), _("Attempting connection to: %s... (%d/%d)"),
              host_str, 1, player_config->connect_attempts);
-    status_tw = text_widget_create(initial_status, font->fonts[FONT_DEFAULT], get_color(COLOR_WHITE));
+    status_tw =
+        text_widget_create(initial_status, font->fonts[FONT_DEFAULT], get_color(COLOR_WHITE));
     if (status_tw) {
       status_tw->base.rect.x = 10;
       status_tw->base.rect.y = g_center.y;
@@ -2271,13 +2254,13 @@ bool get_socket_context_and_run_client(PlayerConfig_t *player_config,
   }
 
   bool cancelled = false;
-  bool sdl_quit  = false;
+  bool sdl_quit = false;
   uint8_t attempts;
   for (attempts = 0; attempts < player_config->connect_attempts; ++attempts) {
     if (status_tw && attempts > 0) {
       char tmp[256] = {0};
-      snprintf(tmp, sizeof(tmp), _("Attempting connection to: %s... (%d/%d)"),
-               host_str, attempts + 1, player_config->connect_attempts);
+      snprintf(tmp, sizeof(tmp), _("Attempting connection to: %s... (%d/%d)"), host_str,
+               attempts + 1, player_config->connect_attempts);
       text_widget_set_text(status_tw, tmp);
       status_tw->base.rect.x = 10;
       status_tw->base.rect.y = g_center.y;
@@ -2287,7 +2270,7 @@ bool get_socket_context_and_run_client(PlayerConfig_t *player_config,
     if (!ca)
       break;
     ca->server_ip = server_ip;
-    ca->sock      = NULL;
+    ca->sock = NULL;
     SDL_AtomicSet(&ca->done, 0);
 
     SDL_Thread *thread = SDL_CreateThread(connect_thread_fn, "tcp_connect", ca);

@@ -112,8 +112,7 @@ int main(int argc, char *argv[]) {
   assert(thread_rc == 0);
   assert(server_args.result == 0);
 
-  fprintf(stderr, "sodium_compat: handshake OK (client=%d server=%d)\n", client_rc,
-          thread_rc);
+  fprintf(stderr, "sodium_compat: handshake OK (client=%d server=%d)\n", client_rc, thread_rc);
 
   SDLNet_Quit();
   SDL_Quit();

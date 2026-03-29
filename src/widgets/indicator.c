@@ -68,20 +68,20 @@ void indicator_render(UIWidget_t *w) {
     float speed, phase, fx, fy;
     Uint8 red, green, blue, alpha;
   } layers[] = {
-    { 0.40f, 0.00f, 0.45f, 0.35f, 255, 180, 100, 180 }, // deep amber
-    { 0.55f, 1.26f, 0.40f, 0.45f, 255, 140,  60, 160 }, // burnt orange
-    { 0.30f, 2.51f, 0.50f, 0.30f, 255, 220, 160, 150 }, // pale peach
-    { 0.65f, 3.77f, 0.35f, 0.40f, 255, 160,  80, 170 }, // warm orange
-    { 0.45f, 5.03f, 0.42f, 0.38f, 255, 200, 130, 155 }, // sandy
-    { 0.35f, 0.63f, 0.48f, 0.32f, 255, 240, 200, 130 }, // cream
-    { 0.60f, 4.40f, 0.38f, 0.42f, 255, 120,  40, 145 }, // deep rust
+      {0.40f, 0.00f, 0.45f, 0.35f, 255, 180, 100, 180}, // deep amber
+      {0.55f, 1.26f, 0.40f, 0.45f, 255, 140, 60, 160},  // burnt orange
+      {0.30f, 2.51f, 0.50f, 0.30f, 255, 220, 160, 150}, // pale peach
+      {0.65f, 3.77f, 0.35f, 0.40f, 255, 160, 80, 170},  // warm orange
+      {0.45f, 5.03f, 0.42f, 0.38f, 255, 200, 130, 155}, // sandy
+      {0.35f, 0.63f, 0.48f, 0.32f, 255, 240, 200, 130}, // cream
+      {0.60f, 4.40f, 0.38f, 0.42f, 255, 120, 40, 145},  // deep rust
   };
 
   float t = SDL_GetTicks() * 0.001f;
   SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_BLEND);
   for (int i = 0; i < 7; i++) {
     float a = t * layers[i].speed + layers[i].phase;
-    int ox = (int)(sinf(a)        * ind->rx * layers[i].fx);
+    int ox = (int)(sinf(a) * ind->rx * layers[i].fx);
     int oy = (int)(cosf(a * 0.7f) * ind->ry * layers[i].fy);
     SDL_SetRenderDrawColor(r, layers[i].red, layers[i].green, layers[i].blue, layers[i].alpha);
     draw_filled_ellipse(r, ind->cx + ox, ind->cy + oy, ind->rx, ind->ry);

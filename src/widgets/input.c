@@ -49,7 +49,8 @@ static void input_widget_render(UIWidget_t *w) {
   SDL_RenderFillRect(r, &w->rect);
 
   /* Border: yellow when focused, white otherwise */
-  SDL_Color border_color = iw->focused ? (SDL_Color){255, 220, 0, 255} : (SDL_Color){200, 200, 200, 255};
+  SDL_Color border_color =
+      iw->focused ? (SDL_Color){255, 220, 0, 255} : (SDL_Color){200, 200, 200, 255};
   SDL_SetRenderDrawColor(r, border_color.r, border_color.g, border_color.b, border_color.a);
   SDL_RenderDrawRect(r, &w->rect);
   /* Double border when focused */
@@ -100,9 +101,7 @@ static void input_widget_render(UIWidget_t *w) {
   }
 }
 
-static void input_widget_destroy(UIWidget_t *w) {
-  free(w);
-}
+static void input_widget_destroy(UIWidget_t *w) { free(w); }
 
 InputWidget_t *input_widget_create(const char *initial, TTF_Font *font, int w, ConfigType type) {
   InputWidget_t *iw = calloc(1, sizeof(*iw));
@@ -172,9 +171,7 @@ void input_widget_backspace(InputWidget_t *iw) {
   iw->buf[iw->len] = '\0';
 }
 
-const char *input_widget_get_text(const InputWidget_t *iw) {
-  return iw ? iw->buf : "";
-}
+const char *input_widget_get_text(const InputWidget_t *iw) { return iw ? iw->buf : ""; }
 
 void input_widget_set_text(InputWidget_t *iw, const char *text) {
   if (!iw)

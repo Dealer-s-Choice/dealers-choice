@@ -16,9 +16,7 @@ static void image_widget_destroy(UIWidget_t *w) {
   free(iw);
 }
 
-static void image_widget_destroy_no_tex(UIWidget_t *w) {
-  free(w);
-}
+static void image_widget_destroy_no_tex(UIWidget_t *w) { free(w); }
 
 ImageWidget_t *image_widget_from_texture(SDL_Texture *tex, int w, int h) {
   if (!tex)

@@ -36,7 +36,7 @@
 #include "types.h"
 
 #define NONCE_SIZE 32
-#define HASH_SIZE 32  /* SHA-256 output size, matches crypto_hash_sha256_BYTES */
+#define HASH_SIZE 32 /* SHA-256 output size, matches crypto_hash_sha256_BYTES */
 
 #ifndef MAX_HAND_SIZE
 #define MAX_HAND_SIZE 7
@@ -83,8 +83,8 @@ __attribute__((packed)) GameProtocolHeader_t;
 #define MSG_BET_CHECK_FOLD 0x000C
 #define MSG_CALL_RAISE_FOLD 0x000D
 #define MSG_TURN_ID 0x000E
-#define MSG_KICK_PLAYER 0x000F  // Admin kicks a player
-#define MSG_BAN_PLAYER  0x0010  // Admin bans a player by IP
+#define MSG_KICK_PLAYER 0x000F // Admin kicks a player
+#define MSG_BAN_PLAYER 0x0010  // Admin bans a player by IP
 
 #define DEFAULT_PORT "22777"
 

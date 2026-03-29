@@ -1,5 +1,10 @@
 
-unit_tests = ['serialization', 'get_next_player', 'debug_print_cards', 'layout_cards']
+unit_tests = [
+  'serialization',
+  'get_next_player',
+  'debug_print_cards',
+  'layout_cards',
+]
 
 base_env = {
   'DEALERSCHOICE_DATADIR': join_paths(meson.project_source_root(), 'data'),
@@ -32,7 +37,9 @@ sodium_compat_env = environment(base_env)
 sodium_compat_env.set('DC_PORT', base_port.to_string())
 test('test_sodium_compat', sodium_compat_exe, env: sodium_compat_env)
 
-game_logic_script = files(join_paths(meson.current_source_dir(), 'game_logic.py'))
+game_logic_script = files(
+  join_paths(meson.current_source_dir(), 'game_logic.py'),
+)
 
 game_logic = [
   'fold',

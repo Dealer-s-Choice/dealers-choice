@@ -28,9 +28,7 @@ static void checkbox_widget_render(UIWidget_t *w) {
   }
 }
 
-static void checkbox_widget_destroy(UIWidget_t *w) {
-  free(w);
-}
+static void checkbox_widget_destroy(UIWidget_t *w) { free(w); }
 
 CheckboxWidget_t *checkbox_widget_create(bool checked, int size) {
   SDL_Renderer *renderer = g_sdl_context->renderer;

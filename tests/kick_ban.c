@@ -27,8 +27,8 @@
  * has time to send everything, then reads each client until RECV_NOTHING.
  * Asserts that no client returns RECV_ERROR.
  */
-static void drain_all(SocketContext_t *sc, GameState_t *gs, ClientState_t *cs,
-                      GameSettings_t *gset, int n) {
+static void drain_all(SocketContext_t *sc, GameState_t *gs, ClientState_t *cs, GameSettings_t *gset,
+                      int n) {
   SDL_Delay(n_ms * 2);
   for (int i = 0; i < n; i++) {
     ERecvStatus_t s;
@@ -71,13 +71,11 @@ int main(int argc, char *argv[]) {
 
   /* Connect N_PLAYERS (3) clients.  In test mode, all clients receive admin. */
   for (int i = 0; i < N_PLAYERS; i++) {
-    get_socket_context_and_run_client(&player_config, &cli_args, "127.0.0.1",
-                                     test_port, NULL, NULL, &path,
-                                     /*test_mode=*/true, links,
-                                     &socket_context[i]);
+    get_socket_context_and_run_client(&player_config, &cli_args, "127.0.0.1", test_port, NULL, NULL,
+                                      &path,
+                                      /*test_mode=*/true, links, &socket_context[i]);
     assert(socket_context[i].sock != NULL);
-    recv_game_settings(socket_context[i].sock, socket_context[i].set,
-                       &game_settings[i]);
+    recv_game_settings(socket_context[i].sock, socket_context[i].set, &game_settings[i]);
     SDL_Delay(n_ms);
   }
 
@@ -90,8 +88,7 @@ int main(int argc, char *argv[]) {
 
   /* Dealer (player 0) selects 5-card showdown. */
   assert(send_game_select(socket_context[dealer_id].sock,
-                          game_choices[FIVE_CARD_SHOWDOWN].game_type,
-                          false) == 0);
+                          game_choices[FIVE_CARD_SHOWDOWN].game_type, false) == 0);
 
   /* Drain all post-deal messages (broadcast_game_state, MSG_GAME_SELECT,
    * MSG_TURN_ID, broadcast_game_state for first turn) before the kick test. */
@@ -112,8 +109,8 @@ int main(int argc, char *argv[]) {
   {
     int kicked = 0;
     for (int try = 0; try < 20 && !kicked; try++) {
-      ERecvStatus_t s = recv_game_state(&socket_context[2], &game_state[2],
-                                        &client_state[2], game_settings[2].client_id);
+      ERecvStatus_t s = recv_game_state(&socket_context[2], &game_state[2], &client_state[2],
+                                        game_settings[2].client_id);
       if (s == RECV_ERROR)
         kicked = 1;
       else if (s == RECV_NOTHING)
@@ -140,8 +137,8 @@ int main(int argc, char *argv[]) {
   {
     int banned = 0;
     for (int try = 0; try < 20 && !banned; try++) {
-      ERecvStatus_t s = recv_game_state(&socket_context[1], &game_state[1],
-                                        &client_state[1], game_settings[1].client_id);
+      ERecvStatus_t s = recv_game_state(&socket_context[1], &game_state[1], &client_state[1],
+                                        game_settings[1].client_id);
       if (s == RECV_ERROR)
         banned = 1;
       else if (s == RECV_NOTHING)
@@ -175,12 +172,10 @@ int main(int argc, char *argv[]) {
     assert(r <= 0); /* FIN or RST → banned IP was rejected */
     SDLNet_FreeSocketSet(probe_set);
     SDLNet_TCP_Close(probe_sock);
-    fprintf(stderr,
-            "[kick_ban] PASS: reconnect from banned IP rejected (recv=%d)\n", r);
+    fprintf(stderr, "[kick_ban] PASS: reconnect from banned IP rejected (recv=%d)\n", r);
   } else {
     /* Connection refused entirely — also a valid rejection. */
-    fprintf(stderr,
-            "[kick_ban] PASS: reconnect from banned IP refused outright\n");
+    fprintf(stderr, "[kick_ban] PASS: reconnect from banned IP refused outright\n");
   }
 
   /* Clean up. */

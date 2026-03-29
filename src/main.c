@@ -53,7 +53,6 @@
 
 enum { RUN_CLIENT = 20, RUN_SETTINGS = 21 };
 
-
 static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, uint16_t *port,
                                 SdlContext_t *sdl_context, Font_t *font, Link_t *links) {
   Button_t button_connect = create_button(_("Connect"), (EColor_t){COLOR_BLACK, COLOR_YELLOW},
@@ -95,9 +94,8 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, u
   port_input->base.rect.y = host_input->base.rect.y + host_input->base.rect.h + 20;
   ui_register(&reg, &port_input->base);
 
-  ButtonWidget_t *button_save =
-      button_widget_create(_("Save"), (EColor_t){COLOR_BLACK, COLOR_YELLOW},
-                           font->fonts[FONT_BOLD], (SDL_Keycode)0);
+  ButtonWidget_t *button_save = button_widget_create(
+      _("Save"), (EColor_t){COLOR_BLACK, COLOR_YELLOW}, font->fonts[FONT_BOLD], (SDL_Keycode)0);
   if (!button_save) {
     ui_destroy_all(&reg);
     return 0;
@@ -121,7 +119,8 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, u
   button_defaults->base.rect.x = button_save->base.rect.x + button_save->base.rect.w + 12;
   button_defaults->base.rect.y = button_save->base.rect.y;
 
-  SDL_Rect input_nick_pos = {x_margin, port_input->base.rect.y + port_input->base.rect.h + 20, 0, 0};
+  SDL_Rect input_nick_pos = {x_margin, port_input->base.rect.y + port_input->base.rect.h + 20, 0,
+                             0};
 
   InputWidget_t *focused_inputs[2] = {host_input, port_input};
   int focused_slot = 0;
@@ -255,7 +254,7 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, u
 }
 
 static void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *sdl_context,
-                                   Font_t *font, const Path_t *path) {
+                                  Font_t *font, const Path_t *path) {
   /* Two-column layout for nick, language, volume, turn_notify (host/port on startup screen) */
   const int x_left = g_viewport.x + 100;
   const int x_right = g_viewport.x + 700;
@@ -357,9 +356,8 @@ static void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *s
       text_input_indices[n_ti++] = i;
   int focused_slot = 0; /* index into text_input_indices */
 
-  ButtonWidget_t *btn_save =
-      button_widget_create(_("Save"), (EColor_t){COLOR_BLACK, COLOR_YELLOW},
-                           font->fonts[FONT_BOLD], (SDL_Keycode)0);
+  ButtonWidget_t *btn_save = button_widget_create(_("Save"), (EColor_t){COLOR_BLACK, COLOR_YELLOW},
+                                                  font->fonts[FONT_BOLD], (SDL_Keycode)0);
   if (!btn_save) {
     ui_destroy_all(&reg);
     return;
@@ -405,8 +403,7 @@ static void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *s
           btn_save->click.start_time = SDL_GetTicks();
           for (size_t i = 0; i < player_config_entry_count; i++) {
             if (i == bool_idx)
-              player_config_set_field(player_config, i,
-                                      turn_cb && turn_cb->checked ? "yes" : "no");
+              player_config_set_field(player_config, i, turn_cb && turn_cb->checked ? "yes" : "no");
             else if (inputs[i])
               player_config_set_field(player_config, i, input_widget_get_text(inputs[i]));
           }
@@ -492,7 +489,7 @@ static void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *s
       if (t > 1.0f)
         t = 1.0f;
       int start_y = g_viewport.y + g_viewport.h * 2 / 3;
-      int end_y   = g_viewport.y + g_viewport.h - back_size - 20;
+      int end_y = g_viewport.y + g_viewport.h - back_size - 20;
       back_img->base.rect.y = start_y + (int)(t * (end_y - start_y));
     }
 
@@ -767,9 +764,9 @@ int main(int argc, char *argv[]) {
     } while (connect_result == RUN_SETTINGS);
 
     if (connect_result == RUN_CLIENT) {
-      bool went_back = get_socket_context_and_run_client(&player_config, &cli_args, host_str, port,
-                                                         &sdl_context, &font, &path,
-                                                         cli_args.test_mode, links, NULL);
+      bool went_back =
+          get_socket_context_and_run_client(&player_config, &cli_args, host_str, port, &sdl_context,
+                                            &font, &path, cli_args.test_mode, links, NULL);
       if (went_back)
         loop_to_connect = true;
     }

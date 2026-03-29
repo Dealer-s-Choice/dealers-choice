@@ -356,9 +356,9 @@ void broadcast_turn_id(const ArgsBroadcastGameState_t *args) {
 }
 
 typedef enum {
-  TURN_MSG_ACTION,    /* MSG_PLAYER_ACTION — game action from the turn player */
-  TURN_MSG_KICK_BAN,  /* MSG_KICK_PLAYER / MSG_BAN_PLAYER from an admin who happens to be on turn */
-  TURN_MSG_DISCONNECT,/* connection closed or unrecognised data */
+  TURN_MSG_ACTION,   /* MSG_PLAYER_ACTION — game action from the turn player */
+  TURN_MSG_KICK_BAN, /* MSG_KICK_PLAYER / MSG_BAN_PLAYER from an admin who happens to be on turn */
+  TURN_MSG_DISCONNECT, /* connection closed or unrecognised data */
 } ETurnMsg_t;
 
 /*
@@ -385,9 +385,9 @@ static ETurnMsg_t recv_turn_player_msg(TCPsocket sock, PlayerActionMsg_t *out_ac
   if (opcode == MSG_PLAYER_ACTION) {
     out_action->action = buf[2];
     out_action->amount = ((uint32_t)buf[3] << 24) | ((uint32_t)buf[4] << 16) |
-                         ((uint32_t)buf[5] << 8)  | (uint32_t)buf[6];
-    verbose_printf("Received action %u with amount %" PRIu32 "\n",
-                   out_action->action, out_action->amount);
+                         ((uint32_t)buf[5] << 8) | (uint32_t)buf[6];
+    verbose_printf("Received action %u with amount %" PRIu32 "\n", out_action->action,
+                   out_action->amount);
     return TURN_MSG_ACTION;
   }
 
@@ -396,8 +396,8 @@ static ETurnMsg_t recv_turn_player_msg(TCPsocket sock, PlayerActionMsg_t *out_ac
   if (opcode == 0x0000) {
     uint16_t kb_opcode = (buf[4] << 8) | buf[5];
     if (kb_opcode == MSG_KICK_PLAYER || kb_opcode == MSG_BAN_PLAYER) {
-      *out_kb_opcode  = kb_opcode;
-      *out_target_id  = (int8_t)buf[6];
+      *out_kb_opcode = kb_opcode;
+      *out_target_id = (int8_t)buf[6];
       return TURN_MSG_KICK_BAN;
     }
   }
@@ -405,7 +405,6 @@ static ETurnMsg_t recv_turn_player_msg(TCPsocket sock, PlayerActionMsg_t *out_ac
   fprintf(stderr, "[recv_turn_player_msg] Unrecognised opcode 0x%04X\n", opcode);
   return TURN_MSG_DISCONNECT;
 }
-
 
 static int send_opcode(TCPsocket sock, const uint16_t opcode) {
   uint8_t buffer[6];
@@ -850,9 +849,9 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args) {
         // disconnected, or have sent an action.
         if (SDLNet_SocketReady(args->clients[turn->id])) {
           uint16_t kb_opcode = 0;
-          int8_t   kb_target = -1;
-          ETurnMsg_t msg_type = recv_turn_player_msg(args->clients[turn->id], &action,
-                                                     &kb_opcode, &kb_target);
+          int8_t kb_target = -1;
+          ETurnMsg_t msg_type =
+              recv_turn_player_msg(args->clients[turn->id], &action, &kb_opcode, &kb_target);
           if (msg_type == TURN_MSG_KICK_BAN) {
             /* Admin is on-turn and sent a kick/ban instead of a game action.
              * Process it and keep waiting for their game action. */
@@ -1095,8 +1094,8 @@ static bool handle_disconnections(ArgsBroadcastGameState_t *args) {
     uint32_t payload_len = msg_len - OPCODE_SIZE;
     uint8_t payload[32] = {0};
     if (payload_len > 0) {
-      r = SDLNet_TCP_Recv(args->clients[i], payload, payload_len < sizeof(payload)
-                                                          ? payload_len : sizeof(payload));
+      r = SDLNet_TCP_Recv(args->clients[i], payload,
+                          payload_len < sizeof(payload) ? payload_len : sizeof(payload));
       if (r <= 0) {
         remove_disconnected_player(args, i);
         someone_disconnected = true;
@@ -1770,8 +1769,7 @@ int run_server(const CliArgs_t *cli_args, Path_t *path) {
         .turn_id = 0,
         .ban_count = session_ban_count,
     };
-    memcpy(args_broadcast_game_state.ban_list, session_ban_list,
-           sizeof(session_ban_list));
+    memcpy(args_broadcast_game_state.ban_list, session_ban_list, sizeof(session_ban_list));
 
     uint8_t active_clients = count_active_clients(slot_taken);
     int8_t *dealer_id = &game_state.dealer_id;
@@ -1935,8 +1933,7 @@ int run_server(const CliArgs_t *cli_args, Path_t *path) {
               ban_player(&args_broadcast_game_state, target_id);
             /* Persist any bans added in the lobby. */
             session_ban_count = args_broadcast_game_state.ban_count;
-            memcpy(session_ban_list, args_broadcast_game_state.ban_list,
-                   sizeof(session_ban_list));
+            memcpy(session_ban_list, args_broadcast_game_state.ban_list, sizeof(session_ban_list));
             break;
           }
 

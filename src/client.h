@@ -69,11 +69,10 @@ typedef struct {
 
 extern const GameChoice_t game_choices[];
 
-bool get_socket_context_and_run_client(PlayerConfig_t *player_config,
-                                       const CliArgs_t *cli_args, const char *host_str,
-                                       const uint16_t port, SdlContext_t *sdl_context,
-                                       Font_t *font, Path_t *path, const bool test_mode,
-                                       Link_t *links,
+bool get_socket_context_and_run_client(PlayerConfig_t *player_config, const CliArgs_t *cli_args,
+                                       const char *host_str, const uint16_t port,
+                                       SdlContext_t *sdl_context, Font_t *font, Path_t *path,
+                                       const bool test_mode, Link_t *links,
                                        SocketContext_t *out_socket_context);
 
 int8_t send_player_action(ClientState_t *client_state, TCPsocket sock, uint8_t action,
@@ -84,7 +83,7 @@ void do_sdl_cleanup(SdlContext_t *sdl_context);
 int8_t send_discards_request_new_cards(TCPsocket sock, const uint8_t *discard_indices,
                                        uint8_t count);
 
-void layout_cards(CardContext_t card_context[MAX_PLAYERS][MAX_HAND_SIZE],
-                  Player_t *players_array, const SDL_Point *player_pos);
+void layout_cards(CardContext_t card_context[MAX_PLAYERS][MAX_HAND_SIZE], Player_t *players_array,
+                  const SDL_Point *player_pos);
 
 int authenticate_with_server(TCPsocket sock, const char *password);

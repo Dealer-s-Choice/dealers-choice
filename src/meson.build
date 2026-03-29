@@ -3,7 +3,8 @@ subdir('widgets')
 if get_option('gen_protobuf')
   protoc = find_program('protoc')
   protoc_gen_c = find_program('protoc-gen-c')
-  run_target('gen-proto',
+  run_target(
+    'gen-proto',
     command: [
       protoc,
       '--plugin=protoc-gen-c=' + protoc_gen_c.full_path(),
