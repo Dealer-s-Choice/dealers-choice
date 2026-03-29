@@ -1276,6 +1276,7 @@ static void deal_community_cards(ArgsBroadcastGameState_t *args, Player_t *playe
 }
 
 void game_texas_holdem(GAME_ARGS) {
+  (void)choice;
   server_handle_ante(args->game_state, args->config->ante);
 
   RoundResults results = {0};
