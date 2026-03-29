@@ -31,7 +31,6 @@
 #include <stdlib.h> // For setenv()
 #include <string.h>
 
-#include "button.h"
 #include "client.h"
 #include "config.h"
 #ifdef HAVE_LIBSODIUM
@@ -55,18 +54,18 @@ enum { RUN_CLIENT = 20, RUN_SETTINGS = 21 };
 
 static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, uint16_t *port,
                                 SdlContext_t *sdl_context, Font_t *font, Link_t *links) {
-  Button_t button_connect = create_button(_("Connect"), (EColor_t){COLOR_BLACK, COLOR_YELLOW},
-                                          font->fonts[FONT_BOLD], (SDL_Keycode)0);
-  Button_t button_settings = create_button(_("Settings"), (EColor_t){COLOR_BLACK, COLOR_YELLOW},
-                                           font->fonts[FONT_BOLD], (SDL_Keycode)0);
+  ButtonWidget_t *button_connect = button_widget_create(
+      _("Connect"), (EColor_t){COLOR_BLACK, COLOR_YELLOW}, font->fonts[FONT_BOLD], (SDL_Keycode)0);
+  ButtonWidget_t *button_settings = button_widget_create(
+      _("Settings"), (EColor_t){COLOR_BLACK, COLOR_YELLOW}, font->fonts[FONT_BOLD], (SDL_Keycode)0);
   UIRegistry_t reg = {0};
   SDL_Rect title_rect = {g_center.x / 1.5, 60, 0, 0};
 
   int x_margin = g_viewport.x + 100;
-  button_connect.rect.x = x_margin;
-  button_connect.rect.y = g_viewport.y + 160;
-  button_settings.rect.x = x_margin + button_connect.rect.w + 20;
-  button_settings.rect.y = g_viewport.y + 160;
+  button_connect->base.rect.x = x_margin;
+  button_connect->base.rect.y = g_viewport.y + 160;
+  button_settings->base.rect.x = x_margin + button_connect->base.rect.w + 20;
+  button_settings->base.rect.y = g_viewport.y + 160;
 
   int input_w;
   if (TTF_SizeUTF8(font->fonts[FONT_DEFAULT], "255.255.255.255", &input_w, NULL) != 0)
@@ -135,8 +134,8 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, u
     SDL_Event e;
     while (SDL_PollEvent(&e)) {
       SDL_Point mouse_pos = {e.button.x, e.button.y};
-      button_connect.hovered = SDL_PointInRect(&mouse_pos, &button_connect.rect);
-      button_settings.hovered = SDL_PointInRect(&mouse_pos, &button_settings.rect);
+      button_connect->base.hovered = SDL_PointInRect(&mouse_pos, &button_connect->base.rect);
+      button_settings->base.hovered = SDL_PointInRect(&mouse_pos, &button_settings->base.rect);
       button_save->base.hovered = SDL_PointInRect(&mouse_pos, &button_save->base.rect);
       button_defaults->base.hovered = SDL_PointInRect(&mouse_pos, &button_defaults->base.rect);
       for (size_t i = 0; i < LINK_DEFS_COUNT; i++) {
@@ -145,10 +144,10 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, u
       if (e.type == SDL_QUIT) {
         running = false;
       } else if (e.type == SDL_MOUSEBUTTONDOWN) {
-        if (SDL_PointInRect(&mouse_pos, &button_connect.rect)) {
+        if (SDL_PointInRect(&mouse_pos, &button_connect->base.rect)) {
           run_client = true;
           running = false;
-        } else if (SDL_PointInRect(&mouse_pos, &button_settings.rect)) {
+        } else if (SDL_PointInRect(&mouse_pos, &button_settings->base.rect)) {
           run_settings = true;
           running = false;
         } else if (SDL_PointInRect(&mouse_pos, &button_save->base.rect)) {
@@ -210,8 +209,8 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, u
     }
 
     clear_screen(sdl_context->renderer);
-    render_button(&button_connect);
-    render_button(&button_settings);
+    ui_widget_render(&button_connect->base);
+    ui_widget_render(&button_settings->base);
     ui_render_all(&reg);
 
     render_text_plain(sdl_context->renderer, font->fonts[FONT_DEFAULT], player_config->nick,
@@ -244,6 +243,8 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, u
   if (final_port && *final_port)
     *port = (uint16_t)strtoul(final_port, NULL, 10);
 
+  ui_widget_destroy(&button_connect->base);
+  ui_widget_destroy(&button_settings->base);
   ui_destroy_all(&reg);
 
   if (run_client)
