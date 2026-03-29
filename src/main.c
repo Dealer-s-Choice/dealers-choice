@@ -259,7 +259,7 @@ static void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *s
   /* Two-column layout for nick, language, volume, turn_notify (host/port on startup screen) */
   const int x_left = g_viewport.x + 100;
   const int x_right = g_viewport.x + 700;
-  const int row_y[2] = {g_viewport.y + 160, g_viewport.y + 360};
+  const int row_y[3] = {g_viewport.y + 160, g_viewport.y + 360, g_viewport.y + 560};
   const int input_y_offset = 40;
   const int input_w = 350;
 
@@ -320,6 +320,9 @@ static void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *s
       break;
     case CFG_TYPE_INT:
       snprintf(init_str[i], sizeof(init_str[i]), "%d", *(const int *)field);
+      break;
+    case CFG_TYPE_UINT8:
+      snprintf(init_str[i], sizeof(init_str[i]), "%u", (unsigned)*(const uint8_t *)field);
       break;
     case CFG_TYPE_UINT16:
       snprintf(init_str[i], sizeof(init_str[i]), "%u", (unsigned)*(const uint16_t *)field);
@@ -763,12 +766,6 @@ int main(int argc, char *argv[]) {
     } while (connect_result == RUN_SETTINGS);
 
     if (connect_result == RUN_CLIENT) {
-      char tmp[256] = {0};
-      snprintf(tmp, sizeof(tmp), _("Attempting connection to: %s..."), host_str);
-      render_text_plain(sdl_context.renderer, font.fonts[FONT_DEFAULT], tmp, get_color(COLOR_WHITE),
-                        &(SDL_Rect){10, g_center.y, 0, 0});
-      SDL_RenderPresent(sdl_context.renderer);
-
       bool went_back = get_socket_context_and_run_client(&player_config, &cli_args, host_str, port,
                                                          &sdl_context, &font, &path,
                                                          cli_args.test_mode, links, NULL);

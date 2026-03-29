@@ -59,6 +59,7 @@ typedef struct {
   char language[6];
   int volume;
   bool turn_notify;
+  uint8_t connect_attempts;
 } PlayerConfig_t;
 
 typedef enum {
@@ -88,7 +89,9 @@ static const ConfigEntry player_config_entries[] = {
      sizeof(((PlayerConfig_t *)0)->language)},
     {"sound.volume", CFG_TYPE_INT, "5", offsetof(PlayerConfig_t, volume), sizeof(int)},
     {"sound.notify.turn", CFG_TYPE_BOOL, "yes", offsetof(PlayerConfig_t, turn_notify),
-     sizeof(bool)}};
+     sizeof(bool)},
+    {"connect.attempts", CFG_TYPE_UINT8, "6", offsetof(PlayerConfig_t, connect_attempts),
+     sizeof(uint8_t)}};
 
 static const size_t player_config_entry_count = ARRAY_SIZE(player_config_entries);
 
