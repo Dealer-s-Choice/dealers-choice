@@ -23,6 +23,43 @@ on:
     paths: *shared_paths
 
 jobs:
+  #MSVC:
+    #runs-on: windows-latest
+    #steps:
+    #- uses: actions/checkout@v6
+      #with:
+        #submodules: recursive
+
+    #- name: Set up MSVC environment
+      #uses: ilammy/msvc-dev-cmd@v1
+      #with:
+        #arch: x64
+
+    #- name: Install Meson and Ninja
+      #run: pip install meson ninja
+
+    #- name: Install dependencies via vcpkg
+      #run: |
+        #vcpkg install `
+          #sdl2:x64-windows `
+          #sdl2-image:x64-windows `
+          #sdl2-ttf:x64-windows `
+          #sdl2-net:x64-windows `
+          #libsodium:x64-windows `
+          #protobuf-c:x64-windows
+
+    #- name: Meson setup
+      #env:
+        #PKG_CONFIG_PATH: ${{ env.VCPKG_INSTALLATION_ROOT }}\installed\x64-windows\lib\pkgconfig
+      #run: |
+        #meson setup _build -Db_sanitize=none -Dsodium=enabled
+
+    #- name: Build
+      #run: meson compile -C _build
+
+    #- name: Test
+      #run: meson test --no-stdsplit -v -C _build
+
   MSYS2:
     runs-on: windows-latest
     permissions:
