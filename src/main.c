@@ -601,9 +601,10 @@ static CliArgs_t parse_cli_args(int argc, char *argv[]) {
     case '?':
     default:
       print_version();
+      // https://github.com/Dealer-s-Choice/dealers-choice/issues/48
+      // "  --server [--bind-address IP]\n"
       fputs("Usage:\n"
             "  --verbose\n"
-            "  --server [--bind-address IP]\n"
             "  --server-log-game-results [path/to/file]\n"
             "  --server-conf [Path to alternate server config file]\n"
             "  --host [IP]\n"
