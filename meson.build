@@ -24,7 +24,7 @@ platform_is_windows = (host_sys == 'windows')
 
 win_deps = []
 if platform_is_windows
-  w_lib = ['ws2_32', 'user32']
+  w_lib = ['ws2_32', 'user32', 'shell32']
   foreach lib : w_lib
     win_deps += cc.find_library(lib, required: true)
   endforeach
@@ -187,37 +187,39 @@ install_subdir('docs', install_dir: get_option('docdir'))
 
 #install_data(files('LICENSE'), install_dir: license_dir)
 
-install_data(
-  'packaging/dealers-choice.desktop',
-  install_dir: join_paths(get_option('datadir'), 'applications'),
-)
-
-icon_sizes = ['128', '64', '32', '16']
-
-foreach size : icon_sizes
+if not platform_is_windows
   install_data(
-    'packaging/icons/dealers-choice_@0@x@0@.png'.format(size),
-    rename: 'dealers-choice.png',
+    'packaging/dealers-choice.desktop',
+    install_dir: join_paths(get_option('datadir'), 'applications'),
+  )
+
+  icon_sizes = ['128', '64', '32', '16']
+
+  foreach size : icon_sizes
+    install_data(
+      'packaging/icons/dealers-choice_@0@x@0@.png'.format(size),
+      rename: 'dealers-choice.png',
+      install_dir: join_paths(
+        get_option('datadir'),
+        'icons',
+        'hicolor',
+        '@0@x@0@'.format(size),
+        'apps',
+      ),
+    )
+  endforeach
+
+  install_data(
+    'packaging/icons/dealers-choice.svg',
     install_dir: join_paths(
       get_option('datadir'),
       'icons',
       'hicolor',
-      '@0@x@0@'.format(size),
+      'scalable',
       'apps',
     ),
   )
-endforeach
-
-install_data(
-  'packaging/icons/dealers-choice.svg',
-  install_dir: join_paths(
-    get_option('datadir'),
-    'icons',
-    'hicolor',
-    'scalable',
-    'apps',
-  ),
-)
+endif
 
 # Third-party licenses
 install_subdir('licenses', install_dir: get_option('docdir'))
