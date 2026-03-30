@@ -57,6 +57,12 @@ configurable](https://github.com/Dealer-s-Choice/dealers-choice/issues/102).
 
 ### Using Wild Cards
 
+Selecting Deuces Wild will temporarily disable the following games until is is
+unselected:
+
+* Texas Hold'em
+* California Lowball
+
 Only 2s can be wild, and only if the dealer has enabled wild cards.
 
 At the end of the final betting round, if you have a 2 in your hand, you’ll

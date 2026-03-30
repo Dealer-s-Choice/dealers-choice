@@ -369,9 +369,11 @@ static EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_confi
         btn_ban->interactive && SDL_PointInRect(&mouse_pos, &btn_ban->base.rect);
 
     bool dealing_enabled = game_state->dealer_id == my_id && n_clients > 1;
+    bool dw = button_deuces_wild->base.selected;
     for (int i = 0; i < MAX_CHOICES; i++) {
       game_choice_button[i]->base.enabled = dealing;
-      game_choice_button[i]->interactive = dealing_enabled;
+      bool incompatible = dw && (i == TEXAS_HOLDEM || i == CALIFORNIA_LOWBALL);
+      game_choice_button[i]->interactive = dealing_enabled && !incompatible;
     }
 
     button_deuces_wild->interactive = dealing_enabled;
@@ -433,6 +435,7 @@ static EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_confi
           }
           for (int i = 0; i < MAX_CHOICES; i++) {
             if (SDL_PointInRect(&mouse_pos, &game_choice_button[i]->base.rect) &&
+                game_choice_button[i]->interactive &&
                 game_state->dealer_id == my_id) {
               if (send_game_select(sock, game_choices[i].game_type,
                                    button_deuces_wild->base.selected) == 0) {
