@@ -1388,9 +1388,10 @@ static void render_circle_timer(SDL_Renderer *renderer, SDL_Point center, float 
   for (int y = cy - outer_r; y <= cy + outer_r; y++) {
     int dy = y - cy;
     float dy_f = (float)dy;
-    int outer_hw = (int)sqrtf((float)(outer_r * outer_r - dy * dy));
-    int inner_hw = (dy * dy <= inner_r * inner_r)
-                       ? (int)sqrtf((float)(inner_r * inner_r - dy * dy))
+    int outer_hw = (int)sqrtf((float)(outer_r * outer_r) - dy_f * dy_f);
+    float inner_r2 = (float)(inner_r * inner_r);
+    int inner_hw = (dy_f * dy_f <= inner_r2)
+                       ? (int)sqrtf(inner_r2 - dy_f * dy_f)
                        : -1;
 
     for (int x = cx - outer_hw; x <= cx + outer_hw; x++) {
@@ -1420,7 +1421,7 @@ static void render_circle_timer(SDL_Renderer *renderer, SDL_Point center, float 
   /* --- brown pie wedge (elapsed time, clockwise from 12 o'clock) --------- */
   float sweep = (1.0f - fill_ratio) * 2.0f * (float)M_PI;
   if (sweep > 0.001f) {
-    SDL_SetRenderDrawColor(renderer, 120, 20, 20, 255);
+    SDL_SetRenderDrawColor(renderer, 101, 67, 33, 255); /* brown */
     for (int y = cy - inner_r; y <= cy + inner_r; y++) {
       int dy = y - cy;
       int hw = (int)sqrtf((float)(inner_r * inner_r - dy * dy));
