@@ -1,5 +1,6 @@
+2026-03-30
 
-- dealers-choice (in progress):
+- dealers-choice 0.0.10:
   + Add Texas Hold'em
   * bugfix: Client freezes (infinite loop in layout_cards) when slot-0
   + Connection screen: cancel button, per-attempt timeout, configurable
@@ -10,11 +11,12 @@
   * bugfix: .desktop and XDG icon installs skipped on Windows
   + Add animated card backs
     player disconnects during a game (#195)
-  + Server password set via server.conf or DC_PASSWORD env var (#187)
+  + Server and client password set via server.conf/player.conf or DC_PASSWORD env var (#187)
   + Add dealer indicator column to lobby player list (black square, red circle if dealer)
   + Play turn notification sound when local player becomes the dealer
+  + Play game over sound when winner is determined
   * Fix "waiting" messages sometimes rendering when they shouldn't
-  * pokeval: Fix wrong 5-card hand selected from 6- or 7-card hands when
+  * Fix wrong 5-card hand selected from 6- or 7-card hands when
     multiple subsets share the same rank (kickers and best straight not
     considered); also fix straight selection incorrectly favouring a wheel
     over a higher straight when both are present
