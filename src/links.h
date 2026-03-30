@@ -1,18 +1,9 @@
 #ifndef __LINKS_H
 #define __LINKS_H
 
-#include <stdbool.h>
+#include <stddef.h>
 
-#include "globals.h"
-
-typedef struct {
-  const char *text;
-  const char *url;
-  TTF_Font *font;
-  SDL_Renderer *renderer;
-  SDL_Rect rect;
-  bool hovered;
-} Link_t;
+#include "widgets/link.h"
 
 typedef struct {
   const char *text;
@@ -21,10 +12,6 @@ typedef struct {
 extern const LinkDef_t LINK_DEFS[];
 extern const size_t LINK_DEFS_COUNT;
 
-void init_links(Link_t *links, TTF_Font *font);
-
-void render_link(Link_t *link);
-
-void layout_links(Link_t *link, size_t count);
+void layout_links(LinkWidget_t **links, size_t count);
 
 #endif

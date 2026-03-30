@@ -101,19 +101,7 @@ TTF_Font *open_font(const FontArgs_t *args);
 
 void clear_screen(SDL_Renderer *renderer);
 
-void render_text(SDL_Renderer *renderer, TTF_Font *font, const char *text, SDL_Color color,
-                 SDL_Rect *dest);
-
 void mark_selected(SDL_Renderer *renderer, const SDL_Rect *rect);
-
-void render_text_centered(SDL_Renderer *renderer, TTF_Font *font, const char *text, SDL_Color color,
-                          SDL_Point center);
-
-void render_text_plain(SDL_Renderer *renderer, TTF_Font *font, const char *text, SDL_Color color,
-                       SDL_Rect *dest);
-
-void render_nick(SDL_Renderer *renderer, TTF_Font *font, const char *text, SDL_Color color,
-                 SDL_Rect *dest, const bool is_turn);
 
 SDL_Texture *load_texture(SDL_Renderer *renderer, const char *path);
 
