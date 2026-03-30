@@ -1,11 +1,13 @@
 # Pre-release
 
-## One-time / carry-forward notes
-  Remove manual instances of libminiaudio removal from packaging scripts.
-  libsodium is optional but recommended; pass -Dsodium=enabled to meson setup
-  to require it, or -Dsodium=disabled to build without authentication support
+coverity checks
 
-  Update README to note new Windows installer for this release
+test locally with simulated lag
+
+  sudo tc qdisc add dev lo root netem delay 75ms
+
+  (remove lag)
+  sudo tc qdisc del dev lo root
 
 ## Every release
 
@@ -19,9 +21,7 @@
 - Comment out in meson.build:
     'b_sanitize=address,undefined',
     'b_lundef=false'
-- Commit the above changes, tag the release:
-    git tag -s v0.x.y -m "Release 0.x.y"
-    git push origin trunk --tags
+- Commit the above changes
 - Create GitHub release from the tag, paste the ChangeLog entry as notes
 - Close milestone (https://github.com/Dealer-s-Choice/dealers_choice/milestones)
 

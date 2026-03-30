@@ -32,10 +32,12 @@ The game is in alpha so you may encounter bugs.
 
 Here's a proofread version with a couple of small fixes:
 
-*Dealer's Choice* builds on Windows in an MSYS2 environment and there is a
-development snapshot installer available on [the snapshots
+*Dealer's Choice* builds on Windows in an MSYS2 environment. [Release
+versions](https://github.com/Dealer-s-Choice/dealers-choice/releases) are
+available as of v0.0.10. There is a development snapshot installer available
+on [the snapshots
 page](https://github.com/Dealer-s-Choice/dealers-choice/releases/tag/snapshot).
-A release version will be available when v0.0.10 is released.
+
 
 ### Games available
 
