@@ -1420,7 +1420,7 @@ static void render_circle_timer(SDL_Renderer *renderer, SDL_Point center, float 
   /* --- brown pie wedge (elapsed time, clockwise from 12 o'clock) --------- */
   float sweep = (1.0f - fill_ratio) * 2.0f * (float)M_PI;
   if (sweep > 0.001f) {
-    SDL_SetRenderDrawColor(renderer, 165, 42, 42, 255); /* brown */
+    SDL_SetRenderDrawColor(renderer, 120, 20, 20, 255);
     for (int y = cy - inner_r; y <= cy + inner_r; y++) {
       int dy = y - cy;
       int hw = (int)sqrtf((float)(inner_r * inner_r - dy * dy));
