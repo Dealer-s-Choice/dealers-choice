@@ -2684,7 +2684,6 @@ bool get_socket_context_and_run_client(PlayerConfig_t *player_config, const CliA
     // using 'ma_tmp' instead
     ma_sound ma_tmp = {0};
     Sound_t sounds[] = {[SND_SERVER_JOIN] = {"server_join.wav", ma_tmp},
-                        [SND_CARD_DEALT] = {"card_dealt.wav", ma_tmp},
                         [SND_MY_TURN] = {"my_turn.wav", ma_tmp}};
 
     Sound_t coin_hit_sounds[] = {

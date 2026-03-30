@@ -48,7 +48,6 @@ typedef struct {
 
 typedef enum {
   SND_SERVER_JOIN,
-  SND_CARD_DEALT,
   SND_MY_TURN,
   SND_NUM_SOUNDS,
 } ESndIdx_t;
