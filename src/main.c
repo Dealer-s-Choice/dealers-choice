@@ -282,14 +282,13 @@ static void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *s
   UIRegistry_t reg = {0};
 
   /* Back arrow image (top-left) */
-  const int back_size = 64;
   PathconfLimits_t img_limits = {0};
   get_pathconf_limits(path->data, &img_limits);
   char *back_img_path = join_paths(img_limits.path_max, path->data, "images", "arrow_back.png");
-  ImageWidget_t *back_img = image_widget_create(back_img_path, back_size, back_size);
+  ImageWidget_t *back_img = image_widget_create(back_img_path, back_btn_size, back_btn_size);
   free(back_img_path);
   if (back_img) {
-    back_img->base.rect.x = g_viewport.x + g_viewport.w - back_size - 20;
+    back_img->base.rect.x = g_viewport.x + g_viewport.w - back_btn_size - 20;
     back_img->base.rect.y = g_viewport.y + g_viewport.h / 2;
     ui_register(&reg, &back_img->base);
   }
@@ -521,7 +520,7 @@ static void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *s
       if (t > 1.0f)
         t = 1.0f;
       int start_y = g_viewport.y + g_viewport.h * 2 / 3;
-      int end_y = g_viewport.y + g_viewport.h - back_size - 20;
+      int end_y = g_viewport.y + g_viewport.h - back_btn_size - 20;
       back_img->base.rect.y = start_y + (int)(t * (end_y - start_y));
     }
 

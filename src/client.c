@@ -200,7 +200,6 @@ static EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_confi
 
   EGameSelResult_t result = GAME_SEL_SUCCESS;
 
-  const int back_btn_size = 64;
   PathconfLimits_t img_limits = {0};
   get_pathconf_limits(path->data, &img_limits);
   char *back_img_path = join_paths(img_limits.path_max, path->data, "images", "arrow_back.png");
