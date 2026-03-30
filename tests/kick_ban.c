@@ -57,7 +57,7 @@ int main(int argc, char *argv[]) {
   CliArgs_t cli_args = {0};
   SocketContext_t socket_context[N_PLAYERS] = {0};
   Path_t path = {0};
-  Link_t *links = NULL;
+  LinkWidget_t **links = NULL;
 
   uint16_t test_port = 22777;
   {

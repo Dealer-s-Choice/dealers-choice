@@ -49,11 +49,12 @@
 #include "widgets/checkbox.h"
 #include "widgets/image.h"
 #include "widgets/input.h"
+#include "widgets/text.h"
 
 enum { RUN_CLIENT = 20, RUN_SETTINGS = 21 };
 
 static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, uint16_t *port,
-                                SdlContext_t *sdl_context, Font_t *font, Link_t *links) {
+                                SdlContext_t *sdl_context, Font_t *font, LinkWidget_t **links) {
   ButtonWidget_t *button_connect = button_widget_create(
       _("Connect"), (EColor_t){COLOR_BLACK, COLOR_YELLOW}, font->fonts[FONT_BOLD], (SDL_Keycode)0);
   ButtonWidget_t *button_settings = button_widget_create(
@@ -127,6 +128,24 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, u
   SDL_StartTextInput();
 
   layout_links(links, LINK_DEFS_COUNT);
+
+  TextWidget_t *tw_title =
+      text_widget_create(DEALERSCHOICE_FORMAL_NAME, font->fonts[FONT_TITLE], get_color(COLOR_BLACK));
+  if (tw_title)
+    ui_widget_place(&tw_title->base, title_rect.x, title_rect.y);
+
+  char version[64] = {0};
+  snprintf(version, sizeof(version), "Version " DEALERSCHOICE_VERSION);
+  TextWidget_t *tw_version =
+      text_widget_create(version, font->fonts[FONT_VERSION], get_color(COLOR_WHITE));
+  if (tw_version)
+    ui_widget_place(&tw_version->base, title_rect.x + 40, title_rect.y + 80);
+
+  TextWidget_t *tw_nick =
+      text_widget_create(player_config->nick, font->fonts[FONT_DEFAULT], get_color(COLOR_BLACK));
+  if (tw_nick)
+    ui_widget_place(&tw_nick->base, input_nick_pos.x, input_nick_pos.y);
+
   bool run_client = false;
   bool run_settings = false;
   bool running = true;
@@ -138,9 +157,8 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, u
       button_settings->base.hovered = SDL_PointInRect(&mouse_pos, &button_settings->base.rect);
       button_save->base.hovered = SDL_PointInRect(&mouse_pos, &button_save->base.rect);
       button_defaults->base.hovered = SDL_PointInRect(&mouse_pos, &button_defaults->base.rect);
-      for (size_t i = 0; i < LINK_DEFS_COUNT; i++) {
-        links[i].hovered = SDL_PointInRect(&mouse_pos, &links[i].rect);
-      }
+      for (size_t i = 0; i < LINK_DEFS_COUNT; i++)
+        links[i]->base.hovered = SDL_PointInRect(&mouse_pos, &links[i]->base.rect);
       if (e.type == SDL_QUIT) {
         running = false;
       } else if (e.type == SDL_MOUSEBUTTONDOWN) {
@@ -169,8 +187,8 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, u
           focused_inputs[focused_slot]->focused = true;
         }
         for (size_t i = 0; i < LINK_DEFS_COUNT; i++) {
-          if (links[i].hovered && e.button.button == SDL_BUTTON_LEFT)
-            if (SDL_OpenURL(links[i].url) == -1)
+          if (links[i]->base.hovered && e.button.button == SDL_BUTTON_LEFT)
+            if (SDL_OpenURL(links[i]->url) == -1)
               fputs(SDL_GetError(), stderr);
         }
       } else if (e.type == SDL_TEXTINPUT) {
@@ -213,20 +231,12 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, u
     ui_widget_render(&button_settings->base);
     ui_render_all(&reg);
 
-    render_text_plain(sdl_context->renderer, font->fonts[FONT_DEFAULT], player_config->nick,
-                      get_color(COLOR_BLACK), &input_nick_pos);
-
-    render_text_plain(sdl_context->renderer, font->fonts[FONT_TITLE], DEALERSCHOICE_FORMAL_NAME,
-                      get_color(COLOR_BLACK), &title_rect);
-
-    char version[64] = {0};
-    snprintf(version, sizeof(version), "Version " DEALERSCHOICE_VERSION);
-    render_text_plain(sdl_context->renderer, font->fonts[FONT_VERSION], version,
-                      get_color(COLOR_WHITE),
-                      &(SDL_Rect){title_rect.x + 40, title_rect.y + 80, 0, 0});
+    ui_widget_render(&tw_nick->base);
+    ui_widget_render(&tw_title->base);
+    ui_widget_render(&tw_version->base);
 
     for (size_t i = 0; i < LINK_DEFS_COUNT; i++)
-      render_link(&links[i]);
+      ui_widget_render(&links[i]->base);
 
     SDL_RenderPresent(sdl_context->renderer);
     SDL_Delay(16);
@@ -243,6 +253,12 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, u
   if (final_port && *final_port)
     *port = (uint16_t)strtoul(final_port, NULL, 10);
 
+  if (tw_title)
+    ui_widget_destroy(&tw_title->base);
+  if (tw_version)
+    ui_widget_destroy(&tw_version->base);
+  if (tw_nick)
+    ui_widget_destroy(&tw_nick->base);
   ui_widget_destroy(&button_connect->base);
   ui_widget_destroy(&button_settings->base);
   ui_destroy_all(&reg);
@@ -381,6 +397,30 @@ static void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *s
   SDL_Rect title_rect = {g_center.x / 1.5, 60, 0, 0};
   Uint32 anim_start = SDL_GetTicks();
 
+  TextWidget_t *tw_settings_title =
+      text_widget_create(_("Settings"), font->fonts[FONT_TITLE], get_color(COLOR_BLACK));
+  if (tw_settings_title)
+    ui_widget_place(&tw_settings_title->base, title_rect.x, title_rect.y);
+
+  TextWidget_t *tw_labels[player_config_entry_count];
+  for (size_t i = 0; i < player_config_entry_count; i++)
+    tw_labels[i] = NULL;
+  {
+    size_t rpos = 0;
+    for (size_t i = 0; i < player_config_entry_count; i++) {
+      if (i == 1 || i == 2)
+        continue;
+      int col = (int)(rpos % 2);
+      int row = (int)(rpos / 2);
+      int lx = (col == 0) ? x_left : x_right;
+      tw_labels[i] =
+          text_widget_create(player_config_entries[i].key, font->fonts[FONT_DEFAULT], get_color(COLOR_BLACK));
+      if (tw_labels[i])
+        ui_widget_place(&tw_labels[i]->base, lx, row_y[row]);
+      rpos++;
+    }
+  }
+
   SDL_StartTextInput();
   bool running = true;
   bool saved = false;
@@ -469,21 +509,11 @@ static void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *s
 
     clear_screen(sdl_context->renderer);
 
-    render_text_plain(sdl_context->renderer, font->fonts[FONT_TITLE], _("Settings"),
-                      get_color(COLOR_BLACK), &title_rect);
+    ui_widget_render(&tw_settings_title->base);
 
-    size_t rpos = 0;
-    for (size_t i = 0; i < player_config_entry_count; i++) {
-      if (i == 1 || i == 2)
-        continue;
-      int col = (int)(rpos % 2);
-      int row = (int)(rpos / 2);
-      int lx = (col == 0) ? x_left : x_right;
-      SDL_Rect label_rect = {lx, row_y[row], 0, 0};
-      render_text_plain(sdl_context->renderer, font->fonts[FONT_DEFAULT],
-                        player_config_entries[i].key, get_color(COLOR_BLACK), &label_rect);
-      rpos++;
-    }
+    for (size_t i = 0; i < player_config_entry_count; i++)
+      if (tw_labels[i])
+        ui_widget_render(&tw_labels[i]->base);
 
     if (back_img) {
       float t = (SDL_GetTicks() - anim_start) / 1000.0f;
@@ -512,6 +542,11 @@ static void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *s
     save_player_config(player_config);
   }
 
+  if (tw_settings_title)
+    ui_widget_destroy(&tw_settings_title->base);
+  for (size_t i = 0; i < player_config_entry_count; i++)
+    if (tw_labels[i])
+      ui_widget_destroy(&tw_labels[i]->base);
   ui_destroy_all(&reg);
 }
 
@@ -745,8 +780,9 @@ int main(int argc, char *argv[]) {
   }
 #endif
 
-  Link_t links[LINK_DEFS_COUNT];
-  init_links(links, font.fonts[FONT_LINK]);
+  LinkWidget_t *links[LINK_DEFS_COUNT];
+  for (size_t i = 0; i < LINK_DEFS_COUNT; i++)
+    links[i] = link_widget_create(_(LINK_DEFS[i].text), LINK_DEFS[i].url, font.fonts[FONT_LINK]);
   layout_links(links, LINK_DEFS_COUNT);
 
   char host_str[MAX_INPUT_LENGTH] = {0};
@@ -773,6 +809,9 @@ int main(int argc, char *argv[]) {
     }
   }
 
+  for (size_t i = 0; i < LINK_DEFS_COUNT; i++)
+    if (links[i])
+      ui_widget_destroy(&links[i]->base);
   for (int i = 0; i < NUM_FONTS; ++i)
     TTF_CloseFont(font.fonts[i]);
   TTF_Quit();

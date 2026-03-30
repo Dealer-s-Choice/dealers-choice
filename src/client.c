@@ -108,7 +108,7 @@ static EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_confi
                                               SocketContext_t *socket_context, const int8_t my_id,
                                               GameState_t *game_state, ClientState_t *client_state,
                                               SdlContext_t *sdl_context, Font_t *font,
-                                              const SoundContext_t *sound_context, Link_t *links,
+                                              const SoundContext_t *sound_context, LinkWidget_t **links,
                                               const Path_t *path) {
   // (void)player_config;
 
@@ -253,7 +253,7 @@ static EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_confi
       back_img->base.hovered = SDL_PointInRect(&mouse_pos, &back_img->base.rect);
 
     for (size_t i = 0; i < LINK_DEFS_COUNT; i++)
-      links[i].hovered = SDL_PointInRect(&mouse_pos, &links[i].rect);
+      links[i]->base.hovered = SDL_PointInRect(&mouse_pos, &links[i]->base.rect);
 
     bool joined[MAX_PLAYERS] = {0};
     bool left[MAX_PLAYERS] = {0};
@@ -445,8 +445,8 @@ static EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_confi
             }
           }
           for (size_t i = 0; i < LINK_DEFS_COUNT; i++) {
-            if (SDL_PointInRect(&mouse_pos, &links[i].rect))
-              if (SDL_OpenURL(links[i].url) == -1)
+            if (SDL_PointInRect(&mouse_pos, &links[i]->base.rect))
+              if (SDL_OpenURL(links[i]->url) == -1)
                 fputs(SDL_GetError(), stderr);
           }
           if (SDL_PointInRect(&mouse_pos, &button_deuces_wild->base.rect) &&
@@ -507,7 +507,7 @@ static EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_confi
       saved_n_clients = n_clients;
 
       for (size_t i = 0; i < LINK_DEFS_COUNT; i++)
-        render_link(&links[i]);
+        ui_widget_render(&links[i]->base);
 
     } else {
       // Show dealing screen immediately after click
@@ -2437,7 +2437,7 @@ int authenticate_with_server(TCPsocket sock, const char *password) {
 bool get_socket_context_and_run_client(PlayerConfig_t *player_config, const CliArgs_t *cli_args,
                                        const char *host_str, const uint16_t port,
                                        SdlContext_t *sdl_context, Font_t *font, Path_t *path,
-                                       const bool test_mode, Link_t *links,
+                                       const bool test_mode, LinkWidget_t **links,
                                        SocketContext_t *out_socket_context) {
   IPaddress server_ip;
   SocketContext_t socket_context = {0};

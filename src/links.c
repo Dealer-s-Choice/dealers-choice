@@ -1,6 +1,3 @@
-#include <SDL2/SDL_ttf.h>
-#include <stddef.h>
-
 #include "config.h"
 #include "globals.h"
 #include "links.h"
@@ -16,71 +13,13 @@ const LinkDef_t LINK_DEFS[] = {
 
 const size_t LINK_DEFS_COUNT = ARRAY_SIZE(LINK_DEFS);
 
-void init_links(Link_t *link, TTF_Font *font) {
-  for (size_t i = 0; i < LINK_DEFS_COUNT; i++) {
-    link[i] = (Link_t){.text = LINK_DEFS[i].text,
-                       .url = LINK_DEFS[i].url,
-                       .font = font,
-                       .renderer = g_sdl_context->renderer,
-                       .rect = (SDL_Rect){0},
-                       .hovered = false};
-    if (TTF_SizeUTF8(link[i].font, link[i].text, &link[i].rect.w, &link[i].rect.h) != 0)
-      fprintf(stderr, "TTF_SizeUTF8 error: %s\n", TTF_GetError());
-  }
-}
-
-void render_link(Link_t *link) {
-  const uint8_t LINK_PAD_X = 10;
-  const uint8_t LINK_PAD_Y = 2;
-
-  TTF_SetFontStyle(link->font, TTF_STYLE_UNDERLINE);
-
-  SDL_Color text_color = link->hovered ? get_color(COLOR_BLUE) : get_color(COLOR_BLACK);
-
-  SDL_Surface *surface = TTF_RenderUTF8_Blended(link->font, link->text, text_color);
-  if (!surface) {
-    SDL_Log("Failed to render text surface: %s", TTF_GetError());
-    return;
-  }
-
-  SDL_Texture *texture = SDL_CreateTextureFromSurface(link->renderer, surface);
-  if (!texture) {
-    SDL_Log("Failed to create texture from surface: %s", SDL_GetError());
-    SDL_FreeSurface(surface);
-    return;
-  }
-
-  /* background rect (with padding) */
-  SDL_Rect bg = {link->rect.x, link->rect.y, surface->w + LINK_PAD_X * 2,
-                 surface->h + LINK_PAD_Y * 2};
-
-  /* text rect (inside padding) */
-  SDL_Rect text_rect = {bg.x + LINK_PAD_X, bg.y + LINK_PAD_Y, surface->w, surface->h};
-
-  SDL_FreeSurface(surface);
-
-  /* background */
-  if (link->hovered)
-    SDL_SetRenderDrawColor(link->renderer, 255, 255, 255, 255);
-  else
-    SDL_SetRenderDrawColor(link->renderer, 230, 245, 230, 255);
-
-  SDL_RenderFillRect(link->renderer, &bg);
-
-  /* text */
-  SDL_RenderCopy(link->renderer, texture, NULL, &text_rect);
-  SDL_DestroyTexture(texture);
-
-  TTF_SetFontStyle(link->font, TTF_STYLE_NORMAL);
-}
-
-void layout_links(Link_t *link, size_t count) {
+void layout_links(LinkWidget_t **links, size_t count) {
   int center_x = g_center.x + 200;
 
   for (size_t i = 0; i < count; i++) {
-    link[i].rect.x = center_x - (link[i].rect.w / 2);
-
-    link[i].rect.y =
-        (g_viewport.h - (link[i].rect.h * 2)) - (i * link[i].rect.h) - (i * (link[i].rect.h * 0.4));
+    links[i]->base.rect.x = center_x - (links[i]->base.rect.w / 2);
+    links[i]->base.rect.y = (g_viewport.h - (links[i]->base.rect.h * 2)) -
+                            (i * links[i]->base.rect.h) -
+                            (i * (links[i]->base.rect.h * 0.4));
   }
 }

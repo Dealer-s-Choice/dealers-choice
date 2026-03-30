@@ -27,24 +27,19 @@
 */
 
 #include "graphics.h"
-#include "game.h"
+#include "ui_widget.h"
+#include "widgets/text.h"
 
 void show_loading_screen(SDL_Renderer *renderer, TTF_Font *font, const char *message) {
-  SDL_Color color = get_color(COLOR_WHITE);
-  SDL_Rect rect = {0, 0, 0, 0};
-  int w = 0, h = 0;
-  if (TTF_SizeUTF8(font, message, &w, &h) == 0) {
-    rect.x = 640 - w / 2;
-    rect.y = 360 - h / 2;
-    rect.w = w;
-    rect.h = h;
-  } else {
-    rect.x = 640;
-    rect.y = 360;
-    rect.w = 0;
-    rect.h = 0;
-  }
-  render_text_plain(renderer, font, message, color, &rect);
+  (void)renderer;
+  TextWidget_t *tw = text_widget_create(message, font, get_color(COLOR_WHITE));
+  if (!tw)
+    return;
+  int cx = 640 - tw->base.rect.w / 2;
+  int cy = 360 - tw->base.rect.h / 2;
+  ui_widget_place(&tw->base, cx, cy);
+  ui_widget_render(&tw->base);
+  ui_widget_destroy(&tw->base);
 }
 
 static const SDL_Color color_table[COLOR_COUNT] = {
@@ -89,137 +84,6 @@ TTF_Font *open_font(const FontArgs_t *args) {
   // fprintf(stderr, "Failed to load font (%s): %s\n", args->file, TTF_GetError());
   fprintf(stderr, "TTF_OpenFont: %s\n", SDL_GetError());
   exit(EXIT_FAILURE);
-}
-
-void render_text_centered(SDL_Renderer *renderer, TTF_Font *font, const char *text, SDL_Color color,
-                          SDL_Point center) {
-  SDL_Surface *surface = TTF_RenderUTF8_Blended(font, text, color);
-  if (!surface) {
-    fprintf(stderr, "TTF_RenderUTF8_Blended failed: %s\n", TTF_GetError());
-    return;
-  }
-
-  SDL_Texture *texture = SDL_CreateTextureFromSurface(renderer, surface);
-  if (!texture) {
-    fprintf(stderr, "SDL_CreateTextureFromSurface failed: %s\n", SDL_GetError());
-    SDL_FreeSurface(surface);
-    return;
-  }
-
-  int w, h;
-  SDL_QueryTexture(texture, NULL, NULL, &w, &h);
-
-  SDL_Rect dst = {.x = center.x - w / 2, .y = center.y - h / 2, .w = w, .h = h};
-
-  SDL_RenderCopy(renderer, texture, NULL, &dst);
-
-  SDL_DestroyTexture(texture);
-  SDL_FreeSurface(surface);
-}
-
-void render_text(SDL_Renderer *renderer, TTF_Font *font, const char *text, SDL_Color color,
-                 SDL_Rect *dest) {
-  if (!text)
-    text = "";
-
-  SDL_Surface *surface = TTF_RenderUTF8_Blended(font, *text ? text : " ", color);
-  if (!surface) {
-    fprintf(stderr, "TTF_RenderUTF8_Blended error: %s\n", TTF_GetError());
-    return;
-  }
-
-  SDL_Texture *texture = SDL_CreateTextureFromSurface(renderer, surface);
-  if (!texture) {
-    fprintf(stderr, "SDL_CreateTextureFromSurface error: %s\n", SDL_GetError());
-    SDL_FreeSurface(surface);
-    return;
-  }
-
-  dest->w = surface->w;
-  dest->h = surface->h;
-
-  SDL_RenderCopy(renderer, texture, NULL, dest);
-
-  int text_width;
-  TTF_SizeUTF8(font, text, &text_width, NULL);
-
-  // Blink cursor every ~500ms
-  if ((SDL_GetTicks() / 500) % 2 == 0) {
-    SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, 255);
-    int cursor_x = dest->x + text_width;
-    int cursor_y = dest->y;
-    int cursor_h = dest->h;
-    SDL_RenderDrawLine(renderer, cursor_x, cursor_y, cursor_x, cursor_y + cursor_h);
-  }
-
-  SDL_FreeSurface(surface);
-  SDL_DestroyTexture(texture);
-}
-
-void render_text_plain(SDL_Renderer *renderer, TTF_Font *font, const char *text, SDL_Color color,
-                       SDL_Rect *dest) {
-  if (!text)
-    text = "";
-
-  SDL_Surface *surface = TTF_RenderUTF8_Blended(font, *text ? text : " ", color);
-  if (!surface) {
-    fprintf(stderr, "TTF_RenderUTF8_Blended error: %s\n", TTF_GetError());
-    return;
-  }
-
-  SDL_Texture *texture = SDL_CreateTextureFromSurface(renderer, surface);
-  if (!texture) {
-    fprintf(stderr, "SDL_CreateTextureFromSurface error: %s\n", SDL_GetError());
-    SDL_FreeSurface(surface);
-    return;
-  }
-
-  dest->w = surface->w;
-  dest->h = surface->h;
-
-  SDL_RenderCopy(renderer, texture, NULL, dest);
-
-  int text_width;
-  if (TTF_SizeUTF8(font, text, &text_width, NULL) != 0)
-    fprintf(stderr, "TTF_SizeUTF8 failed: %s\n", TTF_GetError());
-
-  SDL_FreeSurface(surface);
-  SDL_DestroyTexture(texture);
-}
-
-void render_nick(SDL_Renderer *renderer, TTF_Font *font, const char *text, SDL_Color color,
-                 SDL_Rect *dest, const bool is_turn) {
-  if (!text)
-    text = "";
-
-  SDL_Surface *surface = TTF_RenderUTF8_Blended(font, *text ? text : " ", color);
-  if (!surface) {
-    fprintf(stderr, "TTF_RenderUTF8_Blended error: %s\n", TTF_GetError());
-    return;
-  }
-
-  SDL_Texture *texture = SDL_CreateTextureFromSurface(renderer, surface);
-  if (!texture) {
-    fprintf(stderr, "SDL_CreateTextureFromSurface error: %s\n", SDL_GetError());
-    SDL_FreeSurface(surface);
-    return;
-  }
-
-  dest->w = surface->w;
-  dest->h = surface->h;
-
-  // Optional blinking background if it's their turn
-  if (is_turn && (SDL_GetTicks() / 500) % 2 == 0) { // Blinks every 500ms
-    SDL_Color blink_color = {255, 255, 0, 64};      // Yellow, transparent
-    SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
-    SDL_SetRenderDrawColor(renderer, blink_color.r, blink_color.g, blink_color.b, blink_color.a);
-    SDL_RenderFillRect(renderer, dest);
-  }
-
-  SDL_RenderCopy(renderer, texture, NULL, dest);
-
-  SDL_FreeSurface(surface);
-  SDL_DestroyTexture(texture);
 }
 
 void mark_selected(SDL_Renderer *renderer, const SDL_Rect *rect) {
