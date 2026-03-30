@@ -62,16 +62,25 @@ static void input_widget_render(UIWidget_t *w) {
   /* Text */
   int text_x = w->rect.x + 8;
 
+  /* Build display string: asterisks for masked fields, raw buf otherwise */
+  char masked_buf[MAX_INPUT_LENGTH];
+  const char *display = iw->buf;
+  if (iw->masked && iw->len > 0) {
+    memset(masked_buf, '*', iw->len);
+    masked_buf[iw->len] = '\0';
+    display = masked_buf;
+  }
+
   if (iw->len > 0 && iw->font) {
     SDL_Color white = {255, 255, 255, 255};
     SDL_Rect pos = {text_x, 0, 0, 0};
     int tw, th;
-    if (TTF_SizeUTF8(iw->font, iw->buf, &tw, &th) == 0)
+    if (TTF_SizeUTF8(iw->font, display, &tw, &th) == 0)
       pos.y = w->rect.y + (w->rect.h - th) / 2;
     else
       pos.y = w->rect.y + 4;
 
-    SDL_Surface *surf = TTF_RenderUTF8_Blended(iw->font, iw->buf, white);
+    SDL_Surface *surf = TTF_RenderUTF8_Blended(iw->font, display, white);
     if (surf) {
       SDL_Texture *tex = SDL_CreateTextureFromSurface(r, surf);
       if (tex) {
@@ -90,7 +99,7 @@ static void input_widget_render(UIWidget_t *w) {
       int cursor_x = text_x;
       if (iw->len > 0 && iw->font) {
         int tw, th;
-        if (TTF_SizeUTF8(iw->font, iw->buf, &tw, &th) == 0)
+        if (TTF_SizeUTF8(iw->font, display, &tw, &th) == 0)
           cursor_x = text_x + tw + 1;
       }
       int cursor_top = w->rect.y + 4;

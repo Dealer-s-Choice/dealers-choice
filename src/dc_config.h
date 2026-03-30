@@ -60,6 +60,7 @@ typedef struct {
   int volume;
   bool turn_notify;
   uint8_t connect_attempts;
+  char password[MAX_INPUT_LENGTH];
 } PlayerConfig_t;
 
 typedef enum {
@@ -91,7 +92,9 @@ static const ConfigEntry player_config_entries[] = {
     {"sound.notify.turn", CFG_TYPE_BOOL, "yes", offsetof(PlayerConfig_t, turn_notify),
      sizeof(bool)},
     {"connect.attempts", CFG_TYPE_UINT8, "6", offsetof(PlayerConfig_t, connect_attempts),
-     sizeof(uint8_t)}};
+     sizeof(uint8_t)},
+    {"password", CFG_TYPE_STRING, "", offsetof(PlayerConfig_t, password),
+     sizeof(((PlayerConfig_t *)0)->password)}};
 
 static const size_t player_config_entry_count = ARRAY_SIZE(player_config_entries);
 

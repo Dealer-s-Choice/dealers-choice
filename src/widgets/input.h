@@ -10,6 +10,7 @@ typedef struct {
   char buf[MAX_INPUT_LENGTH];
   size_t len;
   bool focused;
+  bool masked; /* render as asterisks (e.g. for passwords) */
   ConfigType type;
   TTF_Font *font;
   long max_val; /* for numeric types: upper bound (0 = no limit) */

@@ -296,6 +296,7 @@ static void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *s
   /* Build input widgets; host(1) and port(2) are on the startup screen, not here.
    * BOOL entries get a CheckboxWidget_t instead of an InputWidget_t. */
   const size_t bool_idx = 5;
+  const size_t password_idx = 7;
 
   /* Checkbox for the bool entry */
   const bool init_checked =
@@ -360,6 +361,8 @@ static void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *s
     inputs[i]->focused = (n_text_inputs == 0);
     if (player_config_entries[i].type == CFG_TYPE_INT)
       inputs[i]->max_val = 10;
+    if (i == password_idx)
+      inputs[i]->masked = true;
     n_text_inputs++;
     display_pos++;
   }

@@ -26,7 +26,7 @@ The `DC_PASSWORD` environment variable takes precedence over `server.conf`:
 DC_PASSWORD=mysecretpassword ./dealers-choice --server
 ```
 
-Clients must also have `DC_PASSWORD` set to the same value in order to connect.
+Clients can also also use either method for setting their password.
 
 ### Admin controls
 

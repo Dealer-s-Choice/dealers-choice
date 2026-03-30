@@ -2615,9 +2615,8 @@ bool get_socket_context_and_run_client(PlayerConfig_t *player_config, const CliA
   }
 
   if (!test_mode) {
-    const char *password = getenv("DC_PASSWORD");
-    if (!password)
-      password = "";
+    const char *env_pw = getenv("DC_PASSWORD");
+    const char *password = env_pw ? env_pw : player_config->password;
     if (authenticate_with_server(sock, password) < 0)
       fprintf(stderr, "Authentication attempt failed\n");
 
