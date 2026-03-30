@@ -1,6 +1,6 @@
+#include "links.h"
 #include "config.h"
 #include "globals.h"
-#include "links.h"
 #include "translate.h"
 #include "util.h"
 
@@ -19,7 +19,6 @@ void layout_links(LinkWidget_t **links, size_t count) {
   for (size_t i = 0; i < count; i++) {
     links[i]->base.rect.x = center_x - (links[i]->base.rect.w / 2);
     links[i]->base.rect.y = (g_viewport.h - (links[i]->base.rect.h * 2)) -
-                            (i * links[i]->base.rect.h) -
-                            (i * (links[i]->base.rect.h * 0.4));
+                            (i * links[i]->base.rect.h) - (i * (links[i]->base.rect.h * 0.4));
   }
 }

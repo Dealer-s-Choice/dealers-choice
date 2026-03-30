@@ -108,8 +108,8 @@ static EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_confi
                                               SocketContext_t *socket_context, const int8_t my_id,
                                               GameState_t *game_state, ClientState_t *client_state,
                                               SdlContext_t *sdl_context, Font_t *font,
-                                              const SoundContext_t *sound_context, LinkWidget_t **links,
-                                              const Path_t *path) {
+                                              const SoundContext_t *sound_context,
+                                              LinkWidget_t **links, const Path_t *path) {
   // (void)player_config;
 
   uint8_t n_clients = 0;
@@ -434,8 +434,7 @@ static EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_confi
           }
           for (int i = 0; i < MAX_CHOICES; i++) {
             if (SDL_PointInRect(&mouse_pos, &game_choice_button[i]->base.rect) &&
-                game_choice_button[i]->interactive &&
-                game_state->dealer_id == my_id) {
+                game_choice_button[i]->interactive && game_state->dealer_id == my_id) {
               if (send_game_select(sock, game_choices[i].game_type,
                                    button_deuces_wild->base.selected) == 0) {
                 dealing = false;
@@ -1383,9 +1382,9 @@ static void draw_filled_circle(SDL_Renderer *r, int cx, int cy, int radius) {
 static void render_circle_timer(SDL_Renderer *renderer, SDL_Point center, float fill_ratio) {
   const int cx = center.x;
   const int cy = center.y;
-  const int outer_r = CIRCLE_TIMER_R;       /* 50 */
-  const int border  = 10;
-  const int inner_r = outer_r - border;     /* 40 */
+  const int outer_r = CIRCLE_TIMER_R; /* 50 */
+  const int border = 10;
+  const int inner_r = outer_r - border; /* 40 */
 
   /* --- 3D border ring ---------------------------------------------------- */
   for (int y = cy - outer_r; y <= cy + outer_r; y++) {
@@ -1393,9 +1392,7 @@ static void render_circle_timer(SDL_Renderer *renderer, SDL_Point center, float 
     float dy_f = (float)dy;
     int outer_hw = (int)sqrtf((float)(outer_r * outer_r) - dy_f * dy_f);
     float inner_r2 = (float)(inner_r * inner_r);
-    int inner_hw = (dy_f * dy_f <= inner_r2)
-                       ? (int)sqrtf(inner_r2 - dy_f * dy_f)
-                       : -1;
+    int inner_hw = (dy_f * dy_f <= inner_r2) ? (int)sqrtf(inner_r2 - dy_f * dy_f) : -1;
 
     for (int x = cx - outer_hw; x <= cx + outer_hw; x++) {
       int dx = x - cx;
@@ -1404,9 +1401,11 @@ static void render_circle_timer(SDL_Renderer *renderer, SDL_Point center, float 
         continue;
       /* 3D shading: dot with (-1,-1) direction; bright top-left, dark bottom-right */
       float t = (-(float)dx - dy_f) / ((float)outer_r * 1.414f);
-      if (t >  1.0f) t =  1.0f;
-      if (t < -1.0f) t = -1.0f;
-      t = (t + 1.0f) * 0.5f;                /* 0..1 */
+      if (t > 1.0f)
+        t = 1.0f;
+      if (t < -1.0f)
+        t = -1.0f;
+      t = (t + 1.0f) * 0.5f;                     /* 0..1 */
       uint8_t c = (uint8_t)(70.0f + t * 185.0f); /* 70 (dark gray) → 255 (white) */
       SDL_SetRenderDrawColor(renderer, c, c, c, 255);
       SDL_RenderDrawPoint(renderer, x, y);

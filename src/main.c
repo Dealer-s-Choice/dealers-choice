@@ -129,8 +129,8 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, u
 
   layout_links(links, LINK_DEFS_COUNT);
 
-  TextWidget_t *tw_title =
-      text_widget_create(DEALERSCHOICE_FORMAL_NAME, font->fonts[FONT_TITLE], get_color(COLOR_BLACK));
+  TextWidget_t *tw_title = text_widget_create(DEALERSCHOICE_FORMAL_NAME, font->fonts[FONT_TITLE],
+                                              get_color(COLOR_BLACK));
   if (tw_title)
     ui_widget_place(&tw_title->base, title_rect.x, title_rect.y);
 
@@ -412,8 +412,8 @@ static void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *s
       int col = (int)(rpos % 2);
       int row = (int)(rpos / 2);
       int lx = (col == 0) ? x_left : x_right;
-      tw_labels[i] =
-          text_widget_create(player_config_entries[i].key, font->fonts[FONT_DEFAULT], get_color(COLOR_BLACK));
+      tw_labels[i] = text_widget_create(player_config_entries[i].key, font->fonts[FONT_DEFAULT],
+                                        get_color(COLOR_BLACK));
       if (tw_labels[i])
         ui_widget_place(&tw_labels[i]->base, lx, row_y[row]);
       rpos++;
