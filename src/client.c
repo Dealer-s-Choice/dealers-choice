@@ -1991,8 +1991,10 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
         client_state.timer_start = SDL_GetTicks();
         client_state.hourglass_rotate_start = client_state.timer_start;
 
-        if (game_state->winner_declared)
+        if (game_state->winner_declared) {
+          ma_sound_start_checked(&sound_context->sounds[SND_GAME_OVER].sound);
           client_state.end_game_timer_set = true;
+        }
 
         // Handle timeout: If there was no action by the player, one of these
         // may be set to true
@@ -2688,7 +2690,8 @@ bool get_socket_context_and_run_client(PlayerConfig_t *player_config, const CliA
     // using 'ma_tmp' instead
     ma_sound ma_tmp = {0};
     Sound_t sounds[] = {[SND_SERVER_JOIN] = {"server_join.wav", ma_tmp},
-                        [SND_MY_TURN] = {"my_turn.wav", ma_tmp}};
+                        [SND_MY_TURN] = {"my_turn.wav", ma_tmp},
+                        [SND_GAME_OVER] = {"game_over.wav", ma_tmp}};
 
     Sound_t coin_hit_sounds[] = {
         {"coin_hit_001.wav", ma_tmp}, {"coin_hit_002.wav", ma_tmp}, {"coin_hit_003.wav", ma_tmp},
