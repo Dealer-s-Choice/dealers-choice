@@ -332,11 +332,6 @@ static EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_confi
           ui_register(&registry, &ping_widgets[id]->base);
         }
 
-        int old_w = ping_widgets[id]->base.rect.w;
-        ping_widget_update(ping_widgets[id], client_state->ping_times[id]);
-        if (ping_widgets[id]->base.rect.w != old_w)
-          table.dirty = true;
-
         /* table */
         ui_table_add(&table, row, 0, &nick_widgets[id]->base);
         ui_table_add(&table, row, 1, &dealer_widgets[id]->base);
@@ -349,6 +344,15 @@ static EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_confi
       } while (client && client != start);
       table.dirty = true; // force layout after rebuild
       table_needs_rebuild = false;
+    }
+
+    for (int i = 0; i < MAX_PLAYERS; i++) {
+      if (!ping_widgets[i])
+        continue;
+      int old_w = ping_widgets[i]->base.rect.w;
+      ping_widget_update(ping_widgets[i], client_state->ping_times[i]);
+      if (ping_widgets[i]->base.rect.w != old_w)
+        table.dirty = true;
     }
 
     for (int i = 0; i < MAX_PLAYERS; i++) {
