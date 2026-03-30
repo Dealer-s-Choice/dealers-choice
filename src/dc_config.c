@@ -193,7 +193,9 @@ ServerConfig_t get_server_config(Path_t *path, const CliArgs_t *cli_args) {
     } else {
       for (size_t i = 0; i < server_config_entry_count; i++) {
         if (strcasecmp(cfg_node->key, server_config_entries[i].key) == 0) {
-          server_config_set_from_string(&config, &server_config_entries[i], cfg_node->value);
+          server_config_set_from_string(&config, &server_config_entries[i],
+                                        cfg_node->value ? cfg_node->value
+                                                        : server_config_entries[i].default_value);
           found_keys[i] = true;
           break;
         }
@@ -289,7 +291,9 @@ PlayerConfig_t get_player_config(void) {
     while (cfg_node) {
       for (size_t i = 0; i < player_config_entry_count; i++) {
         if (strcasecmp(cfg_node->key, player_config_entries[i].key) == 0) {
-          player_config_set_from_string(&config, &player_config_entries[i], cfg_node->value);
+          player_config_set_from_string(&config, &player_config_entries[i],
+                                        cfg_node->value ? cfg_node->value
+                                                        : player_config_entries[i].default_value);
           found_keys[i] = true;
           break;
         }
