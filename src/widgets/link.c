@@ -44,10 +44,14 @@ LinkWidget_t *link_widget_create(const char *text, const char *url, TTF_Font *fo
 
   TTF_SetFontStyle(font, TTF_STYLE_UNDERLINE);
   lw->text_normal = text_widget_create(text, font, get_color(COLOR_BLACK));
+  if (!lw->text_normal) {
+    TTF_SetFontStyle(font, TTF_STYLE_NORMAL);
+    free(lw);
+    return NULL;
+  }
   lw->text_hovered = text_widget_create(text, font, get_color(COLOR_BLUE));
   TTF_SetFontStyle(font, TTF_STYLE_NORMAL);
-
-  if (!lw->text_normal || !lw->text_hovered) {
+  if (!lw->text_hovered) {
     link_widget_destroy(&lw->base);
     return NULL;
   }

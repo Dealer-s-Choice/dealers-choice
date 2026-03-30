@@ -183,7 +183,8 @@ RealHand_t deal_cards_to_players(GameState_t *game_state, DH_Deck *deck, const u
     return real_hand;
   }
 
-  for (int i = 0; i < MAX_HAND_SIZE; i++)
+  for (int i = 0; i < MAX_HAND_SIZE; i++) {
+    turn = starting_turn;
     do {
       if (i >= choice->n_cards_initial_deal) {
         real_hand.player[turn->id].card[i] = DH_card_null;
@@ -197,6 +198,7 @@ RealHand_t deal_cards_to_players(GameState_t *game_state, DH_Deck *deck, const u
       }
       turn = get_next_player(players_array, turn->id);
     } while (turn && turn != starting_turn);
+  }
 
   return real_hand;
 }

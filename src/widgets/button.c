@@ -87,9 +87,12 @@ ButtonWidget_t *button_widget_create(const char *text, EColor_t color, TTF_Font 
   bw->interactive = true;
 
   bw->text = text_widget_create(text, font, get_color(color.fg));
+  if (!bw->text) {
+    free(bw);
+    return NULL;
+  }
   bw->text_disabled = text_widget_create(text, font, get_color(COLOR_LIGHTGRAY));
-
-  if (!bw->text || !bw->text_disabled) {
+  if (!bw->text_disabled) {
     button_widget_destroy(&bw->base);
     return NULL;
   }

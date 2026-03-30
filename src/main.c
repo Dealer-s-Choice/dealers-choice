@@ -76,7 +76,7 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, u
   InputWidget_t *host_input =
       input_widget_create(host_str, font->fonts[FONT_DEFAULT], input_w, CFG_TYPE_STRING);
   if (!host_input)
-    return 0;
+    goto err;
   host_input->base.rect.x = x_margin;
   host_input->base.rect.y = g_viewport.y + 220;
   host_input->focused = true;
@@ -86,29 +86,23 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, u
   snprintf(port_init, sizeof(port_init), "%u", (unsigned)*port);
   InputWidget_t *port_input =
       input_widget_create(port_init, font->fonts[FONT_DEFAULT], input_w, CFG_TYPE_UINT16);
-  if (!port_input) {
-    ui_destroy_all(&reg);
-    return 0;
-  }
+  if (!port_input)
+    goto err;
   port_input->base.rect.x = x_margin;
   port_input->base.rect.y = host_input->base.rect.y + host_input->base.rect.h + 20;
   ui_register(&reg, &port_input->base);
 
   ButtonWidget_t *button_save = button_widget_create(
       _("Save"), (EColor_t){COLOR_BLACK, COLOR_YELLOW}, font->fonts[FONT_BOLD], (SDL_Keycode)0);
-  if (!button_save) {
-    ui_destroy_all(&reg);
-    return 0;
-  }
+  if (!button_save)
+    goto err;
   ui_register(&reg, &button_save->base);
 
   ButtonWidget_t *button_defaults =
       button_widget_create(_("Load Defaults"), (EColor_t){COLOR_BLACK, COLOR_YELLOW},
                            font->fonts[FONT_BOLD], (SDL_Keycode)0);
-  if (!button_defaults) {
-    ui_destroy_all(&reg);
-    return 0;
-  }
+  if (!button_defaults)
+    goto err;
   ui_register(&reg, &button_defaults->base);
   button_save->base.rect.x = x_margin + input_w + 12;
   {
@@ -267,6 +261,12 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, u
     return RUN_CLIENT;
   if (run_settings)
     return RUN_SETTINGS;
+  return 0;
+
+err:
+  ui_widget_destroy(&button_connect->base);
+  ui_widget_destroy(&button_settings->base);
+  ui_destroy_all(&reg);
   return 0;
 }
 
