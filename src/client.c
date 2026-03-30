@@ -1343,13 +1343,13 @@ static void layout_wild_selection(Button_t *card_faces, Button_t *card_suits, co
   }
 }
 
-/* Hourglass dimensions — needed by layout_timer below */
-#define HG_H 160
+/* Circle timer radius — needed by layout_timer below */
+#define CIRCLE_TIMER_R 50
 
 static void layout_timer(SDL_Point *p) {
   p->x = g_center.x;
-  /* Bottom of hourglass (HG_H/2 below center) aligns with MARGIN from viewport bottom */
-  p->y = g_viewport.h - MARGIN - HG_H / 2;
+  /* Bottom of circle aligns with MARGIN from viewport bottom */
+  p->y = g_viewport.h - MARGIN - CIRCLE_TIMER_R;
 }
 
 static void draw_filled_circle(SDL_Renderer *r, int cx, int cy, int radius) {
@@ -1367,189 +1367,76 @@ static void draw_filled_circle(SDL_Renderer *r, int cx, int cy, int radius) {
   }
 }
 
-/* Hourglass timer ---------------------------------------------------------- */
-#define HG_W 214
-/* HG_H 160 — defined earlier, used by layout_timer */
-#define HG_ROTATE_MS 500
-
-/* Glass geometry (texture-local coords) */
-#define HG_CX 107
-#define HG_GLASS_TOP_Y 4
-#define HG_GLASS_MID_Y 80
-#define HG_GLASS_BOT_Y 156
-#define HG_GLASS_WIDE 69
-#define HG_GLASS_NECK 7
-
-static SDL_Texture *s_hourglass_tex = NULL;
+/* Circle timer ------------------------------------------------------------- */
 
 /*
- * Rounded hourglass profile using cos²: smooth curve that is wide at top/bottom
- * and narrows to HG_GLASS_NECK at the equator.
- */
-static inline int hg_half(int y) {
-  float t = (float)(y - HG_GLASS_TOP_Y) / (float)(HG_GLASS_BOT_Y - HG_GLASS_TOP_Y);
-  float c = cosf(t * (float)M_PI); /* 1 at top, 0 at mid, -1 at bottom */
-  return (int)((float)HG_GLASS_NECK + (float)(HG_GLASS_WIDE - HG_GLASS_NECK) * (c * c) + 0.5f);
-}
-
-/*
- * render_hourglass - draw a 320×160 hourglass timer.
+ * render_circle_timer - draw a 100px-diameter pie-style countdown circle.
  *
- * fill_ratio : 1.0 = full (just started), 0.0 = empty (time up)
- * angle      : rotation in degrees (0→180 during the startup spin)
- * now        : SDL_GetTicks() for bubble animation
+ * fill_ratio : 1.0 = full (just started, no fill), 0.0 = empty (all filled)
+ *
+ * The brown wedge grows clockwise from 12 o'clock as time elapses.
+ * A 10px 3D border ring (light on top-left, dark on bottom-right) frames it.
  */
-static void render_hourglass(SDL_Renderer *renderer, SDL_Point center, float fill_ratio,
-                             double angle, uint32_t now) {
-  if (!s_hourglass_tex) {
-    s_hourglass_tex =
-        SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, HG_W, HG_H);
-    if (!s_hourglass_tex)
-      return;
-    SDL_SetTextureBlendMode(s_hourglass_tex, SDL_BLENDMODE_BLEND);
-  }
+static void render_circle_timer(SDL_Renderer *renderer, SDL_Point center, float fill_ratio) {
+  const int cx = center.x;
+  const int cy = center.y;
+  const int outer_r = CIRCLE_TIMER_R;       /* 50 */
+  const int border  = 10;
+  const int inner_r = outer_r - border;     /* 40 */
 
-  SDL_SetRenderTarget(renderer, s_hourglass_tex);
-  SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+  /* --- 3D border ring ---------------------------------------------------- */
+  for (int y = cy - outer_r; y <= cy + outer_r; y++) {
+    int dy = y - cy;
+    float dy_f = (float)dy;
+    int outer_hw = (int)sqrtf((float)(outer_r * outer_r - dy * dy));
+    int inner_hw = (dy * dy <= inner_r * inner_r)
+                       ? (int)sqrtf((float)(inner_r * inner_r - dy * dy))
+                       : -1;
 
-  /* clear to transparent */
-  SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
-  SDL_RenderClear(renderer);
-
-  /* ---- translucent glass body (very faint blue tint — lets table show through) ---- */
-  SDL_SetRenderDrawColor(renderer, 170, 210, 245, 38);
-  for (int y = HG_GLASS_TOP_Y + 1; y < HG_GLASS_BOT_Y; y++) {
-    int h = hg_half(y);
-    if (h > 3)
-      SDL_RenderDrawLine(renderer, HG_CX - h + 3, y, HG_CX + h - 3, y);
-  }
-
-  /*
-   * Water in the draining chamber (lower texture = visual top after 180°).
-   * The water boundary in texture-y:  [HG_GLASS_MID_Y, drain_end].
-   */
-  int drain_h = (int)(fill_ratio * (HG_GLASS_BOT_Y - HG_GLASS_MID_Y) + 0.5f);
-  int drain_end = HG_GLASS_MID_Y + drain_h;
-
-  SDL_SetRenderDrawColor(renderer, 215, 175, 25, 185);
-  for (int y = HG_GLASS_MID_Y; y < drain_end; y++) {
-    int h = hg_half(y);
-    if (h > 3)
-      SDL_RenderDrawLine(renderer, HG_CX - h + 3, y, HG_CX + h - 3, y);
-  }
-  /* water surface shimmer */
-  if (drain_h > 2 && drain_h < HG_GLASS_BOT_Y - HG_GLASS_MID_Y) {
-    int h = hg_half(drain_end);
-    SDL_SetRenderDrawColor(renderer, 255, 225, 80, 160);
-    if (h > 3)
-      SDL_RenderDrawLine(renderer, HG_CX - h + 3, drain_end, HG_CX + h - 3, drain_end);
-  }
-
-  /*
-   * Accumulated water in upper texture chamber (= visual bottom after 180°).
-   */
-  int accum_h = (int)((1.0f - fill_ratio) * (HG_GLASS_MID_Y - HG_GLASS_TOP_Y) + 0.5f);
-  int accum_start = HG_GLASS_MID_Y - accum_h;
-
-  SDL_SetRenderDrawColor(renderer, 190, 150, 18, 185);
-  for (int y = accum_start; y < HG_GLASS_MID_Y; y++) {
-    int h = hg_half(y);
-    if (h > 3)
-      SDL_RenderDrawLine(renderer, HG_CX - h + 3, y, HG_CX + h - 3, y);
-  }
-  /* shimmer at accumulated water surface */
-  if (accum_h > 2 && accum_h < HG_GLASS_MID_Y - HG_GLASS_TOP_Y) {
-    int h = hg_half(accum_start);
-    SDL_SetRenderDrawColor(renderer, 255, 210, 60, 130);
-    if (h > 3)
-      SDL_RenderDrawLine(renderer, HG_CX - h + 3, accum_start, HG_CX + h - 3, accum_start);
-  }
-
-  /* ---- bubbles in the draining chamber ---- */
-  if (drain_h > 10) {
-    SDL_SetRenderDrawColor(renderer, 255, 240, 130, 190);
-    for (int b = 0; b < 16; b++) {
-      /* Use unsigned arithmetic to avoid signed-overflow analysis on b*130 */
-      uint32_t cycle_ms = 700u + (uint32_t)b * 130u;
-      float phase = (float)b * (1.0f / 16.0f);
-      float tb = fmodf((float)(now % cycle_ms) / (float)cycle_ms + phase, 1.0f);
-      /* Compare the offset b_dy directly — avoids X+C cmp C pattern on `by` */
-      int b_dy = (int)(tb * (float)(drain_h - 2));
-      int by = HG_GLASS_MID_Y + b_dy;
-      float x_off = sinf((float)b * 1.37f) * (float)(HG_GLASS_WIDE - HG_GLASS_NECK) * 0.45f;
-      int bx = HG_CX + (int)(x_off * fill_ratio);
-      int brad = 2 + (b & 1);
-      if (b_dy >= 0 && b_dy < drain_h) {
-        int h = hg_half(by);
-        int inner = h - brad - 4;
-        int min_bx = HG_CX - inner;
-        int max_bx = HG_CX + inner;
-        if (bx < min_bx)
-          bx = min_bx;
-        if (bx > max_bx)
-          bx = max_bx;
-        draw_filled_circle(renderer, bx, by, brad);
-      }
+    for (int x = cx - outer_hw; x <= cx + outer_hw; x++) {
+      int dx = x - cx;
+      /* skip pixels inside the inner circle */
+      if (inner_hw >= 0 && dx >= -inner_hw && dx <= inner_hw)
+        continue;
+      /* 3D shading: dot with (-1,-1) direction; bright top-left, dark bottom-right */
+      float t = (-(float)dx - dy_f) / ((float)outer_r * 1.414f);
+      if (t >  1.0f) t =  1.0f;
+      if (t < -1.0f) t = -1.0f;
+      t = (t + 1.0f) * 0.5f;                /* 0..1 */
+      uint8_t c = (uint8_t)(70.0f + t * 185.0f); /* 70 (dark gray) → 255 (white) */
+      SDL_SetRenderDrawColor(renderer, c, c, c, 255);
+      SDL_RenderDrawPoint(renderer, x, y);
     }
   }
 
-  /* ---- water drip at neck ---- */
-  if (fill_ratio > 0.02f && fill_ratio < 0.98f) {
-    SDL_SetRenderDrawColor(renderer, 215, 175, 25, 200);
-    draw_filled_circle(renderer, HG_CX, HG_GLASS_MID_Y + 2, 3);
+  /* --- inner circle background (match table green) ----------------------- */
+  SDL_SetRenderDrawColor(renderer, 0, 125, 0, 255);
+  for (int y = cy - inner_r; y <= cy + inner_r; y++) {
+    int dy = y - cy;
+    int hw = (int)sqrtf((float)(inner_r * inner_r - dy * dy));
+    SDL_RenderDrawLine(renderer, cx - hw, y, cx + hw, y);
   }
 
-  /* ---- glass highlight strip (reflection on left side of each chamber) ---- */
-  SDL_SetRenderDrawColor(renderer, 235, 245, 255, 55);
-  for (int y = HG_GLASS_TOP_Y + 1; y < HG_GLASS_BOT_Y; y++) {
-    int h = hg_half(y);
-    if (h <= 3)
-      continue;
-    int inner_w = h - 3; /* usable half-width inside the glass wall */
-    int hl_w = inner_w / 4;
-    if (hl_w < 2)
-      hl_w = 2;
-    SDL_RenderDrawLine(renderer, HG_CX - h + 3, y, HG_CX - h + 3 + hl_w, y);
+  /* --- brown pie wedge (elapsed time, clockwise from 12 o'clock) --------- */
+  float sweep = (1.0f - fill_ratio) * 2.0f * (float)M_PI;
+  if (sweep > 0.001f) {
+    SDL_SetRenderDrawColor(renderer, 165, 42, 42, 255); /* brown */
+    for (int y = cy - inner_r; y <= cy + inner_r; y++) {
+      int dy = y - cy;
+      int hw = (int)sqrtf((float)(inner_r * inner_r - dy * dy));
+      for (int x = cx - hw; x <= cx + hw; x++) {
+        int dx = x - cx;
+        /* angle from 12 o'clock, increasing clockwise */
+        float a = atan2f((float)dx, -(float)dy);
+        if (a < 0.0f)
+          a += 2.0f * (float)M_PI;
+        if (a <= sweep)
+          SDL_RenderDrawPoint(renderer, x, y);
+      }
+    }
   }
-
-  /* ---- frame outline (amber/gold, 3 px thick) ---- */
-  SDL_SetRenderDrawColor(renderer, 178, 138, 68, 245);
-  for (int y = HG_GLASS_TOP_Y; y < HG_GLASS_BOT_Y + 1; y++) {
-    int h = hg_half(y);
-    SDL_RenderDrawLine(renderer, HG_CX - h, y, HG_CX - h + 2, y);
-    SDL_RenderDrawLine(renderer, HG_CX + h - 2, y, HG_CX + h, y);
-  }
-  /* top & bottom caps (3 px) */
-  for (int dy = 0; dy < 3; dy++) {
-    SDL_RenderDrawLine(renderer, HG_CX - HG_GLASS_WIDE, HG_GLASS_TOP_Y + dy, HG_CX + HG_GLASS_WIDE,
-                       HG_GLASS_TOP_Y + dy);
-    SDL_RenderDrawLine(renderer, HG_CX - HG_GLASS_WIDE, HG_GLASS_BOT_Y - dy, HG_CX + HG_GLASS_WIDE,
-                       HG_GLASS_BOT_Y - dy);
-  }
-
-  /* ---- side handles (protrusions from the glass outline at the equator) ---- */
-  const int handle_ext = 19;
-  const int handle_lo = HG_GLASS_MID_Y - 8;
-  const int handle_hi = HG_GLASS_MID_Y + 8 + 1; /* exclusive upper bound */
-  for (int y = handle_lo; y < handle_hi; y++) {
-    int h = hg_half(y);
-    SDL_RenderDrawLine(renderer, HG_CX - h - handle_ext, y, HG_CX - h - 1, y);
-    SDL_RenderDrawLine(renderer, HG_CX + h + 1, y, HG_CX + h + handle_ext, y);
-  }
-  /* handle outer caps */
-  for (int y = handle_lo; y < handle_hi; y++) {
-    int h = hg_half(y);
-    SDL_RenderDrawPoint(renderer, HG_CX - h - handle_ext, y);
-    SDL_RenderDrawPoint(renderer, HG_CX + h + handle_ext, y);
-  }
-
-  SDL_SetRenderTarget(renderer, NULL);
-  SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);
-
-  SDL_Rect dst = {center.x - HG_W / 2, center.y - HG_H / 2, HG_W, HG_H};
-  SDL_RenderCopyEx(renderer, s_hourglass_tex, NULL, &dst, angle, NULL, SDL_FLIP_NONE);
 }
-/* end hourglass ------------------------------------------------------------ */
+/* end circle timer --------------------------------------------------------- */
 
 /*
  * word_wrap_status - break `text` into lines that fit within `max_w` pixels
@@ -2174,23 +2061,13 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
       uint32_t timeout_ms = game_state->winner_declared ? game_settings->end_of_game_timeout_ms
                                                         : game_settings->action_timeout_ms;
 
-      uint32_t rotate_elapsed = now - client_state.hourglass_rotate_start;
-      double hg_angle;
-      float fill_ratio;
-
-      if (rotate_elapsed < HG_ROTATE_MS) {
-        /* Startup spin: bottom-full, rotating 0→180° */
-        hg_angle = 180.0 * (double)rotate_elapsed / (double)HG_ROTATE_MS;
+      float fill_ratio = (float)remaining_ms / (float)timeout_ms;
+      if (fill_ratio > 1.0f)
         fill_ratio = 1.0f;
-      } else {
-        hg_angle = 180.0;
-        uint32_t drain_elapsed = rotate_elapsed - HG_ROTATE_MS;
-        fill_ratio = 1.0f - (float)drain_elapsed / (float)timeout_ms;
-        if (fill_ratio < 0.0f)
-          fill_ratio = 0.0f;
-      }
+      if (fill_ratio < 0.0f)
+        fill_ratio = 0.0f;
 
-      render_hourglass(sdl_context->renderer, timer, fill_ratio, hg_angle, now);
+      render_circle_timer(sdl_context->renderer, timer, fill_ratio);
     }
 
     char buffer[128];
