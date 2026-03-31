@@ -2670,6 +2670,7 @@ bool get_socket_context_and_run_client(PlayerConfig_t *player_config, const CliA
     if (recv_status != RECV_SUCCESS)
       exit(EXIT_FAILURE);
 
+    bool went_back_result = false;
     SoundContext_t sound_context = {0};
     if (player_config->volume == 0 || cli_args->disable_audio) {
       ma_engine_config_init();
@@ -2707,52 +2708,62 @@ bool get_socket_context_and_run_client(PlayerConfig_t *player_config, const CliA
     PathconfLimits_t limits;
     get_pathconf_limits(path->data, &limits);
     size_t i;
+    size_t n_sounds_init = 0;
+    size_t n_coin_sounds_init = 0;
     for (i = 0; i < SND_NUM_SOUNDS; i++) {
       char *snd_path = join_paths(limits.path_max, path->data, "sounds", sounds[i].filename);
-      if (ma_sound_init_from_file(&sound_context.engine, snd_path, 0, NULL, NULL,
-                                  &sounds[i].sound) != MA_SUCCESS) {
-        fprintf(stderr, "Failed to init sound %zd\n", i);
-        exit(EXIT_FAILURE);
-      }
+      bool ok = ma_sound_init_from_file(&sound_context.engine, snd_path, 0, NULL, NULL,
+                                        &sounds[i].sound) == MA_SUCCESS;
       free(snd_path);
+      if (!ok) {
+        fprintf(stderr, "Failed to init sound %zd\n", i);
+        goto cleanup_audio;
+      }
+      n_sounds_init++;
     }
 
     for (i = 0; i < ARRAY_SIZE(coin_hit_sounds); i++) {
       char *snd_path =
           join_paths(limits.path_max, path->data, "sounds/coin", coin_hit_sounds[i].filename);
-      if (ma_sound_init_from_file(&sound_context.engine, snd_path, 0, NULL, NULL,
-                                  &coin_hit_sounds[i].sound) != MA_SUCCESS) {
-        fprintf(stderr, "Failed to init sound %zd\n", i);
-        exit(EXIT_FAILURE);
-      }
+      bool ok = ma_sound_init_from_file(&sound_context.engine, snd_path, 0, NULL, NULL,
+                                        &coin_hit_sounds[i].sound) == MA_SUCCESS;
       free(snd_path);
+      if (!ok) {
+        fprintf(stderr, "Failed to init sound %zd\n", i);
+        goto cleanup_audio;
+      }
+      n_coin_sounds_init++;
     }
 
-    bool running = true;
-    bool went_back = false;
-    do {
-      EGameSelResult_t sel = handle_game_selection(
-          player_config, &socket_context, game_settings.client_id, &game_state, &client_state,
-          sdl_context, font, &sound_context, links, path);
-      if (sel == GAME_SEL_BACK) {
-        went_back = true;
-        break;
-      }
-      if (sel == GAME_SEL_ERROR)
-        break;
+    {
+      bool running = true;
+      bool went_back = false;
+      do {
+        EGameSelResult_t sel = handle_game_selection(
+            player_config, &socket_context, game_settings.client_id, &game_state, &client_state,
+            sdl_context, font, &sound_context, links, path);
+        if (sel == GAME_SEL_BACK) {
+          went_back = true;
+          break;
+        }
+        if (sel == GAME_SEL_ERROR)
+          break;
 
-      running = handle_game_logic(player_config, &socket_context, &game_settings, &game_state,
-                                  sdl_context, font, path, &sound_context);
-    } while (running);
-    for (i = 0; i < SND_NUM_SOUNDS; i++)
+        running = handle_game_logic(player_config, &socket_context, &game_settings, &game_state,
+                                    sdl_context, font, path, &sound_context);
+      } while (running);
+      went_back_result = went_back;
+    }
+cleanup_audio:
+    for (i = 0; i < n_sounds_init; i++)
       ma_sound_uninit(&sounds[i].sound);
-    for (i = 0; i < ARRAY_SIZE(coin_hit_sounds); i++)
+    for (i = 0; i < n_coin_sounds_init; i++)
       ma_sound_uninit(&coin_hit_sounds[i].sound);
     ma_engine_uninit(&sound_context.engine);
     socket_cleanup(&socket_context);
     SDLNet_Quit();
 
-    return went_back;
+    return went_back_result;
   } else {
     if (out_socket_context)
       *out_socket_context = socket_context;
