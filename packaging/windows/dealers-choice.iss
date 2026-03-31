@@ -7,6 +7,9 @@
 #ifndef VERSION
   #define VERSION "0.0.0"
 #endif
+#ifndef ARCH
+  #define ARCH "x86_64"
+#endif
 
 [Setup]
 AppName={#AppName}
@@ -19,7 +22,7 @@ DefaultDirName={autopf}\{#AppName}
 DefaultGroupName={#AppName}
 ; Output goes to the repo root (script is in packaging/windows/)
 OutputDir=..\..\
-OutputBaseFilename=dealers-choice-{#VERSION}-setup
+OutputBaseFilename=dealers-choice-{#VERSION}-{#ARCH}-setup
 Compression=lzma
 SolidCompression=yes
 WizardStyle=modern
