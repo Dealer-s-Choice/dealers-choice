@@ -12,7 +12,7 @@ test locally with simulated lag
 ## Every release
 
 - Ensure all CI workflows are passing on trunk
-- Run the full test suite locally: meson test
+- Checkout release branch
 - Update ChangeLog: set the release date and version (replace "in progress")
 - Bump version in meson.build (remove -dev suffix)
 - Update po and pot files:
@@ -22,7 +22,17 @@ test locally with simulated lag
     'b_sanitize=address,undefined',
     'b_lundef=false'
 - Commit the above changes
-- Create GitHub release from the tag, paste the ChangeLog entry as notes
+- meson setup _release
+- meson dist --include-subprojects (runs tests)
+
+- push to start testing
+
+- mv ~/src/DealersChoice/dealers_choice/_release/meson-dist/dealers-choice-0.0.*.tar.xz* \
+      ~/src/DealersChoice/
+
+- Update packaging; make sure they build (PKGBUILD, Slackbuild)
+- Amend the commit with any changes, push
+- Draft new GitHub release, paste the ChangeLog entry as notes
 - Close milestone (https://github.com/Dealer-s-Choice/dealers_choice/milestones)
 
 ## Slackbuild

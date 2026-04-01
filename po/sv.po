@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: dealers-choice\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-03-30 06:34-0500\n"
+"POT-Creation-Date: 2026-03-31 23:08-0500\n"
 "PO-Revision-Date: 2026-03-08 15:06-0500\n"
 "Last-Translator: Andy <arch_stanton5995@proton.me>\n"
 "Language-Team: \n"
@@ -41,56 +41,56 @@ msgstr ""
 msgid "Waiting for dealer to select game..."
 msgstr ""
 
-#: src/client.c:188 src/client.c:1658
+#: src/client.c:188 src/client.c:1662
 msgid "Kick"
 msgstr ""
 
-#: src/client.c:190 src/client.c:1660
+#: src/client.c:190 src/client.c:1664
 msgid "Ban"
 msgstr ""
 
 #. Show dealing screen immediately after click
-#: src/client.c:515
+#: src/client.c:519
 msgid "Dealing..."
 msgstr "Delar ut..."
 
-#: src/client.c:1248
+#: src/client.c:1252
 msgid "Check"
 msgstr "Passa"
 
-#: src/client.c:1248
+#: src/client.c:1252
 msgid "Bet"
 msgstr "Satsa"
 
-#: src/client.c:1249
+#: src/client.c:1253
 msgid "Fold"
 msgstr "Lägg dig"
 
-#: src/client.c:1249
+#: src/client.c:1253
 msgid "Call"
 msgstr "Syna"
 
-#: src/client.c:1250
+#: src/client.c:1254
 msgid "Raise"
 msgstr "Höj"
 
-#: src/client.c:1250
+#: src/client.c:1254
 msgid "Discard"
 msgstr "Kasta"
 
-#: src/client.c:1251
+#: src/client.c:1255
 msgid "Exchange"
 msgstr "Byt"
 
-#: src/client.c:1603
+#: src/client.c:1607
 msgid "Click a 2, then choose value and suit to assign."
 msgstr "Klicka på en tvåa och välj sedan valör och färg att tilldela."
 
-#: src/client.c:2461
+#: src/client.c:2467
 msgid "Cancel"
 msgstr ""
 
-#: src/client.c:2468 src/client.c:2484
+#: src/client.c:2474 src/client.c:2490
 #, c-format
 msgid "Attempting connection to: %s... (%d/%d)"
 msgstr ""
