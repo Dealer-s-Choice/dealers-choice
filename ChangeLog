@@ -1,5 +1,7 @@
+2026-04-01
 
-- dealers-choice (in progress):
+- dealers-choice 0.0.11:
+
   * bugfix: uninitialize miniaudio engine on sound load failure
     Previously called exit() without ma_engine_uninit(), locking the audio
     device and blocking other applications until it was replugged or the
