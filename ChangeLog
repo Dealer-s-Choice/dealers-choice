@@ -1,8 +1,9 @@
 
 - dealers-choice (in progress):
-  * Fix miniaudio not being uninitialized on sound load failure
-    This can lead to program freezes until audio device is unplugged
-    and plugged back in (#198)
+  * bugfix: uninitialize miniaudio engine on sound load failure
+    Previously called exit() without ma_engine_uninit(), locking the audio
+    device and blocking other applications until it was replugged or the
+    system was restarted (#198)
 
 2026-03-30
 
