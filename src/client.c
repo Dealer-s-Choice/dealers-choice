@@ -2672,8 +2672,8 @@ bool get_socket_context_and_run_client(PlayerConfig_t *player_config, const CliA
 
     bool went_back_result = false;
     SoundContext_t sound_context = {0};
+    sound_context.engineConfig = ma_engine_config_init();
     if (player_config->volume == 0 || cli_args->disable_audio) {
-      ma_engine_config_init();
       sound_context.engineConfig.noDevice = MA_TRUE;
       sound_context.engineConfig.channels = 2;
       sound_context.engineConfig.sampleRate = 48000;

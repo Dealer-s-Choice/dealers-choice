@@ -80,6 +80,8 @@ jobs:
         # Command to pass to cov-build.
         command: 'meson compile -C _build'
 
+        cov_analyze_args: '--modeling-file coverity/miniaudio_model.c'
+
         # (Informational) The source version being built.
         #
         # Default: ${{ github.sha }}
