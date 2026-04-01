@@ -33,6 +33,11 @@ test locally with simulated lag
 - Update packaging; make sure they build (PKGBUILD, Slackbuild)
 - Amend the commit with any changes, push
 - Draft new GitHub release, paste the ChangeLog entry as notes
+    Attach source tarball and sha256sum
+
+- Trigger workflow dispatch on Windows workflow, use tag for target and enter
+  version (without 'v')
+
 - Close milestone (https://github.com/Dealer-s-Choice/dealers_choice/milestones)
 
 ## Slackbuild
