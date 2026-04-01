@@ -4,6 +4,7 @@
     Previously called exit() without ma_engine_uninit(), locking the audio
     device and blocking other applications until it was replugged or the
     system was restarted (#198)
+  * Change dealer rotation timeout from 60 seconds to 30
 
 2026-03-30
 
