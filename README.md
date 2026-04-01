@@ -24,16 +24,14 @@ file for details.
 * [Game Results](https://dealer-s-choice.github.io/game_results.html)
 * [Discussions](https://github.com/Dealer-s-Choice/dealers_choice/discussions)
 * [Bug Reporting](https://github.com/Dealer-s-Choice/dealers_choice/issues)
-* [Releases](https://github.com/Dealer-s-Choice/dealers_choice/releases)
+* [Releases](https://github.com/Dealer-s-Choice/dealers_choice/releases/latest)
 
 ## Current state
 
 The game is in alpha so you may encounter bugs.
 
-Here's a proofread version with a couple of small fixes:
-
 *Dealer's Choice* builds on Windows in an MSYS2 environment. [Release
-versions](https://github.com/Dealer-s-Choice/dealers-choice/releases) are
+versions](https://github.com/Dealer-s-Choice/dealers-choice/releases/latest) are
 available as of v0.0.10. There is a development snapshot installer available
 on [the snapshots
 page](https://github.com/Dealer-s-Choice/dealers-choice/releases/tag/snapshot).
@@ -111,7 +109,7 @@ See [docs/TRANSLATE.md](docs/TRANSLATE.md)
 ## Note on AppImages
 
 If you're a Linux user, you can download the AppImage from the [Releases
-page](https://github.com/Dealer-s-Choice/dealers_choice/releases), or install
+page](https://github.com/Dealer-s-Choice/dealers_choice/releases/latest), or install
 it with [AppMan](https://github.com/ivan-hc/AM).
 
 ## Libraries
