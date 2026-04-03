@@ -76,7 +76,6 @@ conf = configuration_data()
 # fall back to the bundled copy in subprojects/.
 miniaudio_dep = dependency(
   'miniaudio',
-  required: false,
   fallback: ['miniaudio', 'miniaudio_dep'],
 )
 
