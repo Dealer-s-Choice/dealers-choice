@@ -33,26 +33,27 @@ endif
 # definitions = ['-D_DEFAULT_SOURCE']
 # add_project_arguments(definitions, language: 'c')
 
-extra_flags = [
-  '-fno-common',
-  '-fstack-protector-strong',
-  '-Wformat-security',
-  '-Wshadow',
-  '-Wstrict-overflow=5',
-  '-Werror=odr',
-  '-Werror=lto-type-mismatch',
-  '-Werror=strict-aliasing',
-  '-Werror=int-conversion',
-]
+if cc.get_id() != 'msvc'
+  extra_flags = [
+    '-fno-common',
+    '-fstack-protector-strong',
+    '-Wformat-security',
+    '-Wshadow',
+    '-Wstrict-overflow=5',
+    '-Werror=odr',
+    '-Werror=lto-type-mismatch',
+    '-Werror=strict-aliasing',
+    '-Werror=int-conversion',
+  ]
+  add_project_arguments(cc.get_supported_arguments(extra_flags), language: 'c')
 
-# To enable PATH_MAX and friends on Alpine Linux
-definitions = [
-  '-D_XOPEN_SOURCE',
-  '-D_POSIX_C_SOURCE=200112L',  # enable setenv() on Ubuntu Jammy
-]
-
-add_project_arguments(cc.get_supported_arguments(extra_flags), language: 'c')
-add_project_arguments(definitions, language: 'c')
+  # To enable PATH_MAX and friends on Alpine Linux
+  definitions = [
+    '-D_XOPEN_SOURCE',
+    '-D_POSIX_C_SOURCE=200112L',  # enable setenv() on Ubuntu Jammy
+  ]
+  add_project_arguments(definitions, language: 'c')
+endif
 
 canfigger_dep = dependency(
   'canfigger',
@@ -85,8 +86,11 @@ shared_dep = [
   miniaudio_dep,
   pokeval_dep,
   win_deps,
-  cc.find_library('m'),
 ]
+
+if not platform_is_windows
+  shared_dep += cc.find_library('m')
+endif
 
 sodium_dep = dependency('libsodium', required: get_option('sodium'))
 if sodium_dep.found()
