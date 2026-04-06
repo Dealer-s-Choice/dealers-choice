@@ -27,8 +27,6 @@ jobs:
     runs-on: windows-latest
     steps:
     - uses: actions/checkout@v6
-      with:
-        submodules: recursive
 
     - name: Set up MSVC environment
       uses: ilammy/msvc-dev-cmd@v1
@@ -37,6 +35,9 @@ jobs:
 
     - name: Install Meson and Ninja
       run: pip install meson ninja
+
+    - name: Install pkg-config
+      run: choco install pkgconfiglite -y
 
     - name: Install dependencies via vcpkg
       run: |
