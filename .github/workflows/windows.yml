@@ -56,6 +56,7 @@ jobs:
 
     - name: Meson setup
       run: |
+        $env:PKG_CONFIG = "$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows\tools\pkgconf\pkgconf.exe"
         $env:PKG_CONFIG_PATH = "$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows\lib\pkgconfig"
         meson setup _build -Db_sanitize=none -Dsodium=enabled
 
