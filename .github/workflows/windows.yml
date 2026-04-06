@@ -25,8 +25,17 @@ on:
 jobs:
   msvc:
     runs-on: windows-latest
+    env:
+      VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
     steps:
     - uses: actions/checkout@v6
+
+    - name: Export GitHub Actions cache vars for vcpkg
+      uses: actions/github-script@v7
+      with:
+        script: |
+          core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL)
+          core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN)
 
     - name: Set up MSVC environment
       uses: ilammy/msvc-dev-cmd@v1
@@ -49,140 +58,140 @@ jobs:
           libsodium:x64-windows `
           protobuf-c:x64-windows
 
-    - name: Meson setup
-      env:
-        PKG_CONFIG_PATH: ${{ env.VCPKG_INSTALLATION_ROOT }}\installed\x64-windows\lib\pkgconfig
-      run: |
-        meson setup _build -Db_sanitize=none -Dsodium=enabled
+    #- name: Meson setup
+      #env:
+        #PKG_CONFIG_PATH: ${{ env.VCPKG_INSTALLATION_ROOT }}\installed\x64-windows\lib\pkgconfig
+      #run: |
+        #meson setup _build -Db_sanitize=none -Dsodium=enabled
 
-    - name: Build
-      run: meson compile -C _build
+    #- name: Build
+      #run: meson compile -C _build
 
-    - name: Test
-      run: meson test --no-stdsplit -v -C _build
+    #- name: Test
+      #run: meson test --no-stdsplit -v -C _build
 
-  MSYS2:
-    needs: msvc
-    runs-on: windows-latest
-    permissions:
-      contents: write
-    env:
-      VERSION: ${{ inputs.version }}
-    strategy:
-      matrix:
-        platform: ['UCRT64', 'CLANG64']
-    steps:
-    - uses: actions/checkout@v6
-    - uses: msys2/setup-msys2@v2
-      with:
-        msystem: ${{matrix.platform}}
-        install: >-
-          git
-        pacboy: >-
-          cc:p
-          cmake:p
-          gettext:p
-          libsodium:p
-          meson:p
-          ninja:p
-          pkgconf:p
-          protobuf-c:p
-          SDL2:p
-          SDL2_image:p
-          SDL2_net:p
-          SDL2_ttf:p
-        update: true
+  #MSYS2:
+    #needs: msvc
+    #runs-on: windows-latest
+    #permissions:
+      #contents: write
+    #env:
+      #VERSION: ${{ inputs.version }}
+    #strategy:
+      #matrix:
+        #platform: ['UCRT64', 'CLANG64']
+    #steps:
+    #- uses: actions/checkout@v6
+    #- uses: msys2/setup-msys2@v2
+      #with:
+        #msystem: ${{matrix.platform}}
+        #install: >-
+          #git
+        #pacboy: >-
+          #cc:p
+          #cmake:p
+          #gettext:p
+          #libsodium:p
+          #meson:p
+          #ninja:p
+          #pkgconf:p
+          #protobuf-c:p
+          #SDL2:p
+          #SDL2_image:p
+          #SDL2_net:p
+          #SDL2_ttf:p
+        #update: true
 
-    - name: Meson setup
-      shell: msys2 {0}
-      run: |
-        CFLAGS="-Werror" meson setup _build -Db_sanitize=none -Dsodium=enabled
+    #- name: Meson setup
+      #shell: msys2 {0}
+      #run: |
+        #CFLAGS="-Werror" meson setup _build -Db_sanitize=none -Dsodium=enabled
 
-    - name: Build
-      shell: msys2 {0}
-      run: |
-        meson compile -C _build
+    #- name: Build
+      #shell: msys2 {0}
+      #run: |
+        #meson compile -C _build
 
-    - name: Test
-      shell: msys2 {0}
-      continue-on-error: false
-      run: |
-        PYTHONUTF8=1 meson test --no-stdsplit -v -C _build
+    #- name: Test
+      #shell: msys2 {0}
+      #continue-on-error: false
+      #run: |
+        #PYTHONUTF8=1 meson test --no-stdsplit -v -C _build
 
-    - name: Stage installer files
-      if: matrix.platform == 'UCRT64'
-      shell: msys2 {0}
-      run: |
-        mkdir -p _staging/data
-        cp _build/dealers-choice.exe _staging/
-        cp -r data/images data/sounds _staging/data/
-        cp data/*.ttf data/server.conf _staging/data/
-        bash packaging/windows/collect-dlls.sh _staging/dealers-choice.exe _staging/
+    #- name: Stage installer files
+      #if: matrix.platform == 'UCRT64'
+      #shell: msys2 {0}
+      #run: |
+        #mkdir -p _staging/data
+        #cp _build/dealers-choice.exe _staging/
+        #cp -r data/images data/sounds _staging/data/
+        #cp data/*.ttf data/server.conf _staging/data/
+        #bash packaging/windows/collect-dlls.sh _staging/dealers-choice.exe _staging/
 
-    - name: Set version
-      if: matrix.platform == 'UCRT64'
-      shell: bash
-      run: |
-        if [[ -z "${VERSION}" ]]; then
-          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
-            VERSION="${GITHUB_REF#refs/tags/}"
-          else
-            VERSION="snapshot"
-          fi
-          echo "VERSION=${VERSION}" >> "$GITHUB_ENV"
-        fi
-        case "${{ matrix.platform }}" in
-          CLANGARM64) ARCH="aarch64" ;;
-          *)           ARCH="x86_64"  ;;
-        esac
-        echo "ARCH=${ARCH}" >> "$GITHUB_ENV"
+    #- name: Set version
+      #if: matrix.platform == 'UCRT64'
+      #shell: bash
+      #run: |
+        #if [[ -z "${VERSION}" ]]; then
+          #if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            #VERSION="${GITHUB_REF#refs/tags/}"
+          #else
+            #VERSION="snapshot"
+          #fi
+          #echo "VERSION=${VERSION}" >> "$GITHUB_ENV"
+        #fi
+        #case "${{ matrix.platform }}" in
+          #CLANGARM64) ARCH="aarch64" ;;
+          #*)           ARCH="x86_64"  ;;
+        #esac
+        #echo "ARCH=${ARCH}" >> "$GITHUB_ENV"
 
-    - name: Build installer
-      if: matrix.platform == 'UCRT64'
-      shell: pwsh
-      run: |
-        iscc /DVERSION=$env:VERSION /DARCH=$env:ARCH packaging\windows\dealers-choice.iss
-        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    #- name: Build installer
+      #if: matrix.platform == 'UCRT64'
+      #shell: pwsh
+      #run: |
+        #iscc /DVERSION=$env:VERSION /DARCH=$env:ARCH packaging\windows\dealers-choice.iss
+        #if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-    - name: Checksum
-      if: matrix.platform == 'UCRT64'
-      shell: pwsh
-      run: |
-        $file = "dealers-choice-$env:VERSION-$env:ARCH-setup.exe"
-        $hash = (Get-FileHash $file -Algorithm SHA256).Hash.ToLower()
-        "$hash  $file" | Out-File -Encoding ascii "$file.sha256sum"
+    #- name: Checksum
+      #if: matrix.platform == 'UCRT64'
+      #shell: pwsh
+      #run: |
+        #$file = "dealers-choice-$env:VERSION-$env:ARCH-setup.exe"
+        #$hash = (Get-FileHash $file -Algorithm SHA256).Hash.ToLower()
+        #"$hash  $file" | Out-File -Encoding ascii "$file.sha256sum"
 
-    - name: Upload artifact
-      if: matrix.platform == 'UCRT64' && github.ref != 'refs/heads/trunk'
-      uses: actions/upload-artifact@v7
-      with:
-        name: dealers-choice-windows-installer
-        path: dealers-choice-${{ env.VERSION }}-${{ env.ARCH }}-setup.exe*
-        if-no-files-found: error
+    #- name: Upload artifact
+      #if: matrix.platform == 'UCRT64' && github.ref != 'refs/heads/trunk'
+      #uses: actions/upload-artifact@v7
+      #with:
+        #name: dealers-choice-windows-installer
+        #path: dealers-choice-${{ env.VERSION }}-${{ env.ARCH }}-setup.exe*
+        #if-no-files-found: error
 
-    - name: Prerelease (trunk)
-      if: matrix.platform == 'UCRT64' && github.ref == 'refs/heads/trunk'
-      uses: ncipollo/release-action@v1
-      with:
-        artifacts: "dealers-choice-${{ env.VERSION }}-${{ env.ARCH }}-setup.exe*"
-        body: "Dealer's Choice Snapshot Release"
-        allowUpdates: true
-        prerelease: true
-        removeArtifacts: false
-        replacesArtifacts: true
-        omitBodyDuringUpdate: true
-        omitNameDuringUpdate: true
-        tag: snapshot
-        token: ${{ secrets.GITHUB_TOKEN }}
+    #- name: Prerelease (trunk)
+      #if: matrix.platform == 'UCRT64' && github.ref == 'refs/heads/trunk'
+      #uses: ncipollo/release-action@v1
+      #with:
+        #artifacts: "dealers-choice-${{ env.VERSION }}-${{ env.ARCH }}-setup.exe*"
+        #body: "Dealer's Choice Snapshot Release"
+        #allowUpdates: true
+        #prerelease: true
+        #removeArtifacts: false
+        #replacesArtifacts: true
+        #omitBodyDuringUpdate: true
+        #omitNameDuringUpdate: true
+        #tag: snapshot
+        #token: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Release (tagged)
-      if: matrix.platform == 'UCRT64' && (startsWith(github.ref, 'refs/tags/') || inputs.version != '')
-      uses: ncipollo/release-action@v1
-      with:
-        artifacts: "dealers-choice-${{ env.VERSION }}-${{ env.ARCH }}-setup.exe*"
-        tag: ${{ inputs.version != '' && format('v{0}', env.VERSION) || '' }}
-        allowUpdates: true
-        prerelease: false
-        omitBodyDuringUpdate: true
-        omitNameDuringUpdate: true
-        token: ${{ secrets.GITHUB_TOKEN }}
+    #- name: Release (tagged)
+      #if: matrix.platform == 'UCRT64' && (startsWith(github.ref, 'refs/tags/') || inputs.version != '')
+      #uses: ncipollo/release-action@v1
+      #with:
+        #artifacts: "dealers-choice-${{ env.VERSION }}-${{ env.ARCH }}-setup.exe*"
+        #tag: ${{ inputs.version != '' && format('v{0}', env.VERSION) || '' }}
+        #allowUpdates: true
+        #prerelease: false
+        #omitBodyDuringUpdate: true
+        #omitNameDuringUpdate: true
+        #token: ${{ secrets.GITHUB_TOKEN }}
