@@ -116,14 +116,12 @@ ServerConfig_t init_game_state(GameState_t *game_state, Path_t *path, const CliA
   game_state->raises_remaining = 0;
   game_state->prev_bet_amount = 0;
   game_state->winner_declared = false;
-  game_state->player_exchanging = false;
   return config;
 }
 
 GameSettings_t init_game_settings(const ServerConfig_t *config, const CliArgs_t *cli_args) {
   GameSettings_t game_settings = {
       .action_timeout_ms = config->action_timeout_ms,
-      .wild_exchange_timeout_ms = config->wild_exchange_timeout_ms,
       .end_of_game_timeout_ms = (cli_args->test_mode) ? 500 : config->end_of_game_timeout_ms,
       .bet_amount_count = config->bet_amount_count,
   };
@@ -609,71 +607,6 @@ static ELoop_t handle_draw(ArgsBroadcastGameState_t *args, TCPsocket sock, const
   return LOOP_OK;
 }
 
-static ELoop_t handle_wild_cards(ArgsBroadcastGameState_t *args, TCPsocket sock, const int8_t id) {
-  verbose_puts("sending submit wild prompt");
-  if (send_opcode(sock, MSG_WILD_REPLACEMENT) != 0) {
-    fputs("Failed to send submit wild prompt\n", stderr);
-    return LOOP_ERROR;
-  }
-
-  const uint32_t wait_ms = args->game_settings->wild_exchange_timeout_ms;
-  const uint32_t start = SDL_GetTicks();
-
-  POKEVAL_Hand_7 received_hand = {0};
-  while (SDL_GetTicks() - start < wait_ms) {
-    register_new_client(args);
-    int num_ready = SDLNet_CheckSockets(args->socket_set, 0);
-    if (num_ready == -1) {
-      fprintf(stderr, "SDLNet_CheckSockets: %s\n", SDLNet_GetError());
-      return LOOP_ERROR;
-    }
-
-    if (num_ready > 0) {
-      if (SDLNet_SocketReady(sock)) {
-        uint8_t buffer[512] = {0}; // pick a reasonable buffer size
-        int n_bytes = SDLNet_TCP_Recv(sock, buffer, sizeof(buffer));
-        if (n_bytes > 0) {
-          received_hand = deserialize_hand(buffer, n_bytes);
-          break;
-        } else {
-          remove_disconnected_player(args, id);
-          broadcast_game_state(args);
-          return LOOP_BREAK;
-        }
-      } else {
-        if (handle_disconnections(args))
-          broadcast_game_state(args);
-        if (args->game_state->player_count == 1)
-          return LOOP_BREAK;
-      }
-    }
-  }
-
-  int n_wilds = 0;
-  if (received_hand.card[0].face_val != 0) {
-    // Apply wilds:
-    for (int i = 0; i < MAX_HAND_SIZE; i++) {
-      DH_Card c = received_hand.card[i];
-      if (!DH_is_card_null(c)) {
-        if (args->real_hand->player[id].card[i].face_val == DH_CARD_TWO) {
-          args->real_hand->player[id].card[i] = c;
-          n_wilds++;
-        } else
-          fprintf(stderr, "Invalid wild replacement (not a 2)\n");
-      }
-    }
-  }
-
-  if (n_wilds > 0) {
-    char status_str[LEN_STATUS_STR] = {0};
-    snprintf(status_str, sizeof status_str, "%s exchanged %d wild card(s)",
-             args->game_state->player[id].nick, n_wilds);
-    broadcast_status_message(args, status_str);
-  }
-
-  return LOOP_OK;
-}
-
 static EPlayerAction_t handle_check(PlayerActionMsg_t *action) {
   action->str = _("checked");
   return ACTION_CHECK;
@@ -705,29 +638,6 @@ static void determine_winner(ArgsBroadcastGameState_t *args, RoundResults *resul
 
   Player_t *ptr = *args->starting_turn;
 
-  if (args->deuces_wild) {
-    args->game_state->player_exchanging = true;
-    broadcast_game_state(args);
-    ELoop_t w = LOOP_OK;
-    for (uint8_t i = 0; i < pl_count; i++) {
-      if (ptr->in) {
-        for (int c = 0; c < MAX_HAND_SIZE; c++) {
-          if (args->real_hand->player[ptr->id].card[c].face_val == DH_CARD_TWO) {
-            args->turn_id = ptr->id;
-            // broadcast_game_state(args);
-            broadcast_turn_id(args);
-            w = handle_wild_cards(args, args->clients[ptr->id], ptr->id);
-            break;
-          }
-        }
-      }
-      if (w == LOOP_BREAK)
-        if (args->game_state->player_count == 1)
-          break;
-      ptr = get_next_player(args->game_state->player, ptr->id);
-    }
-  }
-
   ptr = *args->starting_turn;
   if (args->game_type != game_choices[TEXAS_HOLDEM].game_type) {
     do {
@@ -750,8 +660,11 @@ static void determine_winner(ArgsBroadcastGameState_t *args, RoundResults *resul
     ptr = get_next_player(args->game_state->player, ptr->id);
   }
 
-  results->n_winners = POKEVAL_compare_hands(
-      need_comparing, pl_count, args->game_type == game_choices[CALIFORNIA_LOWBALL].game_type);
+  bool lowball = args->game_type == game_choices[CALIFORNIA_LOWBALL].game_type;
+  if (args->deuces_wild)
+    results->n_winners = POKEVAL_compare_hands_wild(need_comparing, pl_count, DH_CARD_TWO);
+  else
+    results->n_winners = POKEVAL_compare_hands(need_comparing, pl_count, lowball);
   uint8_t winners = 0;
 
   uint32_t pot = args->game_state->pot;
@@ -767,9 +680,12 @@ static void determine_winner(ArgsBroadcastGameState_t *args, RoundResults *resul
     Player_t *winner = &args->game_state->player[need_comparing[i].id];
     winner->winner = true;
 
+    short hand_rank = args->deuces_wild
+                          ? POKEVAL_evaluate_hand_wild(need_comparing[i].hand_5, DH_CARD_TWO)
+                          : POKEVAL_evaluate_hand(need_comparing[i].hand_5);
     char status_str[LEN_STATUS_STR];
     snprintf(status_str, sizeof status_str, "%s wins %" PRIu32 " with %s", winner->nick, share,
-             POKEVAL_rank[POKEVAL_evaluate_hand(need_comparing[i].hand_5)]);
+             POKEVAL_rank[hand_rank]);
 
     broadcast_status_message(args, status_str);
 
@@ -1360,7 +1276,6 @@ static void play_game(ArgsBroadcastGameState_t *args, DH_Deck *deck) {
   args->game_state->player_count = count_active_clients(args->slot_taken);
   verbose_printf("player count: %d\n", args->game_state->player_count);
   args->game_state->winner_declared = false;
-  args->game_state->player_exchanging = false;
 
   Player_t *turn = get_next_player(players_array, args->game_state->dealer_id);
   args->starting_turn = &turn;

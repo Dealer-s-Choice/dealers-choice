@@ -28,14 +28,14 @@ message GameState {
   uint32 raises_remaining = 5;
   uint32 prev_bet_amount = 6;
   bool winner_declared = 7;
-  bool player_exchanging = 8;
+  reserved 8;
   repeated Player player = 9;
 }
 
 message GameSettings {
   int32 client_id = 1;
   uint32 action_timeout_ms = 2;
-  uint32 wild_exchange_timeout_ms = 3;
+  reserved 3;
   uint32 end_of_game_timeout_ms = 4;
   repeated uint32 bet_amounts = 5;
 }

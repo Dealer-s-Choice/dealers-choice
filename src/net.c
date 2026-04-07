@@ -92,7 +92,6 @@ uint8_t *serialize_game_state(const GameState_t *src, uint32_t *size_out) {
   msg.prev_bet_amount = src->prev_bet_amount;
   msg.player_count = src->player_count;
   msg.winner_declared = src->winner_declared;
-  msg.player_exchanging = src->player_exchanging;
 
   Player *player_msgs[MAX_PLAYERS];
   struct player_message_builder_t builders[MAX_PLAYERS];
@@ -133,7 +132,6 @@ GameState_t deserialize_game_state(const uint8_t *data, uint32_t size) {
   result.prev_bet_amount = msg->prev_bet_amount;
   result.player_count = (uint8_t)msg->player_count;
   result.winner_declared = msg->winner_declared;
-  result.player_exchanging = msg->player_exchanging;
 
   size_t n = msg->n_player < MAX_PLAYERS ? msg->n_player : MAX_PLAYERS;
   for (size_t i = 0; i < n; ++i) {
@@ -153,7 +151,6 @@ uint8_t *serialize_game_settings(const GameSettings_t *src, size_t *size_out) {
 
   msg.client_id = src->client_id;
   msg.action_timeout_ms = src->action_timeout_ms;
-  msg.wild_exchange_timeout_ms = src->wild_exchange_timeout_ms;
   msg.end_of_game_timeout_ms = src->end_of_game_timeout_ms;
   msg.n_bet_amounts = src->bet_amount_count;
   msg.bet_amounts = (uint32_t *)src->bet_amounts;
@@ -181,7 +178,6 @@ GameSettings_t deserialize_game_settings(const uint8_t *data, size_t size) {
 
   result.client_id = (int8_t)msg->client_id;
   result.action_timeout_ms = msg->action_timeout_ms;
-  result.wild_exchange_timeout_ms = msg->wild_exchange_timeout_ms;
   result.end_of_game_timeout_ms = msg->end_of_game_timeout_ms;
   result.bet_amount_count = (uint8_t)msg->n_bet_amounts;
   for (size_t i = 0; i < msg->n_bet_amounts && i < MAX_BET_AMOUNTS; i++)
@@ -415,16 +411,6 @@ ERecvStatus_t recv_game_state(SocketContext_t *socket_context, GameState_t *game
 
     ping_broadcast__free_unpacked(pb, NULL);
   } break;
-
-  case MSG_WILD_REPLACEMENT:
-    if (size != 2) {
-      fprintf(stderr, "[recv_game_state] Invalid size for MSG_WILD_REPLACEMENTS: %u\n", size);
-      break;
-    }
-    client_state->do_exchange_wilds = true;
-    // client_state->n_cards_selected = 0;
-    // printf("[recv_game_state] Received %u bytes, server wants wilds...\n", size);
-    break;
 
   case MSG_STATUS_MESSAGE: {
     size_t msg_len = size - 2;

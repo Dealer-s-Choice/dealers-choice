@@ -77,14 +77,12 @@ typedef struct {
   uint32_t raises_remaining;
   uint32_t prev_bet_amount;
   bool winner_declared;
-  bool player_exchanging;
   Player_t player[MAX_PLAYERS];
 } GameState_t;
 
 typedef struct {
   int8_t client_id;
   uint32_t action_timeout_ms;
-  uint32_t wild_exchange_timeout_ms;
   uint32_t end_of_game_timeout_ms;
   uint32_t bet_amounts[MAX_BET_AMOUNTS];
   uint8_t bet_amount_count;

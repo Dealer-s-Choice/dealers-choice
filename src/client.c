@@ -1000,8 +1000,7 @@ int send_discards_request_new_cards(TCPsocket sock, const uint8_t *discard_indic
 
 // CardContext_t is defined in client.h
 
-static void render_card(CardContext_t *context, TTF_Font *font, const bool my_card,
-                        const bool do_wild_exchange) {
+static void render_card(CardContext_t *context, TTF_Font *font, const bool my_card) {
   // printf("%d\n", __LINE__);
   if (context->is_back) {
     draw_card_back_pattern(context->renderer, &context->rect);
@@ -1022,19 +1021,6 @@ static void render_card(CardContext_t *context, TTF_Font *font, const bool my_ca
 
   if (context->selected)
     mark_selected(context->renderer, &context->rect);
-
-  if (context->is_wild && do_wild_exchange) {
-    Uint32 ticks = SDL_GetTicks();
-    // Blink every 500 ms
-    bool blink_on = (ticks / 500) % 2 == 0;
-
-    if (blink_on) {
-      SDL_SetRenderDrawBlendMode(context->renderer, SDL_BLENDMODE_BLEND);
-      SDL_SetRenderDrawColor(context->renderer, 255, 165, 0, 128); // translucent orange
-      SDL_RenderFillRect(context->renderer, &context->rect);
-      SDL_SetRenderDrawBlendMode(context->renderer, SDL_BLENDMODE_NONE);
-    }
-  }
 
   // Draw card border
   SDL_SetRenderDrawColor(context->renderer, 0, 0, 0, 255);
@@ -1231,7 +1217,6 @@ enum {
   CALL,
   RAISE,
   DISCARD,
-  EXCHANGE,
   MAX_ACTIONS,
 };
 
@@ -1254,7 +1239,6 @@ ActionButtonAttrs action_button_attrs[MAX_ACTIONS] = {
     [CHECK] = {N_("Check"), SDLK_c, false},      [BET] = {N_("Bet"), SDLK_b, false},
     [FOLD] = {N_("Fold"), SDLK_f, false},        [CALL] = {N_("Call"), SDLK_c, false},
     [RAISE] = {N_("Raise"), SDLK_r, false},      [DISCARD] = {N_("Discard"), SDLK_d, true},
-    [EXCHANGE] = {N_("Exchange"), SDLK_x, true},
 };
 
 static void layout_action_buttons(ButtonWidget_t **b, ActionButtonAttrs *attr) {
@@ -1330,25 +1314,6 @@ static void layout_deuces_wild_indicator(Indicator_t *ind) {
   int y = g_viewport.y + g_viewport.h - 200;
 
   layout_indicator(ind, x, y);
-}
-
-static void layout_wild_selection(ButtonWidget_t **card_faces, ButtonWidget_t **card_suits,
-                                  const int face_count, const DH_suit suit_count,
-                                  const Font_t *font) {
-  int y_offset = card_area.h * 1;
-  int width, height;
-  TTF_SizeUTF8(font->fonts[FONT_WILD_SELECT], " 10 ", &width, &height);
-  for (int i = 0; i < face_count; i++) {
-    card_faces[i]->base.rect = (SDL_Rect){g_center.x - 100, y_offset, width, height};
-    y_offset += height + 10;
-  }
-
-  y_offset = (height + 10) * 6;
-  TTF_SizeUTF8(font->fonts[FONT_CARD], "   ", &width, &height);
-  for (DH_suit i = 0; i < suit_count; i++) {
-    card_suits[i]->base.rect = (SDL_Rect){g_center.x - 100 + width + 20, y_offset, width, height};
-    y_offset += height + 10;
-  }
 }
 
 /* Circle timer radius — needed by layout_timer below */
@@ -1605,13 +1570,6 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
                     action_bw[DISCARD]->base.rect.y + card_area.h);
   uint8_t last_max_allowed = 3;
 
-  TextWidget_t *exchange_hint_tw =
-      text_widget_create(_("Click a 2, then choose value and suit to assign."),
-                         font->fonts[FONT_BOLD], get_color(COLOR_WHITE));
-  if (exchange_hint_tw)
-    ui_widget_place(&exchange_hint_tw->base, x_begin_action_button,
-                    action_bw[EXCHANGE]->base.rect.y + card_area.h);
-
   static const SDL_Keycode bet_hotkeys[MAX_BET_AMOUNTS] = {
       SDLK_1, SDLK_2, SDLK_3, SDLK_4, SDLK_5, SDLK_6, SDLK_7, SDLK_8,
   };
@@ -1642,21 +1600,6 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
   layout_amount_buttons(amount_bw, n_bet_amounts);
 
   CardContext_t card_context[MAX_PLAYERS][MAX_HAND_SIZE];
-
-  ButtonWidget_t *card_faces[13] = {0};
-  for (int i = 0; i < (int)ARRAY_SIZE(card_faces); i++)
-    card_faces[i] =
-        button_widget_create(DH_get_card_face_str(i + 1), (EColor_t){COLOR_WHITE, COLOR_BROWN},
-                             font->fonts[FONT_WILD_SELECT], (SDL_Keycode)0);
-
-  ButtonWidget_t *card_suits[DH_SUIT_MAX] = {0};
-  for (DH_suit i = 0; i < ARRAY_SIZE(card_suits); i++)
-    card_suits[i] =
-        button_widget_create(DH_get_unicode_suit(i), (EColor_t){COLOR_WHITE, COLOR_BROWN},
-                             font->fonts[FONT_CARD], (SDL_Keycode)0);
-
-  layout_wild_selection(card_faces, card_suits, ARRAY_SIZE(card_faces), ARRAY_SIZE(card_suits),
-                        font);
 
   UIRegistry_t registry = {0};
 
@@ -1974,7 +1917,7 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
       do {
         // printf("%d\n", __LINE__);
         render_card(&card_context[player_ptr->id][card_n], font->fonts[FONT_CARD],
-                    player_ptr->id == my_id, client_state.do_exchange_wilds);
+                    player_ptr->id == my_id);
 
         player_ptr = get_next_connected_client(players_array, player_ptr->id);
       } while (player_ptr != starting_turn);
@@ -2003,7 +1946,6 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
         client_state.bet_check_fold = false;
         client_state.call_raise_fold = false;
         client_state.do_discard_draw = false;
-        client_state.do_exchange_wilds = false;
 
         if (my_turn && !game_state->winner_declared) {
           if (player_config->turn_notify)
@@ -2019,10 +1961,7 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
       remaining_ms = (int32_t)(client_state.timer_start + game_settings->end_of_game_timeout_ms) -
                      (int32_t)now;
     } else {
-      uint32_t timeout_ms = game_state->player_exchanging ? game_settings->wild_exchange_timeout_ms
-                                                          : game_settings->action_timeout_ms;
-
-      remaining_ms = (int32_t)((client_state.timer_start + timeout_ms) - now);
+      remaining_ms = (int32_t)((client_state.timer_start + game_settings->action_timeout_ms) - now);
 
       if (client_state.do_discard_draw) {
         for (int i = 0; i < MAX_HAND_SIZE; i++)
@@ -2044,10 +1983,6 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
           ui_widget_render(&discard_hint_tw->base);
         }
         ui_widget_render(&action_bw[DISCARD]->base);
-      } else if (client_state.do_exchange_wilds) {
-        action_bw[EXCHANGE]->base.rect.x = x_begin_action_button;
-        ui_widget_render(&exchange_hint_tw->base);
-        ui_widget_render(&action_bw[EXCHANGE]->base);
       } else if (client_state.bet_check_fold || client_state.call_raise_fold) {
         int x_offset = x_begin_action_button;
         if (client_state.bet_check_fold) {
@@ -2104,14 +2039,6 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
     snprintf(buffer, sizeof(buffer), "%" PRIu32, game_state->pot);
     render_text_pot(buffer, table_center, font);
 
-    if (client_state.deuces_wild && client_state.do_exchange_wilds) {
-      for (size_t i = 0; i < ARRAY_SIZE(card_faces); i++)
-        ui_widget_render(&card_faces[i]->base);
-
-      for (DH_suit i = 0; i < ARRAY_SIZE(card_suits); i++)
-        ui_widget_render(&card_suits[i]->base);
-    }
-
     SDL_RenderPresent(sdl_context->renderer);
     SDL_Delay(16);
 
@@ -2151,54 +2078,6 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
             break;
         }
       }
-      if (client_state.do_exchange_wilds) {
-        int wild_card_selected = -1;
-        for (int card_n = 0; card_n < MAX_HAND_SIZE; card_n++) {
-          card_context[my_id][card_n].hovered =
-              SDL_PointInRect(&mouse_pos, &card_context[my_id][card_n].rect);
-          if (card_context[my_id][card_n].is_wild && card_context[my_id][card_n].hovered &&
-              event.type == SDL_MOUSEBUTTONDOWN)
-            wild_card_selected = card_n;
-          if (wild_card_selected != -1) {
-            if (!card_context[my_id][card_n].selected) {
-              for (size_t j = 0; j < MAX_HAND_SIZE; j++) {
-                card_context[my_id][j].selected = false;
-              }
-              card_context[my_id][card_n].selected = true;
-            }
-            break;
-          }
-        }
-        bool wild_changed = false;
-        for (int card_n = 0; card_n < MAX_HAND_SIZE; card_n++) {
-          if (card_context[my_id][card_n].selected) {
-            for (DH_card_face f = 0; f < (DH_card_face)ARRAY_SIZE(card_faces); f++) {
-              DH_card_face card_val = f + 1;
-              if (SDL_PointInRect(&mouse_pos, &card_faces[f]->base.rect) &&
-                  event.type == SDL_MOUSEBUTTONDOWN) {
-                card_faces[f]->click.start_time = SDL_GetTicks();
-                DH_Card *card = &turn->hand.card[card_n];
-                card->face_val = card_val;
-                make_human_readable_card(card, &card_context[my_id][card_n]);
-                break;
-              }
-            }
-            for (DH_suit s = DH_SUIT_MAX - DH_SUIT_MAX; s < ARRAY_SIZE(card_suits); s++) {
-              if (SDL_PointInRect(&mouse_pos, &card_suits[s]->base.rect) &&
-                  event.type == SDL_MOUSEBUTTONDOWN) {
-                card_suits[s]->click.start_time = SDL_GetTicks();
-                DH_Card *card = &turn->hand.card[card_n];
-                card->suit = s;
-                make_human_readable_card(card, &card_context[my_id][card_n]);
-                break;
-              }
-            }
-          }
-        }
-        if (wild_changed)
-          break; // from sdl event loop only
-      }
-
       for (int i = 0; i < MAX_ACTIONS; i++) {
         action_bw[i]->base.hovered = SDL_PointInRect(&mouse_pos, &action_bw[i]->base.rect);
       }
@@ -2279,7 +2158,7 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
         }
       }
       if (event.type == SDL_MOUSEBUTTONDOWN || event.type == SDL_KEYDOWN) {
-        if (my_turn && !client_state.do_discard_draw && !client_state.do_exchange_wilds) {
+        if (my_turn && !client_state.do_discard_draw) {
           if (client_state.bet_check_fold || client_state.call_raise_fold) {
             if (SDL_PointInRect(&mouse_pos, &action_bw[FOLD]->base.rect) ||
                 event.key.keysym.sym == action_bw[FOLD]->hotkey) {
@@ -2343,56 +2222,16 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
           else {
             verbose_puts("Discards sent");
           }
-        } else if (action_bw[EXCHANGE]->interactive &&
-                   (SDL_PointInRect(&mouse_pos, &action_bw[EXCHANGE]->base.rect) ||
-                    event.key.keysym.sym == action_bw[EXCHANGE]->hotkey)) {
-          verbose_puts("exchanging wilds");
-          POKEVAL_Hand_7 hand = {0};
-
-          for (int i = 0; i < MAX_HAND_SIZE; i++) {
-            if (!card_context[my_id][i].is_wild) {
-              hand.card[i] = DH_card_null;
-              continue;
-            }
-            hand.card[i] = turn->hand.card[i];
-          }
-
-          // Reset the flag that's used to indicate to the client it's their turn to draw
-          client_state.do_exchange_wilds = false;
-
-          size_t size = 0;
-          uint8_t *data = serialize_hand(hand, &size);
-          if (!data) {
-            fprintf(stderr, "Failed to serialize hand\n");
-            running = -1;
-            goto cleanup;
-          }
-
-          // Just send the serialized protobuf
-          if (send_all_tcp(sock, data, size) != 0) {
-            fprintf(stderr, "Failed to send hand\n");
-            free(data);
-            running = -1;
-            goto cleanup;
-          } else
-            verbose_puts("Wilds sent");
-          free(data);
         }
       }
     } // End Poll event
   }
-cleanup:
   SDL_DestroyTexture(coin_tex_front);
-  for (size_t i = 0; i < ARRAY_SIZE(card_faces); i++)
-    ui_widget_destroy(&card_faces[i]->base);
-  for (DH_suit i = 0; i < ARRAY_SIZE(card_suits); i++)
-    ui_widget_destroy(&card_suits[i]->base);
   for (int i = 0; i < MAX_ACTIONS; i++)
     ui_widget_destroy(&action_bw[i]->base);
   for (size_t i = 0; i < n_bet_amounts; i++)
     ui_widget_destroy(&amount_bw[i]->base);
   ui_widget_destroy(&discard_hint_tw->base);
-  ui_widget_destroy(&exchange_hint_tw->base);
   for (int i = 0; i < SIZEOF_STATUS_MSGS; i++)
     ui_widget_destroy(&status_tw[i]->base);
   ui_destroy_all(&registry);
