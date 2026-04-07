@@ -32,8 +32,8 @@ jobs:
       uses: actions/cache@v4
       with:
         path: C:\Users\runneradmin\AppData\Local\vcpkg\archives
-        key: vcpkg-x64-windows-${{ hashFiles('.github/workflows/windows.yml') }}
-        restore-keys: vcpkg-x64-windows-
+        key: vcpkg-x64-windows-static-md-${{ hashFiles('.github/workflows/windows.yml') }}
+        restore-keys: vcpkg-x64-windows-static-md-
 
     - name: Set up MSVC environment
       uses: ilammy/msvc-dev-cmd@v1
@@ -47,16 +47,16 @@ jobs:
       run: |
         $env:VCPKG_ROOT = ""
         vcpkg install `
-          sdl2:x64-windows `
-          sdl2-image:x64-windows `
-          sdl2-ttf:x64-windows `
-          sdl2-net:x64-windows `
-          libsodium:x64-windows `
-          protobuf-c:x64-windows
+          sdl2:x64-windows-static-md `
+          sdl2-image:x64-windows-static-md `
+          sdl2-ttf:x64-windows-static-md `
+          sdl2-net:x64-windows-static-md `
+          libsodium:x64-windows-static-md `
+          protobuf-c:x64-windows-static-md
 
     - name: Meson setup
       run: |
-        $vcpkg_prefix = "$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows"
+        $vcpkg_prefix = "$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static-md"
         $env:PKG_CONFIG = "$vcpkg_prefix\tools\pkgconf\pkgconf.exe"
         $env:PKG_CONFIG_PATH = "$vcpkg_prefix\lib\pkgconfig"
         meson setup _build -Db_sanitize=none -Dsodium=enabled "-Dcmake_prefix_path=$vcpkg_prefix"

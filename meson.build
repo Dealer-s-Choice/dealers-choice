@@ -54,7 +54,14 @@ if cc.get_id() != 'msvc'
   ]
   add_project_arguments(definitions, language: 'c')
 else
-  add_project_arguments(['-D_CRT_SECURE_NO_WARNINGS', '-DPROTOBUF_C_IMPORT'], language: 'c')
+  add_project_arguments([
+    '-D_CRT_SECURE_NO_WARNINGS',
+    # SDL redefines main→SDL_main on Windows; this prevents that for all TUs
+    '-DSDL_MAIN_HANDLED',
+    # protobuf-c.h defaults to __declspec(dllimport) on MSVC; override to
+    # nothing so the static lib symbol is resolved as a regular extern
+    '-DPROTOBUF_C__API=',
+  ], language: 'c')
 endif
 
 canfigger_dep = dependency(
