@@ -122,7 +122,7 @@ const GameChoice_t *find_game_choice_by_type(const uint8_t type) {
   return NULL; // Not found
 }
 
-int8_t send_game_select(TCPsocket sock, uint8_t game_type, bool deuces_wild) {
+int send_game_select(TCPsocket sock, uint8_t game_type, bool deuces_wild) {
   GameSelectPayload_t payload = {game_type, deuces_wild ? 1 : 0};
 
   const uint32_t payload_size = OPCODE_SIZE + sizeof(payload);
