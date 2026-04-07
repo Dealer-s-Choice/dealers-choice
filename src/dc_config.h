@@ -96,7 +96,7 @@ static const ConfigEntry player_config_entries[] = {
     {"password", CFG_TYPE_STRING, "", offsetof(PlayerConfig_t, password),
      sizeof(((PlayerConfig_t *)0)->password)}};
 
-static const size_t player_config_entry_count = ARRAY_SIZE(player_config_entries);
+enum { player_config_entry_count = ARRAY_SIZE(player_config_entries) };
 
 static const ConfigEntry server_config_entries[] = {
     {"bind_address", CFG_TYPE_STRING, "127.0.0.1", offsetof(ServerConfig_t, bind_address),
@@ -119,7 +119,7 @@ static const ConfigEntry server_config_entries[] = {
     {"password", CFG_TYPE_STRING, "", offsetof(ServerConfig_t, password),
      sizeof(((ServerConfig_t *)0)->password)}};
 
-static const size_t server_config_entry_count = ARRAY_SIZE(server_config_entries);
+enum { server_config_entry_count = ARRAY_SIZE(server_config_entries) };
 
 ServerConfig_t get_server_config(Path_t *path, const CliArgs_t *cli_args);
 

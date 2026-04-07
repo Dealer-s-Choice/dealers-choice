@@ -31,6 +31,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifdef _MSC_VER
+#  define strcasecmp _stricmp
+#endif
+
 #include "dc_config.h"
 #include "util.h"
 
