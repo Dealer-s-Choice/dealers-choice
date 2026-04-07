@@ -53,6 +53,8 @@ if cc.get_id() != 'msvc'
     '-D_POSIX_C_SOURCE=200112L',  # enable setenv() on Ubuntu Jammy
   ]
   add_project_arguments(definitions, language: 'c')
+else
+  add_project_arguments('-D_CRT_SECURE_NO_WARNINGS', language: 'c')
 endif
 
 canfigger_dep = dependency(
