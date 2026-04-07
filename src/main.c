@@ -60,7 +60,7 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, u
   ButtonWidget_t *button_settings = button_widget_create(
       _("Settings"), (EColor_t){COLOR_BLACK, COLOR_YELLOW}, font->fonts[FONT_BOLD], (SDL_Keycode)0);
   UIRegistry_t reg = {0};
-  SDL_Rect title_rect = {g_center.x / 1.5, 60, 0, 0};
+  SDL_Rect title_rect = {g_center.x * 2 / 3, 60, 0, 0};
 
   int x_margin = g_viewport.x + 100;
   button_connect->base.rect.x = x_margin;
@@ -396,7 +396,7 @@ static void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *s
   btn_defaults->base.rect.y = btn_save->base.rect.y;
   ui_register(&reg, &btn_defaults->base);
 
-  SDL_Rect title_rect = {g_center.x / 1.5, 60, 0, 0};
+  SDL_Rect title_rect = {g_center.x * 2 / 3, 60, 0, 0};
   Uint32 anim_start = SDL_GetTicks();
 
   TextWidget_t *tw_settings_title =

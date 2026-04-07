@@ -64,7 +64,7 @@ typedef struct {
   ma_engine_config engineConfig;
   Sound_t *sounds;
   Sound_t *coin_hit_sounds;
-  size_t coin_array_size;
+  uint32_t coin_array_size;
 } SoundContext_t;
 
 extern const GameChoice_t game_choices[];
@@ -75,13 +75,13 @@ bool get_socket_context_and_run_client(PlayerConfig_t *player_config, const CliA
                                        const bool test_mode, LinkWidget_t **links,
                                        SocketContext_t *out_socket_context);
 
-int8_t send_player_action(ClientState_t *client_state, TCPsocket sock, uint8_t action,
-                          uint32_t amount);
+int send_player_action(ClientState_t *client_state, TCPsocket sock, uint8_t action,
+                       uint32_t amount);
 
 void do_sdl_cleanup(SdlContext_t *sdl_context);
 
-int8_t send_discards_request_new_cards(TCPsocket sock, const uint8_t *discard_indices,
-                                       uint8_t count);
+int send_discards_request_new_cards(TCPsocket sock, const uint8_t *discard_indices,
+                                    uint8_t count);
 
 void layout_cards(CardContext_t card_context[MAX_PLAYERS][MAX_HAND_SIZE], Player_t *players_array,
                   const SDL_Point *player_pos);

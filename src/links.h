@@ -10,7 +10,7 @@ typedef struct {
   const char *url;
 } LinkDef_t;
 extern const LinkDef_t LINK_DEFS[];
-extern const size_t LINK_DEFS_COUNT;
+#define LINK_DEFS_COUNT 3
 
 void layout_links(LinkWidget_t **links, size_t count);
 

@@ -189,8 +189,8 @@ static EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_confi
                                                   font->fonts[FONT_BOLD], (SDL_Keycode)0);
   ButtonWidget_t *btn_ban = button_widget_create(_("Ban"), (EColor_t){COLOR_WHITE, COLOR_BROWN},
                                                  font->fonts[FONT_BOLD], (SDL_Keycode)0);
-  btn_kick->base.rect.x = g_viewport.w * 0.1;
-  btn_kick->base.rect.y = g_viewport.h * 0.82;
+  btn_kick->base.rect.x = g_viewport.w / 10;
+  btn_kick->base.rect.y = g_viewport.h * 82 / 100;
   btn_ban->base.rect.x = btn_kick->base.rect.x + btn_kick->base.rect.w + 16;
   btn_ban->base.rect.y = btn_kick->base.rect.y;
   ui_register(&registry, &btn_kick->base);
@@ -297,7 +297,7 @@ static EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_confi
 
     // printf("game_state is connected %d\n", game_state->player[i].is_connected);
     if (table_needs_rebuild) {
-      ui_table_begin(&table, g_viewport.w * .1, g_viewport.h / 2, 3);
+      ui_table_begin(&table, g_viewport.w / 10, g_viewport.h / 2, 3);
       ui_table_add(&table, 0, 0, &connected_tw->base);
       ui_table_add(&table, 0, 1, &dealer_label_tw->base);
       ui_table_add(&table, 0, 2, &ping_label_tw->base);
@@ -460,14 +460,16 @@ static EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_confi
             button_deuces_wild->base.selected = !button_deuces_wild->base.selected;
           }
           if (game_state->player[my_id].is_admin) {
-            for (int i = 0; i < MAX_PLAYERS; i++) {
+            for (int8_t i = 0; i < MAX_PLAYERS; i++) {
               if (!nick_widgets[i] || !nick_widgets[i]->selectable)
                 continue;
               if (SDL_PointInRect(&mouse_pos, &nick_widgets[i]->base.rect)) {
-                int8_t new_sel = (selected_nick == i) ? -1 : i;
                 if (selected_nick >= 0 && nick_widgets[selected_nick])
                   nick_widgets[selected_nick]->base.selected = false;
-                selected_nick = new_sel;
+                if (selected_nick == i)
+                  selected_nick = -1;
+                else
+                  selected_nick = i;
                 if (selected_nick >= 0)
                   nick_widgets[selected_nick]->base.selected = true;
                 break;
@@ -961,7 +963,7 @@ static void draw_card_back_pattern(SDL_Renderer *renderer, SDL_Rect *card_rect) 
   }
 }
 
-int8_t send_player_action(ClientState_t *client_state, TCPsocket sock, uint8_t action,
+int send_player_action(ClientState_t *client_state, TCPsocket sock, uint8_t action,
                           uint32_t amount) {
   uint8_t buffer[7];
 
@@ -980,7 +982,7 @@ int8_t send_player_action(ClientState_t *client_state, TCPsocket sock, uint8_t a
   return send_all_tcp(sock, buffer, sizeof(buffer));
 }
 
-int8_t send_discards_request_new_cards(TCPsocket sock, const uint8_t *discard_indices,
+int send_discards_request_new_cards(TCPsocket sock, const uint8_t *discard_indices,
                                        uint8_t count) {
   if (count > 4)
     return -1;
@@ -1642,7 +1644,7 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
   CardContext_t card_context[MAX_PLAYERS][MAX_HAND_SIZE];
 
   ButtonWidget_t *card_faces[13] = {0};
-  for (size_t i = 0; i < ARRAY_SIZE(card_faces); i++)
+  for (int i = 0; i < (int)ARRAY_SIZE(card_faces); i++)
     card_faces[i] =
         button_widget_create(DH_get_card_face_str(i + 1), (EColor_t){COLOR_WHITE, COLOR_BROWN},
                              font->fonts[FONT_WILD_SELECT], (SDL_Keycode)0);
@@ -1662,7 +1664,7 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
       _("Kick"), (EColor_t){COLOR_WHITE, COLOR_BROWN}, font->fonts[FONT_BOLD], (SDL_Keycode)0);
   ButtonWidget_t *game_btn_ban = button_widget_create(
       _("Ban"), (EColor_t){COLOR_WHITE, COLOR_BROWN}, font->fonts[FONT_BOLD], (SDL_Keycode)0);
-  game_btn_kick->base.rect.x = g_viewport.w * 0.1;
+  game_btn_kick->base.rect.x = g_viewport.w / 10;
   /* Position above the status message panel, which starts at g_center.y */
   game_btn_kick->base.rect.y = g_center.y - game_btn_kick->base.rect.h - 20;
   game_btn_ban->base.rect.x = game_btn_kick->base.rect.x + game_btn_kick->base.rect.w + 16;
@@ -1769,7 +1771,7 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
     bool left[MAX_PLAYERS] = {0};
     detect_player_changes(game_state, was_connected, joined, left);
 
-    for (int id = 0; id < MAX_PLAYERS; id++) {
+    for (int8_t id = 0; id < MAX_PLAYERS; id++) {
       if (left[id]) {
         if (selected_nick == id)
           selected_nick = -1;
@@ -1924,7 +1926,7 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
     indicator_deuces_wild->base.enabled = client_state.deuces_wild;
 
     SDL_Rect turn_outline = {0};
-    for (int id = 0; id < MAX_PLAYERS; id++) {
+    for (int8_t id = 0; id < MAX_PLAYERS; id++) {
       if (!game_nick_widgets[id] || !game_coin_widgets[id] || !game_coins_tw[id])
         continue;
       if (game_state->player[id].coins != prev_coins[id]) {
@@ -2231,14 +2233,16 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
 
       if (event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_LEFT &&
           game_state->player[my_id].is_admin) {
-        for (int i = 0; i < MAX_PLAYERS; i++) {
+        for (int8_t i = 0; i < MAX_PLAYERS; i++) {
           if (!game_nick_widgets[i] || !game_nick_widgets[i]->selectable)
             continue;
           if (SDL_PointInRect(&mouse_pos, &game_nick_widgets[i]->base.rect)) {
-            int8_t new_sel = (selected_nick == i) ? -1 : i;
             if (selected_nick >= 0 && game_nick_widgets[selected_nick])
               game_nick_widgets[selected_nick]->base.selected = false;
-            selected_nick = new_sel;
+            if (selected_nick == i)
+              selected_nick = -1;
+            else
+              selected_nick = i;
             if (selected_nick >= 0)
               game_nick_widgets[selected_nick]->base.selected = true;
             break;
@@ -2325,7 +2329,7 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
           uint8_t discard_indices[MAX_HAND_SIZE] = {0};
           uint8_t discard_count = 0;
 
-          for (int i = 0; i < MAX_HAND_SIZE; i++) {
+          for (uint8_t i = 0; i < MAX_HAND_SIZE; i++) {
             if (!card_context[my_id][i].selected)
               continue;
             discard_indices[discard_count++] = i;
@@ -2630,7 +2634,7 @@ bool get_socket_context_and_run_client(PlayerConfig_t *player_config, const CliA
     GameSettings_t game_settings = {0};
     ClientState_t client_state = {0};
     char *nick = player_config->nick;
-    uint16_t len = strlen(nick) + 1;
+    uint16_t len = (uint16_t)(strlen(nick) + 1);
     uint16_t net_len = SDL_SwapBE16(len);
     send_all_tcp(sock, &net_len, sizeof(net_len));
     if (send_all_tcp(sock, player_config->nick, len) != 0)

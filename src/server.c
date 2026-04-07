@@ -1863,7 +1863,7 @@ int run_server(const CliArgs_t *cli_args, Path_t *path) {
         fputs(SDLNet_GetError(), stderr);
       else if (recv_pings != 0) {
         bool break_loop = false;
-        for (int i = 0; i < MAX_CLIENTS; i++) {
+        for (int8_t i = 0; i < MAX_CLIENTS; i++) {
           if (!clients[i])
             continue;
 
