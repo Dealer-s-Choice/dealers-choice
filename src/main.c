@@ -26,6 +26,11 @@
 
 */
 
+// On Windows, SDL redefines main→SDL_main unless this is set first
+#ifdef _WIN32
+#  define SDL_MAIN_HANDLED
+#endif
+
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h> // For setenv()

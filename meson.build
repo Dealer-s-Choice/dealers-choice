@@ -54,7 +54,7 @@ if cc.get_id() != 'msvc'
   ]
   add_project_arguments(definitions, language: 'c')
 else
-  add_project_arguments('-D_CRT_SECURE_NO_WARNINGS', language: 'c')
+  add_project_arguments(['-D_CRT_SECURE_NO_WARNINGS', '-DPROTOBUF_C_IMPORT'], language: 'c')
 endif
 
 canfigger_dep = dependency(
