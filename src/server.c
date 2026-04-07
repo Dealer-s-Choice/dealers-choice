@@ -99,7 +99,7 @@ ServerConfig_t init_game_state(GameState_t *game_state, Path_t *path, const CliA
     exit(EXIT_FAILURE);
   }
 
-  for (int i = 0; i < MAX_PLAYERS; i++) {
+  for (int8_t i = 0; i < MAX_PLAYERS; i++) {
     game_state->player[i] = (Player_t){
         .id = i,
         .is_connected = false,
@@ -152,7 +152,7 @@ static int send_new_hand(TCPsocket sock, const POKEVAL_Hand_7 *hand, uint8_t han
   pb_hand.card = cards;
 
   size_t packed_size = hand__get_packed_size(&pb_hand);
-  uint32_t payload_size = OPCODE_SIZE + packed_size;
+  uint32_t payload_size = OPCODE_SIZE + (uint32_t)packed_size;
   uint32_t total_size = SDL_SwapBE32(payload_size);
 
   uint8_t *buffer = malloc(LENGTH_PREFIX_SIZE + payload_size);
@@ -238,7 +238,7 @@ static void broadcast_game_state(ArgsBroadcastGameState_t *args) {
     if (!args->game_state->winner_declared || args->game_state->player_count == 1)
       memcpy(&args->game_state->player[i].hand, &hand_tmp, sizeof(POKEVAL_Hand_7));
 
-    uint32_t size_net = SDL_SwapBE32(size);
+    uint32_t size_net = SDL_SwapBE32((uint32_t)size);
 
     // fprintf(stderr, "sending to %d\n", i);
     if (send_with_retries(args->clients[i], &size_net, sizeof(size_net)) == -1 ||
@@ -256,7 +256,7 @@ static void send_game_settings(ArgsBroadcastGameState_t *args, TCPsocket sock) {
   if (!data)
     return;
 
-  uint32_t size_net = SDL_SwapBE32(size);
+  uint32_t size_net = SDL_SwapBE32((uint32_t)size);
 
   // fprintf(stderr, "sending to %d\n", i);
   if (send_with_retries(sock, &size_net, sizeof(size_net)) == -1 ||
@@ -272,7 +272,7 @@ int send_status_message(TCPsocket sock, const char *msg) {
   if (msg_len > LEN_STATUS_STR)
     msg_len = LEN_STATUS_STR;
 
-  uint32_t size = SDL_SwapBE32(2 + msg_len); // payload: 2-byte opcode + N-byte msg
+  uint32_t size = SDL_SwapBE32(2 + (uint32_t)msg_len); // payload: 2-byte opcode + N-byte msg
   uint8_t buffer[4 + 2 + LEN_STATUS_STR];    // max: 4 bytes (size) + 2 (opcode) + 100 (msg)
 
   memcpy(buffer, &size, sizeof(size));
@@ -535,7 +535,7 @@ static void handle_sort_hand(POKEVAL_Hand_7 *real_hand, const bool is_lowball) {
   real_hand->card[6] = DH_card_null;
 }
 
-static ELoop_t handle_draw(ArgsBroadcastGameState_t *args, TCPsocket sock, const int id,
+static ELoop_t handle_draw(ArgsBroadcastGameState_t *args, TCPsocket sock, const int8_t id,
                            DH_Deck *deck) {
   verbose_puts("sending draw prompt");
   if (send_opcode(sock, MSG_DRAW_PROMPT) != 0) {
@@ -609,7 +609,7 @@ static ELoop_t handle_draw(ArgsBroadcastGameState_t *args, TCPsocket sock, const
   return LOOP_OK;
 }
 
-static ELoop_t handle_wild_cards(ArgsBroadcastGameState_t *args, TCPsocket sock, const int id) {
+static ELoop_t handle_wild_cards(ArgsBroadcastGameState_t *args, TCPsocket sock, const int8_t id) {
   verbose_puts("sending submit wild prompt");
   if (send_opcode(sock, MSG_WILD_REPLACEMENT) != 0) {
     fputs("Failed to send submit wild prompt\n", stderr);
@@ -1068,7 +1068,7 @@ static void ban_player(ArgsBroadcastGameState_t *args, int8_t id) {
 
 static bool handle_disconnections(ArgsBroadcastGameState_t *args) {
   bool someone_disconnected = false;
-  for (int i = 0; i < MAX_CLIENTS; i++) {
+  for (int8_t i = 0; i < MAX_CLIENTS; i++) {
     if (!args->slot_taken[i])
       continue;
     if (!SDLNet_SocketReady(args->clients[i]))
@@ -1136,7 +1136,7 @@ static uint8_t count_active_clients(const bool *slot_taken) {
 
 static bool reassign_dealer_if_needed(GameState_t *game_state, bool *slot_taken) {
   if (!slot_taken[game_state->dealer_id]) {
-    for (int i = 0; i < MAX_CLIENTS; i++) {
+    for (int8_t i = 0; i < MAX_CLIENTS; i++) {
       if (slot_taken[i]) {
         game_state->dealer_id = i;
         printf("Dealer reassigned to client %d\n", i);
@@ -1150,9 +1150,9 @@ static bool reassign_dealer_if_needed(GameState_t *game_state, bool *slot_taken)
   return false;
 }
 
-static int get_next_dealer(int current, const bool *slot_taken) {
-  for (int i = 1; i <= MAX_CLIENTS; i++) {
-    int next = (current + i) % MAX_CLIENTS;
+static int8_t get_next_dealer(int8_t current, const bool *slot_taken) {
+  for (int8_t i = 1; i <= MAX_CLIENTS; i++) {
+    int8_t next = (current + i) % MAX_CLIENTS;
     if (slot_taken[next])
       return next;
   }
@@ -1490,7 +1490,7 @@ static EReturnCode_t init_game(ArgsBroadcastGameState_t *args, DH_Deck *deck) {
   reset_players(args->game_state);
 
   // Rotate dealer to next active client
-  int next_dealer = get_next_dealer(*dealer_id, args->slot_taken);
+  int8_t next_dealer = get_next_dealer(*dealer_id, args->slot_taken);
   if (next_dealer != -1) {
     *dealer_id = next_dealer;
     broadcast_game_state(args);
@@ -1613,8 +1613,8 @@ static ELoop_t register_new_client(ArgsBroadcastGameState_t *args) {
       }
     }
 
-    int slot = -1;
-    for (int i = 0; i < MAX_CLIENTS; i++) {
+    int8_t slot = -1;
+    for (int8_t i = 0; i < MAX_CLIENTS; i++) {
       if (!args->slot_taken[i]) {
         slot = i;
         break;
@@ -1691,7 +1691,7 @@ static ELoop_t register_new_client(ArgsBroadcastGameState_t *args) {
 
         // Step 4: Read nickname
         memset(player->nick, 0, sizeof(player->nick));
-        if (recv_all_tcp(new_client, player->nick, len) != (ssize_t)len) {
+        if (recv_all_tcp(new_client, player->nick, len) != (int)len) {
           fprintf(stderr, "Failed to receive nickname.\n");
           do_socket_cleanup(new_client, args->socket_set, args->slot_taken, slot, player);
           return LOOP_CONTINUE;
@@ -1829,7 +1829,7 @@ int run_server(const CliArgs_t *cli_args, Path_t *path) {
       break;
 
     if (*dealer_id == -1) {
-      for (int i = 0; i < MAX_CLIENTS; i++) {
+      for (int8_t i = 0; i < MAX_CLIENTS; i++) {
         if (slot_taken[i]) {
           *dealer_id = i;
           printf("Initial dealer set to player %d\n", i);
@@ -1863,7 +1863,7 @@ int run_server(const CliArgs_t *cli_args, Path_t *path) {
         fputs(SDLNet_GetError(), stderr);
       else if (recv_pings != 0) {
         bool break_loop = false;
-        for (int i = 0; i < MAX_CLIENTS; i++) {
+        for (int8_t i = 0; i < MAX_CLIENTS; i++) {
           if (!clients[i])
             continue;
 

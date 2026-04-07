@@ -30,7 +30,9 @@
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
-#include <unistd.h>
+#ifndef _MSC_VER
+#  include <unistd.h>
+#endif
 
 #include "game.h"
 
@@ -120,13 +122,13 @@ const GameChoice_t *find_game_choice_by_type(const uint8_t type) {
   return NULL; // Not found
 }
 
-int8_t send_game_select(TCPsocket sock, uint8_t game_type, bool deuces_wild) {
+int send_game_select(TCPsocket sock, uint8_t game_type, bool deuces_wild) {
   GameSelectPayload_t payload = {game_type, deuces_wild ? 1 : 0};
 
   const uint32_t payload_size = OPCODE_SIZE + sizeof(payload);
   const uint32_t total_size_be = SDL_SwapBE32(payload_size);
 
-  uint8_t buffer[LENGTH_PREFIX_SIZE + payload_size];
+  uint8_t buffer[LENGTH_PREFIX_SIZE + OPCODE_SIZE + sizeof(GameSelectPayload_t)];
 
   // Write length prefix
   memcpy(buffer, &total_size_be, LENGTH_PREFIX_SIZE);

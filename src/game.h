@@ -33,7 +33,9 @@
 #include <pokeval.h>
 #include <stdio.h>
 #include <string.h>
-#include <unistd.h>
+#ifndef _MSC_VER
+#  include <unistd.h>
+#endif
 
 #include "config.h"
 #include "globals.h"
@@ -71,7 +73,7 @@ typedef struct {
 
 const GameChoice_t *find_game_choice_by_type(const uint8_t type);
 
-int8_t send_game_select(TCPsocket sock, uint8_t game_type, bool deuces_wild);
+int send_game_select(TCPsocket sock, uint8_t game_type, bool deuces_wild);
 
 int send_kick_player(TCPsocket sock, int8_t target_id);
 int send_ban_player(TCPsocket sock, int8_t target_id);

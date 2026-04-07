@@ -65,7 +65,7 @@ static void fill_player_from_message(Player_t *dst, const Player *msg) {
   if (msg->nick)
     snprintf(dst->nick, sizeof(dst->nick), "%s", msg->nick);
 
-  dst->id = msg->id;
+  dst->id = (int8_t)msg->id;
   dst->coins = msg->coins;
   dst->in = msg->in;
   dst->winner = msg->winner;
@@ -106,7 +106,7 @@ uint8_t *serialize_game_state(const GameState_t *src, uint32_t *size_out) {
   msg.player = player_msgs;
 
   // Serialize to buffer
-  *size_out = game_state__get_packed_size(&msg);
+  *size_out = (uint32_t)game_state__get_packed_size(&msg);
   uint8_t *buffer = malloc(*size_out);
   if (!buffer) {
     *size_out = 0;
@@ -127,11 +127,11 @@ GameState_t deserialize_game_state(const uint8_t *data, uint32_t size) {
   }
 
   result.pot = msg->pot;
-  result.dealer_id = msg->dealer_id;
+  result.dealer_id = (int8_t)msg->dealer_id;
   result.at_menu = msg->at_menu;
   result.raises_remaining = msg->raises_remaining;
   result.prev_bet_amount = msg->prev_bet_amount;
-  result.player_count = msg->player_count;
+  result.player_count = (uint8_t)msg->player_count;
   result.winner_declared = msg->winner_declared;
   result.player_exchanging = msg->player_exchanging;
 
@@ -179,7 +179,7 @@ GameSettings_t deserialize_game_settings(const uint8_t *data, size_t size) {
     return result;
   }
 
-  result.client_id = msg->client_id;
+  result.client_id = (int8_t)msg->client_id;
   result.action_timeout_ms = msg->action_timeout_ms;
   result.wild_exchange_timeout_ms = msg->wild_exchange_timeout_ms;
   result.end_of_game_timeout_ms = msg->end_of_game_timeout_ms;
@@ -543,7 +543,7 @@ void socket_cleanup(SocketContext_t *socket_context) {
 int send_message(TCPsocket sock, uint16_t opcode, const uint8_t *payload, size_t payload_len) {
   if (payload_len > UINT32_MAX - 2)
     return -1;
-  uint32_t total_size = SDL_SwapBE32(2 + payload_len);
+  uint32_t total_size = SDL_SwapBE32((uint32_t)(2 + payload_len));
   uint16_t opcode_be = SDL_SwapBE16(opcode);
 
   if (send_all_tcp(sock, &total_size, sizeof(total_size)) < 0)
