@@ -65,7 +65,7 @@ jobs:
     - name: Meson setup
       run: |
         $vcpkg_prefix = "$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static-md"
-        $env:PKG_CONFIG = "$vcpkg_prefix\tools\pkgconf\pkgconf.exe"
+        $env:PKG_CONFIG = "$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows\tools\pkgconf\pkgconf.exe"
         $env:PKG_CONFIG_PATH = "$vcpkg_prefix\lib\pkgconfig"
         meson setup _build -Db_sanitize=none -Dsodium=enabled "-Dcmake_prefix_path=$vcpkg_prefix"
 
