@@ -630,7 +630,7 @@ const ProtobufCMessageDescriptor player__descriptor =
   (ProtobufCMessageInit) player__init,
   NULL,NULL,NULL    /* reserved[123] */
 };
-static const ProtobufCFieldDescriptor game_state__field_descriptors[9] =
+static const ProtobufCFieldDescriptor game_state__field_descriptors[8] =
 {
   {
     "pot",
@@ -717,18 +717,6 @@ static const ProtobufCFieldDescriptor game_state__field_descriptors[9] =
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
   {
-    "player_exchanging",
-    8,
-    PROTOBUF_C_LABEL_NONE,
-    PROTOBUF_C_TYPE_BOOL,
-    0,   /* quantifier_offset */
-    offsetof(GameState, player_exchanging),
-    NULL,
-    NULL,
-    0,             /* flags */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
-  {
     "player",
     9,
     PROTOBUF_C_LABEL_REPEATED,
@@ -744,18 +732,18 @@ static const ProtobufCFieldDescriptor game_state__field_descriptors[9] =
 static const unsigned game_state__field_indices_by_name[] = {
   2,   /* field[2] = at_menu */
   1,   /* field[1] = dealer_id */
-  8,   /* field[8] = player */
+  7,   /* field[7] = player */
   3,   /* field[3] = player_count */
-  7,   /* field[7] = player_exchanging */
   0,   /* field[0] = pot */
   5,   /* field[5] = prev_bet_amount */
   4,   /* field[4] = raises_remaining */
   6,   /* field[6] = winner_declared */
 };
-static const ProtobufCIntRange game_state__number_ranges[1 + 1] =
+static const ProtobufCIntRange game_state__number_ranges[2 + 1] =
 {
   { 1, 0 },
-  { 0, 9 }
+  { 9, 7 },
+  { 0, 8 }
 };
 const ProtobufCMessageDescriptor game_state__descriptor =
 {
@@ -765,14 +753,14 @@ const ProtobufCMessageDescriptor game_state__descriptor =
   "GameState",
   "",
   sizeof(GameState),
-  9,
+  8,
   game_state__field_descriptors,
   game_state__field_indices_by_name,
-  1,  game_state__number_ranges,
+  2,  game_state__number_ranges,
   (ProtobufCMessageInit) game_state__init,
   NULL,NULL,NULL    /* reserved[123] */
 };
-static const ProtobufCFieldDescriptor game_settings__field_descriptors[5] =
+static const ProtobufCFieldDescriptor game_settings__field_descriptors[4] =
 {
   {
     "client_id",
@@ -793,18 +781,6 @@ static const ProtobufCFieldDescriptor game_settings__field_descriptors[5] =
     PROTOBUF_C_TYPE_UINT32,
     0,   /* quantifier_offset */
     offsetof(GameSettings, action_timeout_ms),
-    NULL,
-    NULL,
-    0,             /* flags */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
-  {
-    "wild_exchange_timeout_ms",
-    3,
-    PROTOBUF_C_LABEL_NONE,
-    PROTOBUF_C_TYPE_UINT32,
-    0,   /* quantifier_offset */
-    offsetof(GameSettings, wild_exchange_timeout_ms),
     NULL,
     NULL,
     0,             /* flags */
@@ -837,15 +813,15 @@ static const ProtobufCFieldDescriptor game_settings__field_descriptors[5] =
 };
 static const unsigned game_settings__field_indices_by_name[] = {
   1,   /* field[1] = action_timeout_ms */
-  4,   /* field[4] = bet_amounts */
+  3,   /* field[3] = bet_amounts */
   0,   /* field[0] = client_id */
-  3,   /* field[3] = end_of_game_timeout_ms */
-  2,   /* field[2] = wild_exchange_timeout_ms */
+  2,   /* field[2] = end_of_game_timeout_ms */
 };
-static const ProtobufCIntRange game_settings__number_ranges[1 + 1] =
+static const ProtobufCIntRange game_settings__number_ranges[2 + 1] =
 {
   { 1, 0 },
-  { 0, 5 }
+  { 4, 2 },
+  { 0, 4 }
 };
 const ProtobufCMessageDescriptor game_settings__descriptor =
 {
@@ -855,10 +831,10 @@ const ProtobufCMessageDescriptor game_settings__descriptor =
   "GameSettings",
   "",
   sizeof(GameSettings),
-  5,
+  4,
   game_settings__field_descriptors,
   game_settings__field_indices_by_name,
-  1,  game_settings__number_ranges,
+  2,  game_settings__number_ranges,
   (ProtobufCMessageInit) game_settings__init,
   NULL,NULL,NULL    /* reserved[123] */
 };

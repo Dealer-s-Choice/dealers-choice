@@ -1,3 +1,13 @@
+2026-04-07
+
+- dealers-choice 0.0.12:
+
+  + Deuces wild: server now evaluates wild hands automatically using
+    POKEVAL_compare_hands_wild / POKEVAL_evaluate_hand_wild; removed the
+    end-of-hand UI selection for wild card replacement and the associated
+    exchange button, timeout setting (wild_exchange_timeout_ms), network
+    message (MSG_WILD_REPLACEMENT), and server-side exchange logic
+
 2026-04-01
 
 - dealers-choice 0.0.11:

@@ -76,7 +76,6 @@ __attribute__((packed)) GameProtocolHeader_t;
 #define MSG_PING_RESPONSE 0x0005
 #define MSG_DEAL_CARDS 0x0006   // Cards sent to player
 #define MSG_DRAW_REQUEST 0x0007 // Player_t discards cards for draw
-#define MSG_WILD_REPLACEMENT 0x0008
 #define MSG_DRAW_PROMPT 0x0009
 #define MSG_STATUS_MESSAGE 0x000A
 #define MSG_NEW_HAND 0x000B
@@ -103,7 +102,6 @@ typedef struct {
   int8_t turn_id;
   bool turn_switch;
   bool do_discard_draw;
-  bool do_exchange_wilds;
   bool has_ace;
   uint8_t n_cards_selected;
   uint32_t selected_amount;
