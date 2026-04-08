@@ -1,7 +1,5 @@
-2026-04-07
 
-- dealers-choice 0.0.12:
-
+- dealers-choice (in progress):
   + Deuces wild: server now evaluates wild hands automatically using
     POKEVAL_compare_hands_wild / POKEVAL_evaluate_hand_wild; removed the
     end-of-hand UI selection for wild card replacement and the associated
@@ -11,7 +9,6 @@
 2026-04-01
 
 - dealers-choice 0.0.11:
-
   * bugfix: uninitialize miniaudio engine on sound load failure
     Previously called exit() without ma_engine_uninit(), locking the audio
     device and blocking other applications until it was replugged or the
