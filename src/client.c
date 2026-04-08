@@ -964,7 +964,7 @@ static void draw_card_back_pattern(SDL_Renderer *renderer, SDL_Rect *card_rect) 
 }
 
 int send_player_action(ClientState_t *client_state, TCPsocket sock, uint8_t action,
-                          uint32_t amount) {
+                       uint32_t amount) {
   uint8_t buffer[7];
 
   buffer[0] = (MSG_PLAYER_ACTION >> 8) & 0xFF;
@@ -982,8 +982,7 @@ int send_player_action(ClientState_t *client_state, TCPsocket sock, uint8_t acti
   return send_all_tcp(sock, buffer, sizeof(buffer));
 }
 
-int send_discards_request_new_cards(TCPsocket sock, const uint8_t *discard_indices,
-                                       uint8_t count) {
+int send_discards_request_new_cards(TCPsocket sock, const uint8_t *discard_indices, uint8_t count) {
   if (count > 4)
     return -1;
 
@@ -1216,6 +1215,7 @@ enum {
   FOLD,
   CALL,
   RAISE,
+  COMPLETE,
   DISCARD,
   MAX_ACTIONS,
 };
@@ -1236,9 +1236,10 @@ typedef struct {
 } ActionButtonAttrs;
 
 ActionButtonAttrs action_button_attrs[MAX_ACTIONS] = {
-    [CHECK] = {N_("Check"), SDLK_c, false},      [BET] = {N_("Bet"), SDLK_b, false},
-    [FOLD] = {N_("Fold"), SDLK_f, false},        [CALL] = {N_("Call"), SDLK_c, false},
-    [RAISE] = {N_("Raise"), SDLK_r, false},      [DISCARD] = {N_("Discard"), SDLK_d, true},
+    [CHECK] = {N_("Check"), SDLK_c, false},    [BET] = {N_("Bet"), SDLK_b, false},
+    [FOLD] = {N_("Fold"), SDLK_f, false},      [CALL] = {N_("Call"), SDLK_c, false},
+    [RAISE] = {N_("Raise"), SDLK_r, false},    [COMPLETE] = {N_("Complete"), SDLK_r, false},
+    [DISCARD] = {N_("Discard"), SDLK_d, true},
 };
 
 static void layout_action_buttons(ButtonWidget_t **b, ActionButtonAttrs *attr) {
@@ -1945,6 +1946,8 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
         // may be set to true
         client_state.bet_check_fold = false;
         client_state.call_raise_fold = false;
+        client_state.call_complete_fold = false;
+        client_state.complete_check_fold = false;
         client_state.do_discard_draw = false;
 
         if (my_turn && !game_state->winner_declared) {
@@ -1983,7 +1986,8 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
           ui_widget_render(&discard_hint_tw->base);
         }
         ui_widget_render(&action_bw[DISCARD]->base);
-      } else if (client_state.bet_check_fold || client_state.call_raise_fold) {
+      } else if (client_state.bet_check_fold || client_state.call_raise_fold ||
+                 client_state.call_complete_fold || client_state.complete_check_fold) {
         int x_offset = x_begin_action_button;
         if (client_state.bet_check_fold) {
           action_bw[BET]->base.rect.x = x_offset;
@@ -2005,14 +2009,38 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
             ui_widget_render(&action_bw[RAISE]->base);
           x_offset =
               action_bw[RAISE]->base.rect.x + action_bw[RAISE]->base.rect.w + BUTTON_X_SPACING;
+        } else if (client_state.call_complete_fold) {
+          action_bw[CALL]->base.rect.x = x_offset;
+          ui_widget_render(&action_bw[CALL]->base);
+          x_offset = action_bw[CALL]->base.rect.x + action_bw[CALL]->base.rect.w + BUTTON_X_SPACING;
+
+          action_bw[COMPLETE]->base.rect.x = x_offset;
+          action_bw[COMPLETE]->interactive = game_state->raises_remaining > 0;
+          if (action_bw[COMPLETE]->interactive)
+            ui_widget_render(&action_bw[COMPLETE]->base);
+          x_offset = action_bw[COMPLETE]->base.rect.x + action_bw[COMPLETE]->base.rect.w +
+                     BUTTON_X_SPACING;
+        } else if (client_state.complete_check_fold) {
+          action_bw[COMPLETE]->base.rect.x = x_offset;
+          action_bw[COMPLETE]->interactive = game_state->raises_remaining > 0;
+          if (action_bw[COMPLETE]->interactive)
+            ui_widget_render(&action_bw[COMPLETE]->base);
+          x_offset = action_bw[COMPLETE]->base.rect.x + action_bw[COMPLETE]->base.rect.w +
+                     BUTTON_X_SPACING;
+
+          action_bw[CHECK]->base.rect.x = x_offset;
+          ui_widget_render(&action_bw[CHECK]->base);
+          x_offset =
+              action_bw[CHECK]->base.rect.x + action_bw[CHECK]->base.rect.w + BUTTON_X_SPACING;
         }
         action_bw[FOLD]->base.rect.x = x_offset;
         ui_widget_render(&action_bw[FOLD]->base);
 
         // The amount buttons won't be shown if this is true (max raises were reached
         // if the RAISE button is not active).
-        if (client_state.bet_check_fold ||
-            (client_state.call_raise_fold && action_bw[RAISE]->interactive)) {
+        if (client_state.bet_check_fold || client_state.complete_check_fold ||
+            (client_state.call_raise_fold && action_bw[RAISE]->interactive) ||
+            (client_state.call_complete_fold && action_bw[COMPLETE]->interactive)) {
           for (size_t i = 0; i < n_bet_amounts; i++) {
             if (game_state->prev_bet_amount > amount[i].value && action_bw[RAISE]->interactive)
               amount_bw[i]->interactive = false;
@@ -2159,7 +2187,8 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
       }
       if (event.type == SDL_MOUSEBUTTONDOWN || event.type == SDL_KEYDOWN) {
         if (my_turn && !client_state.do_discard_draw) {
-          if (client_state.bet_check_fold || client_state.call_raise_fold) {
+          if (client_state.bet_check_fold || client_state.call_raise_fold ||
+              client_state.call_complete_fold || client_state.complete_check_fold) {
             if (SDL_PointInRect(&mouse_pos, &action_bw[FOLD]->base.rect) ||
                 event.key.keysym.sym == action_bw[FOLD]->hotkey) {
               verbose_puts("folding");
@@ -2195,6 +2224,36 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
               verbose_puts("calling");
               if (send_player_action(&client_state, sock, ACTION_CALL, 0) != 0)
                 fprintf(stderr, "Failed to call\n");
+            }
+          } else if (client_state.call_complete_fold) {
+            if (action_bw[COMPLETE]->interactive &&
+                (SDL_PointInRect(&mouse_pos, &action_bw[COMPLETE]->base.rect) ||
+                 event.key.keysym.sym == action_bw[COMPLETE]->hotkey)) {
+              if (send_player_action(&client_state, sock, ACTION_BET,
+                                     client_state.selected_amount) == 0)
+                verbose_printf("completing %d\n", client_state.selected_amount);
+              else
+                fputs("Failed to complete\n", stderr);
+            } else if (SDL_PointInRect(&mouse_pos, &action_bw[CALL]->base.rect) ||
+                       event.key.keysym.sym == action_bw[CALL]->hotkey) {
+              verbose_puts("calling");
+              if (send_player_action(&client_state, sock, ACTION_CALL, 0) != 0)
+                fprintf(stderr, "Failed to call\n");
+            }
+          } else if (client_state.complete_check_fold) {
+            if (action_bw[COMPLETE]->interactive &&
+                (SDL_PointInRect(&mouse_pos, &action_bw[COMPLETE]->base.rect) ||
+                 event.key.keysym.sym == action_bw[COMPLETE]->hotkey)) {
+              if (send_player_action(&client_state, sock, ACTION_BET,
+                                     client_state.selected_amount) == 0)
+                verbose_printf("completing %d\n", client_state.selected_amount);
+              else
+                fputs("Failed to complete\n", stderr);
+            } else if (SDL_PointInRect(&mouse_pos, &action_bw[CHECK]->base.rect) ||
+                       event.key.keysym.sym == action_bw[CHECK]->hotkey) {
+              verbose_puts("checking");
+              if (send_player_action(&client_state, sock, ACTION_CHECK, 0) != 0)
+                fprintf(stderr, "Failed to check\n");
             }
           }
         } else if (action_bw[DISCARD]->interactive && client_state.do_discard_draw &&
@@ -2597,7 +2656,7 @@ bool get_socket_context_and_run_client(PlayerConfig_t *player_config, const CliA
       } while (running);
       went_back_result = went_back;
     }
-cleanup_audio:
+  cleanup_audio:
     for (i = 0; i < n_sounds_init; i++)
       ma_sound_uninit(&sounds[i].sound);
     for (i = 0; i < n_coin_sounds_init; i++)

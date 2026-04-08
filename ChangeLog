@@ -1,5 +1,8 @@
 
 - dealers-choice (in progress):
+  + Stud games: implement bring-in forced partial bet (bringin_amount in
+    server.conf, default 50); subsequent streets open with the player
+    holding the best visible hand
   + Deuces wild: server now evaluates wild hands automatically using
     POKEVAL_compare_hands_wild / POKEVAL_evaluate_hand_wild; removed the
     end-of-hand UI selection for wild card replacement and the associated

@@ -354,6 +354,12 @@ ERecvStatus_t recv_game_state(SocketContext_t *socket_context, GameState_t *game
   case MSG_CALL_RAISE_FOLD:
     client_state->call_raise_fold = true;
     break;
+  case MSG_CALL_COMPLETE_FOLD:
+    client_state->call_complete_fold = true;
+    break;
+  case MSG_COMPLETE_CHECK_FOLD:
+    client_state->complete_check_fold = true;
+    break;
   case MSG_DRAW_PROMPT:
     if (size != 2) {
       fprintf(stderr, "[recv_game_state] Invalid size for MSG_DRAW_PROMPT: %u\n", size);

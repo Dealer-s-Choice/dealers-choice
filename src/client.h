@@ -80,8 +80,7 @@ int send_player_action(ClientState_t *client_state, TCPsocket sock, uint8_t acti
 
 void do_sdl_cleanup(SdlContext_t *sdl_context);
 
-int send_discards_request_new_cards(TCPsocket sock, const uint8_t *discard_indices,
-                                    uint8_t count);
+int send_discards_request_new_cards(TCPsocket sock, const uint8_t *discard_indices, uint8_t count);
 
 void layout_cards(CardContext_t card_context[MAX_PLAYERS][MAX_HAND_SIZE], Player_t *players_array,
                   const SDL_Point *player_pos);
