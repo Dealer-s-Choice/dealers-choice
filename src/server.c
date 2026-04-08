@@ -47,7 +47,8 @@
 #define SEND_RETRY_DELAY_MS 500
 #define PING_THRESHOLD 1000
 
-#define handle_round() handle_round_real(args)
+#define handle_round() handle_round_real(args, 0, -1)
+#define handle_round_bringin(amt, paid_id) handle_round_real(args, (amt), (paid_id))
 
 typedef struct {
   uint8_t n_winners;
@@ -271,7 +272,7 @@ int send_status_message(TCPsocket sock, const char *msg) {
     msg_len = LEN_STATUS_STR;
 
   uint32_t size = SDL_SwapBE32(2 + (uint32_t)msg_len); // payload: 2-byte opcode + N-byte msg
-  uint8_t buffer[4 + 2 + LEN_STATUS_STR];    // max: 4 bytes (size) + 2 (opcode) + 100 (msg)
+  uint8_t buffer[4 + 2 + LEN_STATUS_STR]; // max: 4 bytes (size) + 2 (opcode) + 100 (msg)
 
   memcpy(buffer, &size, sizeof(size));
 
@@ -737,18 +738,20 @@ static void award_last_player_in_game(ArgsBroadcastGameState_t *args, Player_t *
   return;
 }
 
-static RoundResults handle_round_real(ArgsBroadcastGameState_t *args) {
+static RoundResults handle_round_real(ArgsBroadcastGameState_t *args, uint32_t initial_bet,
+                                      int8_t initial_paid_id) {
   args->game_state->raises_remaining = args->config->max_raises;
-  args->game_state->prev_bet_amount = 0;
+  args->game_state->prev_bet_amount = initial_bet;
 
   Player_t *turn;
-  // printf("%s:turn->id: %d\n", __func__, turn->id);
 
   RoundResults results = {0};
 
   turn = *args->starting_turn;
-  uint32_t total_bets_plus_raises = 0;
+  uint32_t total_bets_plus_raises = initial_bet;
   uint32_t player_total_paid[MAX_PLAYERS] = {0};
+  if (initial_paid_id >= 0 && initial_paid_id < MAX_PLAYERS)
+    player_total_paid[initial_paid_id] = initial_bet;
   uint8_t num_turns = 0;
 
   do {
@@ -760,7 +763,17 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args) {
     uint32_t start = SDL_GetTicks();
     PlayerActionMsg_t action = {0};
 
-    uint16_t opcode = total_bets_plus_raises == 0 ? MSG_BET_CHECK_FOLD : MSG_CALL_RAISE_FOLD;
+    uint32_t owed = (player_total_paid[turn->id] < total_bets_plus_raises)
+                        ? total_bets_plus_raises - player_total_paid[turn->id]
+                        : 0;
+    // In the bring-in round (initial_bet > 0) and before anyone has completed or
+    // raised (total == initial_bet), use the more accurate Complete opcodes.
+    bool bringin_round_unopened = (initial_bet > 0 && total_bets_plus_raises == initial_bet);
+    uint16_t opcode;
+    if (owed > 0)
+      opcode = bringin_round_unopened ? MSG_CALL_COMPLETE_FOLD : MSG_CALL_RAISE_FOLD;
+    else
+      opcode = bringin_round_unopened ? MSG_COMPLETE_CHECK_FOLD : MSG_BET_CHECK_FOLD;
     if (send_opcode(args->clients[turn->id], opcode) != 0)
       fputs("Error sending action prompt", stderr);
 
@@ -788,15 +801,20 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args) {
             }
             continue;
           } else if (msg_type == TURN_MSG_ACTION) {
-            if (opcode == MSG_BET_CHECK_FOLD) {
+            if (opcode == MSG_BET_CHECK_FOLD || opcode == MSG_COMPLETE_CHECK_FOLD) {
               switch (action.action) {
               case ACTION_CHECK:
                 handle_check(&action);
                 break;
               case ACTION_BET:
+                // Completing the bring-in (COMPLETE_CHECK_FOLD) or opening a new
+                // bet (BET_CHECK_FOLD) both count against the raise cap when there
+                // is already money in the pot.
+                if (total_bets_plus_raises > 0 && args->game_state->raises_remaining > 0)
+                  args->game_state->raises_remaining--;
                 server_handle_bet(args->game_state, &player_total_paid[turn->id], turn->id,
                                   action.amount, &total_bets_plus_raises);
-                action.str = _("bet ");
+                action.str = (opcode == MSG_COMPLETE_CHECK_FOLD) ? _("completed ") : _("bet ");
                 break;
               case ACTION_FOLD:
                 handle_fold(args->game_state, args->real_hand, turn, args->starting_turn, &action);
@@ -811,6 +829,17 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args) {
                 server_handle_call(args->game_state, &player_total_paid[turn->id], turn->id,
                                    &total_bets_plus_raises);
                 action.str = _("called");
+                break;
+              case ACTION_BET:
+                // Complete: raise to full bet from the bring-in (MSG_CALL_COMPLETE_FOLD).
+                if (opcode == MSG_CALL_COMPLETE_FOLD && args->game_state->raises_remaining > 0) {
+                  args->game_state->raises_remaining--;
+                  server_handle_bet(args->game_state, &player_total_paid[turn->id], turn->id,
+                                    action.amount, &total_bets_plus_raises);
+                  action.str = _("completed ");
+                } else {
+                  fputs("BET received unexpectedly; ignoring\n", stderr);
+                }
                 break;
               case ACTION_RAISE:
                 if (args->game_state->raises_remaining > 0) {
@@ -856,7 +885,7 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args) {
           if (!has_paid_all_bets(player_total_paid[turn->id], total_bets_plus_raises)) {
             action.action =
                 handle_fold(args->game_state, args->real_hand, turn, args->starting_turn, &action);
-          } else if (total_bets_plus_raises == 0) {
+          } else if (owed == 0) {
             action.action = handle_check(&action);
           }
           const uint8_t m = args->config->action_timeout_max;
@@ -1120,13 +1149,118 @@ void game_five_card_draw(GAME_ARGS) {
   determine_winner(args, &results);
 }
 
+// Returns the index of the first face-up card within the initial deal, or -1 if none.
+static int stud_upcard_idx(const GameChoice_t *choice) {
+  for (int i = 0; i < choice->n_cards_initial_deal; i++)
+    if (choice->face_up[i])
+      return i;
+  return -1;
+}
+
+// Returns the player whose upcard at real_hand[][upcard_idx] is lowest (bring-in player).
+static Player_t *stud_find_bringin_player(const ArgsBroadcastGameState_t *args,
+                                          Player_t *players_array, int upcard_idx) {
+  Player_t *bringin = NULL;
+  DH_Card bringin_card = DH_card_null;
+
+  Player_t *turn = *args->starting_turn;
+  do {
+    if (!turn->in || !turn->is_connected) {
+      turn = get_next_player(players_array, turn->id);
+      continue;
+    }
+    DH_Card upcard = args->real_hand->player[turn->id].card[upcard_idx];
+    if (DH_is_card_null(upcard)) {
+      turn = get_next_player(players_array, turn->id);
+      continue;
+    }
+    if (bringin == NULL || POKEVAL_card_bringin_lt(upcard, bringin_card)) {
+      bringin = turn;
+      bringin_card = upcard;
+    }
+    turn = get_next_player(players_array, turn->id);
+  } while (turn && turn != *args->starting_turn);
+
+  return bringin;
+}
+
+// Returns the player with the best visible upcard hand at a given street index.
+// street_idx is the loop variable i (deal index about to be made); visible cards are
+// 0..street_idx-1 where face_up[j] == true.
+static Player_t *stud_find_best_upcard_player(const ArgsBroadcastGameState_t *args,
+                                              Player_t *players_array, const GameChoice_t *choice,
+                                              uint8_t street_idx) {
+  Player_t *best_player = NULL;
+  uint64_t best_score = 0;
+
+  Player_t *turn = *args->starting_turn;
+  do {
+    if (!turn->in || !turn->is_connected) {
+      turn = get_next_player(players_array, turn->id);
+      continue;
+    }
+
+    // Collect this player's visible (face-up) cards dealt so far
+    DH_Card visible[4];
+    int n_visible = 0;
+    for (int j = 0; j < street_idx && n_visible < 4; j++) {
+      if (choice->face_up[j])
+        visible[n_visible++] = args->real_hand->player[turn->id].card[j];
+    }
+
+    uint64_t score = POKEVAL_score_stud_upcards(visible, n_visible);
+    if (best_player == NULL || score > best_score) {
+      best_score = score;
+      best_player = turn;
+    }
+
+    turn = get_next_player(players_array, turn->id);
+  } while (turn && turn != *args->starting_turn);
+
+  return best_player;
+}
+
 void game_stud(GAME_ARGS) {
   Player_t *turn;
   server_handle_ante(args->game_state, args->config->ante);
 
   RoundResults results = {0};
+  bool first_round = true;
+
+  // Find the one face-up card in the initial deal — used to determine the bring-in player.
+  int upcard_idx = stud_upcard_idx(choice);
+
   for (uint8_t i = choice->n_cards_initial_deal; i <= choice->hand_size; i++) {
-    results = handle_round();
+    if (first_round) {
+      // Bring-in: player with the lowest upcard posts a forced partial bet.
+      Player_t *bringin =
+          (upcard_idx >= 0) ? stud_find_bringin_player(args, players_array, upcard_idx) : NULL;
+
+      if (bringin && args->config->bringin_amount > 0) {
+        args->turn_id = bringin->id;
+        bringin->coins -= (int32_t)args->config->bringin_amount;
+        args->game_state->pot += args->config->bringin_amount;
+
+        char bringin_str[LEN_STATUS_STR] = {0};
+        snprintf(bringin_str, sizeof(bringin_str), _("%s brings in for %u"), bringin->nick,
+                 args->config->bringin_amount);
+        broadcast_status_message(args, bringin_str);
+
+        // Action starts with the player to the left of the bring-in player.
+        *args->starting_turn = get_next_player(players_array, bringin->id);
+        broadcast_game_state(args);
+        results = handle_round_bringin(args->config->bringin_amount, bringin->id);
+      } else {
+        results = handle_round();
+      }
+      first_round = false;
+    } else {
+      // Subsequent streets: player with the best visible hand acts first.
+      Player_t *best = stud_find_best_upcard_player(args, players_array, choice, i);
+      if (best)
+        *args->starting_turn = best;
+      results = handle_round();
+    }
 
     if (results.n_winners > 0 || i == choice->hand_size)
       break;
@@ -1143,22 +1277,10 @@ void game_stud(GAME_ARGS) {
         hand->card[i] = args->real_hand->player[id].card[i];
       else
         hand->card[i] = DH_card_back;
-      // broadcast_game_state(args);
       turn = get_next_player(players_array, turn->id);
     } while (turn && turn != *args->starting_turn);
     broadcast_game_state(args);
   }
-
-  // 7-card stud setup (for testing)
-  /*
-  args->real_hand->player[0].card[0].face_val = DH_CARD_KING;
-  args->real_hand->player[0].card[1].face_val = DH_CARD_KING;
-  args->real_hand->player[0].card[2].face_val = DH_CARD_KING;
-  args->real_hand->player[0].card[3].face_val = DH_CARD_ACE;
-  args->real_hand->player[0].card[4].face_val = DH_CARD_THREE;
-  args->real_hand->player[0].card[5].face_val = DH_CARD_JACK;
-  args->real_hand->player[0].card[6].face_val = DH_CARD_TWO;
-  */
 
   determine_winner(args, &results);
 }

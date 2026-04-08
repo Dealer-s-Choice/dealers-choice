@@ -32,7 +32,7 @@
 #include <string.h>
 
 #ifdef _MSC_VER
-#  define strcasecmp _stricmp
+#define strcasecmp _stricmp
 #endif
 
 #include "dc_config.h"

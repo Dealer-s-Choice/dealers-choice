@@ -84,6 +84,9 @@ __attribute__((packed)) GameProtocolHeader_t;
 #define MSG_TURN_ID 0x000E
 #define MSG_KICK_PLAYER 0x000F // Admin kicks a player
 #define MSG_BAN_PLAYER 0x0010  // Admin bans a player by IP
+// Bring-in round opcodes: Complete = raise to the full small bet (not a full raise).
+#define MSG_CALL_COMPLETE_FOLD 0x0011  // Other players: call bring-in, complete, or fold
+#define MSG_COMPLETE_CHECK_FOLD 0x0012 // Bring-in player's second turn: complete or check
 
 #define DEFAULT_PORT "22777"
 
@@ -112,6 +115,8 @@ typedef struct {
   bool play_coin_sound;
   bool bet_check_fold;
   bool call_raise_fold;
+  bool call_complete_fold;
+  bool complete_check_fold;
   unsigned int ping_times[MAX_CLIENTS];
   uint8_t game_type;
   bool deuces_wild;

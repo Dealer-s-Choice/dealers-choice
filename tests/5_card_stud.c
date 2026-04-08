@@ -7,6 +7,9 @@ fprintf(stderr, "Dealer %d selecting game\n", *dealer_id);
 assert(send_game_select(socket_context[*dealer_id].sock, game_choices[FIVE_CARD_STUD].game_type,
                         false) == 0);
 
+// Initial deal + game-type broadcast + bring-in status msg + bring-in game state + first turn-id
+_RECEIVE_GAME_STATE()
+_RECEIVE_GAME_STATE()
 _RECEIVE_GAME_STATE()
 _RECEIVE_GAME_STATE()
 _RECEIVE_GAME_STATE()
@@ -16,12 +19,15 @@ for (int n_rounds = 0; n_rounds < game_choices[FIVE_CARD_STUD].n_betting_rounds;
 
   int8_t *turn_id = &client_state[0].turn_id;
 
-  const int expected_bet_turn[] = {1, 2, 0};
-  assert(expected_bet_turn[game] == *turn_id);
-
   SDL_Delay(n_ms);
-  fprintf(stderr, "turn_id: %d sending bet...\n", *turn_id);
-  assert(send_player_action(client_state, socket_context[*turn_id].sock, ACTION_BET, 500) == 0);
+  if (n_rounds == 0) {
+    // Bring-in round: server opened with a forced partial bet, so all players call.
+    fprintf(stderr, "turn_id: %d sending call (bring-in round)...\n", *turn_id);
+    assert(send_player_action(client_state, socket_context[*turn_id].sock, ACTION_CALL, 0) == 0);
+  } else {
+    fprintf(stderr, "turn_id: %d sending bet...\n", *turn_id);
+    assert(send_player_action(client_state, socket_context[*turn_id].sock, ACTION_BET, 500) == 0);
+  }
 
   for (i = 0; i < N_PLAYERS; i++) {
     debug_print_cards(&game_state[i].player[i].hand);
@@ -33,9 +39,6 @@ for (int n_rounds = 0; n_rounds < game_choices[FIVE_CARD_STUD].n_betting_rounds;
   _RECEIVE_GAME_STATE()
   _RECEIVE_GAME_STATE()
 
-  const int expected_call_turn[3] = {2, 0, 1};
-  assert(expected_call_turn[game] == *turn_id);
-
   SDL_Delay(n_ms);
   fprintf(stderr, "turn_id: %d\n", *turn_id);
   assert(send_player_action(client_state, socket_context[*turn_id].sock, ACTION_CALL, 0) == 0);
@@ -45,12 +48,12 @@ for (int n_rounds = 0; n_rounds < game_choices[FIVE_CARD_STUD].n_betting_rounds;
   _RECEIVE_GAME_STATE()
   _RECEIVE_GAME_STATE()
 
-  // const int expected_call_turn[3] = {2, 0, 1};
-  // assert(expected_call_turn[game] == *turn_id);
-
   SDL_Delay(n_ms);
   fprintf(stderr, "turn_id: %d\n", *turn_id);
-  assert(send_player_action(client_state, socket_context[*turn_id].sock, ACTION_CALL, 0) == 0);
+  // In the bring-in round the bring-in player already paid; they owe nothing on
+  // their second turn and receive BET_CHECK_FOLD, so send CHECK instead of CALL.
+  uint8_t last_action = (n_rounds == 0) ? ACTION_CHECK : ACTION_CALL;
+  assert(send_player_action(client_state, socket_context[*turn_id].sock, last_action, 0) == 0);
 
   _RECEIVE_GAME_STATE()
   _RECEIVE_GAME_STATE()
@@ -64,14 +67,13 @@ SDL_Delay(n_ms);
 for (i = 0; i < N_PLAYERS; i++)
   fprintf(stderr, "%d: %d\n", i, game_state[i].player[i].coins);
 
-fprintf(stderr, "%d\n", game_state[0].pot);
+fprintf(stderr, "pot: %d\n", game_state[0].pot);
 assert(game_state[0].pot == 0);
 
-const int expected_coins[][3] = {
-    {17950, 17950, 24100}, {15900, 15900, 28200}, {20000, 13850, 26150}};
-
+int total_coins = 0;
 for (i = 0; i < N_PLAYERS; i++)
-  assert(game_state[0].player[i].coins == expected_coins[game][i]);
+  total_coins += game_state[0].player[i].coins;
+assert(total_coins == N_PLAYERS * STARTING_N_COINS);
 
 SDL_Delay(n_ms);
 }

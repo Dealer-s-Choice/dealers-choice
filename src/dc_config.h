@@ -42,6 +42,7 @@ typedef struct ServerConfig_t {
   uint32_t action_timeout_ms;
   uint32_t dealer_timeout_ms;
   uint32_t ante;
+  uint32_t bringin_amount;
   int32_t starting_coins;
   uint32_t max_raises;
   uint32_t bet_amounts[MAX_BET_AMOUNTS];
@@ -108,6 +109,8 @@ static const ConfigEntry server_config_entries[] = {
     {"dealer_timeout_ms", CFG_TYPE_UINT32, "60000", offsetof(ServerConfig_t, dealer_timeout_ms),
      sizeof(uint32_t)},
     {"ante", CFG_TYPE_UINT32, "50", offsetof(ServerConfig_t, ante), sizeof(uint32_t)},
+    {"bringin_amount", CFG_TYPE_UINT32, "50", offsetof(ServerConfig_t, bringin_amount),
+     sizeof(uint32_t)},
     {"starting_coins", CFG_TYPE_INT, "20000", offsetof(ServerConfig_t, starting_coins),
      sizeof(int32_t)},
     {"max_raises", CFG_TYPE_UINT32, "3", offsetof(ServerConfig_t, max_raises), sizeof(uint32_t)},

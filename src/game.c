@@ -31,7 +31,7 @@
 #include <string.h>
 #include <time.h>
 #ifndef _MSC_VER
-#  include <unistd.h>
+#include <unistd.h>
 #endif
 
 #include "game.h"
