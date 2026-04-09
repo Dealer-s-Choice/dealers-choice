@@ -24,7 +24,10 @@ platform_is_windows = (host_sys == 'windows')
 
 win_deps = []
 if platform_is_windows
-  w_lib = ['ws2_32', 'user32', 'shell32']
+  # iphlpapi is required by SDL2_net-static (GetAdaptersInfo); Meson does not
+  # yet handle the $<LINK_ONLY:iphlpapi> CMake generator expression so we add
+  # it explicitly here.
+  w_lib = ['ws2_32', 'user32', 'shell32', 'iphlpapi']
   foreach lib : w_lib
     win_deps += cc.find_library(lib, required: true)
   endforeach
