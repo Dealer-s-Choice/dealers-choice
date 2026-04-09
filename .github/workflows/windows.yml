@@ -31,9 +31,9 @@ jobs:
     - name: Restore vcpkg cache
       uses: actions/cache/restore@v4
       with:
-        path: C:\Users\runneradmin\AppData\Local\vcpkg\archives
-        key: vcpkg-x64-windows-static-md-${{ hashFiles('.github/workflows/windows.yml') }}
-        restore-keys: vcpkg-x64-windows-static-md-
+        path: C:\vcpkg\installed\x64-windows-static-md
+        key: vcpkg-installed-x64-windows-static-md-${{ hashFiles('.github/workflows/windows.yml') }}
+        restore-keys: vcpkg-installed-x64-windows-static-md-
 
     - name: Set up MSVC environment
       uses: ilammy/msvc-dev-cmd@v1
@@ -59,8 +59,8 @@ jobs:
       uses: actions/cache/save@v4
       if: always()
       with:
-        path: C:\Users\runneradmin\AppData\Local\vcpkg\archives
-        key: vcpkg-x64-windows-static-md-${{ hashFiles('.github/workflows/windows.yml') }}
+        path: C:\vcpkg\installed\x64-windows-static-md
+        key: vcpkg-installed-x64-windows-static-md-${{ hashFiles('.github/workflows/windows.yml') }}
 
     - name: Meson setup
       run: |
