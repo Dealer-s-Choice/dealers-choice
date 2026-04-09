@@ -1,4 +1,4 @@
-name: Windows
+name: MSYS2
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
   cancel-in-progress: true
@@ -16,67 +16,14 @@ on:
     - '**'
     - '!**.yml'
     - '!**.md'
-    - '**/windows.yml'
+    - '**/msys.yml'
 
   pull_request:
     branches: [ trunk ]
     paths: *shared_paths
 
 jobs:
-  msvc:
-    runs-on: windows-latest
-    steps:
-    - uses: actions/checkout@v6
-
-    - name: Restore vcpkg cache
-      uses: actions/cache/restore@v4
-      with:
-        path: C:\vcpkg\installed\x64-windows-static-md
-        key: vcpkg-installed-x64-windows-static-md-${{ hashFiles('.github/workflows/windows.yml') }}
-        restore-keys: vcpkg-installed-x64-windows-static-md-
-
-    - name: Set up MSVC environment
-      uses: ilammy/msvc-dev-cmd@v1
-      with:
-        arch: x64
-
-    - name: Install Meson and Ninja
-      run: pip install meson ninja
-
-    - name: Install dependencies via vcpkg
-      run: |
-        $env:VCPKG_ROOT = ""
-        vcpkg install `
-          --overlay-triplets=vcpkg-triplets `
-          sdl2:x64-windows-static-md `
-          sdl2-image:x64-windows-static-md `
-          sdl2-ttf:x64-windows-static-md `
-          sdl2-net:x64-windows-static-md `
-          libsodium:x64-windows-static-md `
-          protobuf-c:x64-windows-static-md
-
-    - name: Save vcpkg cache
-      uses: actions/cache/save@v4
-      if: always()
-      with:
-        path: C:\vcpkg\installed\x64-windows-static-md
-        key: vcpkg-installed-x64-windows-static-md-${{ hashFiles('.github/workflows/windows.yml') }}
-
-    - name: Meson setup
-      run: |
-        $vcpkg_prefix = "$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static-md"
-        $env:PKG_CONFIG = "$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows\tools\pkgconf\pkgconf.exe"
-        $env:PKG_CONFIG_PATH = "$vcpkg_prefix\lib\pkgconfig"
-        meson setup _build -Db_sanitize=none -Dsodium=enabled "-Dcmake_prefix_path=$vcpkg_prefix"
-
-    - name: Build
-      run: meson compile -C _build
-
-    - name: Test
-      run: meson test --no-stdsplit -v -C _build
-
   MSYS2:
-    needs: msvc
     runs-on: windows-latest
     permissions:
       contents: write
