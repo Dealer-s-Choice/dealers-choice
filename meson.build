@@ -111,9 +111,13 @@ dep_names = [
   'libprotobuf-c',
   'SDL2',
   'SDL2_ttf',
-  'SDL2_net',
   'SDL2_image',
 ]
+
+# SDL2_net ships as SDL2_net::SDL2_net-static in vcpkg static builds; specify
+# the CMake target explicitly so Meson doesn't fall back to the imprecise
+# SDL2_net_LIBRARIES variable when pkgconfig is unavailable (e.g. MSVC+vcpkg).
+shared_dep += dependency('SDL2_net', modules: ['SDL2_net::SDL2_net-static'])
 
 # On Slackware, the miniaudio build fails (linking) if dl and threads aren't added here
 # On FreeBSD, threads is needed.
