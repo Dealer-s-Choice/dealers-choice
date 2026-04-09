@@ -16,7 +16,7 @@ on:
     - '**'
     - '!**.yml'
     - '!**.md'
-    - '**/msys.yml'
+    - '**/msys2.yml'
 
   pull_request:
     branches: [ trunk ]
