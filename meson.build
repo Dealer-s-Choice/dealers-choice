@@ -24,7 +24,10 @@ platform_is_windows = (host_sys == 'windows')
 
 win_deps = []
 if platform_is_windows
-  w_lib = ['ws2_32', 'user32', 'shell32']
+  # iphlpapi is required by SDL2_net-static (GetAdaptersInfo); Meson does not
+  # yet handle the $<LINK_ONLY:iphlpapi> CMake generator expression so we add
+  # it explicitly here.
+  w_lib = ['ws2_32', 'user32', 'shell32', 'iphlpapi']
   foreach lib : w_lib
     win_deps += cc.find_library(lib, required: true)
   endforeach
@@ -111,9 +114,13 @@ dep_names = [
   'libprotobuf-c',
   'SDL2',
   'SDL2_ttf',
-  'SDL2_net',
   'SDL2_image',
 ]
+
+# SDL2_net ships as SDL2_net::SDL2_net-static in vcpkg static builds; specify
+# the CMake target explicitly so Meson doesn't fall back to the imprecise
+# SDL2_net_LIBRARIES variable when pkgconfig is unavailable (e.g. MSVC+vcpkg).
+shared_dep += dependency('SDL2_net', modules: ['SDL2_net::SDL2_net-static'])
 
 # On Slackware, the miniaudio build fails (linking) if dl and threads aren't added here
 # On FreeBSD, threads is needed.
