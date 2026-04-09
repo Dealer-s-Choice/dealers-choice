@@ -550,7 +550,7 @@ static ELoop_t handle_draw(ArgsBroadcastGameState_t *args, TCPsocket sock, const
   int n_bytes = 0;
   while (SDL_GetTicks() - start < wait_ms) {
     register_new_client(args);
-    int num_ready = SDLNet_CheckSockets(args->socket_set, 0);
+    int num_ready = SDLNet_CheckSockets(args->socket_set, 10);
     if (num_ready == -1) {
       fprintf(stderr, "SDLNet_CheckSockets: %s\n", SDLNet_GetError());
       return LOOP_ERROR;
@@ -1519,6 +1519,7 @@ static EReturnCode_t init_game(ArgsBroadcastGameState_t *args, DH_Deck *deck) {
   while (SDL_GetTicks() - start < wait_ms) {
     register_new_client(args);
     handle_disconnections(args);
+    SDL_Delay(10);
   }
 
   args->game_state->player_count = 0;
@@ -1876,8 +1877,10 @@ int run_server(const CliArgs_t *cli_args, Path_t *path) {
     }
 
     active_clients = count_active_clients(slot_taken);
-    if (active_clients == 0)
+    if (active_clients == 0) {
+      SDL_Delay(10);
       continue;
+    }
 
     if (active_clients > 0) {
       uint32_t now = SDL_GetTicks();
