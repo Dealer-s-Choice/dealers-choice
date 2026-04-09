@@ -8,6 +8,7 @@
     end-of-hand UI selection for wild card replacement and the associated
     exchange button, timeout setting (wild_exchange_timeout_ms), network
     message (MSG_WILD_REPLACEMENT), and server-side exchange logic
+  * bugfix: Three busy-waits, high-cpu server usage
   * Bump GAME_PROTOCOL_VERSION from 7 to 8
 
 2026-04-01
