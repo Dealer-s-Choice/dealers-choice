@@ -38,4 +38,7 @@ RUN apk add --no-cache \
 # Copy installed files from build stage
 COPY --from=build /tmp/dealer_install/ /
 
-CMD ["/bin/sh","-l"]
+# Point the server at the installed data directory so it isn't confused by
+# Docker creating /data as an empty mount-point directory.  Users can still
+# override this with DEALERSCHOICE_DATADIR in EXTRA_ARGS.
+ENV DEALERSCHOICE_DATADIR=/usr/share/dealers-choice

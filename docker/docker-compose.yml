@@ -1,10 +1,18 @@
 services:
-  docker-dealers-choice-server:
+  dealers-choice-server:
     image: ghcr.io/dealer-s-choice/dealers_choice:latest
     build:
       context: ..
       dockerfile: docker/Dockerfile
-    command: ["dealers-choice", "--server"]
+    command: sh -c 'exec dealers-choice --server $DC_EXTRA_ARGS'
+    environment:
+      - DC_EXTRA_ARGS=${DC_EXTRA_ARGS}
+      - DC_CONFIG_DIR=${DC_CONFIG_DIR}
+      - DC_DATA_DIR=${DC_DATA_DIR}
+      - DC_PASSWORD=${DC_PASSWORD}
+    volumes:
+      - "${DC_CONFIG_DIR}:/dc_config"
+      - "${DC_DATA_DIR}:/dc_data"
     ports:
       - "22777:22777"
-    restart: unless-stopped
+    restart: no

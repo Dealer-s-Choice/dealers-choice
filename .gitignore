@@ -13,4 +13,4 @@ subprojects/**
 !subprojects/**/*.wrap
 
 out/**
-
+/docker/.env

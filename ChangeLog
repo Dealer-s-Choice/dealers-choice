@@ -9,6 +9,8 @@
     exchange button, timeout setting (wild_exchange_timeout_ms), network
     message (MSG_WILD_REPLACEMENT), and server-side exchange logic
   * bugfix: Three busy-waits, high-cpu server usage
+  * Update docker-compose.yml to use DC_PASSWORD and extra arguments when running
+    the server
   * Bump GAME_PROTOCOL_VERSION from 7 to 8
 
 2026-04-01
