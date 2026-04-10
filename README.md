@@ -6,9 +6,9 @@
 # Dealer's Choice
 
 Dealer's Choice is a cross-platform, networked multiplayer poker game that
-supports various draw and stud variants, including optional wild cards. The
-deal rotates between players, and each new game allows a different player to
-choose the variant.
+supports various draw, stud, and hold 'em variants, including optional wild
+cards. The deal rotates between players, and each new game allows a different
+player to choose the variant.
 
 ## License
 
@@ -45,6 +45,7 @@ page](https://github.com/Dealer-s-Choice/dealers-choice/releases/tag/snapshot).
 * [6-card stud](https://en.wikipedia.org/wiki/Stud_poker#Six-card_stud) (not all the rules have been implemented yet, such as the bring-in bet)
 * [7-card stud](https://en.wikipedia.org/wiki/Seven-card_stud) (not all the rules have been implemented yet, such as the bring-in bet)
 * [California lowball](https://en.wikipedia.org/wiki/Lowball_(poker))
+* [Omaha](https://en.wikipedia.org/wiki/Omaha_hold_%27em)
 * [Texas Hold'em](https://en.wikipedia.org/wiki/Texas_hold_%27em)
 
 Any of the games above can be played with the [Deuces (Twos) Wild

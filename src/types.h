@@ -47,6 +47,13 @@ typedef enum {
 } EReturnCode_t;
 
 typedef enum {
+  CARD_SLOT_UNUSED,
+  CARD_SLOT_HOLE,      // face down, private (draw cards, stud down-cards, hole cards)
+  CARD_SLOT_FACE_UP,   // face up, private (stud up-cards)
+  CARD_SLOT_COMMUNITY, // face up, shared
+} CardSlotType_t;
+
+typedef enum {
   FIVE_CARD_DRAW,
   FIVE_CARD_DOUBLE_DRAW,
   FIVE_CARD_STUD,
@@ -55,13 +62,14 @@ typedef enum {
   FIVE_CARD_SHOWDOWN,
   CALIFORNIA_LOWBALL,
   TEXAS_HOLDEM,
+  OMAHA,
   MAX_CHOICES,
 } EMenuOption_t;
 
 typedef struct {
   char nick[SIZEOF_NICK];
   int8_t id;
-  POKEVAL_Hand_7 hand;
+  POKEVAL_Hand_9 hand;
   int32_t coins;
   bool in; // Used for spectators or when someone has folded
   bool winner;
@@ -89,7 +97,7 @@ typedef struct {
 } GameSettings_t;
 
 typedef struct {
-  POKEVAL_Hand_7 player[MAX_PLAYERS];
+  POKEVAL_Hand_9 player[MAX_PLAYERS];
 } RealHand_t;
 
 // A forward declaration
@@ -126,7 +134,8 @@ typedef struct GameChoice_t {
   const uint8_t hand_size;
   const uint8_t n_betting_rounds, n_draws;
   const uint8_t n_cards_initial_deal;
-  const bool face_up[7];
+  const CardSlotType_t card_slot[9];
+  const bool deuces_wild_compatible;
 } GameChoice_t;
 
 extern const GameChoice_t game_choices[];

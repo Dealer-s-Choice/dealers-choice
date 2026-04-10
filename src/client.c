@@ -391,7 +391,7 @@ static EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_confi
     bool dw = button_deuces_wild->base.selected;
     for (int i = 0; i < MAX_CHOICES; i++) {
       game_choice_button[i]->base.enabled = dealing;
-      bool incompatible = dw && (i == TEXAS_HOLDEM || i == CALIFORNIA_LOWBALL);
+      bool incompatible = dw && !game_choices[i].deuces_wild_compatible;
       game_choice_button[i]->interactive = dealing_enabled && !incompatible;
     }
 
@@ -1026,6 +1026,21 @@ static void render_card(CardContext_t *context, TTF_Font *font, const bool my_ca
   SDL_SetRenderDrawColor(context->renderer, 255, 255, 255, 255);
   SDL_RenderFillRect(context->renderer, &context->rect);
 
+  // Highlight winning cards: gold tint + thick inset border so the indicator
+  // is visible to people who have difficulty perceiving color alone.
+  if (context->is_winning) {
+    SDL_SetRenderDrawBlendMode(context->renderer, SDL_BLENDMODE_BLEND);
+    SDL_SetRenderDrawColor(context->renderer, 255, 200, 0, 110); // translucent gold fill
+    SDL_RenderFillRect(context->renderer, &context->rect);
+    SDL_SetRenderDrawBlendMode(context->renderer, SDL_BLENDMODE_NONE);
+    SDL_SetRenderDrawColor(context->renderer, 220, 160, 0, 255); // solid gold border
+    for (int t = 0; t < 3; t++) {
+      SDL_Rect border = {context->rect.x + t, context->rect.y + t, context->rect.w - 2 * t,
+                         context->rect.h - 2 * t};
+      SDL_RenderDrawRect(context->renderer, &border);
+    }
+  }
+
   // Highlight hovered card for the local player (draw after card background)
   if (context->hovered && my_card) {
     SDL_SetRenderDrawBlendMode(context->renderer, SDL_BLENDMODE_BLEND);
@@ -1127,16 +1142,78 @@ static void create_card_context(CardContext_t card_context[MAX_PLAYERS][MAX_HAND
   } while (turn && turn != starting_turn);
 }
 
-/* Reposition community cards (positions 2-6) to the board area below player 0
- * and suppress those positions from all other player hand slots. */
+/* After winner_declared: mark the 5 cards that form the winning hand.
+ * For non-community games the server already trimmed to the best 5 (positions
+ * 0-4, rest null), so every non-null card is a winning card.
+ * For community card games (Hold'em, Omaha) we recompute the best hand on the
+ * client and match cards back to their hand positions by face value and suit.
+ * Community cards are marked on every player's context; layout_board_cards has
+ * already set is_null=true on non-board player slots, so they won't render. */
+static void mark_winning_cards(CardContext_t card_context[MAX_PLAYERS][MAX_HAND_SIZE],
+                               Player_t *players_array, const GameChoice_t *game_choice) {
+  if (!game_choice)
+    return;
+
+  bool is_community = false;
+  for (int i = 0; i < MAX_HAND_SIZE; i++) {
+    if (game_choice->card_slot[i] == CARD_SLOT_COMMUNITY) {
+      is_community = true;
+      break;
+    }
+  }
+
+  for (int p = 0; p < MAX_PLAYERS; p++) {
+    if (!players_array[p].is_connected || !players_array[p].winner)
+      continue;
+
+    if (!is_community) {
+      // Server sorted the best 5 into positions 0-4; null beyond that
+      for (int c = 0; c < MAX_HAND_SIZE; c++) {
+        if (!card_context[p][c].is_null && !card_context[p][c].is_back)
+          card_context[p][c].is_winning = true;
+      }
+      continue;
+    }
+
+    // Recompute the best 5-card hand for this winner
+    POKEVAL_Hand_5 best;
+    if (game_choice->game_type == game_choices[OMAHA].game_type)
+      best = POKEVAL_hand5_omaha(&players_array[p].hand);
+    else
+      best = POKEVAL_hand5_from_hand7(&players_array[p].hand);
+
+    for (int c = 0; c < MAX_HAND_SIZE; c++) {
+      DH_Card card = players_array[p].hand.card[c];
+      if (DH_is_card_null(card) || DH_is_card_back(card))
+        continue;
+      for (int b = 0; b < POKEVAL_HAND_SIZE; b++) {
+        if (card.face_val == best.card[b].face_val && card.suit == best.card[b].suit) {
+          if (game_choice->card_slot[c] == CARD_SLOT_HOLE) {
+            card_context[p][c].is_winning = true;
+          } else {
+            // Community card: mark on all players; non-board slots are is_null so won't render
+            for (int q = 0; q < MAX_PLAYERS; q++)
+              card_context[q][c].is_winning = true;
+          }
+          break;
+        }
+      }
+    }
+  }
+}
+
+/* Reposition community cards to the board area below player 0
+ * and suppress those positions from all other player hand slots.
+ * community_start is the first card index that is a community card. */
 static void layout_board_cards(CardContext_t card_context[MAX_PLAYERS][MAX_HAND_SIZE],
-                               const int board_player_id, const SDL_Point *player_pos) {
+                               const int board_player_id, const SDL_Point *player_pos,
+                               const int community_start) {
   const int board_x = player_pos[0].x + (int)(card_area.w * 0.5f);
   /* Position one card-height above the status panel (which starts at g_center.y) */
   const int board_y = g_center.y - card_area.h * 2;
 
-  for (int card_n = 2; card_n < MAX_HAND_SIZE; card_n++) {
-    int slot = card_n - 2;
+  for (int card_n = community_start; card_n < MAX_HAND_SIZE; card_n++) {
+    int slot = card_n - community_start;
     SDL_Rect rect = {board_x + slot * (card_area.w + PADDING_BETWEEN_CARDS), board_y, card_area.w,
                      card_area.h};
     card_context[board_player_id][card_n].rect = rect;
@@ -1798,9 +1875,19 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
       create_card_context(card_context, starting_turn->id, players_array, player_pos,
                           sdl_context->renderer, client_state.deuces_wild);
       layout_cards(card_context, players_array, player_pos);
-      if (client_state.game_choice &&
-          client_state.game_choice->game_type == game_choices[TEXAS_HOLDEM].game_type)
-        layout_board_cards(card_context, starting_turn->id, player_pos);
+      if (client_state.game_choice) {
+        int community_start = -1;
+        for (int cs = 0; cs < MAX_HAND_SIZE; cs++) {
+          if (client_state.game_choice->card_slot[cs] == CARD_SLOT_COMMUNITY) {
+            community_start = cs;
+            break;
+          }
+        }
+        if (community_start > 0)
+          layout_board_cards(card_context, starting_turn->id, player_pos, community_start);
+      }
+      if (game_state->winner_declared)
+        mark_winning_cards(card_context, game_state->player, client_state.game_choice);
       cards_created = true;
     }
 

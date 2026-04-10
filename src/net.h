@@ -39,7 +39,7 @@
 #define HASH_SIZE 32 /* SHA-256 output size, matches crypto_hash_sha256_BYTES */
 
 #ifndef MAX_HAND_SIZE
-#define MAX_HAND_SIZE 7
+#define MAX_HAND_SIZE 9
 #endif
 
 #define GAME_PROTOCOL_MAGIC "DCPROTO"
@@ -137,8 +137,8 @@ GameState_t deserialize_game_state(const uint8_t *data, uint32_t size);
 uint8_t *serialize_game_settings(const GameSettings_t *src, size_t *size_out);
 GameSettings_t deserialize_game_settings(const uint8_t *data, size_t size);
 
-uint8_t *serialize_hand(const POKEVAL_Hand_7 hand, size_t *size_out);
-POKEVAL_Hand_7 deserialize_hand(const uint8_t *data, size_t size);
+uint8_t *serialize_hand(const POKEVAL_Hand_9 hand, size_t *size_out);
+POKEVAL_Hand_9 deserialize_hand(const uint8_t *data, size_t size);
 
 uint8_t *serialize_player(const Player_t *src, size_t *size_out);
 Player_t deserialize_player(const uint8_t *data, size_t size);

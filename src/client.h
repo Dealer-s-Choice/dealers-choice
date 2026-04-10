@@ -44,6 +44,7 @@ typedef struct {
   SDL_Rect rect;
   bool hovered, selected, is_back, is_null;
   bool is_wild;
+  bool is_winning;
 } CardContext_t;
 
 typedef enum {
