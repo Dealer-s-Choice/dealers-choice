@@ -22,7 +22,7 @@ DefaultDirName={autopf}\{#AppName}
 DefaultGroupName={#AppName}
 ; Output goes to the repo root (script is in packaging/windows/)
 OutputDir=..\..\
-OutputBaseFilename=dealers-choice-{#VERSION}-{#ARCH}-setup
+OutputBaseFilename=dealers-choice-{#VERSION}-windows-{#ARCH}-setup
 Compression=lzma
 SolidCompression=yes
 WizardStyle=modern
