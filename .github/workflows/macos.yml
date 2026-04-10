@@ -34,7 +34,6 @@ jobs:
           canfigger \
           gettext \
           meson \
-          miniaudio \
           protobuf-c \
           sdl2 \
           sdl2_image \

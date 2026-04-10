@@ -84,13 +84,7 @@ protobuf_dep = dependency('libprotobuf-c')
 
 conf = configuration_data()
 
-# Homebrew may discourage vendoring dependencies that are available as
-# formulae. Link against the installed miniaudio if found; otherwise
-# fall back to the bundled copy in subprojects/.
-miniaudio_dep = dependency(
-  'miniaudio',
-  fallback: ['miniaudio', 'miniaudio_dep'],
-)
+miniaudio_dep = subproject('miniaudio').get_variable('miniaudio_dep')
 
 shared_dep = [
   canfigger_dep,
