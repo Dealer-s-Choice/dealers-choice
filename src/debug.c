@@ -32,7 +32,7 @@
 #include "client.h"
 #include "debug.h"
 
-DebugPrintCards_t debug_print_cards(POKEVAL_Hand_7 *hand) {
+DebugPrintCards_t debug_print_cards(POKEVAL_Hand_9 *hand) {
   DebugPrintCards_t str = {0};
   char *ptr = str.str;
   for (int i = 0; i < MAX_HAND_SIZE; i++) {

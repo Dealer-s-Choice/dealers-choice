@@ -187,7 +187,7 @@ GameSettings_t deserialize_game_settings(const uint8_t *data, size_t size) {
   return result;
 }
 
-uint8_t *serialize_hand(const POKEVAL_Hand_7 hand, size_t *size_out) {
+uint8_t *serialize_hand(const POKEVAL_Hand_9 hand, size_t *size_out) {
   Hand proto_hand = HAND__INIT;
   Card proto_cards[MAX_HAND_SIZE];
   Card *proto_card_ptrs[MAX_HAND_SIZE]; // Array of pointers
@@ -211,8 +211,8 @@ uint8_t *serialize_hand(const POKEVAL_Hand_7 hand, size_t *size_out) {
   return buffer;
 }
 
-POKEVAL_Hand_7 deserialize_hand(const uint8_t *data, size_t size) {
-  POKEVAL_Hand_7 result = {0};
+POKEVAL_Hand_9 deserialize_hand(const uint8_t *data, size_t size) {
+  POKEVAL_Hand_9 result = {0};
   Hand *proto_hand = hand__unpack(NULL, size, data);
   if (!proto_hand)
     return result;

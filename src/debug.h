@@ -33,6 +33,6 @@ typedef struct {
   char str[200];
 } DebugPrintCards_t;
 
-DebugPrintCards_t debug_print_cards(POKEVAL_Hand_7 *hand);
+DebugPrintCards_t debug_print_cards(POKEVAL_Hand_9 *hand);
 
 #endif

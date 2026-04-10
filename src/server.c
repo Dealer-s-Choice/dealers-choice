@@ -133,7 +133,7 @@ GameSettings_t init_game_settings(const ServerConfig_t *config, const CliArgs_t 
 
 // In the future, hands will be sent using functions like this, rather than how it's
 // presently done in broadcast_game_state()
-static int send_new_hand(TCPsocket sock, const POKEVAL_Hand_7 *hand, uint8_t hand_size) {
+static int send_new_hand(TCPsocket sock, const POKEVAL_Hand_9 *hand, uint8_t hand_size) {
   if (hand_size == 0 || hand_size > MAX_HAND_SIZE)
     return -1;
 
@@ -190,7 +190,8 @@ RealHand_t deal_cards_to_players(GameState_t *game_state, DH_Deck *deck, const u
         turn->hand.card[i] = DH_card_null;
       } else {
         real_hand.player[turn->id].card[i] = DH_deal_top_card(deck);
-        if (choice->face_up[i])
+        if (choice->card_slot[i] == CARD_SLOT_FACE_UP ||
+            choice->card_slot[i] == CARD_SLOT_COMMUNITY)
           turn->hand.card[i] = real_hand.player[turn->id].card[i];
         else
           turn->hand.card[i] = DH_card_back;
@@ -211,22 +212,32 @@ int send_with_retries(TCPsocket sock, const void *data, size_t size) {
   return -1;
 }
 
+// At showdown all hands are revealed — required for winner highlighting and
+// consistent with poker rules. Called once before the per-client send loop so
+// every client receives the same fully-revealed game state.
+static void reveal_all_hands(GameState_t *game_state, const RealHand_t *real_hand) {
+  for (int j = 0; j < MAX_PLAYERS; j++)
+    memcpy(&game_state->player[j].hand, &real_hand->player[j], sizeof(POKEVAL_Hand_9));
+}
+
 static void broadcast_game_state(ArgsBroadcastGameState_t *args) {
+  if (args->game_state->winner_declared && args->game_state->player_count != 1)
+    reveal_all_hands(args->game_state, args->real_hand);
+
   for (int i = 0; i < MAX_CLIENTS; ++i) {
     if (!args->clients[i]) {
       // fprintf(stderr, "skipping %d\n", i);
       continue;
     }
 
-    POKEVAL_Hand_7 hand_tmp = {0};
-    if (args->game_state->winner_declared && args->game_state->player_count != 1) {
+    // During play each client receives only their own real cards; all other
+    // players' hole cards are sent as backs (anti-cheat).
+    POKEVAL_Hand_9 hand_tmp = {0};
+    bool mask_opponents = !args->game_state->winner_declared || args->game_state->player_count == 1;
+    if (mask_opponents) {
+      memcpy(&hand_tmp, &args->game_state->player[i].hand, sizeof(POKEVAL_Hand_9));
       memcpy(&args->game_state->player[i].hand, &args->real_hand->player[i],
-             sizeof(POKEVAL_Hand_7));
-
-    } else {
-      memcpy(&hand_tmp, &args->game_state->player[i].hand, sizeof(POKEVAL_Hand_7));
-      memcpy(&args->game_state->player[i].hand, &args->real_hand->player[i],
-             sizeof(POKEVAL_Hand_7));
+             sizeof(POKEVAL_Hand_9));
     }
 
     uint32_t size = 0;
@@ -234,8 +245,8 @@ static void broadcast_game_state(ArgsBroadcastGameState_t *args) {
     if (!data)
       return;
 
-    if (!args->game_state->winner_declared || args->game_state->player_count == 1)
-      memcpy(&args->game_state->player[i].hand, &hand_tmp, sizeof(POKEVAL_Hand_7));
+    if (mask_opponents)
+      memcpy(&args->game_state->player[i].hand, &hand_tmp, sizeof(POKEVAL_Hand_9));
 
     uint32_t size_net = SDL_SwapBE32((uint32_t)size);
 
@@ -519,7 +530,7 @@ static void server_handle_raise(GameState_t *game_state, uint32_t *total_paid,
   game_state->raises_remaining--;
 }
 
-static void handle_sort_hand(POKEVAL_Hand_7 *real_hand, const bool is_lowball) {
+static void handle_sort_hand(POKEVAL_Hand_9 *real_hand, const bool is_lowball) {
   POKEVAL_Hand_5 tmp_hand = POKEVAL_hand5_from_hand7(real_hand);
   if (!is_lowball)
     POKEVAL_sort_hand(&tmp_hand);
@@ -527,11 +538,11 @@ static void handle_sort_hand(POKEVAL_Hand_7 *real_hand, const bool is_lowball) {
     POKEVAL_sort_hand_lowball(&tmp_hand);
   memcpy(&real_hand->card[0], &tmp_hand.card[0], sizeof(tmp_hand.card));
 
-  /* Step 4: ensure last two cards are NULL */
-  // This will remove the last two cards from a 7-card stud hand, otherwise they show up
-  // even if they are duplicates of cards among the best 5 cards in that player's hand
+  /* Ensure unused card slots are NULL */
   real_hand->card[5] = DH_card_null;
   real_hand->card[6] = DH_card_null;
+  real_hand->card[7] = DH_card_null;
+  real_hand->card[8] = DH_card_null;
 }
 
 static ELoop_t handle_draw(ArgsBroadcastGameState_t *args, TCPsocket sock, const int8_t id,
@@ -640,7 +651,8 @@ static void determine_winner(ArgsBroadcastGameState_t *args, RoundResults *resul
   Player_t *ptr = *args->starting_turn;
 
   ptr = *args->starting_turn;
-  if (args->game_type != game_choices[TEXAS_HOLDEM].game_type) {
+  if (args->game_type != game_choices[TEXAS_HOLDEM].game_type &&
+      args->game_type != game_choices[OMAHA].game_type) {
     do {
       handle_sort_hand(&args->real_hand->player[ptr->id],
                        args->game_type == game_choices[CALIFORNIA_LOWBALL].game_type);
@@ -657,12 +669,14 @@ static void determine_winner(ArgsBroadcastGameState_t *args, RoundResults *resul
   for (uint8_t i = 0; i < pl_count; i++) {
     need_comparing[i].won = false;
     need_comparing[i].id = ptr->id;
-    memcpy(&need_comparing[i].hand, &args->real_hand->player[ptr->id], sizeof(POKEVAL_Hand_7));
+    memcpy(&need_comparing[i].hand, &args->real_hand->player[ptr->id], sizeof(POKEVAL_Hand_9));
     ptr = get_next_player(args->game_state->player, ptr->id);
   }
 
   bool lowball = args->game_type == game_choices[CALIFORNIA_LOWBALL].game_type;
-  if (args->deuces_wild)
+  if (args->game_type == game_choices[OMAHA].game_type)
+    results->n_winners = POKEVAL_compare_hands_omaha(need_comparing, pl_count);
+  else if (args->deuces_wild)
     results->n_winners = POKEVAL_compare_hands_wild(need_comparing, pl_count, DH_CARD_TWO);
   else
     results->n_winners = POKEVAL_compare_hands(need_comparing, pl_count, lowball);
@@ -1152,7 +1166,7 @@ void game_five_card_draw(GAME_ARGS) {
 // Returns the index of the first face-up card within the initial deal, or -1 if none.
 static int stud_upcard_idx(const GameChoice_t *choice) {
   for (int i = 0; i < choice->n_cards_initial_deal; i++)
-    if (choice->face_up[i])
+    if (choice->card_slot[i] == CARD_SLOT_FACE_UP)
       return i;
   return -1;
 }
@@ -1204,7 +1218,7 @@ static Player_t *stud_find_best_upcard_player(const ArgsBroadcastGameState_t *ar
     DH_Card visible[4];
     int n_visible = 0;
     for (int j = 0; j < street_idx && n_visible < 4; j++) {
-      if (choice->face_up[j])
+      if (choice->card_slot[j] == CARD_SLOT_FACE_UP)
         visible[n_visible++] = args->real_hand->player[turn->id].card[j];
     }
 
@@ -1270,10 +1284,10 @@ void game_stud(GAME_ARGS) {
     verbose_printf("round: %d\n", i);
     do {
       int id = turn->id;
-      POKEVAL_Hand_7 *hand = &turn->hand;
+      POKEVAL_Hand_9 *hand = &turn->hand;
 
       args->real_hand->player[id].card[i] = DH_deal_top_card(deck);
-      if (choice->face_up[i])
+      if (choice->card_slot[i] == CARD_SLOT_FACE_UP)
         hand->card[i] = args->real_hand->player[id].card[i];
       else
         hand->card[i] = DH_card_back;
@@ -1312,6 +1326,32 @@ void game_texas_holdem(GAME_ARGS) {
 
   /* Flop (3 cards), Turn (1), River (1) */
   const uint8_t street_start[] = {2, 5, 6};
+  const uint8_t street_count[] = {3, 1, 1};
+  for (size_t s = 0; s < ARRAY_SIZE(street_start); s++) {
+    deal_community_cards(args, players_array, deck, street_start[s], street_count[s]);
+    broadcast_game_state(args);
+    results = handle_round();
+    if (results.n_winners > 0)
+      goto done;
+  }
+
+done:
+  determine_winner(args, &results);
+}
+
+void game_omaha(GAME_ARGS) {
+  (void)choice;
+  server_handle_ante(args->game_state, args->config->ante);
+
+  RoundResults results = {0};
+
+  /* Pre-flop betting (4 hole cards already dealt by play_game) */
+  results = handle_round();
+  if (results.n_winners > 0)
+    goto done;
+
+  /* Flop (3 cards), Turn (1), River (1) — community cards start at position 4 */
+  const uint8_t street_start[] = {4, 7, 8};
   const uint8_t street_count[] = {3, 1, 1};
   for (size_t s = 0; s < ARRAY_SIZE(street_start); s++) {
     deal_community_cards(args, players_array, deck, street_start[s], street_count[s]);
@@ -1690,7 +1730,7 @@ static ELoop_t register_new_client(ArgsBroadcastGameState_t *args) {
         for (int i = 0; i < MAX_HAND_SIZE; i++)
           args->real_hand->player[slot].card[i] = DH_card_null;
         memcpy(&args->game_state->player[slot].hand, &args->real_hand->player[slot],
-               sizeof(POKEVAL_Hand_7));
+               sizeof(POKEVAL_Hand_9));
       }
 
       if (recv_and_validate_protocol_header(new_client) != 0) {
