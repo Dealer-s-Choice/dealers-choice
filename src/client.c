@@ -78,7 +78,23 @@ static int send_protocol_header(TCPsocket sock) {
   snprintf(hdr.magic, sizeof(hdr.magic), "%s", GAME_PROTOCOL_MAGIC);
   hdr.version = SDL_SwapBE16(GAME_PROTOCOL_VERSION);
 
-  return send_all_tcp(sock, &hdr, sizeof(hdr));
+  if (send_all_tcp(sock, &hdr, sizeof(hdr)) != 0)
+    return -1;
+
+  uint8_t response;
+  if (recv_all_tcp(sock, &response, sizeof(response)) <= 0) {
+    fprintf(stderr, "Protocol version mismatch or server closed connection\n");
+    return -1;
+  }
+  if (response != 0) {
+    fprintf(stderr,
+            "Server rejected connection: protocol version mismatch "
+            "(client version: %d)\n",
+            GAME_PROTOCOL_VERSION);
+    return -1;
+  }
+
+  return 0;
 }
 
 static void ma_sound_start_wrap(ma_sound *pSound, const char *file, const int line) {
@@ -2517,10 +2533,8 @@ bool get_socket_context_and_run_client(PlayerConfig_t *player_config, const CliA
   if (SDLNet_TCP_AddSocket(socket_context.set, sock) == -1)
     fputs("Socket set full\n", stderr);
 
-  if (send_protocol_header(sock) != 0) {
-    fputs("Failed to send protocol\n", stderr);
+  if (send_protocol_header(sock) != 0)
     goto cleanup;
-  }
 
   if (!test_mode) {
     const char *env_pw = getenv("DC_PASSWORD");

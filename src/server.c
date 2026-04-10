@@ -1557,6 +1557,14 @@ static int recv_and_validate_protocol_header(TCPsocket sock) {
   uint32_t version = SDL_SwapBE16(hdr.version);
   if (version != GAME_PROTOCOL_VERSION) {
     fprintf(stderr, "Unsupported protocol version: %u\n", version);
+    uint8_t nack = 1;
+    send_all_tcp(sock, &nack, sizeof(nack)); // best-effort; we're closing anyway
+    return -1;
+  }
+
+  uint8_t ack = 0;
+  if (send_all_tcp(sock, &ack, sizeof(ack)) != 0) {
+    fprintf(stderr, "Failed to send protocol ACK\n");
     return -1;
   }
 
