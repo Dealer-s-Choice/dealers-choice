@@ -1,0 +1,27 @@
+Source: dealers-choice
+Section: games
+Priority: optional
+Maintainer: Andy Alt <arch_stanton5995@proton.me>
+Build-Depends: debhelper-compat (= 13),
+               cmake,
+               gettext,
+               libprotobuf-c-dev,
+               libsdl2-dev,
+               libsdl2-image-dev,
+               libsdl2-net-dev,
+               libsdl2-ttf-dev,
+               libsodium-dev,
+               meson (>= 0.61.0),
+               ninja-build,
+               pkg-config
+Standards-Version: 4.6.2
+Homepage: https://dealer-s-choice.github.io/
+Rules-Requires-Root: no
+
+Package: dealers-choice
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: Networked multiplayer poker game that supports various
+ draw and stud variants, including optional wild cards. The deal
+ rotates between players, and each new game allows a different
+ player to choose the variant.
