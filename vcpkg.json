@@ -1,0 +1,12 @@
+{
+  "name": "dealers-choice",
+  "builtin-baseline": "77df67cfff9c12ccfdb52284e07c87c75092f723",
+  "dependencies": [
+    "libsodium",
+    "protobuf-c",
+    "sdl2",
+    "sdl2-image",
+    "sdl2-net",
+    "sdl2-ttf"
+  ]
+}

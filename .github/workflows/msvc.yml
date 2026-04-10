@@ -26,11 +26,9 @@ jobs:
       id: cache-vcpkg
       uses: actions/cache@v5
       with:
-        path: |
-          C:\vcpkg\installed\x64-windows-static-md
-          C:\vcpkg\installed\vcpkg
-        key: vcpkg-installed-x64-windows-static-md-${{ hashFiles('.github/workflows/msvc.yml') }}
-        restore-keys: vcpkg-installed-x64-windows-static-md-
+        path: ${{ github.workspace }}\vcpkg_installed
+        key: vcpkg-x64-windows-static-md-${{ hashFiles('vcpkg.json', 'vcpkg-triplets/*.cmake') }}
+        restore-keys: vcpkg-x64-windows-static-md-
 
     - name: Set up MSVC environment
       uses: ilammy/msvc-dev-cmd@v1
@@ -43,20 +41,12 @@ jobs:
     - name: Install dependencies via vcpkg
       if: steps.cache-vcpkg.outputs.cache-hit != 'true'
       run: |
-        $env:VCPKG_ROOT = ""
-        vcpkg install `
-          --overlay-triplets=vcpkg-triplets `
-          sdl2:x64-windows-static-md `
-          sdl2-image:x64-windows-static-md `
-          sdl2-ttf:x64-windows-static-md `
-          sdl2-net:x64-windows-static-md `
-          libsodium:x64-windows-static-md `
-          protobuf-c:x64-windows-static-md
+        vcpkg install --triplet x64-windows-static-md --overlay-triplets=vcpkg-triplets
 
     - name: Meson setup
       run: |
-        $vcpkg_prefix = "$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static-md"
-        $env:PKG_CONFIG = "$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows\tools\pkgconf\pkgconf.exe"
+        $vcpkg_prefix = "${{ github.workspace }}\vcpkg_installed\x64-windows-static-md"
+        $env:PKG_CONFIG = "${{ github.workspace }}\vcpkg_installed\x64-windows\tools\pkgconf\pkgconf.exe"
         $env:PKG_CONFIG_PATH = "$vcpkg_prefix\lib\pkgconfig"
         meson setup _build -Db_sanitize=none -Dsodium=enabled "-Dcmake_prefix_path=$vcpkg_prefix"
 
