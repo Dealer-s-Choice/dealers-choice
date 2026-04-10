@@ -1831,6 +1831,7 @@ int run_server(const CliArgs_t *cli_args, Path_t *path) {
 
   bool slot_taken[MAX_CLIENTS] = {false};
   uint32_t dealer_timeout_start = 0;
+  uint32_t autodeal_start = 0;
 
   uint32_t last_ping_time = SDL_GetTicks();
   uint32_t ping_times[MAX_CLIENTS] = {0};
@@ -2000,6 +2001,7 @@ int run_server(const CliArgs_t *cli_args, Path_t *path) {
                      sizeof(session_ban_list));
               session_ban_count = args_broadcast_game_state.ban_count;
               dealer_timeout_start = 0;
+              autodeal_start = 0;
             } else {
               fprintf(stderr, "Non-dealer client %d sent MSG_GAME_SELECT (ignored)\n", i);
             }
@@ -2048,6 +2050,25 @@ int run_server(const CliArgs_t *cli_args, Path_t *path) {
       }
     } else if (active_clients == 1)
       dealer_timeout_start = 0;
+
+    if (cli_args->autodeal) {
+      if (active_clients > 1) {
+        if (autodeal_start == 0)
+          autodeal_start = SDL_GetTicks();
+        else if (SDL_GetTicks() - autodeal_start >= 6000) {
+          printf("Auto-dealing: no game selected after 6 seconds\n");
+          args_broadcast_game_state.game_type =
+              game_choices[pcg32_boundedrand_r(&rng, MAX_CHOICES)].game_type;
+          args_broadcast_game_state.deuces_wild = false;
+          init_game(&args_broadcast_game_state, &deck);
+          memcpy(session_ban_list, args_broadcast_game_state.ban_list, sizeof(session_ban_list));
+          session_ban_count = args_broadcast_game_state.ban_count;
+          dealer_timeout_start = 0;
+          autodeal_start = 0;
+        }
+      } else
+        autodeal_start = 0;
+    }
 
     if (reassign_dealer_if_needed(&game_state, slot_taken))
       broadcast_game_state(&args_broadcast_game_state);

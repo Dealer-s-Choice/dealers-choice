@@ -572,6 +572,7 @@ static CliArgs_t parse_cli_args(int argc, char *argv[]) {
     OPT_VERBOSE,
     OPT_DISABLE_AUDIO,
     OPT_DISABLE_TIMEOUT,
+    OPT_AUTODEAL,
   };
 
   static const glopt_option_t options[] = {
@@ -586,6 +587,7 @@ static CliArgs_t parse_cli_args(int argc, char *argv[]) {
       {"verbose", GLOPT_NO_ARG, OPT_VERBOSE},
       {"disable-audio", GLOPT_NO_ARG, OPT_DISABLE_AUDIO},
       {"disable-timeout", GLOPT_NO_ARG, OPT_DISABLE_TIMEOUT},
+      {"autodeal", GLOPT_NO_ARG, OPT_AUTODEAL},
       {NULL, 0, 0}};
 
   glopt_parser_t parser;
@@ -633,6 +635,9 @@ static CliArgs_t parse_cli_args(int argc, char *argv[]) {
       break;
     case OPT_DISABLE_TIMEOUT:
       cli_args.disable_timeout = true;
+      break;
+    case OPT_AUTODEAL:
+      cli_args.autodeal = true;
       break;
     case '?':
     default:
