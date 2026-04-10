@@ -22,10 +22,13 @@ jobs:
     steps:
     - uses: actions/checkout@v6
 
-    - name: Restore vcpkg cache
-      uses: actions/cache/restore@v4
+    - name: Cache vcpkg installed packages
+      id: cache-vcpkg
+      uses: actions/cache@v5
       with:
-        path: C:\vcpkg\installed\x64-windows-static-md
+        path: |
+          C:\vcpkg\installed\x64-windows-static-md
+          C:\vcpkg\installed\vcpkg
         key: vcpkg-installed-x64-windows-static-md-${{ hashFiles('.github/workflows/msvc.yml') }}
         restore-keys: vcpkg-installed-x64-windows-static-md-
 
@@ -38,6 +41,7 @@ jobs:
       run: pip install meson ninja
 
     - name: Install dependencies via vcpkg
+      if: steps.cache-vcpkg.outputs.cache-hit != 'true'
       run: |
         $env:VCPKG_ROOT = ""
         vcpkg install `
@@ -48,13 +52,6 @@ jobs:
           sdl2-net:x64-windows-static-md `
           libsodium:x64-windows-static-md `
           protobuf-c:x64-windows-static-md
-
-    - name: Save vcpkg cache
-      uses: actions/cache/save@v4
-      if: always()
-      with:
-        path: C:\vcpkg\installed\x64-windows-static-md
-        key: vcpkg-installed-x64-windows-static-md-${{ hashFiles('.github/workflows/msvc.yml') }}
 
     - name: Meson setup
       run: |
