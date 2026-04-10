@@ -13,6 +13,7 @@
     the server
   * Bump GAME_PROTOCOL_VERSION from 7 to 8
   * Fix MSVC build
+  + Add Debian release packages
 
 2026-04-01
 
