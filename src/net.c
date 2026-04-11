@@ -382,12 +382,7 @@ ERecvStatus_t recv_game_state(SocketContext_t *socket_context, GameState_t *game
     resp.timestamp = req->timestamp;
 
     size_t len = ping_response__get_packed_size(&resp);
-    uint8_t *buf = malloc(len);
-    if (!buf) {
-      ping_request__free_unpacked(req, NULL);
-      break;
-    }
-
+    uint8_t buf[16]; // ample for one uint32 varint field
     ping_response__pack(&resp, buf);
 
     // Send back response to server
@@ -395,7 +390,6 @@ ERecvStatus_t recv_game_state(SocketContext_t *socket_context, GameState_t *game
       fprintf(stderr, "[PING] Failed to send PingResponse\n");
     }
 
-    free(buf);
     ping_request__free_unpacked(req, NULL);
   } break;
 

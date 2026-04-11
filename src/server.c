@@ -442,16 +442,10 @@ static int send_ping_request(TCPsocket sock) {
   req.timestamp = SDL_GetTicks(); // current server tick
 
   size_t len = ping_request__get_packed_size(&req);
-  uint8_t *buf = malloc(len);
-  if (!buf)
-    return -1;
-
+  uint8_t buf[16]; // ample for one uint32 varint field
   ping_request__pack(&req, buf);
 
-  int result = send_message(sock, MSG_PING_REQUEST, buf, len);
-
-  free(buf);
-  return result;
+  return send_message(sock, MSG_PING_REQUEST, buf, len);
 }
 
 static int broadcast_ping_times(ArgsBroadcastGameState_t *args, const uint32_t ping_times[]) {
@@ -1933,19 +1927,16 @@ int run_server(const CliArgs_t *cli_args, Path_t *path) {
 
     if (active_clients > 0) {
       uint32_t now = SDL_GetTicks();
+      bool should_broadcast = false;
       if (now - last_ping_time >= 5000) {
-        // Send ping requests
         for (int i = 0; i < MAX_CLIENTS; i++) {
           if (!clients[i])
             continue;
-          if (send_ping_request(clients[i]) < 0) {
+          if (send_ping_request(clients[i]) < 0)
             fprintf(stderr, "[PING] Failed to send ping request to client %d\n", i);
-          } // else
-            // verbose_printf("[PING] sent to %d\n", i);
         }
         last_ping_time = now;
-        // Broadcast ping times
-        broadcast_ping_times(&args_broadcast_game_state, ping_times);
+        should_broadcast = true;
       }
       int recv_pings = SDLNet_CheckSockets(socket_set, 50);
       if (recv_pings == -1)
@@ -2086,6 +2077,8 @@ int run_server(const CliArgs_t *cli_args, Path_t *path) {
             break;
         }
       }
+      if (should_broadcast)
+        broadcast_ping_times(&args_broadcast_game_state, ping_times);
     }
 
     if (active_clients > 1) {
