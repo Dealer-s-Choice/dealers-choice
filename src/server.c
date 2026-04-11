@@ -1094,7 +1094,7 @@ static uint8_t count_active_clients(const bool *slot_taken) {
 }
 
 static bool reassign_dealer_if_needed(GameState_t *game_state, bool *slot_taken) {
-  if (!slot_taken[game_state->dealer_id]) {
+  if (game_state->dealer_id < 0 || !slot_taken[game_state->dealer_id]) {
     for (int8_t i = 0; i < MAX_CLIENTS; i++) {
       if (slot_taken[i]) {
         game_state->dealer_id = i;
