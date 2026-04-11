@@ -1,6 +1,9 @@
 
 - dealers-choice (in progress):
-  + Add Omaha
+  + Handle audio device disconnection: when the audio backend has no default
+    device to reroute to, the device is stopped; register a miniaudio
+    notification callback to detect this and restart the engine when possible
+    (#243).
   + Stud games: implement bring-in forced partial bet (bringin_amount in
     server.conf, default 50); subsequent streets open with the player
     holding the best visible hand
