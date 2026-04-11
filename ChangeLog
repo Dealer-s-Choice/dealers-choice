@@ -1,5 +1,8 @@
 
 - dealers-choice (in progress):
+  + Add dealers-choice-bot: a headless rules-based CLI bot that connects to a
+    running server like a regular client. Reads DC_PASSWORD from the
+    environment (bot is rejected if the server has no password set).
   + Handle audio device disconnection: when the audio backend has no default
     device to reroute to, the device is stopped; register a miniaudio
     notification callback to detect this and restart the engine when possible

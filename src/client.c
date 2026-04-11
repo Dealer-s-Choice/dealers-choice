@@ -71,11 +71,12 @@ static const uint8_t coin_px = 96;
 
 #define MAX_POT_COINS 40
 
-static int send_protocol_header(TCPsocket sock) {
+static int send_protocol_header(TCPsocket sock, uint8_t flags) {
   verbose_puts("Exchanging protocol information...");
   GameProtocolHeader_t hdr = {0};
   snprintf(hdr.magic, sizeof(hdr.magic), "%s", GAME_PROTOCOL_MAGIC);
   hdr.version = SDL_SwapBE16(GAME_PROTOCOL_VERSION);
+  hdr.flags = flags;
 
   if (send_all_tcp(sock, &hdr, sizeof(hdr)) != 0)
     return -1;
@@ -94,6 +95,54 @@ static int send_protocol_header(TCPsocket sock) {
   }
 
   return 0;
+}
+
+bool bot_connect(const char *host_str, uint16_t port, const char *nick, const char *password,
+                 SocketContext_t *out) {
+  IPaddress server_ip;
+  if (SDLNet_ResolveHost(&server_ip, host_str, port) == -1) {
+    fprintf(stderr, "Failed to resolve server: %s\n", SDLNet_GetError());
+    return false;
+  }
+
+  TCPsocket sock = SDLNet_TCP_Open(&server_ip);
+  if (!sock) {
+    fprintf(stderr, "Failed to connect: %s\n", SDLNet_GetError());
+    return false;
+  }
+
+  SDLNet_SocketSet set = SDLNet_AllocSocketSet(1);
+  if (!set) {
+    SDLNet_TCP_Close(sock);
+    return false;
+  }
+  SDLNet_TCP_AddSocket(set, sock);
+
+  if (send_protocol_header(sock, PROTO_FLAG_BOT) != 0)
+    goto fail;
+
+  if (authenticate_with_server(sock, password ? password : "") < 0) {
+    fprintf(stderr, "Authentication failed\n");
+    goto fail;
+  }
+
+  {
+    uint16_t len = (uint16_t)(strlen(nick) + 1);
+    uint16_t net_len = SDL_SwapBE16(len);
+    if (send_all_tcp(sock, &net_len, sizeof(net_len)) != 0 || send_all_tcp(sock, nick, len) != 0) {
+      fprintf(stderr, "Failed to send nick\n");
+      goto fail;
+    }
+  }
+
+  out->sock = sock;
+  out->set = set;
+  return true;
+
+fail:
+  SDLNet_FreeSocketSet(set);
+  SDLNet_TCP_Close(sock);
+  return false;
 }
 
 static void ma_sound_start_wrap(ma_sound *pSound, const char *file, const int line) {
@@ -2122,7 +2171,7 @@ bool get_socket_context_and_run_client(PlayerConfig_t *player_config, const CliA
   if (SDLNet_TCP_AddSocket(socket_context.set, sock) == -1)
     fputs("Socket set full\n", stderr);
 
-  if (send_protocol_header(sock) != 0)
+  if (send_protocol_header(sock, 0) != 0)
     goto cleanup;
 
   if (!test_mode) {

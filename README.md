@@ -54,7 +54,8 @@ enabled.
 
 ### Computer Opponents
 
-There are no bots or computer opponents implemented yet.
+A headless rules-based bot (`dealers-choice-bot`) is available. See
+[docs/BOT.md](docs/BOT.md) for usage.
 
 ## Server
 

@@ -76,3 +76,6 @@ void layout_cards(CardWidget_t card_context[MAX_PLAYERS][MAX_HAND_SIZE], Player_
                   const SDL_Point *player_pos);
 
 int authenticate_with_server(TCPsocket sock, const char *password);
+
+bool bot_connect(const char *host_str, uint16_t port, const char *nick, const char *password,
+                 SocketContext_t *out);

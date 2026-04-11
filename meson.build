@@ -179,6 +179,13 @@ exe_target = executable(
   install: true,
 )
 
+executable(
+  meson.project_name() + '-bot',
+  ['src/bot.c'],
+  dependencies: game_dep,
+  install: false,
+)
+
 install_subdir(
   'data',
   install_dir: join_paths(get_option('datadir'), meson.project_name()),

@@ -45,6 +45,9 @@
 #define GAME_PROTOCOL_MAGIC "DCPROTO"
 #define GAME_PROTOCOL_VERSION 8
 
+/* Flags sent in GameProtocolHeader_t.flags */
+#define PROTO_FLAG_BOT 0x01
+
 #ifdef _MSC_VER
 #pragma pack(push, 1)
 #endif
@@ -52,6 +55,7 @@
 typedef struct {
   char magic[sizeof(GAME_PROTOCOL_MAGIC)];
   uint16_t version; // Network byte order
+  uint8_t flags;
 }
 #ifdef _MSC_VER
 GameProtocolHeader_t;
