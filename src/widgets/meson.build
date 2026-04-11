@@ -1,5 +1,6 @@
 widgets_src = files(
   'button.c',
+  'card.c',
   'checkbox.c',
   'dealer.c',
   'image.c',
