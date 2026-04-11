@@ -7,7 +7,7 @@ project(
     'warning_level=3',
     'b_sanitize=address,undefined',
     'b_lundef=false',
-    'c_std=c99',
+    'c_std=c11',
   ],
 )
 
@@ -65,6 +65,8 @@ else
       # protobuf-c.h defaults to __declspec(dllimport) on MSVC; override to
       # nothing so the static lib symbol is resolved as a regular extern
       '-DPROTOBUF_C__API=',
+      # Required for <stdatomic.h> under /std:c11
+      '/experimental:c11atomics',
     ],
     language: 'c',
   )

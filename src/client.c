@@ -27,6 +27,7 @@
 */
 
 #include <math.h>
+#include <stdatomic.h>
 
 #include <deckhandler.h>
 #include <stdio.h>
@@ -99,6 +100,19 @@ static void ma_sound_start_wrap(ma_sound *pSound, const char *file, const int li
   ma_result result = ma_sound_start(pSound);
   if (result != MA_SUCCESS) {
     fprintf(stderr, "[ma_sound_start] Failed (%s:%d) -> result = %d\n", file, line, result);
+  }
+}
+
+static SoundContext_t *g_sound_context = NULL;
+static atomic_bool g_audio_needs_restart;
+static atomic_bool g_audio_shutting_down;
+
+static void on_audio_device_notification(const ma_device_notification *pNotification) {
+  if (!g_sound_context || atomic_load(&g_audio_shutting_down))
+    return;
+  if (pNotification->type == ma_device_notification_type_stopped) {
+    verbose_puts("Audio device stopped; will attempt restart");
+    atomic_store(&g_audio_needs_restart, true);
   }
 }
 
@@ -2162,20 +2176,26 @@ bool get_socket_context_and_run_client(PlayerConfig_t *player_config, const CliA
       exit(EXIT_FAILURE);
 
     bool went_back_result = false;
+    atomic_store(&g_audio_needs_restart, false);
+    atomic_store(&g_audio_shutting_down, false);
     SoundContext_t sound_context = {0};
     sound_context.engineConfig = ma_engine_config_init();
     if (player_config->volume == 0 || cli_args->disable_audio) {
       sound_context.engineConfig.noDevice = MA_TRUE;
       sound_context.engineConfig.channels = 2;
       sound_context.engineConfig.sampleRate = 48000;
-    } else
+    } else {
       verbose_puts("Initializing audio engine (powered by miniaudio: https://miniaud.io/)");
+      sound_context.engineConfig.notificationCallback = on_audio_device_notification;
+    }
     sound_context.result = ma_engine_init(&sound_context.engineConfig, &sound_context.engine);
     if (sound_context.result != MA_SUCCESS) {
       fprintf(stderr, "Error: Failed to initialize miniaudio engine (code: %d).\n",
               sound_context.result);
       exit(EXIT_FAILURE);
     }
+    if (!sound_context.engineConfig.noDevice)
+      g_sound_context = &sound_context;
     ma_engine_set_volume(&sound_context.engine, player_config->volume * .1f);
 
     // Using {0} or {{0}} for the The ma_sound field initializer doesn't work so
@@ -2230,6 +2250,12 @@ bool get_socket_context_and_run_client(PlayerConfig_t *player_config, const CliA
       bool running = true;
       bool went_back = false;
       do {
+        if (atomic_exchange(&g_audio_needs_restart, false)) {
+          if (ma_engine_start(&sound_context.engine) != MA_SUCCESS)
+            fputs("Warning: failed to restart audio engine after device change\n", stderr);
+          else
+            verbose_puts("Audio engine restarted after device change");
+        }
         EGameSelResult_t sel = handle_game_selection(
             player_config, &socket_context, game_settings.client_id, &game_state, &client_state,
             sdl_context, font, &sound_context, links, path);
@@ -2250,6 +2276,8 @@ bool get_socket_context_and_run_client(PlayerConfig_t *player_config, const CliA
       ma_sound_uninit(&sounds[i].sound);
     for (i = 0; i < n_coin_sounds_init; i++)
       ma_sound_uninit(&coin_hit_sounds[i].sound);
+    atomic_store(&g_audio_shutting_down, true);
+    g_sound_context = NULL;
     ma_engine_uninit(&sound_context.engine);
     socket_cleanup(&socket_context);
     SDLNet_Quit();
