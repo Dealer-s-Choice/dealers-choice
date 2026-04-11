@@ -34,18 +34,7 @@
 #include "links.h"
 #include "net.h"
 #include "types.h"
-
-#define SIZEOF_CARD_TEXT 20
-
-typedef struct {
-  char text[SIZEOF_CARD_TEXT];
-  SDL_Color textColor;
-  SDL_Renderer *renderer;
-  SDL_Rect rect;
-  bool hovered, selected, is_back, is_null;
-  bool is_wild;
-  bool is_winning;
-} CardContext_t;
+#include "widgets/card.h"
 
 typedef enum {
   SND_SERVER_JOIN,
@@ -83,7 +72,7 @@ void do_sdl_cleanup(SdlContext_t *sdl_context);
 
 int send_discards_request_new_cards(TCPsocket sock, const uint8_t *discard_indices, uint8_t count);
 
-void layout_cards(CardContext_t card_context[MAX_PLAYERS][MAX_HAND_SIZE], Player_t *players_array,
+void layout_cards(CardWidget_t card_context[MAX_PLAYERS][MAX_HAND_SIZE], Player_t *players_array,
                   const SDL_Point *player_pos);
 
 int authenticate_with_server(TCPsocket sock, const char *password);

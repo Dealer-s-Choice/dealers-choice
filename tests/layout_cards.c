@@ -11,7 +11,7 @@
 _MAIN_HEAD_
 
 Player_t players_array[MAX_PLAYERS] = {0};
-CardContext_t card_context[MAX_PLAYERS][MAX_HAND_SIZE] = {0};
+CardWidget_t card_context[MAX_PLAYERS][MAX_HAND_SIZE] = {0};
 SDL_Point player_pos[MAX_PLAYERS] = {0};
 
 // Slot 0 is disconnected (the player who left)
@@ -32,11 +32,11 @@ player_pos[1].y = 200;
 layout_cards(card_context, players_array, player_pos);
 
 // Verify that slot 1's cards were laid out (rect.w is card_area.w = 80)
-assert(card_context[1][0].rect.w > 0);
-assert(card_context[1][0].rect.x >= player_pos[1].x);
-assert(card_context[1][0].rect.y == player_pos[1].y);
+assert(card_context[1][0].base.rect.w > 0);
+assert(card_context[1][0].base.rect.x >= player_pos[1].x);
+assert(card_context[1][0].base.rect.y == player_pos[1].y);
 
 // Slot 0 (disconnected) should not have been touched
-assert(card_context[0][0].rect.w == 0);
+assert(card_context[0][0].base.rect.w == 0);
 
 _MAIN_TAIL_

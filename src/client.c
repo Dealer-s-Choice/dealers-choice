@@ -54,8 +54,6 @@
 
 static const uint8_t coin_px = 96;
 
-static const SDL_Rect card_area = {0, 0, 80, 50};
-
 #define POT_BOUNDARY 450
 
 #define x_begin_action_button 500
@@ -545,440 +543,6 @@ cleanup:
   return result;
 }
 
-// Card back pattern/color selection
-typedef struct {
-  SDL_Color base_color;
-  SDL_Color border_color;
-  SDL_Color pattern_color;
-  int pattern_type; // 0: crosshatch, 1: dots, 2: diagonal stripes, 3: grid
-} CardBackStyle_t;
-
-// pattern_type comments: 0: crosshatch, 1: dots, 2: diagonal stripes, 3: grid,
-//                        4: diamond, 5: lava lamp, 6: sunset, 7: horse, 8: ocean waves
-static CardBackStyle_t card_back_styles[] = {
-    {{0, 0, 128, 255}, {255, 255, 255, 255}, {200, 200, 255, 255}, 0},   // blue crosshatch
-    {{128, 0, 0, 255}, {255, 255, 255, 255}, {255, 200, 200, 255}, 0},   // red crosshatch
-    {{128, 0, 0, 255}, {255, 255, 255, 255}, {255, 200, 200, 255}, 1},   // red dots
-    {{128, 128, 0, 255}, {255, 255, 255, 255}, {255, 255, 200, 255}, 1}, // yellow dots
-    {{0, 0, 128, 255}, {255, 255, 255, 255}, {200, 200, 255, 255}, 2},   // blue diagonal stripes
-    {{128, 64, 0, 255}, {255, 255, 255, 255}, {255, 200, 128, 255}, 2},  // orange diagonal stripes
-    {{128, 128, 0, 255}, {255, 255, 255, 255}, {255, 255, 200, 255}, 3}, // yellow grid
-    {{128, 0, 128, 255},
-     {255, 255, 255, 255},
-     {255, 200, 255, 255},
-     4},                                                 // purple with light stripes
-    {{0, 0, 0, 255}, {0, 0, 0, 255}, {0, 0, 0, 255}, 5}, // lava lamp (animated)
-    {{0, 0, 0, 255}, {0, 0, 0, 255}, {0, 0, 0, 255}, 6}, // sunset (animated)
-    {{0, 0, 0, 255}, {0, 0, 0, 255}, {0, 0, 0, 255}, 7}, // horse walking (animated)
-    {{0, 0, 0, 255}, {0, 0, 0, 255}, {0, 0, 0, 255}, 8}, // ocean waves (animated)
-};
-
-static int selected_card_back = -1;
-
-static void select_card_back_for_game(void) {
-  selected_card_back = pcg32_boundedrand_r(&rng, ARRAY_SIZE(card_back_styles));
-}
-
-static void draw_card_back_pattern(SDL_Renderer *renderer, SDL_Rect *card_rect) {
-  const int style_idx = selected_card_back >= 0 ? selected_card_back : 0;
-  CardBackStyle_t style = card_back_styles[style_idx];
-
-  // Fill card with base color
-  SDL_SetRenderDrawColor(renderer, style.base_color.r, style.base_color.g, style.base_color.b,
-                         style.base_color.a);
-  SDL_RenderFillRect(renderer, card_rect);
-
-  // Draw border
-  SDL_SetRenderDrawColor(renderer, style.border_color.r, style.border_color.g, style.border_color.b,
-                         style.border_color.a);
-  SDL_RenderDrawRect(renderer, card_rect);
-
-  SDL_SetRenderDrawColor(renderer, style.pattern_color.r, style.pattern_color.g,
-                         style.pattern_color.b, style.pattern_color.a);
-  int spacing = 8;
-  switch (style.pattern_type) {
-  case 0: // crosshatch
-    for (int y = 0; y < card_rect->h; y += spacing) {
-      for (int x = 0; x < card_rect->w; x += spacing) {
-        SDL_RenderDrawLine(renderer, card_rect->x + x, card_rect->y, card_rect->x,
-                           card_rect->y + y);
-      }
-    }
-    for (int y = 0; y < card_rect->h; y += spacing) {
-      for (int x = 0; x < card_rect->w; x += spacing) {
-        SDL_RenderDrawLine(renderer, card_rect->x + x, card_rect->y + card_rect->h,
-                           card_rect->x + card_rect->w, card_rect->y + y);
-      }
-    }
-    break;
-  case 1: // dots
-    for (int y = spacing; y < card_rect->h; y += spacing) {
-      for (int x = spacing; x < card_rect->w; x += spacing) {
-        SDL_Rect dot = {card_rect->x + x, card_rect->y + y, 2, 2};
-        SDL_RenderFillRect(renderer, &dot);
-      }
-    }
-    break;
-  case 2: { // light green diagonal stripes (strictly inside border)
-    // Offset by 1 to stay inside the border
-    int left = card_rect->x + 1;
-    int top = card_rect->y + 1;
-    int right = card_rect->x + card_rect->w - 2;
-    int bottom = card_rect->y + card_rect->h - 2;
-    int w = right - left;
-    int h = bottom - top;
-    for (int x = -h; x <= w; x += spacing) {
-      int x1 = left + (x < 0 ? 0 : x);
-      int y1 = top + (x < 0 ? -x : 0);
-      int x2 = left + (x + h <= w ? x + h : w);
-      int y2 = top + (x + h <= w ? h : h - (x + h - w));
-      SDL_RenderDrawLine(renderer, x1, y1, x2, y2);
-    }
-    break;
-  }
-  case 3: // grid
-    for (int y = 0; y < card_rect->h; y += spacing) {
-      SDL_RenderDrawLine(renderer, card_rect->x, card_rect->y + y, card_rect->x + card_rect->w,
-                         card_rect->y + y);
-    }
-    for (int x = 0; x < card_rect->w; x += spacing) {
-      SDL_RenderDrawLine(renderer, card_rect->x + x, card_rect->y, card_rect->x + x,
-                         card_rect->y + card_rect->h);
-    }
-    break;
-  case 4: { // purple with diamond grid (criss-cross)
-    int left = card_rect->x + 1;
-    int top = card_rect->y + 1;
-    int right = card_rect->x + card_rect->w - 2;
-    int bottom = card_rect->y + card_rect->h - 2;
-    int w = right - left;
-    int h = bottom - top;
-    // Diagonal lines: top-left to bottom-right
-    for (int x = -h; x <= w; x += spacing) {
-      int x1 = left + (x < 0 ? 0 : x);
-      int y1 = top + (x < 0 ? -x : 0);
-      int x2 = left + (x + h <= w ? x + h : w);
-      int y2 = top + (x + h <= w ? h : h - (x + h - w));
-      SDL_RenderDrawLine(renderer, x1, y1, x2, y2);
-    }
-    // Diagonal lines: top-right to bottom-left
-    for (int x = 0; x <= w + h; x += spacing) {
-      int x1 = left + (x <= w ? x : w);
-      int y1 = top + (x <= w ? 0 : x - w);
-      int x2 = left + (x - h >= 0 ? x - h : 0);
-      int y2 = top + (x - h >= 0 ? h : x);
-      SDL_RenderDrawLine(renderer, x1, y1, x2, y2);
-    }
-    break;
-  }
-  case 5: { // lava lamp (animated)
-    float t = (float)SDL_GetTicks() * 0.001f;
-
-    // Dark purple background
-    SDL_SetRenderDrawColor(renderer, 18, 0, 35, 255);
-    SDL_RenderFillRect(renderer, card_rect);
-    SDL_SetRenderDrawColor(renderer, 70, 0, 90, 255);
-    SDL_RenderDrawRect(renderer, card_rect);
-
-    SDL_RenderSetClipRect(renderer, card_rect);
-    SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
-
-    static const struct {
-      float speed, phase_y, phase_x;
-      Uint8 r, g, b;
-      int radius;
-    } blobs[] = {
-        {0.40f, 0.00f, 1.30f, 220, 55, 0, 10},  {0.65f, 1.80f, 0.70f, 200, 130, 0, 9},
-        {0.30f, 3.50f, 2.10f, 170, 0, 55, 11},  {0.75f, 0.90f, 4.20f, 240, 75, 0, 8},
-        {0.50f, 2.70f, 3.00f, 155, 15, 80, 10},
-    };
-
-    int cx0 = card_rect->x + card_rect->w / 2;
-    int cy0 = card_rect->y + card_rect->h / 2;
-    int hy = card_rect->h / 2 - 4;
-    int hx = card_rect->w / 5;
-
-    for (int i = 0; i < 5; i++) {
-      float ay = t * blobs[i].speed + blobs[i].phase_y;
-      float ax = t * blobs[i].speed * 0.4f + blobs[i].phase_x;
-      int cx = cx0 + (int)(sinf(ax) * hx);
-      int cy = cy0 + (int)(sinf(ay) * hy);
-      int r = blobs[i].radius;
-      SDL_SetRenderDrawColor(renderer, blobs[i].r, blobs[i].g, blobs[i].b, 210);
-      for (int dy = -r; dy <= r; dy++) {
-        float inside = (float)(r * r - dy * dy);
-        if (inside < 0.0f)
-          continue;
-        int dx = (int)(sqrtf(inside) + 0.5f);
-        SDL_RenderDrawLine(renderer, cx - dx, cy + dy, cx + dx, cy + dy);
-      }
-    }
-
-    SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);
-    SDL_RenderSetClipRect(renderer, NULL);
-    break;
-  }
-  case 6: { // sunset (animated) — 30-second repeating arc
-    float t = (float)SDL_GetTicks() * 0.001f;
-    float ph = fmodf(t, 30.0f) / 30.0f; // 0..1 over 30 seconds
-
-    // Sky color: bright blue -> sunset orange -> night
-    Uint8 sky_r, sky_g, sky_b;
-    if (ph < 0.55f) {
-      float p = ph / 0.55f;
-      sky_r = (Uint8)(70 + p * 120);
-      sky_g = (Uint8)(130 + p * 10);
-      sky_b = (Uint8)(210 - p * 40);
-    } else if (ph < 0.75f) {
-      float p = (ph - 0.55f) / 0.20f;
-      sky_r = (Uint8)(190 + p * 30); // peak 220, not 255
-      sky_g = (Uint8)(140 - p * 60); // peak 80, stays orange not red
-      sky_b = (Uint8)(170 - p * 160);
-    } else {
-      float p = (ph - 0.75f) / 0.25f;
-      if (p > 1.0f)
-        p = 1.0f;
-      sky_r = (Uint8)(64 * (1.0f - p) + 5 * p);
-      sky_g = (Uint8)(40 * (1.0f - p) + 5 * p);
-      sky_b = (Uint8)(10 * (1.0f - p) + 20 * p);
-    }
-
-    SDL_SetRenderDrawColor(renderer, sky_r, sky_g, sky_b, 255);
-    SDL_RenderFillRect(renderer, card_rect);
-    SDL_SetRenderDrawColor(renderer, sky_r / 2, sky_g / 2, sky_b / 2, 255);
-    SDL_RenderDrawRect(renderer, card_rect);
-
-    SDL_RenderSetClipRect(renderer, card_rect);
-    SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
-
-    // Clouds: tinted by sky, drift left-to-right, fade out at sunset
-    if (ph < 0.80f) {
-      float cf = ph < 0.65f ? 1.0f : (0.80f - ph) / 0.15f;
-      Uint8 ca = (Uint8)(180 * cf);
-      Uint8 cr = ph < 0.55f ? 240 : 255;
-      Uint8 cg = ph < 0.55f ? 240 : (Uint8)(240 - (ph - 0.55f) / 0.25f * 100);
-      Uint8 cb = ph < 0.55f ? 240 : (Uint8)(240 - (ph - 0.55f) / 0.25f * 220);
-      static const struct {
-        float speed, phase;
-        int dy_off, rx, ry;
-      } clouds[] = {
-          {0.025f, 0.10f, 8, 14, 4},
-          {0.018f, 0.55f, 18, 9, 3},
-      };
-      SDL_SetRenderDrawColor(renderer, cr, cg, cb, ca);
-      for (int i = 0; i < 2; i++) {
-        float fx = fmodf(clouds[i].phase + t * clouds[i].speed, 1.0f);
-        int cx = card_rect->x + (int)(fx * (card_rect->w + clouds[i].rx * 2)) - clouds[i].rx;
-        int cy = card_rect->y + clouds[i].dy_off;
-        for (int dy = -clouds[i].ry; dy <= clouds[i].ry; dy++) {
-          float inside = 1.0f - (float)(dy * dy) / (float)(clouds[i].ry * clouds[i].ry);
-          if (inside < 0.0f)
-            continue;
-          int dx = (int)(clouds[i].rx * sqrtf(inside) + 0.5f);
-          SDL_RenderDrawLine(renderer, cx - dx, cy + dy, cx + dx, cy + dy);
-        }
-      }
-    }
-
-    // Sun: arcs from top-left toward bottom-right, disappears behind horizon
-    float sun_fx = 0.15f + ph * 0.70f;
-    float sun_fy = ph;
-    int sun_cx = card_rect->x + (int)(sun_fx * card_rect->w);
-    int sun_cy = card_rect->y + 4 + (int)(sun_fy * (card_rect->h - 8));
-    int sun_rad = 5;
-    Uint8 sun_g = ph < 0.60f ? 230 : (Uint8)(230 - (ph - 0.60f) / 0.40f * 180);
-    Uint8 sun_b = ph < 0.60f ? 80 : 0;
-    SDL_SetRenderDrawColor(renderer, 255, sun_g, sun_b, 255);
-    for (int dy = -sun_rad; dy <= sun_rad; dy++) {
-      float inside = (float)(sun_rad * sun_rad - dy * dy);
-      if (inside < 0.0f)
-        continue;
-      int dx = (int)(sqrtf(inside) + 0.5f);
-      SDL_RenderDrawLine(renderer, sun_cx - dx, sun_cy + dy, sun_cx + dx, sun_cy + dy);
-    }
-
-    // Horizon: dark ground at bottom, 7px tall on left edge, 13px on right,
-    // drawn on top of everything so the sun sinks behind it naturally.
-    SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);
-    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-    for (int row = 0; row < 13; row++) {
-      int y = card_rect->y + card_rect->h - 1 - row;
-      int x_start = row <= 7 ? 0 : (row - 7) * card_rect->w / 6;
-      SDL_RenderDrawLine(renderer, card_rect->x + x_start, y, card_rect->x + card_rect->w - 1, y);
-    }
-    SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
-
-    // Stars: fade in after sunset
-    if (ph > 0.78f) {
-      float sf = (ph - 0.78f) / 0.10f;
-      if (sf > 1.0f)
-        sf = 1.0f;
-      Uint8 sa = (Uint8)(220 * sf);
-      SDL_SetRenderDrawColor(renderer, 255, 255, 200, sa);
-      static const SDL_Point stars[] = {
-          {5, 5}, {20, 8}, {35, 3}, {55, 12}, {70, 6}, {12, 18}, {45, 22}, {62, 15}, {28, 25},
-      };
-      for (int i = 0; i < 9; i++)
-        SDL_RenderDrawPoint(renderer, card_rect->x + stars[i].x, card_rect->y + stars[i].y);
-    }
-
-    SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);
-    SDL_RenderSetClipRect(renderer, NULL);
-    break;
-  }
-  case 7: { // horse walking (animated)
-    float t = (float)SDL_GetTicks() * 0.001f;
-
-    // Sky
-    SDL_SetRenderDrawColor(renderer, 120, 185, 230, 255);
-    SDL_RenderFillRect(renderer, card_rect);
-
-    SDL_RenderSetClipRect(renderer, card_rect);
-
-    // Grass strip — bottom 12 rows
-    int grass_top = card_rect->y + card_rect->h - 12;
-    SDL_SetRenderDrawColor(renderer, 55, 140, 45, 255);
-    SDL_Rect grass = {card_rect->x, grass_top, card_rect->w, 12};
-    SDL_RenderFillRect(renderer, &grass);
-    // Darker grass tufts
-    SDL_SetRenderDrawColor(renderer, 35, 100, 28, 255);
-    for (int gx = 0; gx < card_rect->w; gx += 7) {
-      SDL_RenderDrawLine(renderer, card_rect->x + gx, grass_top, card_rect->x + gx, grass_top - 2);
-    }
-
-    // Horse position: walks left-to-right, wrapping
-    int wrap_w = card_rect->w + 44;
-    float walk_speed = 14.0f; // pixels per second
-    int horse_cx = card_rect->x - 22 + (int)fmodf(t * walk_speed, (float)wrap_w);
-    int horse_y = grass_top - 8; // bottom of body
-
-    // Walk cycle: two leg pairs in opposite phase
-    float stride = fmodf(t * 4.5f, (float)(2 * M_PI));
-    int p1 = (int)(5.0f * sinf(stride));         // near pair
-    int p2 = (int)(5.0f * sinf(stride + 3.14f)); // far pair
-
-    // Far legs (drawn behind body — darker brown)
-    SDL_SetRenderDrawColor(renderer, 72, 45, 12, 255);
-    // far front leg
-    SDL_RenderDrawLine(renderer, horse_cx + 5, horse_y + 8, horse_cx + 5 + p2, horse_y + 8 + 8);
-    // far hind leg
-    SDL_RenderDrawLine(renderer, horse_cx - 5, horse_y + 8, horse_cx - 5 - p2, horse_y + 8 + 8);
-
-    // Body
-    SDL_SetRenderDrawColor(renderer, 105, 68, 28, 255);
-    SDL_Rect body = {horse_cx - 12, horse_y, 24, 9};
-    SDL_RenderFillRect(renderer, &body);
-    // Highlight stripe along top of body
-    SDL_SetRenderDrawColor(renderer, 140, 95, 48, 255);
-    SDL_RenderDrawLine(renderer, horse_cx - 11, horse_y + 1, horse_cx + 11, horse_y + 1);
-
-    // Neck: 4 lines going up-right from front of body
-    SDL_SetRenderDrawColor(renderer, 105, 68, 28, 255);
-    for (int ni = 0; ni < 4; ni++) {
-      SDL_RenderDrawLine(renderer, horse_cx + 10 + ni, horse_y + 7 - ni, horse_cx + 14 + ni,
-                         horse_y - 5 - ni);
-    }
-
-    // Head
-    SDL_Rect head = {horse_cx + 14, horse_y - 9, 8, 5};
-    SDL_RenderFillRect(renderer, &head);
-
-    // Mane: dark strip along neck
-    SDL_SetRenderDrawColor(renderer, 38, 18, 4, 255);
-    for (int ni = 0; ni < 4; ni++) {
-      SDL_RenderDrawPoint(renderer, horse_cx + 11 + ni, horse_y + 6 - ni);
-    }
-
-    // White blaze on nose
-    SDL_SetRenderDrawColor(renderer, 230, 225, 215, 255);
-    SDL_RenderDrawLine(renderer, horse_cx + 20, horse_y - 8, horse_cx + 20, horse_y - 6);
-
-    // Eye
-    SDL_SetRenderDrawColor(renderer, 15, 10, 5, 255);
-    SDL_RenderDrawPoint(renderer, horse_cx + 16, horse_y - 7);
-
-    // Nostril
-    SDL_RenderDrawPoint(renderer, horse_cx + 21, horse_y - 5);
-
-    // Near legs (drawn in front of body)
-    SDL_SetRenderDrawColor(renderer, 105, 68, 28, 255);
-    // near front leg
-    SDL_RenderDrawLine(renderer, horse_cx + 6, horse_y + 8, horse_cx + 6 + p1, horse_y + 8 + 8);
-    // near hind leg
-    SDL_RenderDrawLine(renderer, horse_cx - 4, horse_y + 8, horse_cx - 4 - p1, horse_y + 8 + 8);
-
-    // White sock on near front leg bottom
-    SDL_SetRenderDrawColor(renderer, 210, 205, 195, 255);
-    int sock_bx = horse_cx + 6 + p1;
-    int sock_by = horse_y + 16;
-    SDL_RenderDrawLine(renderer, sock_bx, sock_by, sock_bx, sock_by + 1);
-
-    // Tail: swishing at the rear
-    SDL_SetRenderDrawColor(renderer, 38, 18, 4, 255);
-    float tail_sw = sinf(t * 1.8f) * 5.0f;
-    SDL_RenderDrawLine(renderer, horse_cx - 12, horse_y + 2, horse_cx - 18 + (int)tail_sw,
-                       horse_y + 11);
-    SDL_RenderDrawLine(renderer, horse_cx - 18 + (int)tail_sw, horse_y + 11,
-                       horse_cx - 20 + (int)(tail_sw * 0.6f), horse_y + 16);
-
-    SDL_RenderSetClipRect(renderer, NULL);
-    break;
-  }
-  case 8: { // ocean waves — angled top-down view
-    // Perspective: y=0 is the far horizon, y=h-1 is the near water surface.
-    // Wave bands compress toward the top (quadratic depth mapping).
-    float t = (float)SDL_GetTicks() * 0.001f;
-    SDL_RenderSetClipRect(renderer, card_rect);
-
-    for (int py = 0; py < card_rect->h; py++) {
-      float persp = (float)py / (float)(card_rect->h - 1); // 0=far, 1=near
-      float depth = persp * persp * 15.0f; // world depth units (quadratic = perspective)
-
-      // Base water color: dark blue at horizon, more teal at the near edge
-      float base_r = 8.0f + persp * 25.0f;
-      float base_g = 55.0f + persp * 45.0f;
-      float base_b = 130.0f + persp * 40.0f;
-
-      for (int px = 0; px < card_rect->w; px++) {
-        // Diagonal wave fronts: combine depth and x so crests run SW to NE,
-        // traveling toward the bottom-left (toward the viewer)
-        float wave = sinf(depth * 2.8f + (float)px * 0.25f - t * 2.2f);
-
-        float r = base_r, g = base_g, b = base_b;
-
-        if (wave > 0.65f) {
-          // Whitecap / foam
-          float f = (wave - 0.65f) / 0.35f;
-          r = base_r + f * (225.0f - base_r);
-          g = base_g + f * (235.0f - base_g);
-          b = base_b + f * (245.0f - base_b);
-        } else if (wave > 0.1f) {
-          // Crest face: brighter teal
-          float f = (wave - 0.1f) / 0.55f;
-          r = base_r + f * 10.0f;
-          g = base_g + f * 35.0f;
-          b = base_b + f * 20.0f;
-        } else if (wave < -0.4f) {
-          // Trough: deeper, darker
-          float f = (-wave - 0.4f) / 0.6f;
-          r = base_r * (1.0f - f * 0.35f);
-          g = base_g * (1.0f - f * 0.35f);
-          b = base_b * (1.0f - f * 0.15f);
-        }
-
-        SDL_SetRenderDrawColor(renderer, (Uint8)r, (Uint8)g, (Uint8)b, 255);
-        SDL_RenderDrawPoint(renderer, card_rect->x + px, card_rect->y + py);
-      }
-    }
-
-    SDL_RenderSetClipRect(renderer, NULL);
-    break;
-  }
-  default:
-    break;
-  }
-}
-
 int send_player_action(ClientState_t *client_state, TCPsocket sock, uint8_t action,
                        uint32_t amount) {
   uint8_t buffer[7];
@@ -1013,130 +577,56 @@ int send_discards_request_new_cards(TCPsocket sock, const uint8_t *discard_indic
   return send_all_tcp(sock, buffer, sizeof(buffer));
 }
 
-// CardContext_t is defined in client.h
-
-static void render_card(CardContext_t *context, TTF_Font *font, const bool my_card) {
-  // printf("%d\n", __LINE__);
-  if (context->is_back) {
-    draw_card_back_pattern(context->renderer, &context->rect);
-    return;
-  } else if (context->is_null)
-    return;
-  // Draw white card box
-  SDL_SetRenderDrawColor(context->renderer, 255, 255, 255, 255);
-  SDL_RenderFillRect(context->renderer, &context->rect);
-
-  // Highlight winning cards: gold tint + thick inset border so the indicator
-  // is visible to people who have difficulty perceiving color alone.
-  if (context->is_winning) {
-    SDL_SetRenderDrawBlendMode(context->renderer, SDL_BLENDMODE_BLEND);
-    SDL_SetRenderDrawColor(context->renderer, 255, 200, 0, 110); // translucent gold fill
-    SDL_RenderFillRect(context->renderer, &context->rect);
-    SDL_SetRenderDrawBlendMode(context->renderer, SDL_BLENDMODE_NONE);
-    SDL_SetRenderDrawColor(context->renderer, 220, 160, 0, 255); // solid gold border
-    for (int t = 0; t < 3; t++) {
-      SDL_Rect border = {context->rect.x + t, context->rect.y + t, context->rect.w - 2 * t,
-                         context->rect.h - 2 * t};
-      SDL_RenderDrawRect(context->renderer, &border);
-    }
-  }
-
-  // Highlight hovered card for the local player (draw after card background)
-  if (context->hovered && my_card) {
-    SDL_SetRenderDrawBlendMode(context->renderer, SDL_BLENDMODE_BLEND);
-    SDL_SetRenderDrawColor(context->renderer, 255, 255, 128, 96); // translucent yellow
-    SDL_RenderFillRect(context->renderer, &context->rect);
-    SDL_SetRenderDrawBlendMode(context->renderer, SDL_BLENDMODE_NONE);
-  }
-
-  if (context->selected)
-    mark_selected(context->renderer, &context->rect);
-
-  // Draw card border
-  SDL_SetRenderDrawColor(context->renderer, 0, 0, 0, 255);
-  SDL_RenderDrawRect(context->renderer, &context->rect);
-
-  SDL_Surface *textSurface = TTF_RenderUTF8_Blended(font, context->text, context->textColor);
-  if (!textSurface) {
-    fprintf(stderr, "TTF_RenderUTF8_Blended failed: %s\n", TTF_GetError());
-    exit(EXIT_FAILURE);
-  }
-
-  SDL_Texture *textTexture = SDL_CreateTextureFromSurface(context->renderer, textSurface);
-  if (!textTexture) {
-    fprintf(stderr, "SDL_CreateTextureFromSurface failed: %s\n", SDL_GetError());
-    SDL_FreeSurface(textSurface);
-    exit(EXIT_FAILURE);
-  }
-
-  SDL_Rect textRect = {context->rect.x + (card_area.w - textSurface->w) / 2,
-                       context->rect.y + (card_area.h - textSurface->h) / 2, textSurface->w,
-                       textSurface->h};
-
-  SDL_RenderCopy(context->renderer, textTexture, NULL, &textRect);
-  SDL_FreeSurface(textSurface);
-  SDL_DestroyTexture(textTexture);
-}
-
-static void make_human_readable_card(DH_Card *card, CardContext_t *context) {
+static void make_human_readable_card(DH_Card *card, CardWidget_t *cw) {
   const char *face = DH_get_card_face_str(card->face_val);
   const char *suit = DH_get_card_unicode_suit(*card);
-  context->textColor = (card->suit == DH_SUIT_HEARTS || card->suit == DH_SUIT_DIAMONDS)
-                           ? get_color(COLOR_RED)
-                           : get_color(COLOR_BLACK);
-  snprintf(context->text, sizeof(context->text), "%s%s", face, suit);
-  if (strlen(context->text) == 0) {
+  cw->textColor = (card->suit == DH_SUIT_HEARTS || card->suit == DH_SUIT_DIAMONDS)
+                      ? get_color(COLOR_RED)
+                      : get_color(COLOR_BLACK);
+  snprintf(cw->text, sizeof(cw->text), "%s%s", face, suit);
+  if (strlen(cw->text) == 0) {
     fprintf(stderr, "%s:String length 0\n", __func__);
     exit(EXIT_FAILURE);
   }
 }
 
-static const int PADDING_BETWEEN_CARDS = 10;
-
-static void create_card_context(CardContext_t card_context[MAX_PLAYERS][MAX_HAND_SIZE],
+static void create_card_context(CardWidget_t card_context[MAX_PLAYERS][MAX_HAND_SIZE],
                                 const int start_i, Player_t *players_array,
-                                const SDL_Point *player_pos, SDL_Renderer *renderer,
+                                const SDL_Point *player_pos, TTF_Font *font, const int my_id,
                                 const bool deuces_wild) {
-  memset(card_context, 0, sizeof(CardContext_t) * MAX_PLAYERS * MAX_HAND_SIZE);
+  memset(card_context, 0, sizeof(CardWidget_t) * MAX_PLAYERS * MAX_HAND_SIZE);
   Player_t *turn = &players_array[start_i];
   Player_t *starting_turn = turn;
   do {
     for (int card_n = 0; card_n < MAX_HAND_SIZE; card_n++) {
-      CardContext_t context = {
-          .renderer = renderer,
-          .hovered = false,
-          .selected = false,
-          .is_wild = false,
-      };
       // printf("%d\n", __LINE__);
       const int id = turn->id;
       DH_Card *card = &(turn->hand.card)[card_n];
       const SDL_Point card_pos = {
-          player_pos[id].x + card_n * (card_area.w + PADDING_BETWEEN_CARDS),
+          player_pos[id].x + card_n * (CARD_W + CARD_PADDING),
           player_pos[id].y,
       };
-      SDL_Rect rect = {card_pos.x, card_pos.y, card_area.w, card_area.h};
-      context.rect = rect;
 
-      SDL_Color textColor = {0, 0, 0, 0};
-      // Initialize even though it's not used for backs and null cards
-      context.textColor = textColor;
+      CardWidget_t *cw = &card_context[id][card_n];
+      card_widget_init(cw, font);
+      cw->base.rect.x = card_pos.x;
+      cw->base.rect.y = card_pos.y;
+      cw->my_card = (id == my_id);
 
-      context.is_null = DH_is_card_null(*card);
-      if (!turn->in && !context.is_null)
+      cw->is_null = DH_is_card_null(*card);
+      if (!turn->in && !cw->is_null)
         memcpy(card, &DH_card_back, sizeof(DH_card_back));
 
-      context.is_back = DH_is_card_back(*card);
+      cw->is_back = DH_is_card_back(*card);
 
-      if (!context.is_back && !context.is_null) {
+      if (!cw->is_back && !cw->is_null) {
         // Use a condition here so is_wild is not set to false if the card has
         // been changed
-        if (!context.is_wild && deuces_wild)
-          context.is_wild = card->face_val == DH_CARD_TWO;
+        if (!cw->is_wild && deuces_wild)
+          cw->is_wild = card->face_val == DH_CARD_TWO;
 
-        make_human_readable_card(card, &context);
+        make_human_readable_card(card, cw);
       }
-      card_context[id][card_n] = context;
     }
     turn = get_next_connected_client(players_array, turn->id);
   } while (turn && turn != starting_turn);
@@ -1149,7 +639,7 @@ static void create_card_context(CardContext_t card_context[MAX_PLAYERS][MAX_HAND
  * client and match cards back to their hand positions by face value and suit.
  * Community cards are marked on every player's context; layout_board_cards has
  * already set is_null=true on non-board player slots, so they won't render. */
-static void mark_winning_cards(CardContext_t card_context[MAX_PLAYERS][MAX_HAND_SIZE],
+static void mark_winning_cards(CardWidget_t card_context[MAX_PLAYERS][MAX_HAND_SIZE],
                                Player_t *players_array, const GameChoice_t *game_choice) {
   if (!game_choice)
     return;
@@ -1205,18 +695,17 @@ static void mark_winning_cards(CardContext_t card_context[MAX_PLAYERS][MAX_HAND_
 /* Reposition community cards to the board area below player 0
  * and suppress those positions from all other player hand slots.
  * community_start is the first card index that is a community card. */
-static void layout_board_cards(CardContext_t card_context[MAX_PLAYERS][MAX_HAND_SIZE],
+static void layout_board_cards(CardWidget_t card_context[MAX_PLAYERS][MAX_HAND_SIZE],
                                const int board_player_id, const SDL_Point *player_pos,
                                const int community_start) {
-  const int board_x = player_pos[0].x + (int)(card_area.w * 0.5f);
+  const int board_x = player_pos[0].x + (int)(CARD_W * 0.5f);
   /* Position one card-height above the status panel (which starts at g_center.y) */
-  const int board_y = g_center.y - card_area.h * 2;
+  const int board_y = g_center.y - CARD_H * 2;
 
   for (int card_n = community_start; card_n < MAX_HAND_SIZE; card_n++) {
     int slot = card_n - community_start;
-    SDL_Rect rect = {board_x + slot * (card_area.w + PADDING_BETWEEN_CARDS), board_y, card_area.w,
-                     card_area.h};
-    card_context[board_player_id][card_n].rect = rect;
+    SDL_Rect rect = {board_x + slot * (CARD_W + CARD_PADDING), board_y, CARD_W, CARD_H};
+    card_context[board_player_id][card_n].base.rect = rect;
 
     for (int i = 0; i < MAX_PLAYERS; i++) {
       if (i == board_player_id)
@@ -1226,7 +715,7 @@ static void layout_board_cards(CardContext_t card_context[MAX_PLAYERS][MAX_HAND_
   }
 }
 
-void layout_cards(CardContext_t card_context[MAX_PLAYERS][MAX_HAND_SIZE], Player_t *players_array,
+void layout_cards(CardWidget_t card_context[MAX_PLAYERS][MAX_HAND_SIZE], Player_t *players_array,
                   const SDL_Point *player_pos) {
 
   Player_t *starting_turn = NULL;
@@ -1242,9 +731,9 @@ void layout_cards(CardContext_t card_context[MAX_PLAYERS][MAX_HAND_SIZE], Player
   do {
     for (int card_n = 0; card_n < MAX_HAND_SIZE; card_n++) {
       const int id = turn->id;
-      SDL_Rect rect = {player_pos[id].x + card_n * (card_area.w + PADDING_BETWEEN_CARDS),
-                       player_pos[id].y, card_area.w, card_area.h};
-      card_context[id][card_n].rect = rect;
+      SDL_Rect rect = {player_pos[id].x + card_n * (CARD_W + CARD_PADDING), player_pos[id].y,
+                       CARD_W, CARD_H};
+      card_context[id][card_n].base.rect = rect;
     }
     turn = get_next_connected_client(players_array, turn->id);
   } while (turn && turn != starting_turn);
@@ -1346,22 +835,22 @@ static void layout_action_buttons(ButtonWidget_t **b, ActionButtonAttrs *attr) {
 static void layout_player_pos(SDL_Point *player_pos) {
   SDL_Rect vp = g_viewport;
 
-  int right_x = vp.x + vp.w - (card_area.w * 7 + PADDING_BETWEEN_CARDS * 7 + MARGIN);
+  int right_x = vp.x + vp.w - (CARD_W * 7 + CARD_PADDING * 7 + MARGIN);
 
   player_pos[0].x = vp.x + MARGIN;
-  player_pos[0].y = vp.y + card_area.h * 4;
+  player_pos[0].y = vp.y + CARD_H * 4;
 
   player_pos[1].x = vp.x + 20;
-  player_pos[1].y = vp.y + card_area.h;
+  player_pos[1].y = vp.y + CARD_H;
 
   player_pos[2].x = right_x;
-  player_pos[2].y = vp.y + card_area.h;
+  player_pos[2].y = vp.y + CARD_H;
 
   player_pos[3].x = right_x;
-  player_pos[3].y = vp.y + card_area.h * 4;
+  player_pos[3].y = vp.y + CARD_H * 4;
 
   player_pos[4].x = right_x;
-  player_pos[4].y = vp.y + card_area.h * 7;
+  player_pos[4].y = vp.y + CARD_H * 7;
 }
 
 typedef struct {
@@ -1625,7 +1114,7 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
                               const GameSettings_t *game_settings, GameState_t *game_state,
                               SdlContext_t *sdl_context, const Font_t *font, Path_t *path,
                               const SoundContext_t *sound_context) {
-  select_card_back_for_game();
+  card_widget_select_back_for_game();
 
   ClientState_t client_state = {0};
 
@@ -1661,7 +1150,7 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
       "You may only discard a maximum of 3 cards", font->fonts[FONT_BOLD], get_color(COLOR_WHITE));
   if (discard_hint_tw)
     ui_widget_place(&discard_hint_tw->base, x_begin_action_button,
-                    action_bw[DISCARD]->base.rect.y + card_area.h);
+                    action_bw[DISCARD]->base.rect.y + CARD_H);
   uint8_t last_max_allowed = 3;
 
   static const SDL_Keycode bet_hotkeys[MAX_BET_AMOUNTS] = {
@@ -1693,7 +1182,7 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
   client_state.selected_amount = amount[0].value;
   layout_amount_buttons(amount_bw, n_bet_amounts);
 
-  CardContext_t card_context[MAX_PLAYERS][MAX_HAND_SIZE];
+  CardWidget_t card_context[MAX_PLAYERS][MAX_HAND_SIZE];
 
   UIRegistry_t registry = {0};
 
@@ -1873,7 +1362,7 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
     if (!cards_created) {
       // printf("%d\n", __LINE__);
       create_card_context(card_context, starting_turn->id, players_array, player_pos,
-                          sdl_context->renderer, client_state.deuces_wild);
+                          font->fonts[FONT_CARD], my_id, client_state.deuces_wild);
       layout_cards(card_context, players_array, player_pos);
       if (client_state.game_choice) {
         int community_start = -1;
@@ -1983,8 +1472,8 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
         prev_coins[id] = game_state->player[id].coins;
       }
       UITable_t player_table = {0};
-      ui_table_begin(&player_table, player_pos[id].x + card_area.w / 2,
-                     player_pos[id].y + (int)(card_area.h * 1.2), 3);
+      ui_table_begin(&player_table, player_pos[id].x + CARD_W / 2,
+                     player_pos[id].y + (int)(CARD_H * 1.2), 3);
       ui_table_add(&player_table, 0, 0, &game_nick_widgets[id]->base);
       ui_table_add(&player_table, 0, 1, &game_coin_widgets[id]->base);
       ui_table_add(&player_table, 0, 2, &game_coins_tw[id]->base);
@@ -2020,8 +1509,7 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
     for (int card_n = 0; card_n < MAX_HAND_SIZE; ++card_n) {
       do {
         // printf("%d\n", __LINE__);
-        render_card(&card_context[player_ptr->id][card_n], font->fonts[FONT_CARD],
-                    player_ptr->id == my_id);
+        ui_widget_render(&card_context[player_ptr->id][card_n].base);
 
         player_ptr = get_next_connected_client(players_array, player_ptr->id);
       } while (player_ptr != starting_turn);
@@ -2187,12 +1675,12 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
       for (int card_n = 0; card_n < MAX_HAND_SIZE; card_n++) {
         DH_Card *card = &turn->hand.card[card_n];
         if (!DH_is_card_null(*card) || !DH_is_card_null(*card)) {
-          card_context[my_id][card_n].hovered =
-              SDL_PointInRect(&mouse_pos, &card_context[my_id][card_n].rect);
-          if (card_context[my_id][card_n].hovered && event.type == SDL_MOUSEBUTTONDOWN &&
+          card_context[my_id][card_n].base.hovered =
+              SDL_PointInRect(&mouse_pos, &card_context[my_id][card_n].base.rect);
+          if (card_context[my_id][card_n].base.hovered && event.type == SDL_MOUSEBUTTONDOWN &&
               client_state.do_discard_draw) {
             // select or deselect when clicked
-            bool *selected = &card_context[my_id][card_n].selected;
+            bool *selected = &card_context[my_id][card_n].base.selected;
             *selected = !(*selected);
 
             // Update counter
@@ -2205,7 +1693,7 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
           }
           // If the mouse is at the location, there's no need to iterate through the rest
           // of the cards.
-          if (card_context[my_id][card_n].hovered)
+          if (card_context[my_id][card_n].base.hovered)
             break;
         }
       }
@@ -2371,7 +1859,7 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
           uint8_t discard_count = 0;
 
           for (uint8_t i = 0; i < MAX_HAND_SIZE; i++) {
-            if (!card_context[my_id][i].selected)
+            if (!card_context[my_id][i].base.selected)
               continue;
             discard_indices[discard_count++] = i;
           }
