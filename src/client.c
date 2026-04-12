@@ -731,7 +731,13 @@ static void mark_winning_cards(CardWidget_t card_context[MAX_PLAYERS][MAX_HAND_S
         if (DH_is_card_null(card) || DH_is_card_back(card))
           continue;
         for (int b = 0; b < POKEVAL_HAND_SIZE; b++) {
-          if (card.face_val == best.card[b].face_val && card.suit == best.card[b].suit) {
+          /* POKEVAL_sort_hand mutates Ace face_val from DH_CARD_ACE (1) to
+           * POKEVAL_ACE (14) in place; normalise both sides before comparing
+           * (handle_sort_hand on the server can also leave Aces at 14). */
+          int32_t best_val =
+              (best.card[b].face_val == POKEVAL_ACE) ? DH_CARD_ACE : best.card[b].face_val;
+          int32_t card_val = (card.face_val == POKEVAL_ACE) ? DH_CARD_ACE : card.face_val;
+          if (card_val == best_val && card.suit == best.card[b].suit) {
             card_context[p][c].is_winning = true;
             break;
           }
@@ -752,7 +758,10 @@ static void mark_winning_cards(CardWidget_t card_context[MAX_PLAYERS][MAX_HAND_S
       if (DH_is_card_null(card) || DH_is_card_back(card))
         continue;
       for (int b = 0; b < POKEVAL_HAND_SIZE; b++) {
-        if (card.face_val == best.card[b].face_val && card.suit == best.card[b].suit) {
+        int32_t best_val =
+            (best.card[b].face_val == POKEVAL_ACE) ? DH_CARD_ACE : best.card[b].face_val;
+        int32_t card_val = (card.face_val == POKEVAL_ACE) ? DH_CARD_ACE : card.face_val;
+        if (card_val == best_val && card.suit == best.card[b].suit) {
           if (game_choice->card_slot[c] == CARD_SLOT_HOLE) {
             card_context[p][c].is_winning = true;
           } else {
@@ -1455,8 +1464,9 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
           layout_board_cards(card_context, starting_turn->id, player_pos, community_start);
       }
       if (game_state->winner_declared) {
-        mark_winning_cards(card_context, game_state->player, client_state.game_choice,
-                           client_state.deuces_wild);
+        if (game_state->player_count > 1)
+          mark_winning_cards(card_context, game_state->player, client_state.game_choice,
+                             client_state.deuces_wild);
         winner_highlighted = true;
       }
       cards_created = true;
