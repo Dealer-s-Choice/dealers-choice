@@ -31,8 +31,9 @@ WizardStyle=modern
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Files]
-; Executable
-Source: "..\..\_staging\{#AppExe}"; DestDir: "{app}"; Flags: ignoreversion
+; Executables
+Source: "..\..\_staging\{#AppExe}";              DestDir: "{app}"; Flags: ignoreversion
+Source: "..\..\_staging\dealers-choice-bot.exe"; DestDir: "{app}"; Flags: ignoreversion
 ; Runtime DLLs collected by collect-dlls.sh
 Source: "..\..\_staging\*.dll";     DestDir: "{app}"; Flags: ignoreversion
 ; Game data (fonts, images, sounds, server.conf)
