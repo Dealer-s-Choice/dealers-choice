@@ -524,8 +524,13 @@ static void server_handle_raise(GameState_t *game_state, uint32_t *total_paid,
   game_state->raises_remaining--;
 }
 
-static void handle_sort_hand(POKEVAL_Hand_9 *real_hand, const bool is_lowball) {
-  POKEVAL_Hand_5 tmp_hand = POKEVAL_hand5_from_hand7(real_hand);
+static void handle_sort_hand(POKEVAL_Hand_9 *real_hand, const bool is_lowball,
+                             const bool deuces_wild) {
+  /* When deuces are wild, select the best 5-card hand using the wild-aware
+   * evaluator so that a 2 is never dropped in favour of a higher non-wild
+   * kicker when picking from a 6- or 7-card stud hand. */
+  POKEVAL_Hand_5 tmp_hand = deuces_wild ? POKEVAL_hand5_from_hand7_wild(real_hand, DH_CARD_TWO)
+                                        : POKEVAL_hand5_from_hand7(real_hand);
   if (!is_lowball)
     POKEVAL_sort_hand(&tmp_hand);
   else
@@ -606,7 +611,8 @@ static ELoop_t handle_draw(ArgsBroadcastGameState_t *args, TCPsocket sock, const
 
   if (req.discard_count > 0) {
     handle_sort_hand(&args->real_hand->player[id],
-                     args->game_type == game_choices[CALIFORNIA_LOWBALL].game_type);
+                     args->game_type == game_choices[CALIFORNIA_LOWBALL].game_type,
+                     args->deuces_wild);
     send_new_hand(sock, &args->real_hand->player[id], MAX_HAND_SIZE);
   }
 
@@ -644,15 +650,9 @@ static void determine_winner(ArgsBroadcastGameState_t *args, RoundResults *resul
 
   Player_t *ptr = *args->starting_turn;
 
-  ptr = *args->starting_turn;
-  if (args->game_type != game_choices[TEXAS_HOLDEM].game_type &&
-      args->game_type != game_choices[OMAHA].game_type) {
-    do {
-      handle_sort_hand(&args->real_hand->player[ptr->id],
-                       args->game_type == game_choices[CALIFORNIA_LOWBALL].game_type);
-      ptr = get_next_player(args->game_state->player, ptr->id);
-    } while (ptr && ptr != *args->starting_turn);
-  }
+  /* Do not truncate or sort hands here — clients display all dealt cards and
+   * identify the best 5 themselves.  POKEVAL_compare_hands* already handles
+   * 6- and 7-card hands via hand5_from_hand7 internally. */
 
   // When set to true, the opponents` cards will be revealed to all the players the next
   // time broadcast_game_state is called
@@ -1118,7 +1118,8 @@ void game_five_card_draw(GAME_ARGS) {
   Player_t *turn = *args->starting_turn;
   do {
     handle_sort_hand(&args->real_hand->player[turn->id],
-                     args->game_type == game_choices[CALIFORNIA_LOWBALL].game_type);
+                     args->game_type == game_choices[CALIFORNIA_LOWBALL].game_type,
+                     args->deuces_wild);
     turn = get_next_player(players_array, turn->id);
   } while (turn && turn != *args->starting_turn);
 
