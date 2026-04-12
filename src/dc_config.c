@@ -38,6 +38,48 @@
 #include "dc_config.h"
 #include "util.h"
 
+const ConfigEntry player_config_entries[PLAYER_CONFIG_ENTRY_COUNT] = {
+    {"nick", CFG_TYPE_STRING, "New Player", offsetof(PlayerConfig_t, nick),
+     sizeof(((PlayerConfig_t *)0)->nick)},
+    {"host", CFG_TYPE_STRING, "127.0.0.1", offsetof(PlayerConfig_t, host),
+     sizeof(((PlayerConfig_t *)0)->host)},
+    {"port", CFG_TYPE_UINT16, DEFAULT_PORT, offsetof(PlayerConfig_t, port), sizeof(uint16_t)},
+    {"language", CFG_TYPE_STRING, "", offsetof(PlayerConfig_t, language),
+     sizeof(((PlayerConfig_t *)0)->language)},
+    {"sound.volume", CFG_TYPE_INT, "5", offsetof(PlayerConfig_t, volume), sizeof(int)},
+    {"sound.notify.turn", CFG_TYPE_BOOL, "yes", offsetof(PlayerConfig_t, turn_notify),
+     sizeof(bool)},
+    {"connect.attempts", CFG_TYPE_UINT8, "6", offsetof(PlayerConfig_t, connect_attempts),
+     sizeof(uint8_t)},
+    {"password", CFG_TYPE_STRING, "", offsetof(PlayerConfig_t, password),
+     sizeof(((PlayerConfig_t *)0)->password)}};
+
+const ConfigEntry server_config_entries[SERVER_CONFIG_ENTRY_COUNT] = {
+    {"bind_address", CFG_TYPE_STRING, "127.0.0.1", offsetof(ServerConfig_t, bind_address),
+     sizeof(((ServerConfig_t *)0)->bind_address)},
+    {"port", CFG_TYPE_UINT16, DEFAULT_PORT, offsetof(ServerConfig_t, port), sizeof(uint16_t)},
+    {"end_of_game_timeout_ms", CFG_TYPE_UINT32, "15000",
+     offsetof(ServerConfig_t, end_of_game_timeout_ms), sizeof(uint32_t)},
+    {"action_timeout_ms", CFG_TYPE_UINT32, "30000", offsetof(ServerConfig_t, action_timeout_ms),
+     sizeof(uint32_t)},
+    {"dealer_timeout_ms", CFG_TYPE_UINT32, "60000", offsetof(ServerConfig_t, dealer_timeout_ms),
+     sizeof(uint32_t)},
+    {"ante", CFG_TYPE_UINT32, "50", offsetof(ServerConfig_t, ante), sizeof(uint32_t)},
+    {"bringin_amount", CFG_TYPE_UINT32, "50", offsetof(ServerConfig_t, bringin_amount),
+     sizeof(uint32_t)},
+    {"starting_coins", CFG_TYPE_INT, "20000", offsetof(ServerConfig_t, starting_coins),
+     sizeof(int32_t)},
+    {"max_raises", CFG_TYPE_UINT32, "3", offsetof(ServerConfig_t, max_raises), sizeof(uint32_t)},
+    {"action_timeout_max", CFG_TYPE_UINT8, "3", offsetof(ServerConfig_t, action_timeout_max),
+     sizeof(uint8_t)},
+    {"password", CFG_TYPE_STRING, "", offsetof(ServerConfig_t, password),
+     sizeof(((ServerConfig_t *)0)->password)}};
+
+_Static_assert(ARRAY_SIZE(player_config_entries) == PLAYER_CONFIG_ENTRY_COUNT,
+               "PLAYER_CONFIG_ENTRY_COUNT is out of sync");
+_Static_assert(ARRAY_SIZE(server_config_entries) == SERVER_CONFIG_ENTRY_COUNT,
+               "SERVER_CONFIG_ENTRY_COUNT is out of sync");
+
 #define CFG_SET_SIGNED(TYPE, MIN, MAX)                                                             \
   do {                                                                                             \
     long v;                                                                                        \
@@ -139,20 +181,10 @@ void save_player_config(const PlayerConfig_t *config) {
   free(cfg_pathname);
 }
 
-static void server_config_set_from_string(ServerConfig_t *cfg, const ConfigEntry *entry,
-                                          const char *val) {
-  config_set_from_string_real(cfg, entry, val);
-}
-
-static void player_config_set_from_string(PlayerConfig_t *cfg, const ConfigEntry *entry,
-                                          const char *val) {
-  config_set_from_string_real(cfg, entry, val);
-}
-
 void player_config_set_field(PlayerConfig_t *cfg, size_t entry_idx, const char *val) {
   if (entry_idx >= player_config_entry_count)
     return;
-  player_config_set_from_string(cfg, &player_config_entries[entry_idx], val);
+  config_set_from_string_real(cfg, &player_config_entries[entry_idx], val);
 }
 
 ServerConfig_t get_server_config(Path_t *path, const CliArgs_t *cli_args) {
@@ -195,9 +227,9 @@ ServerConfig_t get_server_config(Path_t *path, const CliArgs_t *cli_args) {
     } else {
       for (size_t i = 0; i < server_config_entry_count; i++) {
         if (strcasecmp(cfg_node->key, server_config_entries[i].key) == 0) {
-          server_config_set_from_string(&config, &server_config_entries[i],
-                                        cfg_node->value ? cfg_node->value
-                                                        : server_config_entries[i].default_value);
+          config_set_from_string_real(&config, &server_config_entries[i],
+                                      cfg_node->value ? cfg_node->value
+                                                      : server_config_entries[i].default_value);
           found_keys[i] = true;
           break;
         }
@@ -216,8 +248,8 @@ ServerConfig_t get_server_config(Path_t *path, const CliArgs_t *cli_args) {
 
   for (size_t i = 0; i < server_config_entry_count; i++)
     if (!found_keys[i])
-      server_config_set_from_string(&config, &server_config_entries[i],
-                                    server_config_entries[i].default_value);
+      config_set_from_string_real(&config, &server_config_entries[i],
+                                  server_config_entries[i].default_value);
 
   // DC_PASSWORD env var takes precedence over server.conf
   const char *env_pw = getenv("DC_PASSWORD");
@@ -225,10 +257,6 @@ ServerConfig_t get_server_config(Path_t *path, const CliArgs_t *cli_args) {
     snprintf(config.password, sizeof(config.password), "%s", env_pw);
 
   return config;
-}
-
-static void config_set_default(PlayerConfig_t *cfg, const ConfigEntry *entry) {
-  player_config_set_from_string(cfg, entry, entry->default_value);
 }
 
 PlayerConfig_t get_player_config(void) {
@@ -270,7 +298,8 @@ PlayerConfig_t get_player_config(void) {
         for (size_t i = 0; i < player_config_entry_count; i++) {
           fprintf(fp, "%s = %s\n", player_config_entries[i].key,
                   player_config_entries[i].default_value);
-          config_set_default(&config, &player_config_entries[i]);
+          config_set_from_string_real(&config, &player_config_entries[i],
+                                      player_config_entries[i].default_value);
         }
         fclose(fp);
       } else {
@@ -283,7 +312,8 @@ PlayerConfig_t get_player_config(void) {
        * parallel processes). Use defaults so the caller can proceed. */
       fprintf(stderr, "Error accessing %s\n", cfg_pathname);
       for (size_t i = 0; i < player_config_entry_count; i++)
-        config_set_default(&config, &player_config_entries[i]);
+        config_set_from_string_real(&config, &player_config_entries[i],
+                                    player_config_entries[i].default_value);
     }
   } else {
     // Track which keys were found
@@ -293,9 +323,9 @@ PlayerConfig_t get_player_config(void) {
     while (cfg_node) {
       for (size_t i = 0; i < player_config_entry_count; i++) {
         if (strcasecmp(cfg_node->key, player_config_entries[i].key) == 0) {
-          player_config_set_from_string(&config, &player_config_entries[i],
-                                        cfg_node->value ? cfg_node->value
-                                                        : player_config_entries[i].default_value);
+          config_set_from_string_real(&config, &player_config_entries[i],
+                                      cfg_node->value ? cfg_node->value
+                                                      : player_config_entries[i].default_value);
           found_keys[i] = true;
           break;
         }
@@ -314,7 +344,8 @@ PlayerConfig_t get_player_config(void) {
                  player_config_entries[i].default_value);
           fprintf(fp, "%s = %s\n", player_config_entries[i].key,
                   player_config_entries[i].default_value);
-          config_set_default(&config, &player_config_entries[i]);
+          config_set_from_string_real(&config, &player_config_entries[i],
+                                      player_config_entries[i].default_value);
         }
       }
       fclose(fp);

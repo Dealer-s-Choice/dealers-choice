@@ -80,46 +80,14 @@ typedef struct {
   size_t size;               // Size of the target field
 } ConfigEntry;
 
-static const ConfigEntry player_config_entries[] = {
-    {"nick", CFG_TYPE_STRING, "New Player", offsetof(PlayerConfig_t, nick),
-     sizeof(((PlayerConfig_t *)0)->nick)},
-    {"host", CFG_TYPE_STRING, "127.0.0.1", offsetof(PlayerConfig_t, host),
-     sizeof(((PlayerConfig_t *)0)->host)},
-    {"port", CFG_TYPE_UINT16, DEFAULT_PORT, offsetof(PlayerConfig_t, port), sizeof(uint16_t)},
-    {"language", CFG_TYPE_STRING, "", offsetof(PlayerConfig_t, language),
-     sizeof(((PlayerConfig_t *)0)->language)},
-    {"sound.volume", CFG_TYPE_INT, "5", offsetof(PlayerConfig_t, volume), sizeof(int)},
-    {"sound.notify.turn", CFG_TYPE_BOOL, "yes", offsetof(PlayerConfig_t, turn_notify),
-     sizeof(bool)},
-    {"connect.attempts", CFG_TYPE_UINT8, "6", offsetof(PlayerConfig_t, connect_attempts),
-     sizeof(uint8_t)},
-    {"password", CFG_TYPE_STRING, "", offsetof(PlayerConfig_t, password),
-     sizeof(((PlayerConfig_t *)0)->password)}};
+#define PLAYER_CONFIG_ENTRY_COUNT 8
+#define SERVER_CONFIG_ENTRY_COUNT 11
 
-enum { player_config_entry_count = ARRAY_SIZE(player_config_entries) };
+extern const ConfigEntry player_config_entries[PLAYER_CONFIG_ENTRY_COUNT];
+extern const ConfigEntry server_config_entries[SERVER_CONFIG_ENTRY_COUNT];
 
-static const ConfigEntry server_config_entries[] = {
-    {"bind_address", CFG_TYPE_STRING, "127.0.0.1", offsetof(ServerConfig_t, bind_address),
-     sizeof(((ServerConfig_t *)0)->bind_address)},
-    {"port", CFG_TYPE_UINT16, DEFAULT_PORT, offsetof(ServerConfig_t, port), sizeof(uint16_t)},
-    {"end_of_game_timeout_ms", CFG_TYPE_UINT32, "15000",
-     offsetof(ServerConfig_t, end_of_game_timeout_ms), sizeof(uint32_t)},
-    {"action_timeout_ms", CFG_TYPE_UINT32, "30000", offsetof(ServerConfig_t, action_timeout_ms),
-     sizeof(uint32_t)},
-    {"dealer_timeout_ms", CFG_TYPE_UINT32, "60000", offsetof(ServerConfig_t, dealer_timeout_ms),
-     sizeof(uint32_t)},
-    {"ante", CFG_TYPE_UINT32, "50", offsetof(ServerConfig_t, ante), sizeof(uint32_t)},
-    {"bringin_amount", CFG_TYPE_UINT32, "50", offsetof(ServerConfig_t, bringin_amount),
-     sizeof(uint32_t)},
-    {"starting_coins", CFG_TYPE_INT, "20000", offsetof(ServerConfig_t, starting_coins),
-     sizeof(int32_t)},
-    {"max_raises", CFG_TYPE_UINT32, "3", offsetof(ServerConfig_t, max_raises), sizeof(uint32_t)},
-    {"action_timeout_max", CFG_TYPE_UINT8, "3", offsetof(ServerConfig_t, action_timeout_max),
-     sizeof(uint8_t)},
-    {"password", CFG_TYPE_STRING, "", offsetof(ServerConfig_t, password),
-     sizeof(((ServerConfig_t *)0)->password)}};
-
-enum { server_config_entry_count = ARRAY_SIZE(server_config_entries) };
+enum { player_config_entry_count = PLAYER_CONFIG_ENTRY_COUNT };
+enum { server_config_entry_count = SERVER_CONFIG_ENTRY_COUNT };
 
 ServerConfig_t get_server_config(Path_t *path, const CliArgs_t *cli_args);
 
