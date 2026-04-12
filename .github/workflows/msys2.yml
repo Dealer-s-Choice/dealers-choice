@@ -75,7 +75,7 @@ jobs:
       shell: msys2 {0}
       run: |
         mkdir -p _staging/data
-        cp _build/dealers-choice.exe _staging/
+        cp _build/dealers-choice.exe _build/dealers-choice-bot.exe _staging/
         cp -r data/images data/sounds _staging/data/
         cp data/*.ttf data/server.conf _staging/data/
         bash packaging/windows/collect-dlls.sh _staging/dealers-choice.exe _staging/
