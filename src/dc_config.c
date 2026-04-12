@@ -172,10 +172,8 @@ ServerConfig_t get_server_config(Path_t *path, const CliArgs_t *cli_args) {
   printf("Reading server config: %s\n", path->server_conf_name);
   struct Canfigger *cfg_node = canfigger_parse_file(path->server_conf_name, ',');
   free(path->server_conf_name);
-  if (!cfg_node) {
-    perror("canfigger");
+  if (!cfg_node)
     exit(EXIT_FAILURE);
-  }
 
   // Track which keys were found
   bool found_keys[server_config_entry_count];
