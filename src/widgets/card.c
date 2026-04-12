@@ -498,7 +498,7 @@ static void card_widget_render(UIWidget_t *w) {
     /* Raised-bevel effect drawn outside the card rect: bright gold on
      * top/left edges, dark brown on bottom/right edges.  t=0 is the ring
      * immediately adjacent to the card boundary; t=B-1 is the outermost. */
-    const int B = 8;
+    const int B = 4;
     for (int t = 0; t < B; t++) {
       int x1 = w->rect.x - t - 1;
       int y1 = w->rect.y - t - 1;

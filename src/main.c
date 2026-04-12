@@ -33,7 +33,6 @@
 
 #include "client.h"
 #include "config.h"
-#include <sodium.h>
 #include "dc_config.h"
 #include "game.h"
 #include "getlongopt.h"
@@ -48,6 +47,7 @@
 #include "widgets/image.h"
 #include "widgets/input.h"
 #include "widgets/text.h"
+#include <sodium.h>
 
 enum { RUN_CLIENT = 20, RUN_SETTINGS = 21 };
 

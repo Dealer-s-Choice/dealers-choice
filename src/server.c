@@ -86,7 +86,6 @@ static void print_ipaddress(const IPaddress *ip) {
 ServerConfig_t init_game_state(GameState_t *game_state, Path_t *path, const CliArgs_t *cli_args) {
   ServerConfig_t config = get_server_config(path, cli_args);
 
-
   const int max_starting_coins = 99999999;
   if (config.starting_coins > max_starting_coins) {
     fprintf(stderr, "Error: starting_coins too high (max %d)\n", max_starting_coins);
