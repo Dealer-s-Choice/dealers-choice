@@ -1,3 +1,7 @@
+# Packaging for 0.12
+
+Add dealers-choice-bot binary
+
 # Pre-release
 
 coverity checks
