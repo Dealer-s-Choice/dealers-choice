@@ -967,14 +967,14 @@ static void layout_indicator(Indicator_t *ind, int x, int y) {
 }
 
 static void layout_game_name_indicator(Indicator_t *ind) {
-  int x = right_align(ind->base.rect.w);
+  int x = right_align(ind->base.rect.w) - 20;
   int y = g_viewport.y + g_viewport.h - 300;
 
   layout_indicator(ind, x, y);
 }
 
 static void layout_deuces_wild_indicator(Indicator_t *ind) {
-  int x = right_align(ind->base.rect.w);
+  int x = right_align(ind->base.rect.w) - 20;
   int y = g_viewport.y + g_viewport.h - 200;
 
   layout_indicator(ind, x, y);
