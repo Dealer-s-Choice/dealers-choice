@@ -1575,7 +1575,7 @@ static EReturnCode_t init_game(ArgsBroadcastGameState_t *args, DH_Deck *deck) {
   return RC_OK;
 }
 
-static int recv_and_validate_protocol_header(TCPsocket sock) {
+static int recv_and_validate_protocol_header(TCPsocket sock, uint8_t *flags_out) {
   verbose_puts("Exchanging protocol information...");
   GameProtocolHeader_t hdr = {0};
   if (recv_all_tcp(sock, &hdr, sizeof(hdr)) <= 0) {
@@ -1602,6 +1602,7 @@ static int recv_and_validate_protocol_header(TCPsocket sock) {
     return -1;
   }
 
+  *flags_out = hdr.flags;
   return 0; // success
 }
 
@@ -1727,7 +1728,8 @@ static ELoop_t register_new_client(ArgsBroadcastGameState_t *args) {
                sizeof(POKEVAL_Hand_9));
       }
 
-      if (recv_and_validate_protocol_header(new_client) != 0) {
+      uint8_t proto_flags = 0;
+      if (recv_and_validate_protocol_header(new_client, &proto_flags) != 0) {
         do_socket_cleanup(new_client, args->socket_set, args->slot_taken, slot, NULL);
         return LOOP_CONTINUE;
       }
@@ -1735,14 +1737,30 @@ static ELoop_t register_new_client(ArgsBroadcastGameState_t *args) {
       if (!args->cli_args->test_mode) {
         Player_t *player = &(args->game_state->player)[slot];
 
+        bool is_bot = (proto_flags & PROTO_FLAG_BOT) != 0;
+        const char *password = args->config->password;
+
+        if (is_bot && !*password) {
+          printf("Rejected bot connection: server has no password set\n");
+          do_socket_cleanup(new_client, args->socket_set, args->slot_taken, slot, player);
+          return LOOP_CONTINUE;
+        }
+
         unsigned char nonce[NONCE_SIZE];
         if (send_nonce(new_client, nonce) < 0) {
           fprintf(stderr, "Failed to send nonce\n");
           return -1;
         }
 
-        const char *password = args->config->password;
-        if (verify_client_password(new_client, password, nonce) == 0 && *password) {
+        int auth_ok = (verify_client_password(new_client, password, nonce) == 0 && *password);
+
+        if (is_bot && !auth_ok) {
+          printf("Rejected bot connection: authentication failed\n");
+          do_socket_cleanup(new_client, args->socket_set, args->slot_taken, slot, player);
+          return LOOP_CONTINUE;
+        }
+
+        if (auth_ok) {
           puts("Client authenticated!");
           player->is_admin = true;
         } else {
