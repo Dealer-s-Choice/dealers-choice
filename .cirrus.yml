@@ -27,5 +27,5 @@ freebsd_task:
     image_family: freebsd-14-3
   <<: *common_freebsd_steps
   setup_script:
-    - meson setup builddir -Dsodium=enabled
+    - meson setup builddir
   <<: *common_meson_steps

@@ -13,7 +13,7 @@ jobs:
       run: .github/scripts/install_ubuntu_deps.sh
 
     - name: Meson setup
-      run: CFLAGS="-Werror" meson setup _build -Dsodium=enabled
+      run: CFLAGS="-Werror" meson setup _build
 
     - uses: vapier/coverity-scan-action@v1
       with:

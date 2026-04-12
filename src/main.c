@@ -33,9 +33,7 @@
 
 #include "client.h"
 #include "config.h"
-#ifdef HAVE_LIBSODIUM
 #include <sodium.h>
-#endif
 #include "dc_config.h"
 #include "game.h"
 #include "getlongopt.h"
@@ -773,12 +771,10 @@ int main(int argc, char *argv[]) {
 
   const CliArgs_t cli_args = parse_cli_args(argc, argv);
 
-#ifdef HAVE_LIBSODIUM
   if (sodium_init() < 0) {
     fprintf(stderr, "libsodium init failed\n");
     exit(1);
   }
-#endif
 
   pcg_srand_auto();
 

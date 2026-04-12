@@ -34,7 +34,7 @@ jobs:
     - name: Install Dependencies
       run: .github/scripts/install_ubuntu_deps.sh
     - name: Meson setup
-      run: CFLAGS="-Werror" meson setup _build -Dsodium=enabled
+      run: CFLAGS="-Werror" meson setup _build
     - name: Build
       run: meson compile -C _build
     - name: Test
@@ -75,7 +75,7 @@ jobs:
       run: .github/scripts/install_ubuntu_deps.sh
 
     - name: Meson setup
-      run: CFLAGS="-Werror" meson setup _build -Dsodium=enabled
+      run: CFLAGS="-Werror" meson setup _build
 
     - name: Build
       run: meson compile -C _build

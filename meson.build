@@ -103,11 +103,8 @@ if not platform_is_windows
   shared_dep += cc.find_library('m')
 endif
 
-sodium_dep = dependency('libsodium', required: get_option('sodium'))
-if sodium_dep.found()
-  conf.set('HAVE_LIBSODIUM', 1)
-  shared_dep += sodium_dep
-endif
+sodium_dep = dependency('libsodium', required: true)
+shared_dep += sodium_dep
 
 dep_names = [
   'libprotobuf-c',

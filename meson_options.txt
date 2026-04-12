@@ -7,5 +7,3 @@ option('docdir', type : 'string', value : 'share/doc/dealers-choice',
 option('nls', type : 'boolean', value : true,
        description : 'include native language support (install translations)')
 
-option('sodium', type : 'feature', value : 'auto',
-       description : 'Use libsodium (required for server authentication)')

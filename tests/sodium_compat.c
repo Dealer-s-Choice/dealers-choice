@@ -1,15 +1,13 @@
 /*
  tests/sodium_compat.c
 
- Verifies that the authentication handshake completes successfully
- regardless of whether libsodium is available at compile time.
+ Verifies that the authentication handshake completes successfully.
 
  A minimal server is run in a thread: it sends a nonce and receives the
  hash response.  The client side calls authenticate_with_server(), the
- real production function.  When sodium is present the client sends a
- real SHA-256 hash; when absent it sends zeros.  Either way the server
- side just drains the bytes and accepts — the test asserts only that the
- handshake completes without error, exercising the protocol framing.
+ real production function.  The server side just drains the bytes —
+ the test asserts only that the handshake completes without error,
+ exercising the protocol framing.
 */
 
 #include <string.h>
@@ -49,8 +47,8 @@ static int SDLCALL server_thread(void *data) {
     return -1;
   }
 
-  /* Send nonce — use zeros to match the sodium-absent fallback, so the
-     test is symmetric and doesn't depend on crypto being available. */
+  /* Send nonce — zeros are fine here; the server side only checks that
+     HASH_SIZE bytes arrive, not whether they match. */
   unsigned char nonce[NONCE_SIZE];
   memset(nonce, 0, sizeof(nonce));
   if (send_all_tcp(client, nonce, NONCE_SIZE) != 0) {

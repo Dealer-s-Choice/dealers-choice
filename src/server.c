@@ -36,9 +36,7 @@
 #include "server.h"
 #include "util.h"
 
-#ifdef HAVE_LIBSODIUM
 #include <sodium.h>
-#endif
 
 #define MAX_DISCARDS 4
 #define MAX_WILDS 4
@@ -88,11 +86,6 @@ static void print_ipaddress(const IPaddress *ip) {
 ServerConfig_t init_game_state(GameState_t *game_state, Path_t *path, const CliArgs_t *cli_args) {
   ServerConfig_t config = get_server_config(path, cli_args);
 
-#ifndef HAVE_LIBSODIUM
-  if (*config.password)
-    fprintf(stderr, _("Warning: password is set but this build lacks libsodium; "
-                      "authentication is disabled and the password will be ignored.\n"));
-#endif
 
   const int max_starting_coins = 99999999;
   if (config.starting_coins > max_starting_coins) {
@@ -1644,11 +1637,7 @@ static void flush_client_socket(TCPsocket sock) {
 }
 
 static int send_nonce(TCPsocket sock, unsigned char nonce[NONCE_SIZE]) {
-#ifdef HAVE_LIBSODIUM
   randombytes_buf(nonce, NONCE_SIZE);
-#else
-  memset(nonce, 0, NONCE_SIZE);
-#endif
   return send_all_tcp(sock, nonce, NONCE_SIZE);
 }
 
@@ -1659,7 +1648,6 @@ static int verify_client_password(TCPsocket sock, const char *stored_password,
   if (recv_all_tcp(sock, client_hash, HASH_SIZE) < 0)
     return -1;
 
-#ifdef HAVE_LIBSODIUM
   unsigned char expected_hash[HASH_SIZE];
   crypto_hash_sha256_state state;
 
@@ -1673,11 +1661,6 @@ static int verify_client_password(TCPsocket sock, const char *stored_password,
     return 0;
 
   return -1;
-#else
-  (void)stored_password;
-  (void)nonce;
-  return 0; /* no crypto available — accept all connections */
-#endif
 }
 
 static ELoop_t register_new_client(ArgsBroadcastGameState_t *args) {

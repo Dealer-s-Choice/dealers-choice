@@ -19,6 +19,9 @@
     exchange button, timeout setting (wild_exchange_timeout_ms), network
     message (MSG_WILD_REPLACEMENT), and server-side exchange logic
   * bugfix: Three busy-waits, high-cpu server usage
+  * Require libsodium unconditionally; fix authentication bypass where
+    clients could authenticate on password-protected servers without
+    libsodium present
   * bugfix: Show clear error on protocol version mismatch
   * Update docker-compose.yml to use DC_PASSWORD and extra arguments when running
     the server

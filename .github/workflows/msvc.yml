@@ -48,7 +48,7 @@ jobs:
         $vcpkg_prefix = "${{ github.workspace }}\vcpkg_installed\x64-windows-static-md"
         $env:PKG_CONFIG = "${{ github.workspace }}\vcpkg_installed\x64-windows\tools\pkgconf\pkgconf.exe"
         $env:PKG_CONFIG_PATH = "$vcpkg_prefix\lib\pkgconfig"
-        meson setup _build -Db_sanitize=none -Dsodium=enabled "-Dcmake_prefix_path=$vcpkg_prefix"
+        meson setup _build -Db_sanitize=none "-Dcmake_prefix_path=$vcpkg_prefix"
 
     - name: Build
       run: meson compile -C _build

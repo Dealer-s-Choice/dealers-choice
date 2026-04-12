@@ -49,9 +49,7 @@
 
 #include "util.h"
 
-#ifdef HAVE_LIBSODIUM
 #include <sodium.h>
-#endif
 
 static const uint8_t coin_px = 96;
 
@@ -2004,18 +2002,12 @@ int authenticate_with_server(TCPsocket sock, const char *password) {
   }
 
   /* compute SHA256(password + nonce) */
-#ifdef HAVE_LIBSODIUM
   crypto_hash_sha256_state state;
 
   crypto_hash_sha256_init(&state);
   crypto_hash_sha256_update(&state, (const unsigned char *)password, strlen(password));
   crypto_hash_sha256_update(&state, nonce, NONCE_SIZE);
   crypto_hash_sha256_final(&state, hash);
-#else
-  (void)password;
-  (void)nonce;
-  memset(hash, 0, HASH_SIZE);
-#endif
 
   /* send response */
   if (send_all_tcp(sock, hash, HASH_SIZE) != 0) {
