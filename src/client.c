@@ -889,21 +889,18 @@ static void layout_amount_buttons(ButtonWidget_t **b, const size_t count) {
 typedef struct {
   const char *text;
   SDL_Keycode key;
-  bool secondary;
 } ActionButtonAttrs;
 
 ActionButtonAttrs action_button_attrs[MAX_ACTIONS] = {
-    [CHECK] = {N_("Check"), SDLK_c, false},    [BET] = {N_("Bet"), SDLK_b, false},
-    [FOLD] = {N_("Fold"), SDLK_f, false},      [CALL] = {N_("Call"), SDLK_c, false},
-    [RAISE] = {N_("Raise"), SDLK_r, false},    [COMPLETE] = {N_("Complete"), SDLK_r, false},
-    [DISCARD] = {N_("Discard"), SDLK_d, true},
+    [CHECK] = {N_("Check"), SDLK_c},     [BET] = {N_("Bet"), SDLK_b},
+    [FOLD] = {N_("Fold"), SDLK_f},       [CALL] = {N_("Call"), SDLK_c},
+    [RAISE] = {N_("Raise"), SDLK_r},     [COMPLETE] = {N_("Complete"), SDLK_r},
+    [DISCARD] = {N_("Discard"), SDLK_d},
 };
 
-static void layout_action_buttons(ButtonWidget_t **b, ActionButtonAttrs *attr) {
+static void layout_action_buttons(ButtonWidget_t **b) {
   for (int i = 0; i < MAX_ACTIONS; i++) {
     b[i]->base.rect.y = g_viewport.h - (b[i]->base.rect.h * 5);
-    if (attr[i].secondary)
-      b[i]->base.rect.y += b[i]->base.rect.h + 10;
   }
 }
 
@@ -1219,7 +1216,7 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
         button_widget_create(action_button_attrs[i].text, (EColor_t){COLOR_BLACK, COLOR_YELLOW},
                              font->fonts[FONT_BOLD], action_button_attrs[i].key);
   }
-  layout_action_buttons(action_bw, action_button_attrs);
+  layout_action_buttons(action_bw);
 
   TextWidget_t *discard_hint_tw = text_widget_create(
       "You may only discard a maximum of 3 cards", font->fonts[FONT_BOLD], get_color(COLOR_WHITE));
