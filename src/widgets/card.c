@@ -488,17 +488,30 @@ static void card_widget_render(UIWidget_t *w) {
   SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
   SDL_RenderFillRect(renderer, &w->rect);
 
-  // Highlight winning cards: gold tint + thick inset border so the indicator
-  // is visible to people who have difficulty perceiving color alone.
+  // Highlight winning cards: gold tint + 3D bevel border (5× thickness).
   if (cw->is_winning) {
     SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
     SDL_SetRenderDrawColor(renderer, 255, 200, 0, 110); // translucent gold fill
     SDL_RenderFillRect(renderer, &w->rect);
     SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);
-    SDL_SetRenderDrawColor(renderer, 220, 160, 0, 255); // solid gold border
-    for (int t = 0; t < 3; t++) {
-      SDL_Rect border = {w->rect.x + t, w->rect.y + t, w->rect.w - 2 * t, w->rect.h - 2 * t};
-      SDL_RenderDrawRect(renderer, &border);
+
+    /* Raised-bevel effect drawn outside the card rect: bright gold on
+     * top/left edges, dark brown on bottom/right edges.  t=0 is the ring
+     * immediately adjacent to the card boundary; t=B-1 is the outermost. */
+    const int B = 8;
+    for (int t = 0; t < B; t++) {
+      int x1 = w->rect.x - t - 1;
+      int y1 = w->rect.y - t - 1;
+      int x2 = w->rect.x + w->rect.w + t;
+      int y2 = w->rect.y + w->rect.h + t;
+
+      SDL_SetRenderDrawColor(renderer, 255, 215, 0, 255); // bright gold — highlight
+      SDL_RenderDrawLine(renderer, x1, y1, x2, y1);       // top
+      SDL_RenderDrawLine(renderer, x1, y1, x1, y2);       // left
+
+      SDL_SetRenderDrawColor(renderer, 130, 80, 0, 255); // dark brown — shadow
+      SDL_RenderDrawLine(renderer, x1, y2, x2, y2);      // bottom
+      SDL_RenderDrawLine(renderer, x2, y1, x2, y2);      // right
     }
   }
 

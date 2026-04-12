@@ -703,7 +703,8 @@ static void create_card_context(CardWidget_t card_context[MAX_PLAYERS][MAX_HAND_
  * Community cards are marked on every player's context; layout_board_cards has
  * already set is_null=true on non-board player slots, so they won't render. */
 static void mark_winning_cards(CardWidget_t card_context[MAX_PLAYERS][MAX_HAND_SIZE],
-                               Player_t *players_array, const GameChoice_t *game_choice) {
+                               Player_t *players_array, const GameChoice_t *game_choice,
+                               bool deuces_wild) {
   if (!game_choice)
     return;
 
@@ -720,10 +721,21 @@ static void mark_winning_cards(CardWidget_t card_context[MAX_PLAYERS][MAX_HAND_S
       continue;
 
     if (!is_community) {
-      // Server sorted the best 5 into positions 0-4; null beyond that
+      /* Find the best 5-card hand from however many cards are held (may be
+       * 5, 6, or 7 for stud games) and mark only those cards as winning. */
+      POKEVAL_Hand_5 best = deuces_wild
+                                ? POKEVAL_hand5_from_hand7_wild(&players_array[p].hand, DH_CARD_TWO)
+                                : POKEVAL_hand5_from_hand7(&players_array[p].hand);
       for (int c = 0; c < MAX_HAND_SIZE; c++) {
-        if (!card_context[p][c].is_null && !card_context[p][c].is_back)
-          card_context[p][c].is_winning = true;
+        DH_Card card = players_array[p].hand.card[c];
+        if (DH_is_card_null(card) || DH_is_card_back(card))
+          continue;
+        for (int b = 0; b < POKEVAL_HAND_SIZE; b++) {
+          if (card.face_val == best.card[b].face_val && card.suit == best.card[b].suit) {
+            card_context[p][c].is_winning = true;
+            break;
+          }
+        }
       }
       continue;
     }
@@ -1271,6 +1283,7 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
 
   int running = 1;
   bool cards_created = false;
+  bool winner_highlighted = false;
 
   Player_t *players_array = game_state->player;
   Player_t *turn = NULL;
@@ -1334,8 +1347,14 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
     // printf("%d\n", __LINE__);
     if (recv_status == RECV_ERROR)
       running = false;
-    else if (recv_status == RECV_SUCCESS)
-      cards_created = false;
+    else if (recv_status == RECV_SUCCESS) {
+      if (!game_state->winner_declared) {
+        cards_created = false;
+        winner_highlighted = false;
+      } else if (!winner_highlighted) {
+        cards_created = false;
+      }
+    }
 
     if (game_state->at_menu)
       break;
@@ -1438,8 +1457,11 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
         if (community_start > 0)
           layout_board_cards(card_context, starting_turn->id, player_pos, community_start);
       }
-      if (game_state->winner_declared)
-        mark_winning_cards(card_context, game_state->player, client_state.game_choice);
+      if (game_state->winner_declared) {
+        mark_winning_cards(card_context, game_state->player, client_state.game_choice,
+                           client_state.deuces_wild);
+        winner_highlighted = true;
+      }
       cards_created = true;
     }
 
