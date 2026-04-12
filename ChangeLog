@@ -1,5 +1,8 @@
 
 - dealers-choice (in progress):
+  + Text input fields: scrolling with cursor navigation (left/right/home/end),
+    mid-text insertion, Ctrl+V paste; cursor blink resets on each keypress;
+    yellow cursor color for visibility against white text
   + Add dealers-choice-bot: a headless rules-based CLI bot that connects to a
     running server like a regular client. Reads DC_PASSWORD from the
     environment (bot is rejected if the server has no password set).

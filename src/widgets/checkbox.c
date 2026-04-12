@@ -1,4 +1,5 @@
 #include "checkbox.h"
+#include "../graphics.h"
 #include "globals.h"
 
 static void checkbox_widget_render(UIWidget_t *w) {
@@ -12,7 +13,7 @@ static void checkbox_widget_render(UIWidget_t *w) {
   /* Border: yellow when hovered, white otherwise */
   SDL_Color border = w->hovered ? (SDL_Color){255, 220, 0, 255} : (SDL_Color){200, 200, 200, 255};
   SDL_SetRenderDrawColor(r, border.r, border.g, border.b, border.a);
-  SDL_RenderDrawRect(r, &w->rect);
+  draw_rect_border(r, w->rect);
 
   if (cb->checked) {
     /* Filled inner box in yellow to indicate checked */

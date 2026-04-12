@@ -214,6 +214,32 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, u
           input_widget_backspace(focused_inputs[focused_slot]);
           break;
 
+        case SDLK_LEFT:
+          input_widget_cursor_left(focused_inputs[focused_slot]);
+          break;
+
+        case SDLK_RIGHT:
+          input_widget_cursor_right(focused_inputs[focused_slot]);
+          break;
+
+        case SDLK_HOME:
+          input_widget_cursor_home(focused_inputs[focused_slot]);
+          break;
+
+        case SDLK_END:
+          input_widget_cursor_end(focused_inputs[focused_slot]);
+          break;
+
+        case SDLK_v:
+          if (e.key.keysym.mod & KMOD_CTRL) {
+            char *clip = SDL_GetClipboardText();
+            if (clip) {
+              input_widget_append(focused_inputs[focused_slot], clip);
+              SDL_free(clip);
+            }
+          }
+          break;
+
         default:
           break;
         }
@@ -501,6 +527,33 @@ static void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *s
         case SDLK_BACKSPACE:
           input_widget_backspace(inputs[text_input_indices[focused_slot]]);
           break;
+
+        case SDLK_LEFT:
+          input_widget_cursor_left(inputs[text_input_indices[focused_slot]]);
+          break;
+
+        case SDLK_RIGHT:
+          input_widget_cursor_right(inputs[text_input_indices[focused_slot]]);
+          break;
+
+        case SDLK_HOME:
+          input_widget_cursor_home(inputs[text_input_indices[focused_slot]]);
+          break;
+
+        case SDLK_END:
+          input_widget_cursor_end(inputs[text_input_indices[focused_slot]]);
+          break;
+
+        case SDLK_v:
+          if (e.key.keysym.mod & KMOD_CTRL) {
+            char *clip = SDL_GetClipboardText();
+            if (clip) {
+              input_widget_append(inputs[text_input_indices[focused_slot]], clip);
+              SDL_free(clip);
+            }
+          }
+          break;
+
         case SDLK_F11:
           toggle_fullscreen(sdl_context);
           break;

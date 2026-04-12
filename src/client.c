@@ -1585,14 +1585,14 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
 
     if (turn_outline.w > 0) {
       SDL_SetRenderDrawColor(sdl_context->renderer, 255, 215, 0, 255);
-      SDL_RenderDrawRect(sdl_context->renderer, &turn_outline);
+      draw_rect_border(sdl_context->renderer, turn_outline);
     }
 
     SDL_SetRenderDrawColor(sdl_context->renderer, 255, 255, 255, 255);
     SDL_RenderFillRect(sdl_context->renderer, &msg_panel);
 
     SDL_SetRenderDrawColor(sdl_context->renderer, 0, 0, 0, 255);
-    SDL_RenderDrawRect(sdl_context->renderer, &msg_panel);
+    draw_rect_border(sdl_context->renderer, msg_panel);
 
     for (int i = 0; i < SIZEOF_STATUS_MSGS; i++)
       ui_widget_render(&status_tw[i]->base);
