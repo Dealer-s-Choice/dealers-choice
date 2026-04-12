@@ -183,7 +183,7 @@ executable(
   meson.project_name() + '-bot',
   ['src/bot.c'],
   dependencies: game_dep,
-  install: false,
+  install: true,
 )
 
 install_subdir(
