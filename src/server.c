@@ -870,9 +870,19 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args, uint32_t i
                 break;
               case ACTION_RAISE:
                 if (args->game_state->raises_remaining > 0) {
-                  server_handle_raise(args->game_state, &player_total_paid[turn->id], turn->id,
-                                      action.amount, &total_bets_plus_raises);
-                  action.str = _("raised ");
+                  if (action.amount < args->game_state->prev_bet_amount) {
+                    fprintf(stderr,
+                            "Raise amount %" PRIu32 " below minimum %" PRIu32
+                            " from player %d; treating as call\n",
+                            action.amount, args->game_state->prev_bet_amount, turn->id);
+                    server_handle_call(args->game_state, &player_total_paid[turn->id], turn->id,
+                                       &total_bets_plus_raises);
+                    action.str = _("called");
+                  } else {
+                    server_handle_raise(args->game_state, &player_total_paid[turn->id], turn->id,
+                                        action.amount, &total_bets_plus_raises);
+                    action.str = _("raised ");
+                  }
                 } else
                   fputs("Raise received; however, max raises has been reached. The client should "
                         "not be able to send a raise\n",

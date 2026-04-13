@@ -471,7 +471,15 @@ int main(int argc, char *argv[]) {
                            : 0;
 
     bool can_raise = (game_state.raises_remaining > 0);
-    uint32_t bet_amount = game_settings.bet_amounts[0];
+    /* Pick the smallest configured amount that meets the minimum-raise requirement.
+     * Falls back to the largest amount if none qualifies (shouldn't happen in practice). */
+    uint32_t bet_amount = game_settings.bet_amounts[game_settings.bet_amount_count - 1];
+    for (uint8_t i = 0; i < game_settings.bet_amount_count; i++) {
+      if (game_settings.bet_amounts[i] >= game_state.prev_bet_amount) {
+        bet_amount = game_settings.bet_amounts[i];
+        break;
+      }
+    }
 
     /* Flags are set by the server sending the corresponding opcode directly to
        this client, so no need to check turn_id. */
