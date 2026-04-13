@@ -319,6 +319,8 @@ int main(int argc, char *argv[]) {
   bool game_select_sent = false;
   Uint32 game_select_after = 0; /* SDL tick time after which we may deal */
   Uint32 action_after = 0;      /* SDL tick time after which we may act */
+  bool was_aggressor = false;   /* true if we bet/raised this hand (for c-bet logic) */
+  bool checked_strong = false;  /* true if we checked a strong hand to set up a check-raise */
 
   while (true) {
     SDL_Delay(BOT_POLL_MS);
@@ -363,6 +365,8 @@ int main(int argc, char *argv[]) {
       } else {
         game_select_sent = false;
         game_select_after = 0;
+        was_aggressor = false; /* new hand */
+        checked_strong = false;
       }
     }
 
@@ -385,8 +389,8 @@ int main(int argc, char *argv[]) {
       continue;
     action_after = 0;
 
-    /* Evaluate the current hand to decide whether to bet/raise.
-     * Build a 5-card hand from however many valid cards we hold. */
+    /* Evaluate the current hand.  Use the wild-card evaluator when deuces are
+     * wild so hand strength is correctly assessed in those games. */
     POKEVAL_Hand_5 h5 = {0};
     {
       int k5 = 0;
@@ -395,37 +399,273 @@ int main(int argc, char *argv[]) {
           h5.card[k5++] = game_state.player[my_id].hand.card[i];
       }
     }
-    hand_rank_t hand_rank = (hand_rank_t)POKEVAL_evaluate_hand(h5);
-    bool strong_hand = (hand_rank > POKEVAL_TWO_PAIR);
+    hand_rank_t hand_rank = client_state.deuces_wild
+                                ? (hand_rank_t)POKEVAL_evaluate_hand_wild(h5, DH_CARD_TWO)
+                                : (hand_rank_t)POKEVAL_evaluate_hand(h5);
+
+    /* Graduated hand strength:
+     *   0 = high card
+     *   1 = one pair
+     *   2 = two pair
+     *   3 = three of a kind / straight / flush
+     *   4 = full house or better */
+    int strength = 0;
+    if (hand_rank >= POKEVAL_FULL_HOUSE)
+      strength = 4;
+    else if (hand_rank >= POKEVAL_THREE_OF_A_KIND)
+      strength = 3;
+    else if (hand_rank == POKEVAL_TWO_PAIR)
+      strength = 2;
+    else if (hand_rank == POKEVAL_PAIR)
+      strength = 1;
+
+    /* Detect drawing hands for semi-bluff purposes.
+     * Only meaningful when we don't already have a made hand (strength < 3).
+     *   draw_strength 0 = no draw
+     *   draw_strength 1 = open-ended straight draw (4 consecutive ranks)
+     *   draw_strength 2 = flush draw (4 cards of the same suit) */
+    int draw_strength = 0;
+    if (strength < 3) {
+      int suit_cnt[4] = {0};
+      int face_bits = 0; /* bit i = face value i present; ace sets both bit 1 and bit 14 */
+      for (int i = 0; i < MAX_HAND_SIZE; i++) {
+        DH_Card c = game_state.player[my_id].hand.card[i];
+        if (DH_is_card_null(c))
+          continue;
+        if (c.suit >= 0 && c.suit < 4)
+          suit_cnt[c.suit]++;
+        if (c.face_val >= 1 && c.face_val <= 13)
+          face_bits |= (1 << c.face_val);
+        if (c.face_val == DH_CARD_ACE)
+          face_bits |= (1 << 14); /* ace also plays high */
+      }
+      for (int s = 0; s < 4; s++) {
+        if (suit_cnt[s] == 4) {
+          draw_strength = 2;
+          break;
+        }
+      }
+      if (draw_strength == 0) {
+        for (int f = 1; f <= 10; f++) {
+          int mask = (1 << f) | (1 << (f + 1)) | (1 << (f + 2)) | (1 << (f + 3));
+          if ((face_bits & mask) == mask) {
+            draw_strength = 1;
+            break;
+          }
+        }
+      }
+    }
+
+    /* Count opponents who are still active in this hand. */
+    int active_opponents = 0;
+    for (int i = 0; i < MAX_PLAYERS; i++) {
+      if (i != my_id && game_state.player[i].in && game_state.player[i].is_connected)
+        active_opponents++;
+    }
+
+    /* Pot odds: what fraction of (pot + call) the call represents (pct).
+     * A lower value means better pot odds and more reason to call. */
+    uint32_t call_cost = game_state.prev_bet_amount;
+    int pot_odds_pct = (call_cost > 0 && (game_state.pot + call_cost) > 0)
+                           ? (int)(100u * call_cost / (game_state.pot + call_cost))
+                           : 0;
+
     bool can_raise = (game_state.raises_remaining > 0);
     uint32_t bet_amount = game_settings.bet_amounts[0];
 
     /* Flags are set by the server sending the corresponding opcode directly to
        this client, so no need to check turn_id. */
     if (client_state.bet_check_fold) {
-      /* With a strong hand, open the betting half the time; otherwise
-         check most of the time and fold occasionally as a bluff/vary. */
-      if (strong_hand && can_raise && pcg32_boundedrand_r(&rng, 2) == 0)
+      /* Base open-bet rates by strength (high-card=10%, pair=20%, two-pair=42%,
+       * trips/str/flush=65%, FH+=85%).  Bonuses:
+       *   +25% c-bet when we were the aggressor last round.
+       *   flush draw: raise floor to 38% (semi-bluff).
+       *   OESD:       raise floor to 22% (semi-bluff).
+       *   multiway (3+ opponents): scale down by ~35% — bluffs work less often. */
+      static const int base_open_pct[5] = {10, 20, 42, 65, 85};
+      int bet_pct = base_open_pct[strength];
+      if (was_aggressor)
+        bet_pct += 25;
+      if (draw_strength == 2 && bet_pct < 38)
+        bet_pct = 38;
+      else if (draw_strength == 1 && bet_pct < 22)
+        bet_pct = 22;
+      if (active_opponents >= 3)
+        bet_pct = bet_pct * 65 / 100;
+      if (bet_pct > 95)
+        bet_pct = 95;
+
+      if (can_raise && (int)pcg32_boundedrand_r(&rng, 100) < bet_pct) {
         send_player_action(&client_state, socket_ctx.sock, ACTION_BET, bet_amount);
-      else if (pcg32_boundedrand_r(&rng, 100) < 15)
-        send_player_action(&client_state, socket_ctx.sock, ACTION_FOLD, 0);
-      else
+        was_aggressor = true;
+        checked_strong = false;
+      } else {
         send_player_action(&client_state, socket_ctx.sock, ACTION_CHECK, 0);
+        /* Remember if we checked a strong hand — we may be setting up a check-raise. */
+        checked_strong = (strength >= 3);
+      }
       /* send_player_action clears bet_check_fold and call_raise_fold */
     } else if (client_state.call_raise_fold) {
-      /* With a strong hand, raise half the time; otherwise call, with a small
-         chance of a surprise fold to add unpredictability. */
-      if (strong_hand && can_raise && pcg32_boundedrand_r(&rng, 2) == 0)
-        send_player_action(&client_state, socket_ctx.sock, ACTION_RAISE, bet_amount);
-      else if (pcg32_boundedrand_r(&rng, 100) < 10)
-        send_player_action(&client_state, socket_ctx.sock, ACTION_FOLD, 0);
-      else
-        send_player_action(&client_state, socket_ctx.sock, ACTION_CALL, 0);
+      if (checked_strong && can_raise) {
+        /* Check-raise: we checked a strong hand last round hoping someone would bet.
+         * They did — almost always raise, occasionally just call to keep them guessing. */
+        checked_strong = false;
+        if (pcg32_boundedrand_r(&rng, 100) < 88) {
+          send_player_action(&client_state, socket_ctx.sock, ACTION_RAISE, bet_amount);
+          was_aggressor = true;
+        } else {
+          send_player_action(&client_state, socket_ctx.sock, ACTION_CALL, 0);
+        }
+      } else if (strength >= 4) {
+        checked_strong = false;
+        /* Monster: raise most of the time, otherwise call */
+        if (can_raise && pcg32_boundedrand_r(&rng, 100) < 75) {
+          send_player_action(&client_state, socket_ctx.sock, ACTION_RAISE, bet_amount);
+          was_aggressor = true;
+        } else {
+          send_player_action(&client_state, socket_ctx.sock, ACTION_CALL, 0);
+        }
+      } else if (strength == 3) {
+        checked_strong = false;
+        /* Trips / straight / flush: raise half the time */
+        if (can_raise && pcg32_boundedrand_r(&rng, 100) < 50) {
+          send_player_action(&client_state, socket_ctx.sock, ACTION_RAISE, bet_amount);
+          was_aggressor = true;
+        } else {
+          send_player_action(&client_state, socket_ctx.sock, ACTION_CALL, 0);
+        }
+      } else if (strength == 2) {
+        /* Two pair: call unless pot odds are poor; tighten with more opponents */
+        int fold_pct = 10 + active_opponents * 8; /* ~18% hu, 26% vs 2, 34% vs 3+ */
+        if (pot_odds_pct > 45 || (int)pcg32_boundedrand_r(&rng, 100) < fold_pct) {
+          send_player_action(&client_state, socket_ctx.sock, ACTION_FOLD, 0);
+          was_aggressor = false;
+        } else {
+          send_player_action(&client_state, socket_ctx.sock, ACTION_CALL, 0);
+        }
+      } else if (strength == 1) {
+        /* One pair: pot-odds driven.  Approximate equity shrinks with more opponents.
+         * With a flush draw on top, semi-bluff raise occasionally. */
+        if (draw_strength == 2 && can_raise && pcg32_boundedrand_r(&rng, 100) < 25) {
+          send_player_action(&client_state, socket_ctx.sock, ACTION_RAISE, bet_amount);
+          was_aggressor = true;
+        } else {
+          int equity_pct = (active_opponents <= 1) ? 38 : (active_opponents == 2 ? 26 : 18);
+          if (pot_odds_pct > equity_pct) {
+            send_player_action(&client_state, socket_ctx.sock, ACTION_FOLD, 0);
+            was_aggressor = false;
+          } else {
+            send_player_action(&client_state, socket_ctx.sock, ACTION_CALL, 0);
+          }
+        }
+      } else {
+        /* High card — bluff strategy:
+         * Base:        raise 7%,  call (float) 20%, fold 73%.
+         * C-bet line:  raise 22%, call 35%,         fold 43%.
+         * Flush draw:  raise 30%+ (semi-bluff).
+         * OESD:        raise 18%+ (semi-bluff).
+         * Multiway:    halve raise pct, reduce float. */
+        int raise_pct = was_aggressor ? 22 : 7;
+        int call_pct = was_aggressor ? 35 : 20;
+        if (draw_strength == 2 && raise_pct < 30)
+          raise_pct = 30;
+        else if (draw_strength == 1 && raise_pct < 18)
+          raise_pct = 18;
+        if (active_opponents >= 3) {
+          raise_pct = raise_pct / 2;
+          call_pct = call_pct * 2 / 3;
+        }
+        int r = (int)pcg32_boundedrand_r(&rng, 100);
+        if (can_raise && r < raise_pct) {
+          send_player_action(&client_state, socket_ctx.sock, ACTION_RAISE, bet_amount);
+          was_aggressor = true;
+        } else if (r < raise_pct + call_pct) {
+          send_player_action(&client_state, socket_ctx.sock, ACTION_CALL, 0);
+        } else {
+          send_player_action(&client_state, socket_ctx.sock, ACTION_FOLD, 0);
+          was_aggressor = false;
+        }
+      }
     } else if (client_state.call_complete_fold) {
-      send_player_action(&client_state, socket_ctx.sock, ACTION_CALL, 0);
+      /* Stud bring-in.  Mixed strategy: strong hands usually complete (raise) but
+       * occasionally just call to disguise the hand; weak hands mostly fold but
+       * sometimes bluff-complete or call.  Draw strength adds semi-bluff raises. */
+      int raise_pct, call_pct;
+      switch (strength) {
+      case 4:
+        raise_pct = 80;
+        call_pct = 20;
+        break; /* monster: slow-play 20% */
+      case 3:
+        raise_pct = 58;
+        call_pct = 37;
+        break; /* trips+: mix it up */
+      case 2:
+        raise_pct = 18;
+        call_pct = 72;
+        break; /* two pair: lean call */
+      case 1:
+        raise_pct = 10;
+        call_pct = 68;
+        break; /* pair: usually call */
+      default:
+        raise_pct = 7;
+        call_pct = 20;
+        break; /* high card: mostly fold */
+      }
+      if (draw_strength == 2)
+        raise_pct += 15; /* flush draw: semi-bluff */
+      else if (draw_strength == 1)
+        raise_pct += 8;
+      if (!can_raise) {
+        call_pct += raise_pct;
+        raise_pct = 0;
+      }
+      int r = (int)pcg32_boundedrand_r(&rng, 100);
+      if (r < raise_pct) {
+        send_player_action(&client_state, socket_ctx.sock, ACTION_RAISE, bet_amount);
+        was_aggressor = true;
+      } else if (r < raise_pct + call_pct) {
+        send_player_action(&client_state, socket_ctx.sock, ACTION_CALL, 0);
+      } else {
+        send_player_action(&client_state, socket_ctx.sock, ACTION_FOLD, 0);
+        was_aggressor = false;
+      }
       client_state.call_complete_fold = false;
     } else if (client_state.complete_check_fold) {
-      send_player_action(&client_state, socket_ctx.sock, ACTION_CHECK, 0);
+      /* Bring-in player's free second action.  Never fold (it's free to check).
+       * Strong hands usually complete (raise) but occasionally check to trap;
+       * weaker hands mostly check with an occasional bluff-complete. */
+      int raise_pct;
+      switch (strength) {
+      case 4:
+        raise_pct = 82;
+        break; /* monster: check-trap 18% */
+      case 3:
+        raise_pct = 55;
+        break; /* trips: coin flip */
+      case 2:
+        raise_pct = 28;
+        break; /* two pair: semi-aggressive */
+      case 1:
+        raise_pct = 14;
+        break; /* pair: lean check */
+      default:
+        raise_pct = 8;
+        break; /* high card: occasional bluff */
+      }
+      if (draw_strength == 2)
+        raise_pct += 12;
+      else if (draw_strength == 1)
+        raise_pct += 6;
+      if (!can_raise)
+        raise_pct = 0;
+      if ((int)pcg32_boundedrand_r(&rng, 100) < raise_pct) {
+        send_player_action(&client_state, socket_ctx.sock, ACTION_RAISE, bet_amount);
+        was_aggressor = true;
+      } else {
+        send_player_action(&client_state, socket_ctx.sock, ACTION_CHECK, 0);
+      }
       client_state.complete_check_fold = false;
     } else if (client_state.do_discard_draw) {
       uint8_t discard_indices[MAX_HAND_SIZE] = {0};
