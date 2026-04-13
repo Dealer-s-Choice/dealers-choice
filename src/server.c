@@ -41,8 +41,6 @@
 #define MAX_DISCARDS 4
 #define MAX_WILDS 4
 
-#define SEND_RETRY_COUNT 3
-#define SEND_RETRY_DELAY_MS 500
 #define PING_THRESHOLD 1000
 
 #define handle_round() handle_round_real(args, 0, -1)
@@ -195,15 +193,6 @@ RealHand_t deal_cards_to_players(GameState_t *game_state, DH_Deck *deck, const u
   return real_hand;
 }
 
-int send_with_retries(TCPsocket sock, const void *data, size_t size) {
-  for (int attempt = 0; attempt < SEND_RETRY_COUNT; ++attempt) {
-    if (send_all_tcp(sock, data, size) == 0)
-      return 0;
-    SDL_Delay(SEND_RETRY_DELAY_MS);
-  }
-  return -1;
-}
-
 // At showdown all hands are revealed — required for winner highlighting and
 // consistent with poker rules. Called once before the per-client send loop so
 // every client receives the same fully-revealed game state.
@@ -243,9 +232,9 @@ static void broadcast_game_state(ArgsBroadcastGameState_t *args) {
     uint32_t size_net = SDL_SwapBE32((uint32_t)size);
 
     // fprintf(stderr, "sending to %d\n", i);
-    if (send_with_retries(args->clients[i], &size_net, sizeof(size_net)) == -1 ||
-        send_with_retries(args->clients[i], data, size) == -1) {
-      fprintf(stderr, "Failed to send game state to client %d after retries\n", i);
+    if (send_all_tcp(args->clients[i], &size_net, sizeof(size_net)) != 0 ||
+        send_all_tcp(args->clients[i], data, size) != 0) {
+      fprintf(stderr, "Failed to send game state to client %d\n", i);
       handle_disconnections(args);
     }
     free(data);
@@ -261,9 +250,9 @@ static void send_game_settings(ArgsBroadcastGameState_t *args, TCPsocket sock) {
   uint32_t size_net = SDL_SwapBE32((uint32_t)size);
 
   // fprintf(stderr, "sending to %d\n", i);
-  if (send_with_retries(sock, &size_net, sizeof(size_net)) == -1 ||
-      send_with_retries(sock, data, size) == -1) {
-    fprintf(stderr, "Failed to send game settings to client after retries\n");
+  if (send_all_tcp(sock, &size_net, sizeof(size_net)) != 0 ||
+      send_all_tcp(sock, data, size) != 0) {
+    fprintf(stderr, "Failed to send game settings to client\n");
     handle_disconnections(args);
   }
   free(data);
@@ -384,13 +373,29 @@ typedef enum {
  */
 static ETurnMsg_t recv_turn_player_msg(TCPsocket sock, PlayerActionMsg_t *out_action,
                                        uint16_t *out_kb_opcode, int8_t *out_target_id) {
-  uint8_t buf[7];
-  if (recv_all_tcp(sock, buf, sizeof(buf)) <= 0)
+  /* All client messages now use the standard length-prefix framing:
+   *   [size:4 BE][opcode:2 BE][payload...] where size = 2 + len(payload). */
+  uint32_t size_net = 0;
+  if (recv_all_tcp(sock, &size_net, sizeof(size_net)) <= 0)
     return TURN_MSG_DISCONNECT;
 
-  uint16_t opcode = (buf[0] << 8) | buf[1];
+  uint32_t size = SDL_SwapBE32(size_net);
+  if (size < 2 || size > 16) {
+    fprintf(stderr, "[recv_turn_player_msg] Invalid message size: %u\n", size);
+    return TURN_MSG_DISCONNECT;
+  }
+
+  uint8_t buf[16];
+  if (recv_all_tcp(sock, buf, size) <= 0)
+    return TURN_MSG_DISCONNECT;
+
+  uint16_t opcode_be;
+  memcpy(&opcode_be, buf, sizeof(opcode_be));
+  uint16_t opcode = SDL_SwapBE16(opcode_be);
 
   if (opcode == MSG_PLAYER_ACTION) {
+    if (size < 7)
+      return TURN_MSG_DISCONNECT;
     out_action->action = buf[2];
     out_action->amount = ((uint32_t)buf[3] << 24) | ((uint32_t)buf[4] << 16) |
                          ((uint32_t)buf[5] << 8) | (uint32_t)buf[6];
@@ -399,15 +404,12 @@ static ETurnMsg_t recv_turn_player_msg(TCPsocket sock, PlayerActionMsg_t *out_ac
     return TURN_MSG_ACTION;
   }
 
-  /* A kick/ban message starts with a 4-byte BE length (== 3 for a 1-byte
-   * payload). The real opcode is at bytes [4-5] and target_id at byte [6]. */
-  if (opcode == 0x0000) {
-    uint16_t kb_opcode = (buf[4] << 8) | buf[5];
-    if (kb_opcode == MSG_KICK_PLAYER || kb_opcode == MSG_BAN_PLAYER) {
-      *out_kb_opcode = kb_opcode;
-      *out_target_id = (int8_t)buf[6];
-      return TURN_MSG_KICK_BAN;
-    }
+  if (opcode == MSG_KICK_PLAYER || opcode == MSG_BAN_PLAYER) {
+    if (size < 3)
+      return TURN_MSG_DISCONNECT;
+    *out_kb_opcode = opcode;
+    *out_target_id = (int8_t)buf[2];
+    return TURN_MSG_KICK_BAN;
   }
 
   fprintf(stderr, "[recv_turn_player_msg] Unrecognised opcode 0x%04X\n", opcode);
@@ -545,11 +547,10 @@ static ELoop_t handle_draw(ArgsBroadcastGameState_t *args, TCPsocket sock, const
   }
 
   DrawRequestMsg_t req;
-  uint8_t buffer[7] = {0};
+  uint32_t msg_size = 0;
 
   uint32_t wait_ms = args->game_settings->action_timeout_ms;
   uint32_t start = SDL_GetTicks();
-  int n_bytes = 0;
   while (SDL_GetTicks() - start < wait_ms) {
     register_new_client(args);
     int num_ready = SDLNet_CheckSockets(args->socket_set, 10);
@@ -559,10 +560,11 @@ static ELoop_t handle_draw(ArgsBroadcastGameState_t *args, TCPsocket sock, const
     }
     if (num_ready > 0) {
       if (SDLNet_SocketReady(sock)) {
-        n_bytes = recv_all_tcp(sock, buffer, sizeof(buffer));
-        if (n_bytes > 0)
+        uint32_t size_net = 0;
+        if (recv_all_tcp(sock, &size_net, sizeof(size_net)) > 0) {
+          msg_size = SDL_SwapBE32(size_net);
           break;
-        else {
+        } else {
           remove_disconnected_player(args, id);
           broadcast_game_state(args);
           return LOOP_BREAK;
@@ -576,11 +578,35 @@ static ELoop_t handle_draw(ArgsBroadcastGameState_t *args, TCPsocket sock, const
     }
   }
 
-  if (*buffer != 0) {
-    uint16_t opcode = (buffer[0] << 8) | buffer[1];
-    if (opcode != MSG_DRAW_REQUEST)
-      return LOOP_ERROR;
+  if (msg_size == 0) {
+    /* timed out — treat as stand pat, track consecutive timeouts */
+    args->player_timeouts[id]++;
+    const uint8_t m = args->config->action_timeout_max;
+    if (m != 0 && !args->cli_args->disable_timeout && args->player_timeouts[id] == m) {
+      remove_disconnected_player(args, id);
+      printf("exceeded timeout threshold (%d): disconnecting %s\n", m,
+             args->game_state->player[id].nick);
+    }
+    return LOOP_CONTINUE;
   }
+  args->player_timeouts[id] = 0;
+
+  /* Read the framed payload: [opcode:2][count:1][indices:4] */
+  if (msg_size < 2 || msg_size > 7) {
+    fprintf(stderr, "[handle_draw] Invalid message size: %u\n", msg_size);
+    return LOOP_ERROR;
+  }
+  uint8_t buffer[7] = {0};
+  if (recv_all_tcp(sock, buffer, msg_size) <= 0) {
+    remove_disconnected_player(args, id);
+    broadcast_game_state(args);
+    return LOOP_BREAK;
+  }
+
+  uint16_t opcode_be;
+  memcpy(&opcode_be, buffer, sizeof(opcode_be));
+  if (SDL_SwapBE16(opcode_be) != MSG_DRAW_REQUEST)
+    return LOOP_ERROR;
 
   uint8_t count = buffer[2];
   if (count > MAX_DISCARDS)

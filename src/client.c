@@ -606,36 +606,29 @@ cleanup:
 
 int send_player_action(ClientState_t *client_state, TCPsocket sock, uint8_t action,
                        uint32_t amount) {
-  uint8_t buffer[7];
-
-  buffer[0] = (MSG_PLAYER_ACTION >> 8) & 0xFF;
-  buffer[1] = (MSG_PLAYER_ACTION) & 0xFF;
-  buffer[2] = action;
-
-  buffer[3] = (amount >> 24) & 0xFF;
-  buffer[4] = (amount >> 16) & 0xFF;
-  buffer[5] = (amount >> 8) & 0xFF;
-  buffer[6] = (amount) & 0xFF;
+  uint8_t payload[5];
+  payload[0] = action;
+  payload[1] = (amount >> 24) & 0xFF;
+  payload[2] = (amount >> 16) & 0xFF;
+  payload[3] = (amount >> 8) & 0xFF;
+  payload[4] = (amount) & 0xFF;
 
   client_state->bet_check_fold = false;
   client_state->call_raise_fold = false;
 
-  return send_all_tcp(sock, buffer, sizeof(buffer));
+  return send_message(sock, MSG_PLAYER_ACTION, payload, sizeof(payload));
 }
 
 int send_discards_request_new_cards(TCPsocket sock, const uint8_t *discard_indices, uint8_t count) {
   if (count > 4)
     return -1;
 
-  uint8_t buffer[7] = {0};
-  buffer[0] = (MSG_DRAW_REQUEST >> 8) & 0xFF;
-  buffer[1] = (MSG_DRAW_REQUEST) & 0xFF;
-  buffer[2] = count;
-
+  uint8_t payload[5] = {0};
+  payload[0] = count;
   for (int i = 0; i < 4; ++i)
-    buffer[3 + i] = (i < count) ? discard_indices[i] : 0xFF;
+    payload[1 + i] = (i < count) ? discard_indices[i] : 0xFF;
 
-  return send_all_tcp(sock, buffer, sizeof(buffer));
+  return send_message(sock, MSG_DRAW_REQUEST, payload, sizeof(payload));
 }
 
 static void make_human_readable_card(DH_Card *card, CardWidget_t *cw) {
