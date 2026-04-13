@@ -5,10 +5,10 @@
 
 # Dealer's Choice
 
-Dealer's Choice is a cross-platform, networked multiplayer poker game that
-supports various draw, stud, and hold 'em variants, including optional wild
-cards. The deal rotates between players, and each new game allows a different
-player to choose the variant.
+Dealer's Choice is a cross-platform, networked multiplayer poker game
+supporting draw, stud, and community-card variants, including Texas Hold'em
+and Omaha, with optional wild cards. The deal rotates around the table, and
+the dealer chooses the game before each hand.
 
 ## License
 
