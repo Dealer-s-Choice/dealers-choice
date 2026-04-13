@@ -20,7 +20,7 @@ Rules-Requires-Root: no
 Package: dealers-choice
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
-Description: Networked multiplayer poker game that supports various
- draw and stud variants, including optional wild cards. The deal
- rotates between players, and each new game allows a different
- player to choose the variant.
+Description: Networked multiplayer poker game supporting draw, stud,
+ and community-card variants, including Texas Hold'em and Omaha,
+ with optional wild cards. The deal rotates around the table, and
+ the dealer chooses the game before each hand.
