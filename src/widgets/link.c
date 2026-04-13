@@ -52,7 +52,8 @@ LinkWidget_t *link_widget_create(const char *text, const char *url, TTF_Font *fo
   lw->text_hovered = text_widget_create(text, font, get_color(COLOR_BLUE));
   TTF_SetFontStyle(font, TTF_STYLE_NORMAL);
   if (!lw->text_hovered) {
-    link_widget_destroy(&lw->base);
+    ui_widget_destroy(&lw->text_normal->base);
+    free(lw);
     return NULL;
   }
 

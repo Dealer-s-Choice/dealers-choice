@@ -475,6 +475,7 @@ int main(int argc, char *argv[]) {
 
     /* Flags are set by the server sending the corresponding opcode directly to
        this client, so no need to check turn_id. */
+    int rc = 0;
     if (client_state.bet_check_fold) {
       /* Base open-bet rates by strength (high-card=10%, pair=20%, two-pair=42%,
        * trips/str/flush=65%, FH+=85%).  Bonuses:
@@ -496,11 +497,11 @@ int main(int argc, char *argv[]) {
         bet_pct = 95;
 
       if (can_raise && (int)pcg32_boundedrand_r(&rng, 100) < bet_pct) {
-        send_player_action(&client_state, socket_ctx.sock, ACTION_BET, bet_amount);
+        rc = send_player_action(&client_state, socket_ctx.sock, ACTION_BET, bet_amount);
         was_aggressor = true;
         checked_strong = false;
       } else {
-        send_player_action(&client_state, socket_ctx.sock, ACTION_CHECK, 0);
+        rc = send_player_action(&client_state, socket_ctx.sock, ACTION_CHECK, 0);
         /* Remember if we checked a strong hand — we may be setting up a check-raise. */
         checked_strong = (strength >= 3);
       }
@@ -511,51 +512,51 @@ int main(int argc, char *argv[]) {
          * They did — almost always raise, occasionally just call to keep them guessing. */
         checked_strong = false;
         if (pcg32_boundedrand_r(&rng, 100) < 88) {
-          send_player_action(&client_state, socket_ctx.sock, ACTION_RAISE, bet_amount);
+          rc = send_player_action(&client_state, socket_ctx.sock, ACTION_RAISE, bet_amount);
           was_aggressor = true;
         } else {
-          send_player_action(&client_state, socket_ctx.sock, ACTION_CALL, 0);
+          rc = send_player_action(&client_state, socket_ctx.sock, ACTION_CALL, 0);
         }
       } else if (strength >= 4) {
         checked_strong = false;
         /* Monster: raise most of the time, otherwise call */
         if (can_raise && pcg32_boundedrand_r(&rng, 100) < 75) {
-          send_player_action(&client_state, socket_ctx.sock, ACTION_RAISE, bet_amount);
+          rc = send_player_action(&client_state, socket_ctx.sock, ACTION_RAISE, bet_amount);
           was_aggressor = true;
         } else {
-          send_player_action(&client_state, socket_ctx.sock, ACTION_CALL, 0);
+          rc = send_player_action(&client_state, socket_ctx.sock, ACTION_CALL, 0);
         }
       } else if (strength == 3) {
         checked_strong = false;
         /* Trips / straight / flush: raise half the time */
         if (can_raise && pcg32_boundedrand_r(&rng, 100) < 50) {
-          send_player_action(&client_state, socket_ctx.sock, ACTION_RAISE, bet_amount);
+          rc = send_player_action(&client_state, socket_ctx.sock, ACTION_RAISE, bet_amount);
           was_aggressor = true;
         } else {
-          send_player_action(&client_state, socket_ctx.sock, ACTION_CALL, 0);
+          rc = send_player_action(&client_state, socket_ctx.sock, ACTION_CALL, 0);
         }
       } else if (strength == 2) {
         /* Two pair: call unless pot odds are poor; tighten with more opponents */
         int fold_pct = 10 + active_opponents * 8; /* ~18% hu, 26% vs 2, 34% vs 3+ */
         if (pot_odds_pct > 45 || (int)pcg32_boundedrand_r(&rng, 100) < fold_pct) {
-          send_player_action(&client_state, socket_ctx.sock, ACTION_FOLD, 0);
+          rc = send_player_action(&client_state, socket_ctx.sock, ACTION_FOLD, 0);
           was_aggressor = false;
         } else {
-          send_player_action(&client_state, socket_ctx.sock, ACTION_CALL, 0);
+          rc = send_player_action(&client_state, socket_ctx.sock, ACTION_CALL, 0);
         }
       } else if (strength == 1) {
         /* One pair: pot-odds driven.  Approximate equity shrinks with more opponents.
          * With a flush draw on top, semi-bluff raise occasionally. */
         if (draw_strength == 2 && can_raise && pcg32_boundedrand_r(&rng, 100) < 25) {
-          send_player_action(&client_state, socket_ctx.sock, ACTION_RAISE, bet_amount);
+          rc = send_player_action(&client_state, socket_ctx.sock, ACTION_RAISE, bet_amount);
           was_aggressor = true;
         } else {
           int equity_pct = (active_opponents <= 1) ? 38 : (active_opponents == 2 ? 26 : 18);
           if (pot_odds_pct > equity_pct) {
-            send_player_action(&client_state, socket_ctx.sock, ACTION_FOLD, 0);
+            rc = send_player_action(&client_state, socket_ctx.sock, ACTION_FOLD, 0);
             was_aggressor = false;
           } else {
-            send_player_action(&client_state, socket_ctx.sock, ACTION_CALL, 0);
+            rc = send_player_action(&client_state, socket_ctx.sock, ACTION_CALL, 0);
           }
         }
       } else {
@@ -577,12 +578,12 @@ int main(int argc, char *argv[]) {
         }
         int r = (int)pcg32_boundedrand_r(&rng, 100);
         if (can_raise && r < raise_pct) {
-          send_player_action(&client_state, socket_ctx.sock, ACTION_RAISE, bet_amount);
+          rc = send_player_action(&client_state, socket_ctx.sock, ACTION_RAISE, bet_amount);
           was_aggressor = true;
         } else if (r < raise_pct + call_pct) {
-          send_player_action(&client_state, socket_ctx.sock, ACTION_CALL, 0);
+          rc = send_player_action(&client_state, socket_ctx.sock, ACTION_CALL, 0);
         } else {
-          send_player_action(&client_state, socket_ctx.sock, ACTION_FOLD, 0);
+          rc = send_player_action(&client_state, socket_ctx.sock, ACTION_FOLD, 0);
           was_aggressor = false;
         }
       }
@@ -623,12 +624,12 @@ int main(int argc, char *argv[]) {
       }
       int r = (int)pcg32_boundedrand_r(&rng, 100);
       if (r < raise_pct) {
-        send_player_action(&client_state, socket_ctx.sock, ACTION_RAISE, bet_amount);
+        rc = send_player_action(&client_state, socket_ctx.sock, ACTION_RAISE, bet_amount);
         was_aggressor = true;
       } else if (r < raise_pct + call_pct) {
-        send_player_action(&client_state, socket_ctx.sock, ACTION_CALL, 0);
+        rc = send_player_action(&client_state, socket_ctx.sock, ACTION_CALL, 0);
       } else {
-        send_player_action(&client_state, socket_ctx.sock, ACTION_FOLD, 0);
+        rc = send_player_action(&client_state, socket_ctx.sock, ACTION_FOLD, 0);
         was_aggressor = false;
       }
       client_state.call_complete_fold = false;
@@ -661,10 +662,10 @@ int main(int argc, char *argv[]) {
       if (!can_raise)
         raise_pct = 0;
       if ((int)pcg32_boundedrand_r(&rng, 100) < raise_pct) {
-        send_player_action(&client_state, socket_ctx.sock, ACTION_RAISE, bet_amount);
+        rc = send_player_action(&client_state, socket_ctx.sock, ACTION_RAISE, bet_amount);
         was_aggressor = true;
       } else {
-        send_player_action(&client_state, socket_ctx.sock, ACTION_CHECK, 0);
+        rc = send_player_action(&client_state, socket_ctx.sock, ACTION_CHECK, 0);
       }
       client_state.complete_check_fold = false;
     } else if (client_state.do_discard_draw) {
@@ -675,8 +676,12 @@ int main(int argc, char *argv[]) {
           (client_state.game_choice && client_state.game_choice->g == CALIFORNIA_LOWBALL);
       uint8_t n_discards =
           bot_choose_discards(&game_state.player[my_id].hand, hand_size, lowball, discard_indices);
-      send_discards_request_new_cards(socket_ctx.sock, discard_indices, n_discards);
+      rc = send_discards_request_new_cards(socket_ctx.sock, discard_indices, n_discards);
       client_state.do_discard_draw = false;
+    }
+    if (rc != 0) {
+      fputs("Failed to send action; disconnecting\n", stderr);
+      break;
     }
   }
 
