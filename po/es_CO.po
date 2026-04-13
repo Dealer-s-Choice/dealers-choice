@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: dealers-choice\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-04-08 16:31-0500\n"
+"POT-Creation-Date: 2026-04-13 07:31-0500\n"
 "PO-Revision-Date: 2025-07-02 00:18-0500\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -17,94 +17,94 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: src/client.c:121
+#: src/client.c:196
 msgid "Deuces Wild"
 msgstr ""
 
-#: src/client.c:165
+#: src/client.c:240
 msgid "Players"
 msgstr ""
 
-#: src/client.c:169
+#: src/client.c:244
 msgid "Dealer"
 msgstr ""
 
-#: src/client.c:173
+#: src/client.c:248
 msgid "Ping"
 msgstr ""
 
-#: src/client.c:177
+#: src/client.c:252
 msgid "Waiting for more players..."
 msgstr ""
 
-#: src/client.c:183
+#: src/client.c:258
 msgid "Waiting for dealer to select game..."
 msgstr ""
 
-#: src/client.c:188 src/client.c:1608
+#: src/client.c:263 src/client.c:1271
 msgid "Kick"
 msgstr ""
 
-#: src/client.c:190 src/client.c:1610
+#: src/client.c:265 src/client.c:1273
 msgid "Ban"
 msgstr ""
 
 #. Show dealing screen immediately after click
-#: src/client.c:521
+#: src/client.c:596
 msgid "Dealing..."
 msgstr ""
 
-#: src/client.c:1239
+#: src/client.c:900
 msgid "Check"
 msgstr "Pasar"
 
-#: src/client.c:1239
+#: src/client.c:900
 msgid "Bet"
 msgstr "Apostar"
 
-#: src/client.c:1240
+#: src/client.c:901
 msgid "Fold"
 msgstr "Retirarse"
 
-#: src/client.c:1240
+#: src/client.c:901
 msgid "Call"
 msgstr "Igualar"
 
-#: src/client.c:1241
+#: src/client.c:902
 msgid "Raise"
 msgstr "Subir la apuesta"
 
-#: src/client.c:1241
+#: src/client.c:902
 msgid "Complete"
 msgstr ""
 
-#: src/client.c:1242
+#: src/client.c:903
 msgid "Discard"
 msgstr "Descartar"
 
-#: src/client.c:2369
+#: src/client.c:2058
 msgid "Cancel"
 msgstr ""
 
-#: src/client.c:2376 src/client.c:2392
+#: src/client.c:2065 src/client.c:2081
 #, c-format
 msgid "Attempting connection to: %s... (%d/%d)"
 msgstr ""
 
-#: src/main.c:59
+#: src/main.c:57
 msgid "Connect"
 msgstr "Conectarse"
 
-#: src/main.c:61 src/main.c:403
+#: src/main.c:59 src/main.c:427
 msgid "Settings"
 msgstr ""
 
 #. index into text_input_indices
-#: src/main.c:96 src/main.c:378
+#: src/main.c:94 src/main.c:402
 msgid "Save"
 msgstr ""
 
-#: src/main.c:102 src/main.c:389
+#: src/main.c:100 src/main.c:413
 msgid "Load Defaults"
 msgstr ""
 
@@ -118,60 +118,53 @@ msgstr " Canal de Discord (en el servidor del proyecto Lazarus) "
 msgid "Website"
 msgstr ""
 
-#: src/server.c:93
-#, c-format
-msgid ""
-"Warning: password is set but this build lacks libsodium; authentication is "
-"disabled and the password will be ignored.\n"
-msgstr ""
-
-#: src/server.c:612
+#: src/server.c:640
 #, fuzzy
 msgid "checked"
 msgstr "Pasar"
 
-#: src/server.c:626
+#: src/server.c:654
 msgid "folded"
 msgstr ""
 
-#: src/server.c:817 src/server.c:839
+#: src/server.c:843 src/server.c:866
 msgid "completed "
 msgstr ""
 
-#: src/server.c:817
+#: src/server.c:843
 msgid "bet "
 msgstr ""
 
-#: src/server.c:831
+#: src/server.c:858 src/server.c:880
 msgid "called"
 msgstr ""
 
-#: src/server.c:848
+#: src/server.c:884
 #, fuzzy
 msgid "raised "
 msgstr "Subir la apuesta"
 
-#: src/server.c:975
+#: src/server.c:1012
 #, c-format
 msgid "%s disconnected"
 msgstr ""
 
-#: src/server.c:991
+#: src/server.c:1028
 #, c-format
 msgid "%s was kicked"
 msgstr ""
 
-#: src/server.c:1008
+#: src/server.c:1045
 #, c-format
 msgid "%s was banned"
 msgstr ""
 
-#: src/server.c:1245
+#: src/server.c:1283
 #, c-format
 msgid "%s brings in for %u"
 msgstr ""
 
-#: src/server.c:1411
+#: src/server.c:1475
 #, c-format
 msgid "Game: %s%s"
 msgstr ""
