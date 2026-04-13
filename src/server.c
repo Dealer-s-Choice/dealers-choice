@@ -1543,8 +1543,7 @@ static void ensure_unique_nick(GameState_t *game_state, Player_t *player, const 
     }
 
     if (unique) {
-      strncpy(player->nick, candidate, sizeof(player->nick) - 1);
-      player->nick[sizeof(player->nick) - 1] = '\0';
+      memcpy(player->nick, candidate, sizeof(player->nick));
       return;
     }
 

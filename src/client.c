@@ -980,7 +980,8 @@ static void layout_timer(SDL_Point *p) {
   p->y = g_viewport.h - MARGIN - CIRCLE_TIMER_R;
 }
 
-static void draw_filled_circle(SDL_Renderer *r, int cx, int cy, int radius) {
+static __attribute__((noinline)) void draw_filled_circle(SDL_Renderer *r, int cx, int cy,
+                                                         int radius) {
   if (radius <= 0)
     return;
 
@@ -1250,8 +1251,10 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
     amount_bw[i] = button_widget_create(amount_str[i], (EColor_t){COLOR_WHITE, COLOR_BROWN},
                                         font->fonts[FONT_BOLD], amount[i].hotkey);
   }
-  amount_bw[0]->base.selected = true;
-  client_state.selected_amount = amount[0].value;
+  if (n_bet_amounts > 0) {
+    amount_bw[0]->base.selected = true;
+    client_state.selected_amount = amount[0].value;
+  }
   layout_amount_buttons(amount_bw, n_bet_amounts);
 
   CardWidget_t card_context[MAX_PLAYERS][MAX_HAND_SIZE];
