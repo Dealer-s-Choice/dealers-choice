@@ -1198,6 +1198,7 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
 
   bool was_connected[MAX_PLAYERS];
   int32_t prev_coins[MAX_PLAYERS];
+  int last_bettor_id = 0;
   for (int i = 0; i < MAX_PLAYERS; i++) {
     was_connected[i] = game_state->player[i].is_connected;
     prev_coins[i] = game_state->player[i].coins;
@@ -1506,6 +1507,17 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
       coins = 0;
     }
 
+    /* Keep last_bettor_id current: update it whenever we can see whose coins
+     * decreased (i.e. on the first frame after a new game state arrives).
+     * prev_coins is stale on subsequent frames so the scan is a no-op there,
+     * leaving last_bettor_id pointing at the right player. */
+    for (int i = 0; i < MAX_PLAYERS; i++) {
+      if (game_state->player[i].is_connected && game_state->player[i].coins < prev_coins[i]) {
+        last_bettor_id = i;
+        break;
+      }
+    }
+
     if (new_coin) {
       // FIRST: compute rects
       layout_coins(coin_in_pot, &table_center, coins);
@@ -1515,7 +1527,7 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
       // NOW rect is valid
       coin_anim = (CoinAnimation_t){
           .texture = coin_tex_front,
-          .start = (SDL_Point){player_pos[turn->id].x, player_pos[turn->id].y},
+          .start = (SDL_Point){player_pos[last_bettor_id].x, player_pos[last_bettor_id].y},
           .end = (SDL_Point){coin_in_pot[last].rect.x, coin_in_pot[last].rect.y},
           .start_time = SDL_GetTicks(),
           .duration = 300,
