@@ -647,7 +647,7 @@ static void make_human_readable_card(DH_Card *card, CardWidget_t *cw) {
 static void create_card_context(CardWidget_t card_context[MAX_PLAYERS][MAX_HAND_SIZE],
                                 const int start_i, Player_t *players_array,
                                 const SDL_Point *player_pos, TTF_Font *font, const int my_id,
-                                const bool deuces_wild) {
+                                const bool deuces_wild, const GameChoice_t *game_choice) {
   memset(card_context, 0, sizeof(CardWidget_t) * MAX_PLAYERS * MAX_HAND_SIZE);
   Player_t *turn = &players_array[start_i];
   Player_t *starting_turn = turn;
@@ -668,7 +668,12 @@ static void create_card_context(CardWidget_t card_context[MAX_PLAYERS][MAX_HAND_
       cw->my_card = (id == my_id);
 
       cw->is_null = DH_is_card_null(*card);
-      if (!turn->in && !cw->is_null)
+      /* Community cards are public — never hide them as backs even if the
+       * player has folded.  layout_board_cards will null them for non-board
+       * player slots so they won't appear at the wrong position. */
+      bool is_community = game_choice && card_n < MAX_HAND_SIZE &&
+                          game_choice->card_slot[card_n] == CARD_SLOT_COMMUNITY;
+      if (!turn->in && !cw->is_null && !is_community)
         memcpy(card, &DH_card_back, sizeof(DH_card_back));
 
       cw->is_back = DH_is_card_back(*card);
@@ -1445,7 +1450,8 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
     if (!cards_created) {
       // printf("%d\n", __LINE__);
       create_card_context(card_context, starting_turn->id, players_array, player_pos,
-                          font->fonts[FONT_CARD], my_id, client_state.deuces_wild);
+                          font->fonts[FONT_CARD], my_id, client_state.deuces_wild,
+                          client_state.game_choice);
       layout_cards(card_context, players_array, player_pos);
       if (client_state.game_choice) {
         int community_start = -1;

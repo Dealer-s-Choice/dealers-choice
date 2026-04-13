@@ -478,11 +478,12 @@ static void card_widget_render(UIWidget_t *w) {
   CardWidget_t *cw = (CardWidget_t *)w;
   SDL_Renderer *renderer = g_sdl_context->renderer;
 
+  if (cw->is_null)
+    return;
   if (cw->is_back) {
     draw_card_back_pattern(renderer, &w->rect);
     return;
-  } else if (cw->is_null)
-    return;
+  }
 
   // Draw white card box
   SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
