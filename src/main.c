@@ -689,6 +689,7 @@ static CliArgs_t parse_cli_args(int argc, char *argv[]) {
       break;
     case OPT_AUTODEAL:
       cli_args.autodeal = true;
+      cli_args.disable_timeout = true;
       break;
     case '?':
     default:
