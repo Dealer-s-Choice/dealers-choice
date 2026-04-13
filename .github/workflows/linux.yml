@@ -104,8 +104,6 @@ jobs:
             runs-on: ubuntu-latest
           - platform: arm64
             runs-on: ubuntu-24.04-arm
-          - platform: 386
-            runs-on: ubuntu-latest
 
     steps:
     - uses: actions/checkout@v6
@@ -127,9 +125,6 @@ jobs:
 
     - name: Copy debian directory
       run: cp -a packaging/debian .
-
-    - uses: docker/setup-qemu-action@v4
-      if: matrix.platform == '386'
 
     - uses: andy5995/gh-action-build-deb@v1
       with:
