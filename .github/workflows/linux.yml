@@ -140,7 +140,7 @@ jobs:
 
     - name: Locate and rename deb
       run: |
-        DEB=$(find /home/runner/work -maxdepth 2 -name "dealers-choice_*.deb" | head -1)
+        DEB=$(find "$GITHUB_WORKSPACE/output" -name "dealers-choice_*.deb" | head -1)
         NEWNAME="dealers-choice-${VERSION}-${{ matrix.platform }}.deb"
         mv "$DEB" "$NEWNAME"
         echo "DEB_FILE=${NEWNAME}" >> "$GITHUB_ENV"
