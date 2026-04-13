@@ -3,7 +3,6 @@ Section: games
 Priority: optional
 Maintainer: Andy Alt <arch_stanton5995@proton.me>
 Build-Depends: debhelper-compat (= 13),
-               cmake,
                gettext,
                libprotobuf-c-dev,
                libsdl2-dev,

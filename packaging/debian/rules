@@ -3,4 +3,4 @@
 	dh $@ --buildsystem=meson
 
 override_dh_auto_configure:
-	dh_auto_configure -- -Db_sanitize=none -Dsodium=enabled
+	dh_auto_configure -- -Db_sanitize=none
