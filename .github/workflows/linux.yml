@@ -138,22 +138,18 @@ jobs:
           --compression=xz
         platform: ${{ matrix.platform }}
 
-    - name: Locate and rename deb
-      run: |
-        DEB=$(find "$GITHUB_WORKSPACE/output" -name "dealers-choice_*.deb" | head -1)
-        NEWNAME="dealers-choice-${VERSION}-${{ matrix.platform }}.deb"
-        mv "$DEB" "$NEWNAME"
-        echo "DEB_FILE=${NEWNAME}" >> "$GITHUB_ENV"
-
     - name: Checksum
       run: |
-        sha256sum "$DEB_FILE" > "${DEB_FILE}.sha256sum"
+        DEB_FILENAME=$(basename $(find output/ -name "dealers-choice_*.deb" | head -1))
+        echo "DEB_FILENAME=$DEB_FILENAME" >> "$GITHUB_ENV"
+        cd output
+        sha256sum "$DEB_FILENAME" > "../${DEB_FILENAME}.sha256sum"
 
     - name: Release (tagged)
       if: startsWith(github.ref, 'refs/tags/') || inputs.version != ''
       uses: ncipollo/release-action@v1
       with:
-        artifacts: "dealers-choice-${{ env.VERSION }}-${{ matrix.platform }}.deb*"
+        artifacts: "output/${{ env.DEB_FILENAME }},${{ env.DEB_FILENAME }}.sha256sum"
         tag: ${{ inputs.version != '' && format('v{0}', env.VERSION) || '' }}
         allowUpdates: true
         prerelease: false
