@@ -624,7 +624,7 @@ int main(int argc, char *argv[]) {
       }
       int r = (int)pcg32_boundedrand_r(&rng, 100);
       if (r < raise_pct) {
-        rc = send_player_action(&client_state, socket_ctx.sock, ACTION_RAISE, bet_amount);
+        rc = send_player_action(&client_state, socket_ctx.sock, ACTION_BET, bet_amount);
         was_aggressor = true;
       } else if (r < raise_pct + call_pct) {
         rc = send_player_action(&client_state, socket_ctx.sock, ACTION_CALL, 0);
@@ -662,7 +662,7 @@ int main(int argc, char *argv[]) {
       if (!can_raise)
         raise_pct = 0;
       if ((int)pcg32_boundedrand_r(&rng, 100) < raise_pct) {
-        rc = send_player_action(&client_state, socket_ctx.sock, ACTION_RAISE, bet_amount);
+        rc = send_player_action(&client_state, socket_ctx.sock, ACTION_BET, bet_amount);
         was_aggressor = true;
       } else {
         rc = send_player_action(&client_state, socket_ctx.sock, ACTION_CHECK, 0);

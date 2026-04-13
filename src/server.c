@@ -250,8 +250,7 @@ static void send_game_settings(ArgsBroadcastGameState_t *args, TCPsocket sock) {
   uint32_t size_net = SDL_SwapBE32((uint32_t)size);
 
   // fprintf(stderr, "sending to %d\n", i);
-  if (send_all_tcp(sock, &size_net, sizeof(size_net)) != 0 ||
-      send_all_tcp(sock, data, size) != 0) {
+  if (send_all_tcp(sock, &size_net, sizeof(size_net)) != 0 || send_all_tcp(sock, data, size) != 0) {
     fprintf(stderr, "Failed to send game settings to client\n");
     handle_disconnections(args);
   }
@@ -802,6 +801,7 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args, uint32_t i
       opcode = bringin_round_unopened ? MSG_COMPLETE_CHECK_FOLD : MSG_BET_CHECK_FOLD;
     if (send_opcode(args->clients[turn->id], opcode) != 0)
       fputs("Error sending action prompt", stderr);
+    verbose_printf("Sent opcode 0x%04X to player %d\n", opcode, turn->id);
 
     while (SDL_GetTicks() - start < wait_ms) {
       register_new_client(args);
@@ -846,8 +846,9 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args, uint32_t i
                 handle_fold(args->game_state, args->real_hand, turn, args->starting_turn, &action);
                 break;
               default:
-                fprintf(stderr, "Invalid Action received\n");
-                exit(EXIT_FAILURE);
+                fprintf(stderr, "Invalid Action %u received for opcode 0x%04X from player %d\n",
+                        action.action, opcode, turn->id);
+                remove_disconnected_player(args, turn->id);
               }
             } else {
               switch (action.action) {
@@ -1625,9 +1626,11 @@ static int recv_and_validate_protocol_header(TCPsocket sock, uint8_t *flags_out)
 }
 
 static void do_socket_cleanup(TCPsocket sock, SDLNet_SocketSet socket_set, bool *slot_taken,
-                              const int slot, Player_t *p) {
+                              const int slot, Player_t *p, TCPsocket *client_ref) {
   SDLNet_TCP_DelSocket(socket_set, sock);
   SDLNet_TCP_Close(sock);
+  if (client_ref)
+    *client_ref = NULL;
   slot_taken[slot] = false;
   if (p) {
     p->is_connected = false;
@@ -1738,7 +1741,8 @@ static ELoop_t register_new_client(ArgsBroadcastGameState_t *args) {
 
       uint8_t proto_flags = 0;
       if (recv_and_validate_protocol_header(new_client, &proto_flags) != 0) {
-        do_socket_cleanup(new_client, args->socket_set, args->slot_taken, slot, NULL);
+        do_socket_cleanup(new_client, args->socket_set, args->slot_taken, slot, NULL,
+                          &args->clients[slot]);
         return LOOP_CONTINUE;
       }
 
@@ -1750,7 +1754,8 @@ static ELoop_t register_new_client(ArgsBroadcastGameState_t *args) {
 
         if (is_bot && !*password) {
           printf("Rejected bot connection: server has no password set\n");
-          do_socket_cleanup(new_client, args->socket_set, args->slot_taken, slot, player);
+          do_socket_cleanup(new_client, args->socket_set, args->slot_taken, slot, player,
+                            &args->clients[slot]);
           return LOOP_CONTINUE;
         }
 
@@ -1764,7 +1769,8 @@ static ELoop_t register_new_client(ArgsBroadcastGameState_t *args) {
 
         if (is_bot && !auth_ok) {
           printf("Rejected bot connection: authentication failed\n");
-          do_socket_cleanup(new_client, args->socket_set, args->slot_taken, slot, player);
+          do_socket_cleanup(new_client, args->socket_set, args->slot_taken, slot, player,
+                            &args->clients[slot]);
           return LOOP_CONTINUE;
         }
 
@@ -1781,7 +1787,8 @@ static ELoop_t register_new_client(ArgsBroadcastGameState_t *args) {
         if (recv_all_tcp(new_client, &net_len, sizeof(net_len)) <= 0) {
           // Handle error: client disconnected or invalid
           fprintf(stderr, "Failed to receive nickname length.\n");
-          do_socket_cleanup(new_client, args->socket_set, args->slot_taken, slot, player);
+          do_socket_cleanup(new_client, args->socket_set, args->slot_taken, slot, player,
+                            &args->clients[slot]);
           return LOOP_CONTINUE;
         }
 
@@ -1791,7 +1798,8 @@ static ELoop_t register_new_client(ArgsBroadcastGameState_t *args) {
         // Step 3: Validate length
         if (len == 0 || len >= sizeof(player->nick)) {
           fprintf(stderr, "Invalid nickname length: %d\n", len);
-          do_socket_cleanup(new_client, args->socket_set, args->slot_taken, slot, player);
+          do_socket_cleanup(new_client, args->socket_set, args->slot_taken, slot, player,
+                            &args->clients[slot]);
           return LOOP_CONTINUE;
         }
 
@@ -1799,7 +1807,8 @@ static ELoop_t register_new_client(ArgsBroadcastGameState_t *args) {
         memset(player->nick, 0, sizeof(player->nick));
         if (recv_all_tcp(new_client, player->nick, len) != (int)len) {
           fprintf(stderr, "Failed to receive nickname.\n");
-          do_socket_cleanup(new_client, args->socket_set, args->slot_taken, slot, player);
+          do_socket_cleanup(new_client, args->socket_set, args->slot_taken, slot, player,
+                            &args->clients[slot]);
           return LOOP_CONTINUE;
         }
 
