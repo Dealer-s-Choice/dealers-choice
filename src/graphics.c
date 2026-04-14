@@ -163,3 +163,28 @@ void draw_rect_border(SDL_Renderer *r, SDL_Rect rect) {
   SDL_RenderFillRect(r, &(SDL_Rect){rect.x, rect.y, 2, rect.h});
   SDL_RenderFillRect(r, &(SDL_Rect){rect.x + rect.w - 2, rect.y, 2, rect.h});
 }
+
+/* Draw a raised 3D border of `thickness` pixels outside `rect`.
+ * Top/left edges are highlighted (light), bottom/right are shadowed (dark),
+ * with each ring graduating from medium-gray at the outer edge to
+ * bright/dark at the inner edge adjacent to the panel. */
+void draw_3d_border(SDL_Renderer *r, SDL_Rect rect, int thickness) {
+  for (int i = 0; i < thickness; i++) {
+    int e = thickness - 1 - i; /* 0 at innermost ring */
+    SDL_Rect ring = {rect.x - e - 1, rect.y - e - 1, rect.w + (e + 1) * 2, rect.h + (e + 1) * 2};
+
+    float t = (float)i / (float)(thickness - 1); /* 0=outermost, 1=innermost */
+
+    /* top + left highlight: medium-gray outer → bright inner */
+    uint8_t hi = (uint8_t)(140.0f + t * 80.0f);
+    SDL_SetRenderDrawColor(r, hi, hi, hi, 255);
+    SDL_RenderFillRect(r, &(SDL_Rect){ring.x, ring.y, ring.w, 1});
+    SDL_RenderFillRect(r, &(SDL_Rect){ring.x, ring.y, 1, ring.h});
+
+    /* bottom + right shadow: medium-gray outer → dark gray inner */
+    uint8_t sh = (uint8_t)(110.0f - t * 40.0f);
+    SDL_SetRenderDrawColor(r, sh, sh, sh, 255);
+    SDL_RenderFillRect(r, &(SDL_Rect){ring.x, ring.y + ring.h - 1, ring.w, 1});
+    SDL_RenderFillRect(r, &(SDL_Rect){ring.x + ring.w - 1, ring.y, 1, ring.h});
+  }
+}

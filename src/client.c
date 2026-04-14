@@ -1600,8 +1600,16 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
       draw_rect_border(sdl_context->renderer, turn_outline);
     }
 
-    SDL_SetRenderDrawColor(sdl_context->renderer, 255, 255, 255, 255);
-    SDL_RenderFillRect(sdl_context->renderer, &msg_panel);
+    draw_3d_border(sdl_context->renderer, msg_panel, 10);
+
+    /* Vertical gradient: white at top → light gray at bottom */
+    for (int row = 0; row < msg_panel.h; row++) {
+      float t = (float)row / (float)(msg_panel.h - 1);
+      uint8_t c = (uint8_t)(255.0f - t * 30.0f);
+      SDL_SetRenderDrawColor(sdl_context->renderer, c, c, c, 255);
+      SDL_RenderFillRect(sdl_context->renderer,
+                         &(SDL_Rect){msg_panel.x, msg_panel.y + row, msg_panel.w, 1});
+    }
 
     SDL_SetRenderDrawColor(sdl_context->renderer, 0, 0, 0, 255);
     draw_rect_border(sdl_context->renderer, msg_panel);

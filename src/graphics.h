@@ -111,5 +111,6 @@ bool toggle_fullscreen(SdlContext_t *sdl_context);
 void show_loading_screen(SDL_Renderer *renderer, TTF_Font *font, const char *message);
 
 void draw_rect_border(SDL_Renderer *r, SDL_Rect rect);
+void draw_3d_border(SDL_Renderer *r, SDL_Rect rect, int thickness);
 
 #endif
