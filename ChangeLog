@@ -1,8 +1,9 @@
 - dealers-choice (in-progress):
 
-  + dealers-choice-bot: no longer links against SDL2_ttf or SDL2_image
+  + Add 7-card no peek
   * bugfix: Community cards (Hold'em, Omaha) disappear after a player folds
     (#252)
+  * dealers-choice-bot: no longer links against SDL2_ttf or SDL2_image
 
 2026-04-13
 

@@ -63,6 +63,7 @@ typedef enum {
   CALIFORNIA_LOWBALL,
   TEXAS_HOLDEM,
   OMAHA,
+  SEVEN_CARD_NO_PEEK,
   MAX_CHOICES,
 } EMenuOption_t;
 

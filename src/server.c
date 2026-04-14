@@ -213,9 +213,14 @@ static void broadcast_game_state(ArgsBroadcastGameState_t *args) {
 
     // During play each client receives only their own real cards; all other
     // players' hole cards are sent as backs (anti-cheat).
+    // Exception: in no-peek games players must not see their own face-down
+    // cards either — game_state->player[i].hand already has the correct mix
+    // of revealed cards (real values) and unrevealed cards (DH_card_back).
     POKEVAL_Hand_9 hand_tmp = {0};
     bool mask_opponents = !args->game_state->winner_declared || args->game_state->player_count == 1;
-    if (mask_opponents) {
+    bool no_peek = (args->game_type == game_choices[SEVEN_CARD_NO_PEEK].game_type);
+    bool substitute_own_hand = mask_opponents && !no_peek;
+    if (substitute_own_hand) {
       memcpy(&hand_tmp, &args->game_state->player[i].hand, sizeof(POKEVAL_Hand_9));
       memcpy(&args->game_state->player[i].hand, &args->real_hand->player[i],
              sizeof(POKEVAL_Hand_9));
@@ -226,7 +231,7 @@ static void broadcast_game_state(ArgsBroadcastGameState_t *args) {
     if (!data)
       return;
 
-    if (mask_opponents)
+    if (substitute_own_hand)
       memcpy(&args->game_state->player[i].hand, &hand_tmp, sizeof(POKEVAL_Hand_9));
 
     uint32_t size_net = SDL_SwapBE32((uint32_t)size);
@@ -1386,6 +1391,110 @@ void game_omaha(GAME_ARGS) {
   }
 
 done:
+  determine_winner(args, &results);
+}
+
+void game_seven_card_no_peek(GAME_ARGS) {
+  (void)deck;
+  (void)choice;
+  server_handle_ante(args->game_state, args->config->ante);
+
+  RoundResults results = {0};
+  int n_flipped[MAX_PLAYERS] = {0};
+
+  // All 7 cards are already dealt face-down. The player left of the dealer
+  // flips their first card and opens the first betting round.
+  Player_t *first = *args->starting_turn;
+  first->hand.card[0] = args->real_hand->player[first->id].card[0];
+  n_flipped[first->id] = 1;
+  broadcast_game_state(args);
+
+  uint64_t best_score = POKEVAL_score_visible_cards(&first->hand.card[0], 1);
+
+  results = handle_round();
+  if (results.n_winners > 0) {
+    determine_winner(args, &results);
+    return;
+  }
+
+  Player_t *current_best = first;
+  Player_t *next_turn = get_next_player(players_array, first->id);
+
+  // Each active player in clockwise order must flip cards until their visible
+  // hand beats the current best showing, or they run out of cards and drop out.
+  // This continues around the table (multiple passes) until only one player
+  // remains or all active players have all 7 cards face up.
+  while (args->game_state->player_count > 1) {
+    if (!next_turn->in || !next_turn->is_connected) {
+      next_turn = get_next_player(players_array, next_turn->id);
+      continue;
+    }
+
+    bool beat = false;
+
+    if (n_flipped[next_turn->id] >= 7) {
+      // All cards already face up from a prior pass; compare current score.
+      DH_Card visible[7];
+      for (int j = 0; j < 7; j++)
+        visible[j] = next_turn->hand.card[j];
+      uint64_t score = POKEVAL_score_visible_cards(visible, 7);
+      if (score > best_score) {
+        best_score = score;
+        beat = true;
+      }
+    } else {
+      // Flip cards one at a time until beating best_score or running out.
+      while (n_flipped[next_turn->id] < 7) {
+        int idx = n_flipped[next_turn->id];
+        next_turn->hand.card[idx] = args->real_hand->player[next_turn->id].card[idx];
+        n_flipped[next_turn->id]++;
+        broadcast_game_state(args);
+
+        DH_Card visible[7];
+        for (int j = 0; j < n_flipped[next_turn->id]; j++)
+          visible[j] = next_turn->hand.card[j];
+        uint64_t score = POKEVAL_score_visible_cards(visible, n_flipped[next_turn->id]);
+
+        if (score > best_score) {
+          best_score = score;
+          beat = true;
+          break;
+        }
+      }
+    }
+
+    if (beat) {
+      current_best = next_turn;
+      *args->starting_turn = current_best;
+      results = handle_round();
+      if (results.n_winners > 0)
+        break;
+      next_turn = get_next_player(players_array, current_best->id);
+    } else {
+      // Ran out of cards without beating the current best — forced drop out.
+      Player_t *out = next_turn;
+      next_turn = get_next_player(players_array, out->id);
+
+      out->in = false;
+      for (int i = 0; i < MAX_HAND_SIZE; i++) {
+        args->real_hand->player[out->id].card[i] = DH_card_null;
+        out->hand.card[i] = DH_card_null;
+      }
+      args->game_state->player_count--;
+      if (out == *args->starting_turn)
+        *args->starting_turn = get_next_player(players_array, out->id);
+
+      char status_str[LEN_STATUS_STR] = {0};
+      snprintf(status_str, sizeof status_str, _("%s ran out of cards"), out->nick);
+      broadcast_status_message(args, status_str);
+
+      if (args->game_state->player_count == 1) {
+        award_last_player_in_game(args, current_best, &results);
+        break;
+      }
+    }
+  }
+
   determine_winner(args, &results);
 }
 

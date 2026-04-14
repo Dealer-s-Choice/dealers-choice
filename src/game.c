@@ -141,6 +141,17 @@ const GameChoice_t game_choices[] = {
      4,
      {CARD_SLOT_HOLE, CARD_SLOT_HOLE, CARD_SLOT_HOLE, CARD_SLOT_HOLE, CARD_SLOT_COMMUNITY,
       CARD_SLOT_COMMUNITY, CARD_SLOT_COMMUNITY, CARD_SLOT_COMMUNITY, CARD_SLOT_COMMUNITY},
+     false},
+    {SEVEN_CARD_NO_PEEK,
+     "7-card no peek",
+     0x0A,
+     game_seven_card_no_peek,
+     7,
+     7,
+     0,
+     7,
+     {CARD_SLOT_HOLE, CARD_SLOT_HOLE, CARD_SLOT_HOLE, CARD_SLOT_HOLE, CARD_SLOT_HOLE,
+      CARD_SLOT_HOLE, CARD_SLOT_HOLE, CARD_SLOT_UNUSED, CARD_SLOT_UNUSED},
      false}};
 
 const GameChoice_t *find_game_choice_by_type(const uint8_t type) {

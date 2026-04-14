@@ -48,6 +48,8 @@ void game_texas_holdem(GAME_ARGS);
 
 void game_omaha(GAME_ARGS);
 
+void game_seven_card_no_peek(GAME_ARGS);
+
 int run_server(const CliArgs_t *cli_args, Path_t *path);
 
 #endif
