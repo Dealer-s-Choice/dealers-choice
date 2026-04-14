@@ -69,80 +69,6 @@ static const uint8_t coin_px = 96;
 
 #define MAX_POT_COINS 40
 
-static int send_protocol_header(TCPsocket sock, uint8_t flags) {
-  verbose_puts("Exchanging protocol information...");
-  GameProtocolHeader_t hdr = {0};
-  snprintf(hdr.magic, sizeof(hdr.magic), "%s", GAME_PROTOCOL_MAGIC);
-  hdr.version = SDL_SwapBE16(GAME_PROTOCOL_VERSION);
-  hdr.flags = flags;
-
-  if (send_all_tcp(sock, &hdr, sizeof(hdr)) != 0)
-    return -1;
-
-  uint8_t response;
-  if (recv_all_tcp(sock, &response, sizeof(response)) <= 0) {
-    fprintf(stderr, "Protocol version mismatch or server closed connection\n");
-    return -1;
-  }
-  if (response != 0) {
-    fprintf(stderr,
-            "Server rejected connection: protocol version mismatch "
-            "(client version: %d)\n",
-            GAME_PROTOCOL_VERSION);
-    return -1;
-  }
-
-  return 0;
-}
-
-bool bot_connect(const char *host_str, uint16_t port, const char *nick, const char *password,
-                 SocketContext_t *out) {
-  IPaddress server_ip;
-  if (SDLNet_ResolveHost(&server_ip, host_str, port) == -1) {
-    fprintf(stderr, "Failed to resolve server: %s\n", SDLNet_GetError());
-    return false;
-  }
-
-  TCPsocket sock = SDLNet_TCP_Open(&server_ip);
-  if (!sock) {
-    fprintf(stderr, "Failed to connect: %s\n", SDLNet_GetError());
-    return false;
-  }
-
-  SDLNet_SocketSet set = SDLNet_AllocSocketSet(1);
-  if (!set) {
-    SDLNet_TCP_Close(sock);
-    return false;
-  }
-  SDLNet_TCP_AddSocket(set, sock);
-
-  if (send_protocol_header(sock, PROTO_FLAG_BOT) != 0)
-    goto fail;
-
-  if (authenticate_with_server(sock, password ? password : "") < 0) {
-    fprintf(stderr, "Authentication failed\n");
-    goto fail;
-  }
-
-  {
-    uint16_t len = (uint16_t)(strlen(nick) + 1);
-    uint16_t net_len = SDL_SwapBE16(len);
-    if (send_all_tcp(sock, &net_len, sizeof(net_len)) != 0 || send_all_tcp(sock, nick, len) != 0) {
-      fprintf(stderr, "Failed to send nick\n");
-      goto fail;
-    }
-  }
-
-  out->sock = sock;
-  out->set = set;
-  return true;
-
-fail:
-  SDLNet_FreeSocketSet(set);
-  SDLNet_TCP_Close(sock);
-  return false;
-}
-
 static void ma_sound_start_wrap(ma_sound *pSound, const char *file, const int line) {
   ma_result result = ma_sound_start(pSound);
   if (result != MA_SUCCESS) {
@@ -602,33 +528,6 @@ static EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_confi
 cleanup:
   ui_destroy_all(&registry);
   return result;
-}
-
-int send_player_action(ClientState_t *client_state, TCPsocket sock, uint8_t action,
-                       uint32_t amount) {
-  uint8_t payload[5];
-  payload[0] = action;
-  payload[1] = (amount >> 24) & 0xFF;
-  payload[2] = (amount >> 16) & 0xFF;
-  payload[3] = (amount >> 8) & 0xFF;
-  payload[4] = (amount) & 0xFF;
-
-  client_state->bet_check_fold = false;
-  client_state->call_raise_fold = false;
-
-  return send_message(sock, MSG_PLAYER_ACTION, payload, sizeof(payload));
-}
-
-int send_discards_request_new_cards(TCPsocket sock, const uint8_t *discard_indices, uint8_t count) {
-  if (count > 4)
-    return -1;
-
-  uint8_t payload[5] = {0};
-  payload[0] = count;
-  for (int i = 0; i < 4; ++i)
-    payload[1 + i] = (i < count) ? discard_indices[i] : 0xFF;
-
-  return send_message(sock, MSG_DRAW_REQUEST, payload, sizeof(payload));
 }
 
 static void make_human_readable_card(DH_Card *card, CardWidget_t *cw) {
@@ -2010,33 +1909,6 @@ static int connect_thread_fn(void *data) {
   ConnectAttempt_t *ca = data;
   ca->sock = SDLNet_TCP_Open(&ca->server_ip);
   SDL_AtomicSet(&ca->done, 1);
-  return 0;
-}
-
-int authenticate_with_server(TCPsocket sock, const char *password) {
-  unsigned char nonce[NONCE_SIZE];
-  unsigned char hash[HASH_SIZE];
-
-  /* receive nonce */
-  if (recv_all_tcp(sock, nonce, NONCE_SIZE) < 0) {
-    fprintf(stderr, "Failed to receive nonce\n");
-    return -1;
-  }
-
-  /* compute SHA256(password + nonce) */
-  crypto_hash_sha256_state state;
-
-  crypto_hash_sha256_init(&state);
-  crypto_hash_sha256_update(&state, (const unsigned char *)password, strlen(password));
-  crypto_hash_sha256_update(&state, nonce, NONCE_SIZE);
-  crypto_hash_sha256_final(&state, hash);
-
-  /* send response */
-  if (send_all_tcp(sock, hash, HASH_SIZE) != 0) {
-    fprintf(stderr, "Failed to send authentication response\n");
-    return -1;
-  }
-
   return 0;
 }
 

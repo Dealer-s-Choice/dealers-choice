@@ -29,3 +29,16 @@ shared_src = files(
   'ui_widget.c',
   'util.c',
 )
+
+# Subset of shared_src that the bot needs — excludes everything that pulls
+# in SDL2_ttf or SDL2_image so the bot binary stays free of those libraries.
+bot_src = files(
+  'dc_config.c',
+  'debug.c',
+  'game.c',
+  'globals.c',
+  'net.c',
+  'protobuf/netpoker.pb-c.c',
+  'server.c',
+  'util.c',
+)

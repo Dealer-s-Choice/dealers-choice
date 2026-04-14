@@ -161,4 +161,16 @@ void socket_cleanup(SocketContext_t *socket_context);
 
 int send_message(TCPsocket sock, uint16_t opcode, const uint8_t *payload, size_t payload_len);
 
+int send_protocol_header(TCPsocket sock, uint8_t flags);
+
+int authenticate_with_server(TCPsocket sock, const char *password);
+
+bool bot_connect(const char *host_str, uint16_t port, const char *nick, const char *password,
+                 SocketContext_t *out);
+
+int send_player_action(ClientState_t *client_state, TCPsocket sock, uint8_t action,
+                       uint32_t amount);
+
+int send_discards_request_new_cards(TCPsocket sock, const uint8_t *discard_indices, uint8_t count);
+
 #endif
