@@ -1,12 +1,10 @@
 project(
   'dealers-choice',
   ['c'],
-  version: '0.0.12',
+  version: '0.0.13-dev',
   meson_version: '>= 0.61.0',
   default_options: [
     'warning_level=3',
-#    'b_sanitize=address,undefined',
-#    'b_lundef=false',
     'c_std=c11',
   ],
 )
@@ -109,6 +107,11 @@ shared_dep += sodium_dep
 dep_names = [
   'libprotobuf-c',
   'SDL2',
+]
+
+# SDL2_ttf and SDL2_image are only used by the client (rendering); the bot
+# must not link against them or namcap/lintian will flag them as unused.
+client_only_dep_names = [
   'SDL2_ttf',
   'SDL2_image',
 ]
@@ -128,6 +131,11 @@ endif
 
 foreach dep : dep_names
   shared_dep += dependency(dep)
+endforeach
+
+client_only_deps = []
+foreach dep : client_only_dep_names
+  client_only_deps += dependency(dep)
 endforeach
 
 shared_inc = [include_directories(['src', 'src/protobuf'])]
@@ -159,12 +167,25 @@ configure_file(output: 'config.h', configuration: conf)
 _lib = static_library(
   'game',
   [shared_src, widgets_src],
-  dependencies: shared_dep,
+  dependencies: shared_dep + client_only_deps,
   include_directories: shared_inc,
 )
 
 game_dep = declare_dependency(
   link_with: _lib,
+  dependencies: shared_dep + client_only_deps,
+  include_directories: [shared_inc, include_directories('.')],
+)
+
+_bot_lib = static_library(
+  'game_bot',
+  bot_src,
+  dependencies: shared_dep,
+  include_directories: shared_inc,
+)
+
+bot_dep = declare_dependency(
+  link_with: _bot_lib,
   dependencies: shared_dep,
   include_directories: [shared_inc, include_directories('.')],
 )
@@ -179,7 +200,7 @@ exe_target = executable(
 executable(
   meson.project_name() + '-bot',
   ['src/bot.c'],
-  dependencies: game_dep,
+  dependencies: bot_dep,
   install: true,
 )
 
