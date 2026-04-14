@@ -1270,9 +1270,10 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
       starting_turn = &game_state->player[*turn_id];
 
     // For cases when the client who was designated as starting_turn disconnects
-    if (!starting_turn->is_connected) {
+    // or folds (server nulls all their cards including community slots).
+    if (!starting_turn->is_connected || !starting_turn->in) {
       starting_turn = get_next_player(players_array, starting_turn->id);
-      if (!turn) {
+      if (!starting_turn) {
         running = false;
         break;
       }
