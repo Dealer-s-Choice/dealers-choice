@@ -4,6 +4,7 @@
   * bugfix: Community cards (Hold'em, Omaha) disappear after a player folds
     (#252)
   * dealers-choice-bot: no longer links against SDL2_ttf or SDL2_image
+  * Bump GAME_PROTOCOL_VERSION from 8 to 9
 
 2026-04-13
 
