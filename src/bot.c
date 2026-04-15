@@ -395,8 +395,9 @@ int main(int argc, char *argv[]) {
     {
       int k5 = 0;
       for (int i = 0; i < MAX_HAND_SIZE && k5 < POKEVAL_HAND_SIZE; i++) {
-        if (!DH_is_card_null(game_state.player[my_id].hand.card[i]))
-          h5.card[k5++] = game_state.player[my_id].hand.card[i];
+        DH_Card c = game_state.player[my_id].hand.card[i];
+        if (!DH_is_card_null(c) && !DH_is_card_back(c))
+          h5.card[k5++] = c;
       }
     }
     hand_rank_t hand_rank = client_state.deuces_wild
@@ -430,7 +431,7 @@ int main(int argc, char *argv[]) {
       int face_bits = 0; /* bit i = face value i present; ace sets both bit 1 and bit 14 */
       for (int i = 0; i < MAX_HAND_SIZE; i++) {
         DH_Card c = game_state.player[my_id].hand.card[i];
-        if (DH_is_card_null(c))
+        if (DH_is_card_null(c) || DH_is_card_back(c))
           continue;
         if (c.suit >= 0 && c.suit < 4)
           suit_cnt[c.suit]++;
