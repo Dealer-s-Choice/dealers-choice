@@ -4,6 +4,7 @@ unit_tests = [
   'get_next_player',
   'debug_print_cards',
   'layout_cards',
+  'no_peek',
 ]
 
 base_env = {
