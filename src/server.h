@@ -38,7 +38,8 @@
 
 ServerConfig_t init_game_state(GameState_t *game_state, Path_t *path, const CliArgs_t *cli_args);
 
-RealHand_t deal_cards_to_players(GameState_t *game_state, DH_Deck *deck, const uint8_t game_type);
+void deal_cards_to_players(GameState_t *game_state, DH_Deck *deck, const uint8_t game_type,
+                           POKEVAL_Hand_9 *real_hand);
 
 void game_five_card_draw(GAME_ARGS);
 

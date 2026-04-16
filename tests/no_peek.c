@@ -41,20 +41,21 @@ DH_Deck deck = DH_get_new_deck();
 DH_pcg_srand(42, 1);
 DH_shuffle_deck(&deck);
 
-RealHand_t real_hand = deal_cards_to_players(&game_state, &deck, choice->game_type);
+POKEVAL_Hand_9 real_hand[MAX_PLAYERS] = {0};
+deal_cards_to_players(&game_state, &deck, choice->game_type, real_hand);
 
 // Visible hand must be all backs for the 7 active slots; real_hand must hold
 // valid (non-back, non-null) cards.
 for (int p = 0; p < 3; p++) {
   for (int c = 0; c < 7; c++) {
     assert(DH_is_card_back(game_state.player[p].hand.card[c]));
-    assert(!DH_is_card_back(real_hand.player[p].card[c]));
-    assert(!DH_is_card_null(real_hand.player[p].card[c]));
+    assert(!DH_is_card_back(real_hand[p].card[c]));
+    assert(!DH_is_card_null(real_hand[p].card[c]));
   }
   // Slots 7-8 are unused — null in both views.
   for (int c = 7; c < MAX_HAND_SIZE; c++) {
     assert(DH_is_card_null(game_state.player[p].hand.card[c]));
-    assert(DH_is_card_null(real_hand.player[p].card[c]));
+    assert(DH_is_card_null(real_hand[p].card[c]));
   }
 }
 

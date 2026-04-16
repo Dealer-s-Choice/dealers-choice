@@ -97,10 +97,6 @@ typedef struct {
   uint8_t bet_amount_count;
 } GameSettings_t;
 
-typedef struct {
-  POKEVAL_Hand_9 player[MAX_PLAYERS];
-} RealHand_t;
-
 // A forward declaration
 struct ServerConfig_t;
 
@@ -108,7 +104,10 @@ typedef struct {
   TCPsocket *clients;
   SDLNet_SocketSet socket_set;
   GameState_t *game_state;
-  RealHand_t *real_hand;
+  // Server-side real (unmasked) card values — never serialized directly.
+  // broadcast_game_state derives what each client may see from this array
+  // and the card_slot[] configuration, ensuring hole cards are never sent.
+  POKEVAL_Hand_9 real_hand[MAX_PLAYERS];
   bool *slot_taken;
   const CliArgs_t *cli_args;
   TCPsocket *server_sock;
@@ -121,6 +120,8 @@ typedef struct {
   uint8_t player_timeouts[MAX_PLAYERS];
   Uint32 ban_list[64];
   int ban_count;
+  // No-peek: cards flipped face-up per player, used when building visible hands.
+  int no_peek_n_flipped[MAX_PLAYERS];
 } ArgsBroadcastGameState_t;
 
 struct GameChoice_t;

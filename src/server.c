@@ -160,8 +160,8 @@ static int send_new_hand(TCPsocket sock, const POKEVAL_Hand_9 *hand, uint8_t han
   return result;
 }
 
-RealHand_t deal_cards_to_players(GameState_t *game_state, DH_Deck *deck, const uint8_t game_type) {
-  RealHand_t real_hand = {0};
+void deal_cards_to_players(GameState_t *game_state, DH_Deck *deck, const uint8_t game_type,
+                           POKEVAL_Hand_9 *real_hand) {
   Player_t *players_array = game_state->player;
   Player_t *turn = get_next_player(players_array, game_state->dealer_id);
   Player_t *starting_turn = turn;
@@ -169,41 +169,72 @@ RealHand_t deal_cards_to_players(GameState_t *game_state, DH_Deck *deck, const u
   const GameChoice_t *choice = find_game_choice_by_type(game_type);
   if (!choice) {
     fprintf(stderr, "deal_cards_to_players: unknown game_type 0x%02x\n", game_type);
-    return real_hand;
+    return;
   }
 
   for (int i = 0; i < MAX_HAND_SIZE; i++) {
     turn = starting_turn;
     do {
       if (i >= choice->n_cards_initial_deal) {
-        real_hand.player[turn->id].card[i] = DH_card_null;
+        real_hand[turn->id].card[i] = DH_card_null;
         turn->hand.card[i] = DH_card_null;
       } else {
-        real_hand.player[turn->id].card[i] = DH_deal_top_card(deck);
+        real_hand[turn->id].card[i] = DH_deal_top_card(deck);
         if (choice->card_slot[i] == CARD_SLOT_FACE_UP ||
             choice->card_slot[i] == CARD_SLOT_COMMUNITY)
-          turn->hand.card[i] = real_hand.player[turn->id].card[i];
+          turn->hand.card[i] = real_hand[turn->id].card[i];
         else
           turn->hand.card[i] = DH_card_back;
       }
       turn = get_next_player(players_array, turn->id);
     } while (turn && turn != starting_turn);
   }
-
-  return real_hand;
 }
 
 // At showdown all hands are revealed — required for winner highlighting and
 // consistent with poker rules. Called once before the per-client send loop so
 // every client receives the same fully-revealed game state.
-static void reveal_all_hands(GameState_t *game_state, const RealHand_t *real_hand) {
+static void reveal_all_hands(GameState_t *game_state, const POKEVAL_Hand_9 *real_hand) {
   for (int j = 0; j < MAX_PLAYERS; j++)
-    memcpy(&game_state->player[j].hand, &real_hand->player[j], sizeof(POKEVAL_Hand_9));
+    memcpy(&game_state->player[j].hand, &real_hand[j], sizeof(POKEVAL_Hand_9));
 }
 
 static void broadcast_game_state(ArgsBroadcastGameState_t *args) {
   if (args->game_state->winner_declared && args->game_state->player_count != 1)
     reveal_all_hands(args->game_state, args->real_hand);
+
+  bool mask_opponents = !args->game_state->winner_declared || args->game_state->player_count == 1;
+  bool no_peek = (args->game_type == game_choices[SEVEN_CARD_NO_PEEK].game_type);
+  const GameChoice_t *choice = find_game_choice_by_type(args->game_type);
+
+  // Before sending, build the public visible hand for each player and substitute
+  // it into game_state. This means real card values for hidden slots are derived
+  // exclusively from real_hand here — they are never serialized from game_state —
+  // so a modified client cannot read undealt or face-down card values from the wire.
+  //
+  // For no-peek: only cards that have been flipped (n < no_peek_n_flipped[p]) are visible.
+  // For all other games: CARD_SLOT_HOLE cards are always hidden; FACE_UP and COMMUNITY
+  //   cards are always visible.
+  POKEVAL_Hand_9 saved_hands[MAX_PLAYERS];
+  if (mask_opponents && choice) {
+    for (int p = 0; p < MAX_PLAYERS; p++) {
+      saved_hands[p] = args->game_state->player[p].hand;
+      for (int k = 0; k < MAX_HAND_SIZE; k++) {
+        bool visible;
+        if (no_peek)
+          visible = k < args->no_peek_n_flipped[p];
+        else
+          visible = (choice->card_slot[k] == CARD_SLOT_FACE_UP ||
+                     choice->card_slot[k] == CARD_SLOT_COMMUNITY);
+        if (visible)
+          args->game_state->player[p].hand.card[k] = args->real_hand[p].card[k];
+        else if (DH_is_card_null(args->real_hand[p].card[k]))
+          args->game_state->player[p].hand.card[k] = DH_card_null;
+        else
+          args->game_state->player[p].hand.card[k] = DH_card_back;
+      }
+    }
+  }
 
   for (int i = 0; i < MAX_CLIENTS; ++i) {
     if (!args->clients[i]) {
@@ -211,25 +242,23 @@ static void broadcast_game_state(ArgsBroadcastGameState_t *args) {
       continue;
     }
 
-    // During play each client receives only their own real cards; all other
-    // players' hole cards are sent as backs (anti-cheat).
-    // Exception: in no-peek games players must not see their own face-down
-    // cards either — game_state->player[i].hand already has the correct mix
-    // of revealed cards (real values) and unrevealed cards (DH_card_back).
+    // Each client additionally receives their own real cards (all slots).
+    // No-peek is the exception: players must not see their own unflipped cards,
+    // so the masked view built above is used as-is.
     POKEVAL_Hand_9 hand_tmp = {0};
-    bool mask_opponents = !args->game_state->winner_declared || args->game_state->player_count == 1;
-    bool no_peek = (args->game_type == game_choices[SEVEN_CARD_NO_PEEK].game_type);
     bool substitute_own_hand = mask_opponents && !no_peek;
     if (substitute_own_hand) {
       memcpy(&hand_tmp, &args->game_state->player[i].hand, sizeof(POKEVAL_Hand_9));
-      memcpy(&args->game_state->player[i].hand, &args->real_hand->player[i],
-             sizeof(POKEVAL_Hand_9));
+      memcpy(&args->game_state->player[i].hand, &args->real_hand[i], sizeof(POKEVAL_Hand_9));
     }
 
     uint32_t size = 0;
     uint8_t *data = serialize_game_state(args->game_state, &size);
-    if (!data)
-      return;
+    if (!data) {
+      if (substitute_own_hand)
+        memcpy(&args->game_state->player[i].hand, &hand_tmp, sizeof(POKEVAL_Hand_9));
+      break;
+    }
 
     if (substitute_own_hand)
       memcpy(&args->game_state->player[i].hand, &hand_tmp, sizeof(POKEVAL_Hand_9));
@@ -243,6 +272,11 @@ static void broadcast_game_state(ArgsBroadcastGameState_t *args) {
       handle_disconnections(args);
     }
     free(data);
+  }
+
+  if (mask_opponents && choice) {
+    for (int p = 0; p < MAX_PLAYERS; p++)
+      args->game_state->player[p].hand = saved_hands[p];
   }
 }
 
@@ -622,7 +656,7 @@ static ELoop_t handle_draw(ArgsBroadcastGameState_t *args, TCPsocket sock, const
   // printf("Player wants to discard %u cards: ", req.discard_count);
   for (int i = 0; i < req.discard_count; ++i) {
     // printf("%u ", req.discard_indices[i]);
-    args->real_hand->player[id].card[req.discard_indices[i]] = DH_deal_top_card(deck);
+    args->real_hand[id].card[req.discard_indices[i]] = DH_deal_top_card(deck);
     // puts("");
   }
 
@@ -632,10 +666,10 @@ static ELoop_t handle_draw(ArgsBroadcastGameState_t *args, TCPsocket sock, const
   broadcast_status_message(args, status_str);
 
   if (req.discard_count > 0) {
-    handle_sort_hand(&args->real_hand->player[id],
+    handle_sort_hand(&args->real_hand[id],
                      args->game_type == game_choices[CALIFORNIA_LOWBALL].game_type,
                      args->deuces_wild);
-    send_new_hand(sock, &args->real_hand->player[id], MAX_HAND_SIZE);
+    send_new_hand(sock, &args->real_hand[id], MAX_HAND_SIZE);
   }
 
   return LOOP_OK;
@@ -646,11 +680,12 @@ static EPlayerAction_t handle_check(PlayerActionMsg_t *action) {
   return ACTION_CHECK;
 }
 
-static EPlayerAction_t handle_fold(GameState_t *game_state, RealHand_t *real_hand, Player_t *turn,
-                                   Player_t **starting_turn, PlayerActionMsg_t *action) {
+static EPlayerAction_t handle_fold(GameState_t *game_state, POKEVAL_Hand_9 *real_hand,
+                                   Player_t *turn, Player_t **starting_turn,
+                                   PlayerActionMsg_t *action) {
   turn->in = false;
   for (int i = 0; i < MAX_HAND_SIZE; i++) {
-    real_hand->player[turn->id].card[i] = DH_card_null;
+    real_hand[turn->id].card[i] = DH_card_null;
     turn->hand.card[i] = DH_card_null;
   }
   game_state->player_count--;
@@ -685,7 +720,7 @@ static void determine_winner(ArgsBroadcastGameState_t *args, RoundResults *resul
   for (uint8_t i = 0; i < pl_count; i++) {
     need_comparing[i].won = false;
     need_comparing[i].id = ptr->id;
-    memcpy(&need_comparing[i].hand, &args->real_hand->player[ptr->id], sizeof(POKEVAL_Hand_9));
+    memcpy(&need_comparing[i].hand, &args->real_hand[ptr->id], sizeof(POKEVAL_Hand_9));
     ptr = get_next_player(args->game_state->player, ptr->id);
   }
 
@@ -1151,7 +1186,7 @@ void game_five_card_draw(GAME_ARGS) {
 
   Player_t *turn = *args->starting_turn;
   do {
-    handle_sort_hand(&args->real_hand->player[turn->id],
+    handle_sort_hand(&args->real_hand[turn->id],
                      args->game_type == game_choices[CALIFORNIA_LOWBALL].game_type,
                      args->deuces_wild);
     turn = get_next_player(players_array, turn->id);
@@ -1212,7 +1247,7 @@ static Player_t *stud_find_bringin_player(const ArgsBroadcastGameState_t *args,
       turn = get_next_player(players_array, turn->id);
       continue;
     }
-    DH_Card upcard = args->real_hand->player[turn->id].card[upcard_idx];
+    DH_Card upcard = args->real_hand[turn->id].card[upcard_idx];
     if (DH_is_card_null(upcard)) {
       turn = get_next_player(players_array, turn->id);
       continue;
@@ -1248,7 +1283,7 @@ static Player_t *stud_find_best_upcard_player(const ArgsBroadcastGameState_t *ar
     int n_visible = 0;
     for (int j = 0; j < street_idx && n_visible < 4; j++) {
       if (choice->card_slot[j] == CARD_SLOT_FACE_UP)
-        visible[n_visible++] = args->real_hand->player[turn->id].card[j];
+        visible[n_visible++] = args->real_hand[turn->id].card[j];
     }
 
     uint64_t score = POKEVAL_score_stud_upcards(visible, n_visible);
@@ -1315,9 +1350,9 @@ void game_stud(GAME_ARGS) {
       int id = turn->id;
       POKEVAL_Hand_9 *hand = &turn->hand;
 
-      args->real_hand->player[id].card[i] = DH_deal_top_card(deck);
+      args->real_hand[id].card[i] = DH_deal_top_card(deck);
       if (choice->card_slot[i] == CARD_SLOT_FACE_UP)
-        hand->card[i] = args->real_hand->player[id].card[i];
+        hand->card[i] = args->real_hand[id].card[i];
       else
         hand->card[i] = DH_card_back;
       turn = get_next_player(players_array, turn->id);
@@ -1336,7 +1371,7 @@ static void deal_community_cards(ArgsBroadcastGameState_t *args, Player_t *playe
     for (int p = 0; p < MAX_PLAYERS; p++) {
       if (!players_array[p].is_connected)
         continue;
-      args->real_hand->player[p].card[pos] = card;
+      args->real_hand[p].card[pos] = card;
       players_array[p].hand.card[pos] = card;
     }
   }
@@ -1400,16 +1435,15 @@ void game_seven_card_no_peek(GAME_ARGS) {
   server_handle_ante(args->game_state, args->config->ante);
 
   RoundResults results = {0};
-  int n_flipped[MAX_PLAYERS] = {0};
+  memset(args->no_peek_n_flipped, 0, sizeof(args->no_peek_n_flipped));
 
   // All 7 cards are already dealt face-down. The player left of the dealer
   // flips their first card and opens the first betting round.
   Player_t *first = *args->starting_turn;
-  first->hand.card[0] = args->real_hand->player[first->id].card[0];
-  n_flipped[first->id] = 1;
+  args->no_peek_n_flipped[first->id] = 1;
   broadcast_game_state(args);
 
-  uint64_t best_score = POKEVAL_score_visible_cards(&first->hand.card[0], 1);
+  uint64_t best_score = POKEVAL_score_visible_cards(&args->real_hand[first->id].card[0], 1);
 
   results = handle_round();
   if (results.n_winners > 0) {
@@ -1431,29 +1465,22 @@ void game_seven_card_no_peek(GAME_ARGS) {
     }
 
     bool beat = false;
+    int *nf = &args->no_peek_n_flipped[next_turn->id];
 
-    if (n_flipped[next_turn->id] >= 7) {
+    if (*nf >= 7) {
       // All cards already face up from a prior pass; compare current score.
-      DH_Card visible[7];
-      for (int j = 0; j < 7; j++)
-        visible[j] = next_turn->hand.card[j];
-      uint64_t score = POKEVAL_score_visible_cards(visible, 7);
+      uint64_t score = POKEVAL_score_visible_cards(args->real_hand[next_turn->id].card, 7);
       if (score > best_score) {
         best_score = score;
         beat = true;
       }
     } else {
       // Flip cards one at a time until beating best_score or running out.
-      while (n_flipped[next_turn->id] < 7) {
-        int idx = n_flipped[next_turn->id];
-        next_turn->hand.card[idx] = args->real_hand->player[next_turn->id].card[idx];
-        n_flipped[next_turn->id]++;
+      while (*nf < 7) {
+        (*nf)++;
         broadcast_game_state(args);
 
-        DH_Card visible[7];
-        for (int j = 0; j < n_flipped[next_turn->id]; j++)
-          visible[j] = next_turn->hand.card[j];
-        uint64_t score = POKEVAL_score_visible_cards(visible, n_flipped[next_turn->id]);
+        uint64_t score = POKEVAL_score_visible_cards(args->real_hand[next_turn->id].card, *nf);
 
         if (score > best_score) {
           best_score = score;
@@ -1476,8 +1503,9 @@ void game_seven_card_no_peek(GAME_ARGS) {
       next_turn = get_next_player(players_array, out->id);
 
       out->in = false;
+      args->no_peek_n_flipped[out->id] = 0;
       for (int i = 0; i < MAX_HAND_SIZE; i++) {
-        args->real_hand->player[out->id].card[i] = DH_card_null;
+        args->real_hand[out->id].card[i] = DH_card_null;
         out->hand.card[i] = DH_card_null;
       }
       args->game_state->player_count--;
@@ -1506,7 +1534,8 @@ static void play_game(ArgsBroadcastGameState_t *args, DH_Deck *deck) {
   }
 
   Player_t *players_array = args->game_state->player;
-  *args->real_hand = deal_cards_to_players(args->game_state, deck, args->game_type);
+  memset(args->real_hand, 0, sizeof(args->real_hand));
+  deal_cards_to_players(args->game_state, deck, args->game_type, args->real_hand);
 
   if (args->cli_args->test_mode) {
     static int test_case = 0;
@@ -1514,57 +1543,57 @@ static void play_game(ArgsBroadcastGameState_t *args, DH_Deck *deck) {
     if (test_case == 1) {
       for (int i = 1; i < 3; i++)
         for (int j = 0; j < 4; j++)
-          args->real_hand->player[i].card[j].face_val = DH_CARD_ACE;
+          args->real_hand[i].card[j].face_val = DH_CARD_ACE;
 
-      args->real_hand->player[1].card[4].face_val = DH_CARD_KING;
-      args->real_hand->player[2].card[4].face_val = DH_CARD_KING;
+      args->real_hand[1].card[4].face_val = DH_CARD_KING;
+      args->real_hand[2].card[4].face_val = DH_CARD_KING;
     } else if (test_case == 2) {
       for (int j = 0; j < 4; j++)
-        args->real_hand->player[2].card[j].face_val = DH_CARD_ACE;
+        args->real_hand[2].card[j].face_val = DH_CARD_ACE;
     } else if (test_case == 3) {
       for (int i = 0; i < 3; i++)
         for (int j = 0; j < 4; j++)
-          args->real_hand->player[i].card[j].face_val = DH_CARD_ACE;
+          args->real_hand[i].card[j].face_val = DH_CARD_ACE;
 
-      args->real_hand->player[0].card[4].face_val = DH_CARD_KING;
-      args->real_hand->player[1].card[4].face_val = DH_CARD_KING;
-      args->real_hand->player[2].card[4].face_val = DH_CARD_KING;
+      args->real_hand[0].card[4].face_val = DH_CARD_KING;
+      args->real_hand[1].card[4].face_val = DH_CARD_KING;
+      args->real_hand[2].card[4].face_val = DH_CARD_KING;
     }
   }
 
-  // args->real_hand->player[0].card[0].face_val = DH_CARD_TWO;
-  // args->real_hand->player[0].card[3].face_val = DH_CARD_TWO;
+  // args->real_hand[0].card[0].face_val = DH_CARD_TWO;
+  // args->real_hand[0].card[3].face_val = DH_CARD_TWO;
 
-  // args->real_hand->player[0].card[3].face_val = DH_CARD_TWO;
-  // args->real_hand->player[1].card[3].face_val = DH_CARD_TWO;
-  // args->real_hand->player[2].card[3].face_val = DH_CARD_TWO;
+  // args->real_hand[0].card[3].face_val = DH_CARD_TWO;
+  // args->real_hand[1].card[3].face_val = DH_CARD_TWO;
+  // args->real_hand[2].card[3].face_val = DH_CARD_TWO;
 
   // Lowball setups
   //
-  // args->real_hand->player[0].card[0].face_val = DH_CARD_ACE;
-  // args->real_hand->player[0].card[1].face_val = DH_CARD_TWO;
-  // args->real_hand->player[0].card[2].face_val = DH_CARD_THREE;
-  // args->real_hand->player[0].card[3].face_val = DH_CARD_FOUR;
-  // args->real_hand->player[0].card[4].face_val = DH_CARD_SIX;
+  // args->real_hand[0].card[0].face_val = DH_CARD_ACE;
+  // args->real_hand[0].card[1].face_val = DH_CARD_TWO;
+  // args->real_hand[0].card[2].face_val = DH_CARD_THREE;
+  // args->real_hand[0].card[3].face_val = DH_CARD_FOUR;
+  // args->real_hand[0].card[4].face_val = DH_CARD_SIX;
 
-  // args->real_hand->player[1].card[0].face_val = DH_CARD_TWO;
-  // args->real_hand->player[1].card[1].face_val = DH_CARD_THREE;
-  // args->real_hand->player[1].card[2].face_val = DH_CARD_FOUR;
-  // args->real_hand->player[1].card[3].face_val = DH_CARD_FIVE;
-  // args->real_hand->player[1].card[4].face_val = DH_CARD_SIX;
+  // args->real_hand[1].card[0].face_val = DH_CARD_TWO;
+  // args->real_hand[1].card[1].face_val = DH_CARD_THREE;
+  // args->real_hand[1].card[2].face_val = DH_CARD_FOUR;
+  // args->real_hand[1].card[3].face_val = DH_CARD_FIVE;
+  // args->real_hand[1].card[4].face_val = DH_CARD_SIX;
   //
   //  In lowball, 8-5-4-3-2 defeats 9-7-6-4-3
-  // args->real_hand->player[0].card[0].face_val = DH_CARD_EIGHT;
-  // args->real_hand->player[0].card[1].face_val = DH_CARD_FIVE;
-  // args->real_hand->player[0].card[2].face_val = DH_CARD_FOUR;
-  // args->real_hand->player[0].card[3].face_val = DH_CARD_THREE;
-  // args->real_hand->player[0].card[4].face_val = DH_CARD_TWO;
+  // args->real_hand[0].card[0].face_val = DH_CARD_EIGHT;
+  // args->real_hand[0].card[1].face_val = DH_CARD_FIVE;
+  // args->real_hand[0].card[2].face_val = DH_CARD_FOUR;
+  // args->real_hand[0].card[3].face_val = DH_CARD_THREE;
+  // args->real_hand[0].card[4].face_val = DH_CARD_TWO;
 
-  // args->real_hand->player[1].card[0].face_val = DH_CARD_NINE;
-  // args->real_hand->player[1].card[1].face_val = DH_CARD_SEVEN;
-  // args->real_hand->player[1].card[2].face_val = DH_CARD_SIX;
-  // args->real_hand->player[1].card[3].face_val = DH_CARD_FOUR;
-  // args->real_hand->player[1].card[4].face_val = DH_CARD_THREE;
+  // args->real_hand[1].card[0].face_val = DH_CARD_NINE;
+  // args->real_hand[1].card[1].face_val = DH_CARD_SEVEN;
+  // args->real_hand[1].card[2].face_val = DH_CARD_SIX;
+  // args->real_hand[1].card[3].face_val = DH_CARD_FOUR;
+  // args->real_hand[1].card[4].face_val = DH_CARD_THREE;
 
   args->game_state->winner_declared = false;
   args->game_state->prev_bet_amount = 0;
@@ -1853,8 +1882,8 @@ static ELoop_t register_new_client(ArgsBroadcastGameState_t *args) {
         slot_id->in = true;
       else {
         for (int i = 0; i < MAX_HAND_SIZE; i++)
-          args->real_hand->player[slot].card[i] = DH_card_null;
-        memcpy(&args->game_state->player[slot].hand, &args->real_hand->player[slot],
+          args->real_hand[slot].card[i] = DH_card_null;
+        memcpy(&args->game_state->player[slot].hand, &args->real_hand[slot],
                sizeof(POKEVAL_Hand_9));
       }
 
@@ -2023,8 +2052,6 @@ int run_server(const CliArgs_t *cli_args, Path_t *path) {
   }
 
   int game_started = 0;
-  RealHand_t real_hand = {0};
-
   bool slot_taken[MAX_CLIENTS] = {false};
   uint32_t dealer_timeout_start = 0;
   uint32_t autodeal_start = 0;
@@ -2041,7 +2068,6 @@ int run_server(const CliArgs_t *cli_args, Path_t *path) {
         .clients = clients,
         .socket_set = socket_set,
         .game_state = &game_state,
-        .real_hand = &real_hand,
         .slot_taken = slot_taken,
         .cli_args = cli_args,
         .server_sock = &server,

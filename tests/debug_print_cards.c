@@ -23,19 +23,19 @@ DH_Deck deck = DH_get_new_deck();
 DH_pcg_srand(1, 1);
 DH_shuffle_deck(&deck);
 
-RealHand_t real_hand =
-    deal_cards_to_players(&game_state, &deck, game_choices[FIVE_CARD_DRAW].game_type);
-DebugPrintCards_t cards_str = debug_print_cards(&real_hand.player[0]);
+POKEVAL_Hand_9 real_hand[MAX_PLAYERS] = {0};
+deal_cards_to_players(&game_state, &deck, game_choices[FIVE_CARD_DRAW].game_type, real_hand);
+DebugPrintCards_t cards_str = debug_print_cards(&real_hand[0]);
 
 fprintf(stderr, "--%s--", cards_str.str);
 assert(strcmp(cards_str.str, "5♥2♥8♣8♠2♠") == 0);
 
 fprintf(stderr, "--%s--", cards_str.str);
-cards_str = debug_print_cards(&real_hand.player[1]);
+cards_str = debug_print_cards(&real_hand[1]);
 assert(strcmp(cards_str.str, "2♦5♣6♦7♦3♠") == 0);
 
 fprintf(stderr, "--%s--", cards_str.str);
-cards_str = debug_print_cards(&real_hand.player[2]);
+cards_str = debug_print_cards(&real_hand[2]);
 assert(strcmp(cards_str.str, "5♠7♠3♦4♦4♣") == 0);
 
 _MAIN_TAIL_
