@@ -1,5 +1,6 @@
 - dealers-choice (in-progress):
 
+  + Coins placed in the pot are rendered at a random rotation angle
   + Add 7-card no peek
   * bugfix: Community cards (Hold'em, Omaha) disappear after a player folds
     (#252)

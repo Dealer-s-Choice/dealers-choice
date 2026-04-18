@@ -767,7 +767,7 @@ void render_coin_animation(SDL_Renderer *renderer, CoinAnimation_t *anim) {
 
   SDL_Rect dst = {.x = (int)fx, .y = (int)fy, .w = coin_px, .h = coin_px};
 
-  SDL_RenderCopy(renderer, anim->texture, NULL, &dst);
+  SDL_RenderCopyEx(renderer, anim->texture, NULL, &dst, progress * 720.0, NULL, SDL_FLIP_NONE);
 }
 
 enum {
@@ -832,6 +832,7 @@ static void layout_player_pos(SDL_Point *player_pos) {
 typedef struct {
   SDL_Point offset;
   SDL_Rect rect;
+  double angle;
 } CoinInPot_t;
 
 static void layout_coins(CoinInPot_t *coins, SDL_Point *p, int count) {
@@ -1407,6 +1408,7 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
     if (game_state->pot > coins * game_settings->bet_amounts[0] && coins < MAX_POT_COINS) {
       coin_in_pot[coins].offset.x = pcg32_boundedrand_r(&rng, POT_BOUNDARY) - POT_BOUNDARY / 2;
       coin_in_pot[coins].offset.y = pcg32_boundedrand_r(&rng, POT_BOUNDARY) - POT_BOUNDARY / 2;
+      coin_in_pot[coins].angle = pcg32_boundedrand_r(&rng, 360);
       coins++;
       new_coin = true;
     } else if (game_state->pot == 0) {
@@ -1446,7 +1448,8 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
       if (i == coins - 1 && coin_anim.active) {
         continue; // last coin is currently animated
       }
-      SDL_RenderCopy(sdl_context->renderer, coin_tex_front, NULL, &coin_in_pot[i].rect);
+      SDL_RenderCopyEx(sdl_context->renderer, coin_tex_front, NULL, &coin_in_pot[i].rect,
+                       coin_in_pot[i].angle, NULL, SDL_FLIP_NONE);
     }
 
     if (game_state->pot > 0)
