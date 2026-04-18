@@ -1406,8 +1406,9 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
     bool new_coin = false;
 
     if (game_state->pot > coins * game_settings->bet_amounts[0] && coins < MAX_POT_COINS) {
-      coin_in_pot[coins].offset.x = pcg32_boundedrand_r(&rng, POT_BOUNDARY) - POT_BOUNDARY / 2;
-      coin_in_pot[coins].offset.y = pcg32_boundedrand_r(&rng, POT_BOUNDARY) - POT_BOUNDARY / 2;
+      uint32_t boundary = POT_BOUNDARY - (POT_BOUNDARY * 3 / 4) * coins / MAX_POT_COINS;
+      coin_in_pot[coins].offset.x = (int)pcg32_boundedrand_r(&rng, boundary) - (int)(boundary / 2);
+      coin_in_pot[coins].offset.y = (int)pcg32_boundedrand_r(&rng, boundary) - (int)(boundary / 2);
       coin_in_pot[coins].angle = pcg32_boundedrand_r(&rng, 360);
       coins++;
       new_coin = true;
