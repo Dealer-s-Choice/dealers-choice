@@ -1,5 +1,8 @@
 - dealers-choice (in-progress):
 
+  + Server: connection rate limiting and per-IP connection cap; loopback
+    always exempt; configured via max_connections_per_minute and
+    max_connections_per_ip in server.conf (0 = unlimited) (#189)
   + Add --auto-connect: skip the connect dialog and connect immediately on
     startup using host/port from player.conf; ignored if --server is set;
     reverts to normal menu on return from lobby (#253)
