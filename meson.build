@@ -232,7 +232,7 @@ install_subdir('docs', install_dir: get_option('docdir'))
 
 if not platform_is_windows
   install_data(
-    'packaging/dealers-choice.desktop',
+    'dealers-choice.desktop',
     install_dir: join_paths(get_option('datadir'), 'applications'),
   )
 
@@ -240,7 +240,7 @@ if not platform_is_windows
 
   foreach size : icon_sizes
     install_data(
-      'packaging/icons/dealers-choice_@0@x@0@.png'.format(size),
+      'icons/dealers-choice_@0@x@0@.png'.format(size),
       rename: 'dealers-choice.png',
       install_dir: join_paths(
         get_option('datadir'),
@@ -253,7 +253,7 @@ if not platform_is_windows
   endforeach
 
   install_data(
-    'packaging/icons/dealers-choice.svg',
+    'icons/dealers-choice.svg',
     install_dir: join_paths(
       get_option('datadir'),
       'icons',

@@ -10,7 +10,7 @@ jobs:
     steps:
     - uses: actions/checkout@v6
     - name: Install Dependencies
-      run: .github/scripts/install_ubuntu_deps.sh
+      run: scripts/install_ubuntu_deps.sh
 
     - name: Meson setup
       run: CFLAGS="-Werror" meson setup _build
