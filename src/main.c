@@ -624,6 +624,7 @@ static CliArgs_t parse_cli_args(int argc, char *argv[]) {
     OPT_DISABLE_AUDIO,
     OPT_DISABLE_TIMEOUT,
     OPT_AUTODEAL,
+    OPT_AUTO_CONNECT,
   };
 
   static const glopt_option_t options[] = {
@@ -639,6 +640,7 @@ static CliArgs_t parse_cli_args(int argc, char *argv[]) {
       {"disable-audio", GLOPT_NO_ARG, OPT_DISABLE_AUDIO},
       {"disable-timeout", GLOPT_NO_ARG, OPT_DISABLE_TIMEOUT},
       {"autodeal", GLOPT_NO_ARG, OPT_AUTODEAL},
+      {"auto-connect", GLOPT_NO_ARG, OPT_AUTO_CONNECT},
       {NULL, 0, 0}};
 
   glopt_parser_t parser;
@@ -690,6 +692,9 @@ static CliArgs_t parse_cli_args(int argc, char *argv[]) {
     case OPT_AUTODEAL:
       cli_args.autodeal = true;
       cli_args.disable_timeout = true;
+      break;
+    case OPT_AUTO_CONNECT:
+      cli_args.auto_connect = true;
       break;
     case '?':
     default:
@@ -848,22 +853,29 @@ int main(int argc, char *argv[]) {
 
   uint16_t port = (cli_args.port != 0) ? cli_args.port : player_config.port;
   bool loop_to_connect = true;
+  bool first_connect = true;
   while (loop_to_connect) {
     loop_to_connect = false;
     int connect_result;
-    do {
-      connect_result =
-          menu_display_connect(&player_config, host_str, &port, &sdl_context, &font, links);
-      if (connect_result == RUN_SETTINGS)
-        menu_display_settings(&player_config, &sdl_context, &font, &path);
-    } while (connect_result == RUN_SETTINGS);
+    if (cli_args.auto_connect && !cli_args.run_server_flag && first_connect) {
+      connect_result = RUN_CLIENT;
+    } else {
+      do {
+        connect_result =
+            menu_display_connect(&player_config, host_str, &port, &sdl_context, &font, links);
+        if (connect_result == RUN_SETTINGS)
+          menu_display_settings(&player_config, &sdl_context, &font, &path);
+      } while (connect_result == RUN_SETTINGS);
+    }
 
     if (connect_result == RUN_CLIENT) {
       bool went_back =
           get_socket_context_and_run_client(&player_config, &cli_args, host_str, port, &sdl_context,
                                             &font, &path, cli_args.test_mode, links, NULL);
-      if (went_back)
+      if (went_back) {
         loop_to_connect = true;
+        first_connect = false;
+      }
     }
   }
 

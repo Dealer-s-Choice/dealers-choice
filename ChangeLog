@@ -1,7 +1,11 @@
 - dealers-choice (in-progress):
 
+  + Add --auto-connect: skip the connect dialog and connect immediately on
+    startup using host/port from player.conf; ignored if --server is set;
+    reverts to normal menu on return from lobby (#253)
   + Coins placed in the pot are rendered at a random rotation angle; later
-    coins land closer to the center, creating a stacking effect
+    coins land closer to the center, creating a stacking effect; coin spins
+    during flight to the pot
   + Add 7-card no peek
   * bugfix: Community cards (Hold'em, Omaha) disappear after a player folds
     (#252)

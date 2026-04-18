@@ -37,6 +37,7 @@ typedef struct {
   bool disable_audio;
   bool disable_timeout;
   bool autodeal;
+  bool auto_connect;
 } CliArgs_t;
 
 #endif
