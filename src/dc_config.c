@@ -73,7 +73,11 @@ const ConfigEntry server_config_entries[SERVER_CONFIG_ENTRY_COUNT] = {
     {"action_timeout_max", CFG_TYPE_UINT8, "3", offsetof(ServerConfig_t, action_timeout_max),
      sizeof(uint8_t)},
     {"password", CFG_TYPE_STRING, "", offsetof(ServerConfig_t, password),
-     sizeof(((ServerConfig_t *)0)->password)}};
+     sizeof(((ServerConfig_t *)0)->password)},
+    {"max_connections_per_minute", CFG_TYPE_UINT32, "10",
+     offsetof(ServerConfig_t, max_connections_per_minute), sizeof(uint32_t)},
+    {"max_connections_per_ip", CFG_TYPE_UINT32, "0",
+     offsetof(ServerConfig_t, max_connections_per_ip), sizeof(uint32_t)}};
 
 _Static_assert(ARRAY_SIZE(player_config_entries) == PLAYER_CONFIG_ENTRY_COUNT,
                "PLAYER_CONFIG_ENTRY_COUNT is out of sync");

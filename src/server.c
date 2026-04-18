@@ -39,6 +39,42 @@
 #include <sodium.h>
 
 #define MAX_DISCARDS 4
+
+#define RATE_LIMIT_WINDOW_MS 60000u
+#define RATE_LIMIT_CAPACITY 512
+#define LOOPBACK_IP 0x7f000001u
+
+typedef struct {
+  Uint32 ip;
+  uint32_t ticks;
+} ConnAttempt_t;
+
+static ConnAttempt_t conn_attempts[RATE_LIMIT_CAPACITY];
+static int conn_attempts_count = 0;
+
+static bool rate_limit_check(Uint32 ip_host_order, uint32_t max_per_minute) {
+  uint32_t now = SDL_GetTicks();
+  int j = 0;
+  for (int i = 0; i < conn_attempts_count; i++) {
+    if (now - conn_attempts[i].ticks < RATE_LIMIT_WINDOW_MS)
+      conn_attempts[j++] = conn_attempts[i];
+  }
+  conn_attempts_count = j;
+
+  int count = 0;
+  for (int i = 0; i < conn_attempts_count; i++) {
+    if (conn_attempts[i].ip == ip_host_order)
+      count++;
+  }
+
+  if ((uint32_t)count >= max_per_minute)
+    return false;
+
+  if (conn_attempts_count < RATE_LIMIT_CAPACITY)
+    conn_attempts[conn_attempts_count++] = (ConnAttempt_t){ip_host_order, now};
+
+  return true;
+}
 #define MAX_WILDS 4
 
 #define PING_THRESHOLD 1000
@@ -1849,6 +1885,32 @@ static ELoop_t register_new_client(ArgsBroadcastGameState_t *args) {
           printf("Rejected banned client\n");
           SDLNet_TCP_Close(new_client);
           return LOOP_CONTINUE;
+        }
+      }
+
+      Uint32 ip = SDL_SwapBE32(peer_ip->host);
+      if (ip != LOOPBACK_IP) {
+        if (args->config->max_connections_per_minute > 0) {
+          if (!rate_limit_check(ip, args->config->max_connections_per_minute)) {
+            printf("Rejected connection: rate limit exceeded\n");
+            SDLNet_TCP_Close(new_client);
+            return LOOP_CONTINUE;
+          }
+        }
+        if (args->config->max_connections_per_ip > 0) {
+          uint32_t count = 0;
+          for (int i = 0; i < MAX_CLIENTS; i++) {
+            if (!args->slot_taken[i] || !args->clients[i])
+              continue;
+            IPaddress *existing = SDLNet_TCP_GetPeerAddress(args->clients[i]);
+            if (existing && SDL_SwapBE32(existing->host) == ip)
+              count++;
+          }
+          if (count >= args->config->max_connections_per_ip) {
+            printf("Rejected connection: max_connections_per_ip reached\n");
+            SDLNet_TCP_Close(new_client);
+            return LOOP_CONTINUE;
+          }
         }
       }
     }

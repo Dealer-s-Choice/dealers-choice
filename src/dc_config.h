@@ -49,6 +49,8 @@ typedef struct ServerConfig_t {
   uint8_t bet_amount_count;
   uint8_t action_timeout_max;
   char password[256];
+  uint32_t max_connections_per_minute;
+  uint32_t max_connections_per_ip;
 } ServerConfig_t;
 
 typedef struct {
@@ -81,7 +83,7 @@ typedef struct {
 } ConfigEntry;
 
 #define PLAYER_CONFIG_ENTRY_COUNT 8
-#define SERVER_CONFIG_ENTRY_COUNT 11
+#define SERVER_CONFIG_ENTRY_COUNT 13
 
 extern const ConfigEntry player_config_entries[PLAYER_CONFIG_ENTRY_COUNT];
 extern const ConfigEntry server_config_entries[SERVER_CONFIG_ENTRY_COUNT];
