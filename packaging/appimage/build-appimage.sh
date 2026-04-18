@@ -85,8 +85,8 @@ export LINUXDEPLOY_OUTPUT_VERSION="$VERSION"
 linuxdeploy \
   --appdir="$APPDIR" \
   --custom-apprun=$SOURCE_ROOT/packaging/appimage/AppRun \
-  -d $SOURCE_ROOT/packaging/dealers-choice.desktop \
-  --icon-file=$SOURCE_ROOT/packaging/icons/dealers-choice_32x32.png \
+  -d $SOURCE_ROOT/dealers-choice.desktop \
+  --icon-file=$SOURCE_ROOT/icons/dealers-choice_32x32.png \
   --icon-filename=dealers-choice \
   --executable=$APPDIR/usr/bin/dealers-choice
 

@@ -1,0 +1,10 @@
+# Paths to remove from the meson dist tarball (relative to the project root
+# inside the tarball). Directories and files both supported. Lines starting
+# with # are ignored.
+
+.gitignore
+.clang-format
+.cirrus.yml
+.github
+coverity
+packaging
