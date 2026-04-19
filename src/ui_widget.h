@@ -29,6 +29,7 @@ typedef struct {
   int col_spacing;
 
   int col_width[8];
+  int col_align[8]; // 0 = center (default), 1 = left
   int row_height[32];
 
   UIWidget_t *cells[32][8];

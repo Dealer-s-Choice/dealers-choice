@@ -79,6 +79,31 @@ void clear_screen(SDL_Renderer *renderer) {
   SDL_RenderClear(renderer);
 }
 
+void draw_nameplate(SDL_Renderer *r, SDL_Rect rect, uint8_t alpha) {
+  const int radius = 20;
+  SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_BLEND);
+  SDL_SetRenderDrawColor(r, 0, 0, 0, alpha);
+
+  // Center horizontal strip + left/right side strips
+  SDL_RenderFillRect(r, &(SDL_Rect){rect.x + radius, rect.y, rect.w - 2 * radius, rect.h});
+  SDL_RenderFillRect(r, &(SDL_Rect){rect.x, rect.y + radius, radius, rect.h - 2 * radius});
+  SDL_RenderFillRect(
+      r, &(SDL_Rect){rect.x + rect.w - radius, rect.y + radius, radius, rect.h - 2 * radius});
+
+  // Rounded corners via scanlines
+  for (int dy = 0; dy < radius; dy++) {
+    int dx = (int)sqrtf((float)(radius * radius - dy * dy) + 0.5f);
+    int top_y = rect.y + radius - 1 - dy;
+    int bot_y = rect.y + rect.h - radius + dy;
+    SDL_RenderFillRect(r, &(SDL_Rect){rect.x + radius - dx, top_y, dx, 1});
+    SDL_RenderFillRect(r, &(SDL_Rect){rect.x + rect.w - radius, top_y, dx, 1});
+    SDL_RenderFillRect(r, &(SDL_Rect){rect.x + radius - dx, bot_y, dx, 1});
+    SDL_RenderFillRect(r, &(SDL_Rect){rect.x + rect.w - radius, bot_y, dx, 1});
+  }
+
+  SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_NONE);
+}
+
 SDL_Texture *create_vignette_texture(SDL_Renderer *renderer) {
   const int w = LOGICAL_WIDTH;
   const int h = LOGICAL_HEIGHT;

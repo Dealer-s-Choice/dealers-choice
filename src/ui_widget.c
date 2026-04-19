@@ -136,8 +136,8 @@ void ui_table_layout(UITable_t *t) {
 
       UIWidget_t *w = t->cells[r][c];
       if (w) {
-        w->rect.x = x + (t->col_width[c] - w->rect.w) / 2;
-        w->rect.y = y;
+        w->rect.x = (t->col_align[c] == 1) ? x : x + (t->col_width[c] - w->rect.w) / 2;
+        w->rect.y = y + (t->row_height[r] - w->rect.h) / 2;
       }
 
       x += t->col_width[c] + t->col_spacing;

@@ -1,5 +1,9 @@
 - dealers-choice (in-progress):
 
+  + Draw rounded semi-transparent nameplate panels behind each player's seat info;
+    empty seats show a fainter "Open" panel; nick column sized for 15-character
+    maximum and left-aligned; all columns vertically centered; uniform column
+    widths across all seats
   + Add vignette effect: radial darkening from center to edges for a lamp-lit atmosphere
   + Replace solid-color table background with tiled green felt texture
   + Server: connection rate limiting and per-IP connection cap; loopback

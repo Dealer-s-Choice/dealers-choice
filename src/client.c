@@ -1224,6 +1224,11 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
       load_coin_texture(sdl_context->renderer, path->data, "100x100-green-felt-seamless-tile.png");
   SDL_Texture *vignette_tex = create_vignette_texture(sdl_context->renderer);
 
+  TextWidget_t *open_seat_tw[MAX_PLAYERS] = {0};
+  for (int i = 0; i < MAX_PLAYERS; i++)
+    open_seat_tw[i] =
+        text_widget_create("Open", font->fonts[FONT_DEFAULT], get_color(COLOR_LIGHTGRAY));
+
   CoinInPot_t coin_in_pot[MAX_POT_COINS] = {0};
 
   uint8_t coins = 0;
@@ -1320,7 +1325,7 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
       game_nick_widgets[id]->selectable = (game_state->player[my_id].is_admin && id != my_id);
       game_coin_widgets[id] = image_widget_from_texture(coin_tex_front, coin_px / 2, coin_px / 2);
       game_coins_tw[id] =
-          text_widget_create(coins_str, font->fonts[FONT_BOLD], get_color(COLOR_BLACK));
+          text_widget_create(coins_str, font->fonts[FONT_BOLD], get_color(COLOR_WHITE));
       ui_register(&registry, &game_nick_widgets[id]->base);
       ui_register(&registry, &game_coin_widgets[id]->base);
       ui_register(&registry, &game_coins_tw[id]->base);
@@ -1476,9 +1481,9 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
 
     indicator_deuces_wild->base.enabled = client_state.deuces_wild;
 
-    SDL_Rect turn_outline = {0};
+    // Update coin text before layout so widths are current
     for (int8_t id = 0; id < MAX_PLAYERS; id++) {
-      if (!game_nick_widgets[id] || !game_coin_widgets[id] || !game_coins_tw[id])
+      if (!game_coins_tw[id])
         continue;
       if (game_state->player[id].coins != prev_coins[id]) {
         char coins_str[24] = {0};
@@ -1486,21 +1491,76 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
         text_widget_set_text(game_coins_tw[id], coins_str);
         prev_coins[id] = game_state->player[id].coins;
       }
+    }
+
+    // First pass: find max column widths across all connected players
+    int max_col_w[3] = {0};
+    for (int8_t id = 0; id < MAX_PLAYERS; id++) {
+      if (!game_nick_widgets[id] || !game_coin_widgets[id] || !game_coins_tw[id])
+        continue;
+      UITable_t t = {0};
+      ui_table_begin(&t, 0, 0, 3);
+      ui_table_add(&t, 0, 0, &game_nick_widgets[id]->base);
+      ui_table_add(&t, 0, 1, &game_coin_widgets[id]->base);
+      ui_table_add(&t, 0, 2, &game_coins_tw[id]->base);
+      for (int c = 0; c < 3; c++)
+        if (t.col_width[c] > max_col_w[c])
+          max_col_w[c] = t.col_width[c];
+    }
+    // Ensure nick column fits the 15-character maximum nick length
+    int nick_min_w = 0;
+    TTF_SizeUTF8(font->fonts[FONT_BOLD], "MMMMMMMMMMMMMMM", &nick_min_w, NULL);
+    if (max_col_w[0] < nick_min_w)
+      max_col_w[0] = nick_min_w;
+
+    // Second pass: layout with uniform column widths, nick left-aligned
+    const int np_pad = 20;
+    const int col_spacing_val = 20; // matches ui_table_begin default
+    int total_max_w = max_col_w[0] + max_col_w[1] + max_col_w[2] + 2 * col_spacing_val;
+    SDL_Rect turn_outline = {0};
+    SDL_Rect nameplate_rects[MAX_PLAYERS] = {0};
+    for (int8_t id = 0; id < MAX_PLAYERS; id++) {
+      if (!game_nick_widgets[id] || !game_coin_widgets[id] || !game_coins_tw[id])
+        continue;
       UITable_t player_table = {0};
       ui_table_begin(&player_table, player_pos[id].x + CARD_W / 2,
                      player_pos[id].y + (int)(CARD_H * 1.2), 3);
+      for (int c = 0; c < 3; c++)
+        player_table.col_width[c] = max_col_w[c];
+      player_table.col_align[0] = 1; // left-align nick
       ui_table_add(&player_table, 0, 0, &game_nick_widgets[id]->base);
       ui_table_add(&player_table, 0, 1, &game_coin_widgets[id]->base);
       ui_table_add(&player_table, 0, 2, &game_coins_tw[id]->base);
       ui_table_layout(&player_table);
+      nameplate_rects[id] =
+          (SDL_Rect){player_table.x - np_pad, player_table.y - np_pad, total_max_w + np_pad * 2,
+                     player_table.row_height[0] + np_pad * 2};
       if (id == turn->id && !game_state->winner_declared) {
-        int total_w = 0;
-        for (int c = 0; c < player_table.cols; c++)
-          total_w += player_table.col_width[c] + player_table.col_spacing;
-        total_w -= player_table.col_spacing;
         const int pad = 4;
-        turn_outline = (SDL_Rect){player_table.x - pad, player_table.y - pad, total_w + pad * 2,
+        turn_outline = (SDL_Rect){player_table.x - pad, player_table.y - pad, total_max_w + pad * 2,
                                   player_table.row_height[0] + pad * 2};
+      }
+    }
+
+    for (int8_t id = 0; id < MAX_PLAYERS; id++) {
+      if (nameplate_rects[id].w > 0)
+        draw_nameplate(sdl_context->renderer, nameplate_rects[id], 150);
+    }
+
+    const int open_pad = 20;
+    const int open_h = coin_px / 2 + open_pad * 2;
+    const int open_w = (total_max_w > 0) ? total_max_w + 2 * open_pad : 280;
+    for (int8_t id = 0; id < MAX_PLAYERS; id++) {
+      if (game_state->player[id].is_connected)
+        continue;
+      int ox = player_pos[id].x + CARD_W / 2 - open_pad;
+      int oy = player_pos[id].y + (int)(CARD_H * 1.2) - open_pad;
+      SDL_Rect open_rect = {ox, oy, open_w, open_h};
+      draw_nameplate(sdl_context->renderer, open_rect, 70);
+      if (open_seat_tw[id]) {
+        ui_widget_place(&open_seat_tw[id]->base, ox + (open_w - open_seat_tw[id]->base.rect.w) / 2,
+                        oy + (open_h - open_seat_tw[id]->base.rect.h) / 2);
+        ui_widget_render(&open_seat_tw[id]->base);
       }
     }
 
@@ -1902,6 +1962,9 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
   SDL_DestroyTexture(coin_tex_front);
   SDL_DestroyTexture(felt_tex);
   SDL_DestroyTexture(vignette_tex);
+  for (int i = 0; i < MAX_PLAYERS; i++)
+    if (open_seat_tw[i])
+      ui_widget_destroy(&open_seat_tw[i]->base);
   for (int i = 0; i < MAX_ACTIONS; i++)
     ui_widget_destroy(&action_bw[i]->base);
   for (size_t i = 0; i < n_bet_amounts; i++)
