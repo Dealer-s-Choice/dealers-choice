@@ -1,5 +1,6 @@
 - dealers-choice (in-progress):
 
+  + Add vignette effect: radial darkening from center to edges for a lamp-lit atmosphere
   + Replace solid-color table background with tiled green felt texture
   + Server: connection rate limiting and per-IP connection cap; loopback
     always exempt; configured via max_connections_per_minute and

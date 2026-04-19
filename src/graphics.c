@@ -26,6 +26,9 @@
 
 */
 
+#include <math.h>
+#include <stdlib.h>
+
 #include "graphics.h"
 #include "ui_widget.h"
 #include "widgets/text.h"
@@ -74,6 +77,42 @@ void clear_screen(SDL_Renderer *renderer) {
   SDL_SetRenderDrawColor(renderer, get_color(COLOR_TABLE_GREEN).r, get_color(COLOR_TABLE_GREEN).g,
                          get_color(COLOR_TABLE_GREEN).b, get_color(COLOR_TABLE_GREEN).a);
   SDL_RenderClear(renderer);
+}
+
+SDL_Texture *create_vignette_texture(SDL_Renderer *renderer) {
+  const int w = LOGICAL_WIDTH;
+  const int h = LOGICAL_HEIGHT;
+
+  SDL_Texture *tex =
+      SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STATIC, w, h);
+  if (!tex)
+    return NULL;
+  SDL_SetTextureBlendMode(tex, SDL_BLENDMODE_BLEND);
+
+  Uint32 *pixels = malloc((size_t)w * h * sizeof(Uint32));
+  if (!pixels) {
+    SDL_DestroyTexture(tex);
+    return NULL;
+  }
+
+  const float cx = w / 2.0f;
+  const float cy = h / 2.0f;
+
+  for (int y = 0; y < h; y++) {
+    for (int x = 0; x < w; x++) {
+      float dx = (x - cx) / cx;
+      float dy = (y - cy) / cy;
+      float d = sqrtf(dx * dx + dy * dy) / sqrtf(2.0f); // 0 at center, 1 at corner
+      float a = d * d * 220.0f;
+      if (a > 220.0f)
+        a = 220.0f;
+      pixels[y * w + x] = (Uint32)((Uint8)a) << 24; // ARGB: black, varying alpha
+    }
+  }
+
+  SDL_UpdateTexture(tex, NULL, pixels, w * (int)sizeof(Uint32));
+  free(pixels);
+  return tex;
 }
 
 void draw_felt_background(SDL_Renderer *renderer, SDL_Texture *felt_tile) {
