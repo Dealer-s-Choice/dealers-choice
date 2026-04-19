@@ -55,6 +55,12 @@ void indicator_render(UIWidget_t *w) {
   Indicator_t *ind = (Indicator_t *)w;
   SDL_Renderer *r = ind->renderer;
 
+  // Drop shadow (drawn before clip is set so it appears behind the oval)
+  SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_BLEND);
+  SDL_SetRenderDrawColor(r, 0, 0, 0, 90);
+  draw_filled_ellipse(r, ind->cx + 5, ind->cy + 6, ind->rx + 2, ind->ry + 2);
+  SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_NONE);
+
   // Clip all drawing to the indicator's bounding box
   SDL_Rect clip = {ind->cx - ind->rx, ind->cy - ind->ry, ind->rx * 2, ind->ry * 2};
   SDL_RenderSetClipRect(r, &clip);
@@ -63,27 +69,25 @@ void indicator_render(UIWidget_t *w) {
   SDL_SetRenderDrawColor(r, 255, 255, 255, 255);
   draw_filled_ellipse(r, ind->cx, ind->cy, ind->rx, ind->ry);
 
-  // Swirling mist layers: white blending into pale sandy orange
+  // Swirling mist layers tinted by bg_color
   static const struct {
     float speed, phase, fx, fy;
-    Uint8 red, green, blue, alpha;
+    Uint8 alpha;
   } layers[] = {
-      {0.40f, 0.00f, 0.45f, 0.35f, 255, 180, 100, 180}, // deep amber
-      {0.55f, 1.26f, 0.40f, 0.45f, 255, 140, 60, 160},  // burnt orange
-      {0.30f, 2.51f, 0.50f, 0.30f, 255, 220, 160, 150}, // pale peach
-      {0.65f, 3.77f, 0.35f, 0.40f, 255, 160, 80, 170},  // warm orange
-      {0.45f, 5.03f, 0.42f, 0.38f, 255, 200, 130, 155}, // sandy
-      {0.35f, 0.63f, 0.48f, 0.32f, 255, 240, 200, 130}, // cream
-      {0.60f, 4.40f, 0.38f, 0.42f, 255, 120, 40, 145},  // deep rust
+      {0.40f, 0.00f, 0.45f, 0.35f, 180}, {0.55f, 1.26f, 0.40f, 0.45f, 160},
+      {0.30f, 2.51f, 0.50f, 0.30f, 150}, {0.65f, 3.77f, 0.35f, 0.40f, 170},
+      {0.45f, 5.03f, 0.42f, 0.38f, 155}, {0.35f, 0.63f, 0.48f, 0.32f, 130},
+      {0.60f, 4.40f, 0.38f, 0.42f, 145},
   };
 
+  SDL_Color base = ind->bg_color;
   float t = SDL_GetTicks() * 0.001f;
   SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_BLEND);
   for (int i = 0; i < 7; i++) {
     float a = t * layers[i].speed + layers[i].phase;
     int ox = (int)(sinf(a) * ind->rx * layers[i].fx);
     int oy = (int)(cosf(a * 0.7f) * ind->ry * layers[i].fy);
-    SDL_SetRenderDrawColor(r, layers[i].red, layers[i].green, layers[i].blue, layers[i].alpha);
+    SDL_SetRenderDrawColor(r, base.r, base.g, base.b, layers[i].alpha);
     draw_filled_ellipse(r, ind->cx + ox, ind->cy + oy, ind->rx, ind->ry);
   }
   SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_NONE);

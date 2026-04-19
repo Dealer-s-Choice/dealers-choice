@@ -179,8 +179,7 @@ static EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_confi
   TextWidget_t *tw_version_lobby =
       text_widget_create(version_str, font->fonts[FONT_VERSION], get_color(COLOR_WHITE));
   if (tw_version_lobby) {
-    ui_widget_place(&tw_version_lobby->base,
-                    g_viewport.x + MARGIN,
+    ui_widget_place(&tw_version_lobby->base, g_viewport.x + MARGIN,
                     g_viewport.y + g_viewport.h - tw_version_lobby->base.rect.h - MARGIN);
     ui_register(&registry, &tw_version_lobby->base);
   }
@@ -208,9 +207,8 @@ static EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_confi
   ui_register(&registry, &btn_kick->base);
   ui_register(&registry, &btn_ban->base);
 
-  ButtonWidget_t *btn_quit_lobby =
-      button_widget_create("X", (EColor_t){COLOR_WHITE, COLOR_RED}, font->fonts[FONT_BOLD],
-                           (SDL_Keycode)0);
+  ButtonWidget_t *btn_quit_lobby = button_widget_create("X", (EColor_t){COLOR_WHITE, COLOR_RED},
+                                                        font->fonts[FONT_BOLD], (SDL_Keycode)0);
   if (btn_quit_lobby) {
     btn_quit_lobby->base.rect.x =
         g_viewport.x + g_viewport.w - btn_quit_lobby->base.rect.w - MARGIN;
@@ -824,7 +822,7 @@ static void layout_amount_buttons(ButtonWidget_t **b, const size_t count) {
   int left_margin = 500;
   for (size_t i = 0; i < count; i++) {
     b[i]->base.rect.x = left_margin;
-    b[i]->base.rect.y = g_viewport.h - (b[i]->base.rect.h * 3);
+    b[i]->base.rect.y = g_viewport.h - (b[i]->base.rect.h * 4);
     left_margin += b[i]->base.rect.w + 10;
   }
 }
@@ -843,7 +841,7 @@ ActionButtonAttrs action_button_attrs[MAX_ACTIONS] = {
 
 static void layout_action_buttons(ButtonWidget_t **b) {
   for (int i = 0; i < MAX_ACTIONS; i++) {
-    b[i]->base.rect.y = g_viewport.h - (b[i]->base.rect.h * 5);
+    b[i]->base.rect.y = g_viewport.h - (b[i]->base.rect.h * 6);
   }
 }
 
@@ -901,22 +899,26 @@ static void layout_indicator(Indicator_t *ind, int x, int y) {
   ind->cy = ind->base.rect.y + ind->ry;
 }
 
-static void layout_game_name_indicator(Indicator_t *ind) {
-  int x = right_align(ind->base.rect.w) - 20;
-  int y = g_viewport.y + g_viewport.h - 300;
+/* Circle timer radius — used here and in layout_timer/render_circle_timer */
+#define CIRCLE_TIMER_R 50
 
-  layout_indicator(ind, x, y);
+/* x of the right edge of the status message panel (matches msg_panel in handle_game_logic) */
+#define MSG_PANEL_RIGHT (g_viewport.x + 30 + 420)
+
+static void layout_game_name_indicator(Indicator_t *ind) {
+  const int timer_cy = g_viewport.h - MARGIN - CIRCLE_TIMER_R;
+  /* center between status panel right edge and timer left edge */
+  const int ind_cx = (MSG_PANEL_RIGHT + (g_center.x - CIRCLE_TIMER_R)) / 2;
+  layout_indicator(ind, ind_cx - ind->rx, timer_cy - ind->base.rect.h / 2);
 }
 
 static void layout_deuces_wild_indicator(Indicator_t *ind) {
-  int x = right_align(ind->base.rect.w) - 20;
-  int y = g_viewport.y + g_viewport.h - 200;
-
-  layout_indicator(ind, x, y);
+  const int timer_cy = g_viewport.h - MARGIN - CIRCLE_TIMER_R;
+  /* mirror the game name offset on the right side of the timer */
+  const int game_cx = (MSG_PANEL_RIGHT + (g_center.x - CIRCLE_TIMER_R)) / 2;
+  const int ind_cx = 2 * g_center.x - game_cx;
+  layout_indicator(ind, ind_cx - ind->rx, timer_cy - ind->base.rect.h / 2);
 }
-
-/* Circle timer radius — needed by layout_timer below */
-#define CIRCLE_TIMER_R 50
 
 static void layout_timer(SDL_Point *p) {
   p->x = g_center.x;
@@ -1210,22 +1212,21 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
       _("Kick"), (EColor_t){COLOR_WHITE, COLOR_BROWN}, font->fonts[FONT_BOLD], (SDL_Keycode)0);
   ButtonWidget_t *game_btn_ban = button_widget_create(
       _("Ban"), (EColor_t){COLOR_WHITE, COLOR_BROWN}, font->fonts[FONT_BOLD], (SDL_Keycode)0);
-  ButtonWidget_t *game_btn_quit = button_widget_create(
-      "X", (EColor_t){COLOR_WHITE, COLOR_RED}, font->fonts[FONT_BOLD], (SDL_Keycode)0);
+  ButtonWidget_t *game_btn_quit = button_widget_create("X", (EColor_t){COLOR_WHITE, COLOR_RED},
+                                                       font->fonts[FONT_BOLD], (SDL_Keycode)0);
   game_btn_kick->base.rect.x = g_viewport.w / 10;
   /* Position above the status message panel, which starts at g_center.y */
   game_btn_kick->base.rect.y = g_center.y - game_btn_kick->base.rect.h - 20;
   game_btn_ban->base.rect.x = game_btn_kick->base.rect.x + game_btn_kick->base.rect.w + 16;
   game_btn_ban->base.rect.y = game_btn_kick->base.rect.y;
-  game_btn_quit->base.rect.x =
-      g_viewport.x + g_viewport.w - game_btn_quit->base.rect.w - MARGIN;
+  game_btn_quit->base.rect.x = g_viewport.x + g_viewport.w - game_btn_quit->base.rect.w - MARGIN;
   game_btn_quit->base.rect.y = g_viewport.y + MARGIN;
   ui_register(&registry, &game_btn_kick->base);
   ui_register(&registry, &game_btn_ban->base);
   ui_register(&registry, &game_btn_quit->base);
 
   Indicator_t *indicator_deuces_wild =
-      create_indicator(("Deuces Wild"), font->fonts[FONT_BOLD], COLOR_WHITE, COLOR_BROWN);
+      create_indicator(_("Deuces Wild"), font->fonts[FONT_BOLD], COLOR_PURPLE, COLOR_WHITE);
   ui_register(&registry, &indicator_deuces_wild->base);
 
   layout_deuces_wild_indicator(indicator_deuces_wild);
@@ -1520,7 +1521,7 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
 
     if (!indicator_game_name && client_state.game_choice) {
       indicator_game_name = create_indicator(client_state.game_choice->str, font->fonts[FONT_BOLD],
-                                             COLOR_WHITE, COLOR_BROWN);
+                                             COLOR_ORANGE, COLOR_BLACK);
       ui_register(&registry, &indicator_game_name->base);
       layout_game_name_indicator(indicator_game_name);
     }

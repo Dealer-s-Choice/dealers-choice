@@ -111,9 +111,8 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, u
   button_defaults->base.rect.x = button_save->base.rect.x + button_save->base.rect.w + 12;
   button_defaults->base.rect.y = button_save->base.rect.y;
 
-  ButtonWidget_t *btn_quit_connect =
-      button_widget_create("X", (EColor_t){COLOR_WHITE, COLOR_RED}, font->fonts[FONT_BOLD],
-                           (SDL_Keycode)0);
+  ButtonWidget_t *btn_quit_connect = button_widget_create("X", (EColor_t){COLOR_WHITE, COLOR_RED},
+                                                          font->fonts[FONT_BOLD], (SDL_Keycode)0);
   if (btn_quit_connect) {
     btn_quit_connect->base.rect.x =
         g_viewport.x + g_viewport.w - btn_quit_connect->base.rect.w - MARGIN;
@@ -160,8 +159,7 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, u
       button_save->base.hovered = SDL_PointInRect(&mouse_pos, &button_save->base.rect);
       button_defaults->base.hovered = SDL_PointInRect(&mouse_pos, &button_defaults->base.rect);
       if (btn_quit_connect)
-        btn_quit_connect->base.hovered =
-            SDL_PointInRect(&mouse_pos, &btn_quit_connect->base.rect);
+        btn_quit_connect->base.hovered = SDL_PointInRect(&mouse_pos, &btn_quit_connect->base.rect);
       for (size_t i = 0; i < LINK_DEFS_COUNT; i++)
         links[i]->base.hovered = SDL_PointInRect(&mouse_pos, &links[i]->base.rect);
       if (e.type == SDL_QUIT) {
@@ -446,9 +444,8 @@ static void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *s
   btn_defaults->base.rect.y = btn_save->base.rect.y;
   ui_register(&reg, &btn_defaults->base);
 
-  ButtonWidget_t *btn_quit_settings =
-      button_widget_create("X", (EColor_t){COLOR_WHITE, COLOR_RED}, font->fonts[FONT_BOLD],
-                           (SDL_Keycode)0);
+  ButtonWidget_t *btn_quit_settings = button_widget_create("X", (EColor_t){COLOR_WHITE, COLOR_RED},
+                                                           font->fonts[FONT_BOLD], (SDL_Keycode)0);
   if (btn_quit_settings) {
     btn_quit_settings->base.rect.x =
         g_viewport.x + g_viewport.w - btn_quit_settings->base.rect.w - MARGIN;

@@ -117,7 +117,8 @@ bool confirm_quit(TTF_Font *font) {
   const int btns_total_w = btn_cancel->base.rect.w + btn_gap + btn_quit_w->base.rect.w;
   const int btn_y = dialog.y + dialog_h - btn_cancel->base.rect.h - pad;
   ui_widget_place(&btn_cancel->base, g_center.x - btns_total_w / 2, btn_y);
-  ui_widget_place(&btn_quit_w->base, g_center.x - btns_total_w / 2 + btn_cancel->base.rect.w + btn_gap, btn_y);
+  ui_widget_place(&btn_quit_w->base,
+                  g_center.x - btns_total_w / 2 + btn_cancel->base.rect.w + btn_gap, btn_y);
 
   bool result = false;
   bool running = true;
