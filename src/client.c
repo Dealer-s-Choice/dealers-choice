@@ -208,6 +208,16 @@ static EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_confi
   ui_register(&registry, &btn_kick->base);
   ui_register(&registry, &btn_ban->base);
 
+  ButtonWidget_t *btn_quit_lobby =
+      button_widget_create("X", (EColor_t){COLOR_WHITE, COLOR_RED}, font->fonts[FONT_BOLD],
+                           (SDL_Keycode)0);
+  if (btn_quit_lobby) {
+    btn_quit_lobby->base.rect.x =
+        g_viewport.x + g_viewport.w - btn_quit_lobby->base.rect.w - MARGIN;
+    btn_quit_lobby->base.rect.y = g_viewport.y + MARGIN;
+    ui_register(&registry, &btn_quit_lobby->base);
+  }
+
   static bool was_connected[MAX_PLAYERS] = {0};
 
   EGameSelResult_t result = GAME_SEL_SUCCESS;
@@ -380,6 +390,8 @@ static EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_confi
         btn_kick->interactive && SDL_PointInRect(&mouse_pos, &btn_kick->base.rect);
     btn_ban->base.enabled = admin && selected_nick >= 0;
     btn_ban->interactive = admin && selected_nick >= 0;
+    if (btn_quit_lobby)
+      btn_quit_lobby->base.hovered = SDL_PointInRect(&mouse_pos, &btn_quit_lobby->base.rect);
     btn_ban->base.hovered =
         btn_ban->interactive && SDL_PointInRect(&mouse_pos, &btn_ban->base.rect);
 
@@ -444,6 +456,13 @@ static EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_confi
 
       case SDL_MOUSEBUTTONDOWN: {
         if (e.button.button == SDL_BUTTON_LEFT) {
+          if (btn_quit_lobby && SDL_PointInRect(&mouse_pos, &btn_quit_lobby->base.rect) &&
+              confirm_quit(font->fonts[FONT_BOLD])) {
+            SDL_Event quit = {.type = SDL_QUIT};
+            SDL_PushEvent(&quit);
+            result = GAME_SEL_ERROR;
+            goto cleanup;
+          }
           if (back_img && SDL_PointInRect(&mouse_pos, &back_img->base.rect)) {
             result = GAME_SEL_BACK;
             goto cleanup;
@@ -501,6 +520,15 @@ static EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_confi
       } break;
       case SDL_KEYDOWN:
         switch (e.key.keysym.sym) {
+
+        case SDLK_ESCAPE:
+          if (confirm_quit(font->fonts[FONT_BOLD])) {
+            SDL_Event quit = {.type = SDL_QUIT};
+            SDL_PushEvent(&quit);
+            result = GAME_SEL_ERROR;
+            goto cleanup;
+          }
+          break;
 
         case SDLK_RETURN:
           if (e.key.keysym.mod & KMOD_ALT)
@@ -1182,13 +1210,19 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
       _("Kick"), (EColor_t){COLOR_WHITE, COLOR_BROWN}, font->fonts[FONT_BOLD], (SDL_Keycode)0);
   ButtonWidget_t *game_btn_ban = button_widget_create(
       _("Ban"), (EColor_t){COLOR_WHITE, COLOR_BROWN}, font->fonts[FONT_BOLD], (SDL_Keycode)0);
+  ButtonWidget_t *game_btn_quit = button_widget_create(
+      "X", (EColor_t){COLOR_WHITE, COLOR_RED}, font->fonts[FONT_BOLD], (SDL_Keycode)0);
   game_btn_kick->base.rect.x = g_viewport.w / 10;
   /* Position above the status message panel, which starts at g_center.y */
   game_btn_kick->base.rect.y = g_center.y - game_btn_kick->base.rect.h - 20;
   game_btn_ban->base.rect.x = game_btn_kick->base.rect.x + game_btn_kick->base.rect.w + 16;
   game_btn_ban->base.rect.y = game_btn_kick->base.rect.y;
+  game_btn_quit->base.rect.x =
+      g_viewport.x + g_viewport.w - game_btn_quit->base.rect.w - MARGIN;
+  game_btn_quit->base.rect.y = g_viewport.y + MARGIN;
   ui_register(&registry, &game_btn_kick->base);
   ui_register(&registry, &game_btn_ban->base);
+  ui_register(&registry, &game_btn_quit->base);
 
   Indicator_t *indicator_deuces_wild =
       create_indicator(("Deuces Wild"), font->fonts[FONT_BOLD], COLOR_WHITE, COLOR_BROWN);
@@ -1421,6 +1455,7 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
     game_btn_ban->interactive = game_admin && selected_nick >= 0;
     game_btn_ban->base.hovered =
         game_btn_ban->interactive && SDL_PointInRect(&mouse_pos, &game_btn_ban->base.rect);
+    game_btn_quit->base.hovered = SDL_PointInRect(&mouse_pos, &game_btn_quit->base.rect);
 
     if (game_state->prev_bet_amount == 0)
       for (size_t i = 0; i < n_bet_amounts; i++)
@@ -1855,8 +1890,21 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
 
       if (event.type == SDL_QUIT) {
         running = false;
+      } else if (event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_LEFT &&
+                 SDL_PointInRect(&mouse_pos, &game_btn_quit->base.rect) &&
+                 confirm_quit(font->fonts[FONT_BOLD])) {
+        SDL_Event quit = {.type = SDL_QUIT};
+        SDL_PushEvent(&quit);
+        running = false;
       } else if (event.type == SDL_KEYDOWN) {
         switch (event.key.keysym.sym) {
+        case SDLK_ESCAPE:
+          if (confirm_quit(font->fonts[FONT_BOLD])) {
+            SDL_Event quit = {.type = SDL_QUIT};
+            SDL_PushEvent(&quit);
+            running = false;
+          }
+          break;
         case SDLK_RETURN:
           if (event.key.keysym.mod & KMOD_ALT)
             toggle_fullscreen(sdl_context);

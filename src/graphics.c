@@ -30,7 +30,9 @@
 #include <stdlib.h>
 
 #include "graphics.h"
+#include "translate.h"
 #include "ui_widget.h"
+#include "widgets/button.h"
 #include "widgets/text.h"
 
 void show_loading_screen(SDL_Renderer *renderer, TTF_Font *font, const char *message) {
@@ -77,6 +79,103 @@ void clear_screen(SDL_Renderer *renderer) {
   SDL_SetRenderDrawColor(renderer, get_color(COLOR_TABLE_GREEN).r, get_color(COLOR_TABLE_GREEN).g,
                          get_color(COLOR_TABLE_GREEN).b, get_color(COLOR_TABLE_GREEN).a);
   SDL_RenderClear(renderer);
+}
+
+bool confirm_quit(TTF_Font *font) {
+  if (!g_sdl_context || !font)
+    return false;
+
+  SDL_Renderer *r = g_sdl_context->renderer;
+
+  TextWidget_t *msg_tw =
+      text_widget_create(_("Are you sure you want to quit?"), font, get_color(COLOR_WHITE));
+  ButtonWidget_t *btn_cancel =
+      button_widget_create(_("Cancel"), (EColor_t){COLOR_WHITE, COLOR_GRAY}, font, (SDL_Keycode)0);
+  ButtonWidget_t *btn_quit_w =
+      button_widget_create(_("Quit"), (EColor_t){COLOR_WHITE, COLOR_RED}, font, (SDL_Keycode)0);
+
+  if (!msg_tw || !btn_cancel || !btn_quit_w) {
+    if (msg_tw)
+      ui_widget_destroy(&msg_tw->base);
+    if (btn_cancel)
+      ui_widget_destroy(&btn_cancel->base);
+    if (btn_quit_w)
+      ui_widget_destroy(&btn_quit_w->base);
+    return false;
+  }
+
+  const int pad = 40;
+  const int btn_gap = 20;
+  const int dialog_w =
+      SDL_max(msg_tw->base.rect.w + pad * 2,
+              btn_cancel->base.rect.w + btn_gap + btn_quit_w->base.rect.w + pad * 2);
+  const int dialog_h = pad + msg_tw->base.rect.h + pad + btn_cancel->base.rect.h + pad;
+  SDL_Rect dialog = {g_center.x - dialog_w / 2, g_center.y - dialog_h / 2, dialog_w, dialog_h};
+
+  ui_widget_place(&msg_tw->base, g_center.x - msg_tw->base.rect.w / 2, dialog.y + pad);
+
+  const int btns_total_w = btn_cancel->base.rect.w + btn_gap + btn_quit_w->base.rect.w;
+  const int btn_y = dialog.y + dialog_h - btn_cancel->base.rect.h - pad;
+  ui_widget_place(&btn_cancel->base, g_center.x - btns_total_w / 2, btn_y);
+  ui_widget_place(&btn_quit_w->base, g_center.x - btns_total_w / 2 + btn_cancel->base.rect.w + btn_gap, btn_y);
+
+  bool result = false;
+  bool running = true;
+
+  while (running) {
+    int mx, my;
+    SDL_GetMouseState(&mx, &my);
+    float lx, ly;
+    SDL_RenderWindowToLogical(r, mx, my, &lx, &ly);
+    SDL_Point mouse_pos = {(int)lx, (int)ly};
+    btn_cancel->base.hovered = SDL_PointInRect(&mouse_pos, &btn_cancel->base.rect);
+    btn_quit_w->base.hovered = SDL_PointInRect(&mouse_pos, &btn_quit_w->base.rect);
+
+    SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_NONE);
+    SDL_SetRenderDrawColor(r, 20, 20, 20, 255);
+    SDL_RenderClear(r);
+    SDL_SetRenderDrawColor(r, 60, 60, 60, 255);
+    SDL_RenderFillRect(r, &dialog);
+    draw_3d_border(r, dialog, 4);
+
+    ui_widget_render(&msg_tw->base);
+    ui_widget_render(&btn_cancel->base);
+    ui_widget_render(&btn_quit_w->base);
+    SDL_RenderPresent(r);
+    SDL_Delay(16);
+
+    SDL_Event e;
+    while (SDL_PollEvent(&e)) {
+      if (e.type == SDL_QUIT) {
+        SDL_PushEvent(&e);
+        result = true;
+        running = false;
+      } else if (e.type == SDL_MOUSEBUTTONDOWN && e.button.button == SDL_BUTTON_LEFT) {
+        if (SDL_PointInRect(&mouse_pos, &btn_quit_w->base.rect)) {
+          result = true;
+          running = false;
+        } else if (SDL_PointInRect(&mouse_pos, &btn_cancel->base.rect)) {
+          running = false;
+        }
+      } else if (e.type == SDL_KEYDOWN) {
+        switch (e.key.keysym.sym) {
+        case SDLK_ESCAPE:
+          running = false;
+          break;
+        case SDLK_RETURN:
+        case SDLK_KP_ENTER:
+          result = true;
+          running = false;
+          break;
+        }
+      }
+    }
+  }
+
+  ui_widget_destroy(&msg_tw->base);
+  ui_widget_destroy(&btn_cancel->base);
+  ui_widget_destroy(&btn_quit_w->base);
+  return result;
 }
 
 void draw_nameplate(SDL_Renderer *r, SDL_Rect rect, uint8_t alpha) {

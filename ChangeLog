@@ -1,5 +1,8 @@
 - dealers-choice (in-progress):
 
+  + Add "X" quit button (top-right, red) to all four screens (connect, settings,
+    lobby, game); ESC is a hotkey for the same action; both paths go through a
+    confirmation dialog (SDL_ShowMessageBox) before quitting
   + Draw rounded semi-transparent nameplate panels behind each player's seat info;
     empty seats show a fainter "Open" panel; nick column sized for 15-character
     maximum and left-aligned; all columns vertically centered; uniform column

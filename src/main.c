@@ -111,6 +111,16 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, u
   button_defaults->base.rect.x = button_save->base.rect.x + button_save->base.rect.w + 12;
   button_defaults->base.rect.y = button_save->base.rect.y;
 
+  ButtonWidget_t *btn_quit_connect =
+      button_widget_create("X", (EColor_t){COLOR_WHITE, COLOR_RED}, font->fonts[FONT_BOLD],
+                           (SDL_Keycode)0);
+  if (btn_quit_connect) {
+    btn_quit_connect->base.rect.x =
+        g_viewport.x + g_viewport.w - btn_quit_connect->base.rect.w - MARGIN;
+    btn_quit_connect->base.rect.y = g_viewport.y + MARGIN;
+    ui_register(&reg, &btn_quit_connect->base);
+  }
+
   SDL_Rect input_nick_pos = {x_margin, port_input->base.rect.y + port_input->base.rect.h + 20, 0,
                              0};
 
@@ -149,12 +159,20 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, u
       button_settings->base.hovered = SDL_PointInRect(&mouse_pos, &button_settings->base.rect);
       button_save->base.hovered = SDL_PointInRect(&mouse_pos, &button_save->base.rect);
       button_defaults->base.hovered = SDL_PointInRect(&mouse_pos, &button_defaults->base.rect);
+      if (btn_quit_connect)
+        btn_quit_connect->base.hovered =
+            SDL_PointInRect(&mouse_pos, &btn_quit_connect->base.rect);
       for (size_t i = 0; i < LINK_DEFS_COUNT; i++)
         links[i]->base.hovered = SDL_PointInRect(&mouse_pos, &links[i]->base.rect);
       if (e.type == SDL_QUIT) {
         running = false;
       } else if (e.type == SDL_MOUSEBUTTONDOWN) {
-        if (SDL_PointInRect(&mouse_pos, &button_connect->base.rect)) {
+        if (btn_quit_connect && SDL_PointInRect(&mouse_pos, &btn_quit_connect->base.rect) &&
+            confirm_quit(font->fonts[FONT_BOLD])) {
+          SDL_Event quit = {.type = SDL_QUIT};
+          SDL_PushEvent(&quit);
+          running = false;
+        } else if (SDL_PointInRect(&mouse_pos, &button_connect->base.rect)) {
           run_client = true;
           running = false;
         } else if (SDL_PointInRect(&mouse_pos, &button_settings->base.rect)) {
@@ -187,6 +205,14 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, u
         input_widget_append(focused_inputs[focused_slot], e.text.text);
       } else if (e.type == SDL_KEYDOWN) {
         switch (e.key.keysym.sym) {
+        case SDLK_ESCAPE:
+          if (confirm_quit(font->fonts[FONT_BOLD])) {
+            SDL_Event quit = {.type = SDL_QUIT};
+            SDL_PushEvent(&quit);
+            running = false;
+          }
+          break;
+
         case SDLK_RETURN:
           if (e.key.keysym.mod & KMOD_ALT)
             toggle_fullscreen(sdl_context);
@@ -420,6 +446,16 @@ static void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *s
   btn_defaults->base.rect.y = btn_save->base.rect.y;
   ui_register(&reg, &btn_defaults->base);
 
+  ButtonWidget_t *btn_quit_settings =
+      button_widget_create("X", (EColor_t){COLOR_WHITE, COLOR_RED}, font->fonts[FONT_BOLD],
+                           (SDL_Keycode)0);
+  if (btn_quit_settings) {
+    btn_quit_settings->base.rect.x =
+        g_viewport.x + g_viewport.w - btn_quit_settings->base.rect.w - MARGIN;
+    btn_quit_settings->base.rect.y = g_viewport.y + MARGIN;
+    ui_register(&reg, &btn_quit_settings->base);
+  }
+
   SDL_Rect title_rect = {g_center.x * 2 / 3, 60, 0, 0};
   Uint32 anim_start = SDL_GetTicks();
 
@@ -459,6 +495,9 @@ static void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *s
       btn_defaults->base.hovered = SDL_PointInRect(&mouse_pos, &btn_defaults->base.rect);
       if (back_img)
         back_img->base.hovered = SDL_PointInRect(&mouse_pos, &back_img->base.rect);
+      if (btn_quit_settings)
+        btn_quit_settings->base.hovered =
+            SDL_PointInRect(&mouse_pos, &btn_quit_settings->base.rect);
       if (turn_cb)
         turn_cb->base.hovered = SDL_PointInRect(&mouse_pos, &turn_cb->base.rect);
 
@@ -466,7 +505,12 @@ static void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *s
         SDL_PushEvent(&e);
         running = false;
       } else if (e.type == SDL_MOUSEBUTTONDOWN && e.button.button == SDL_BUTTON_LEFT) {
-        if (SDL_PointInRect(&mouse_pos, &btn_save->base.rect)) {
+        if (btn_quit_settings && SDL_PointInRect(&mouse_pos, &btn_quit_settings->base.rect) &&
+            confirm_quit(font->fonts[FONT_BOLD])) {
+          SDL_Event quit = {.type = SDL_QUIT};
+          SDL_PushEvent(&quit);
+          running = false;
+        } else if (SDL_PointInRect(&mouse_pos, &btn_save->base.rect)) {
           btn_save->click.start_time = SDL_GetTicks();
           for (size_t i = 0; i < player_config_entry_count; i++) {
             if (i == bool_idx)
@@ -513,7 +557,11 @@ static void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *s
           running = false;
           break;
         case SDLK_ESCAPE:
-          running = false;
+          if (confirm_quit(font->fonts[FONT_BOLD])) {
+            SDL_Event quit = {.type = SDL_QUIT};
+            SDL_PushEvent(&quit);
+            running = false;
+          }
           break;
         case SDLK_TAB: {
           inputs[text_input_indices[focused_slot]]->focused = false;
