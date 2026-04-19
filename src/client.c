@@ -1277,6 +1277,7 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
 
   uint8_t coins = 0;
   CoinAnimation_t coin_anim = {0};
+  bool prev_winner_declared = game_state->winner_declared;
   SDL_Point table_center = {0};
   layout_table_center(&table_center);
 
@@ -1462,6 +1463,12 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
 
     bool new_coin = false;
 
+    if (prev_winner_declared && !game_state->winner_declared) {
+      coins = 0;
+      coin_anim.active = false;
+    }
+    prev_winner_declared = game_state->winner_declared;
+
     if (game_state->pot > coins * game_settings->bet_amounts[0] && coins < MAX_POT_COINS) {
       uint32_t boundary = POT_BOUNDARY - (POT_BOUNDARY * 3 / 4) * coins / MAX_POT_COINS;
       coin_in_pot[coins].offset.x = (int)pcg32_boundedrand_r(&rng, boundary) - (int)(boundary / 2);
@@ -1469,8 +1476,6 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
       coin_in_pot[coins].angle = pcg32_boundedrand_r(&rng, 360);
       coins++;
       new_coin = true;
-    } else if (game_state->pot == 0) {
-      coins = 0;
     }
 
     /* Keep last_bettor_id current: update it whenever we can see whose coins
@@ -1510,12 +1515,7 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
                        coin_in_pot[i].angle, NULL, SDL_FLIP_NONE);
     }
 
-    if (game_state->pot > 0)
-      render_coin_animation(sdl_context->renderer, &coin_anim);
-    // else {
-    // coins = 0;
-    // coin_anim.active = false;
-    //}
+    render_coin_animation(sdl_context->renderer, &coin_anim);
 
     if (!indicator_game_name && client_state.game_choice) {
       indicator_game_name = create_indicator(client_state.game_choice->str, font->fonts[FONT_BOLD],
