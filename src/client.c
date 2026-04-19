@@ -887,8 +887,6 @@ static void layout_table_center(SDL_Point *p) {
   p->y = g_center.y;
 }
 
-static inline int right_align(int width) { return g_viewport.x + g_viewport.w - width - MARGIN; }
-
 static void layout_indicator(Indicator_t *ind, int x, int y) {
   ui_widget_place(&ind->base, x, y); // sets base.rect.x/y
 
