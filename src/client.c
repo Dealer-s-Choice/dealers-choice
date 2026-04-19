@@ -174,6 +174,17 @@ static EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_confi
       text_widget_create(_("Ping"), font->fonts[FONT_BOLD], get_color(COLOR_BLACK));
   ui_register(&registry, &ping_label_tw->base);
 
+  char version_str[64] = {0};
+  snprintf(version_str, sizeof(version_str), "Version " DEALERSCHOICE_VERSION);
+  TextWidget_t *tw_version_lobby =
+      text_widget_create(version_str, font->fonts[FONT_VERSION], get_color(COLOR_WHITE));
+  if (tw_version_lobby) {
+    ui_widget_place(&tw_version_lobby->base,
+                    g_viewport.x + MARGIN,
+                    g_viewport.y + g_viewport.h - tw_version_lobby->base.rect.h - MARGIN);
+    ui_register(&registry, &tw_version_lobby->base);
+  }
+
   TextWidget_t *waiting_players_tw = text_widget_create(
       _("Waiting for more players..."), font->fonts[FONT_DEFAULT], get_color(COLOR_WHITE));
   ui_register(&registry, &waiting_players_tw->base);
