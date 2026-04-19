@@ -1,5 +1,6 @@
 - dealers-choice (in-progress):
 
+  + Replace solid-color table background with tiled green felt texture
   + Server: connection rate limiting and per-IP connection cap; loopback
     always exempt; configured via max_connections_per_minute and
     max_connections_per_ip in server.conf (0 = unlimited) (#189)

@@ -1220,6 +1220,9 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
   SDL_Texture *coin_tex_front =
       load_coin_texture(sdl_context->renderer, path->data, coin[which_coin].front);
 
+  SDL_Texture *felt_tex =
+      load_coin_texture(sdl_context->renderer, path->data, "100x100-green-felt-seamless-tile.png");
+
   CoinInPot_t coin_in_pot[MAX_POT_COINS] = {0};
 
   uint8_t coins = 0;
@@ -1375,6 +1378,7 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
     }
 
     clear_screen(sdl_context->renderer);
+    draw_felt_background(sdl_context->renderer, felt_tex);
 
     int mx, my;
     SDL_GetMouseState(&mx, &my);
@@ -1893,6 +1897,7 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
     } // End Poll event
   }
   SDL_DestroyTexture(coin_tex_front);
+  SDL_DestroyTexture(felt_tex);
   for (int i = 0; i < MAX_ACTIONS; i++)
     ui_widget_destroy(&action_bw[i]->base);
   for (size_t i = 0; i < n_bet_amounts; i++)

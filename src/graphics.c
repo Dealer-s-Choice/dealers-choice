@@ -76,6 +76,17 @@ void clear_screen(SDL_Renderer *renderer) {
   SDL_RenderClear(renderer);
 }
 
+void draw_felt_background(SDL_Renderer *renderer, SDL_Texture *felt_tile) {
+  const int tile_w = 100;
+  const int tile_h = 100;
+  for (int y = 0; y < LOGICAL_HEIGHT; y += tile_h) {
+    for (int x = 0; x < LOGICAL_WIDTH; x += tile_w) {
+      SDL_Rect dst = {x, y, tile_w, tile_h};
+      SDL_RenderCopy(renderer, felt_tile, NULL, &dst);
+    }
+  }
+}
+
 TTF_Font *open_font(const FontArgs_t *args) {
   TTF_Font *font = TTF_OpenFont(args->file, args->ptsize);
   if (font)
