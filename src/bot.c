@@ -37,6 +37,7 @@
 
 #include "client.h"
 #include "game.h"
+#include "getlongopt.h"
 #include "globals.h"
 #include "net.h"
 #include "types.h"
@@ -259,18 +260,32 @@ int main(int argc, char *argv[]) {
   uint16_t port = BOT_DEFAULT_PORT;
   const char *nick = BOT_DEFAULT_NICK;
 
-  for (int i = 1; i < argc; i++) {
-    if (strcmp(argv[i], "--host") == 0 && i + 1 < argc)
-      host = argv[++i];
-    else if (strcmp(argv[i], "--port") == 0 && i + 1 < argc)
-      port = (uint16_t)atoi(argv[++i]);
-    else if (strcmp(argv[i], "--nick") == 0 && i + 1 < argc)
-      nick = argv[++i];
-    else if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0) {
+  enum { OPT_HOST = 1, OPT_PORT, OPT_NICK, OPT_HELP };
+  static const glopt_option_t options[] = {
+      {"host", GLOPT_REQUIRED_ARG, OPT_HOST},
+      {"port", GLOPT_REQUIRED_ARG, OPT_PORT},
+      {"nick", GLOPT_REQUIRED_ARG, OPT_NICK},
+      {"help", GLOPT_NO_ARG, OPT_HELP},
+      {NULL, 0, 0},
+  };
+  glopt_parser_t parser;
+  glopt_init(&parser, options);
+  int opt;
+  while ((opt = glopt_next(&parser, argc, argv)) != -1) {
+    switch (opt) {
+    case OPT_HOST:
+      host = parser.optarg;
+      break;
+    case OPT_PORT:
+      port = (uint16_t)atoi(parser.optarg);
+      break;
+    case OPT_NICK:
+      nick = parser.optarg;
+      break;
+    case OPT_HELP:
       print_usage(argv[0]);
       return 0;
-    } else {
-      fprintf(stderr, "Unknown option: %s\n", argv[i]);
+    default:
       print_usage(argv[0]);
       return 1;
     }
