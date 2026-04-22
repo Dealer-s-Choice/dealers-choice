@@ -58,11 +58,11 @@ const ConfigEntry server_config_entries[SERVER_CONFIG_ENTRY_COUNT] = {
     {"bind_address", CFG_TYPE_STRING, "127.0.0.1", offsetof(ServerConfig_t, bind_address),
      sizeof(((ServerConfig_t *)0)->bind_address)},
     {"port", CFG_TYPE_UINT16, DEFAULT_PORT, offsetof(ServerConfig_t, port), sizeof(uint16_t)},
-    {"end_of_game_timeout_ms", CFG_TYPE_UINT32, "15000",
-     offsetof(ServerConfig_t, end_of_game_timeout_ms), sizeof(uint32_t)},
-    {"action_timeout_ms", CFG_TYPE_UINT32, "30000", offsetof(ServerConfig_t, action_timeout_ms),
+    {"end_of_game_timeout", CFG_TYPE_UINT32, "15", offsetof(ServerConfig_t, end_of_game_timeout_ms),
      sizeof(uint32_t)},
-    {"dealer_timeout_ms", CFG_TYPE_UINT32, "60000", offsetof(ServerConfig_t, dealer_timeout_ms),
+    {"action_timeout", CFG_TYPE_UINT32, "30", offsetof(ServerConfig_t, action_timeout_ms),
+     sizeof(uint32_t)},
+    {"dealer_timeout", CFG_TYPE_UINT32, "60", offsetof(ServerConfig_t, dealer_timeout_ms),
      sizeof(uint32_t)},
     {"ante", CFG_TYPE_UINT32, "50", offsetof(ServerConfig_t, ante), sizeof(uint32_t)},
     {"bringin_amount", CFG_TYPE_UINT32, "50", offsetof(ServerConfig_t, bringin_amount),
@@ -254,6 +254,10 @@ ServerConfig_t get_server_config(Path_t *path, const CliArgs_t *cli_args) {
     if (!found_keys[i])
       config_set_from_string_real(&config, &server_config_entries[i],
                                   server_config_entries[i].default_value);
+
+  config.end_of_game_timeout_ms *= 1000;
+  config.action_timeout_ms *= 1000;
+  config.dealer_timeout_ms *= 1000;
 
   // DC_PASSWORD env var takes precedence over server.conf
   const char *env_pw = getenv("DC_PASSWORD");
