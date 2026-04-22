@@ -67,7 +67,7 @@ static const uint8_t coin_px = 96;
 // What's the max this needs to be to support the unicode suit symbol?
 // SIZEOF_CARD_TEXT is defined in client.h
 
-#define MAX_POT_COINS 40
+#define MAX_POT_COINS 60
 
 static void ma_sound_start_wrap(ma_sound *pSound, const char *file, const int line) {
   ma_result result = ma_sound_start(pSound);
