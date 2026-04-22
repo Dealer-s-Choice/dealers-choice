@@ -675,20 +675,20 @@ static CliArgs_t parse_cli_args(int argc, char *argv[]) {
   };
 
   static const glopt_option_t options[] = {
-      {"server", GLOPT_NO_ARG, OPT_SERVER},
-      {"server-log-game-results", GLOPT_REQUIRED_ARG, OPT_SERVER_LOG_GAME_RESULTS},
-      {"server-conf", GLOPT_REQUIRED_ARG, OPT_SERVER_CONF},
-      {"-test", GLOPT_NO_ARG, OPT_TEST},
-      {"bind-address", GLOPT_REQUIRED_ARG, OPT_BIND},
-      {"host", GLOPT_REQUIRED_ARG, OPT_HOST},
-      {"port", GLOPT_REQUIRED_ARG, OPT_PORT},
-      {"version", GLOPT_NO_ARG, OPT_VERSION},
-      {"verbose", GLOPT_NO_ARG, OPT_VERBOSE},
-      {"disable-audio", GLOPT_NO_ARG, OPT_DISABLE_AUDIO},
-      {"disable-timeout", GLOPT_NO_ARG, OPT_DISABLE_TIMEOUT},
-      {"autodeal", GLOPT_NO_ARG, OPT_AUTODEAL},
-      {"auto-connect", GLOPT_NO_ARG, OPT_AUTO_CONNECT},
-      {NULL, 0, 0}};
+      {"server", GLOPT_NO_ARG, OPT_SERVER, 0},
+      {"server-log-game-results", GLOPT_REQUIRED_ARG, OPT_SERVER_LOG_GAME_RESULTS, 0},
+      {"server-conf", GLOPT_REQUIRED_ARG, OPT_SERVER_CONF, 0},
+      {"-test", GLOPT_NO_ARG, OPT_TEST, 0},
+      {"bind-address", GLOPT_REQUIRED_ARG, OPT_BIND, 0},
+      {"host", GLOPT_REQUIRED_ARG, OPT_HOST, 0},
+      {"port", GLOPT_REQUIRED_ARG, OPT_PORT, 0},
+      {"version", GLOPT_NO_ARG, OPT_VERSION, 0},
+      {"verbose", GLOPT_NO_ARG, OPT_VERBOSE, 0},
+      {"disable-audio", GLOPT_NO_ARG, OPT_DISABLE_AUDIO, 0},
+      {"disable-timeout", GLOPT_NO_ARG, OPT_DISABLE_TIMEOUT, 0},
+      {"autodeal", GLOPT_NO_ARG, OPT_AUTODEAL, 0},
+      {"auto-connect", GLOPT_NO_ARG, OPT_AUTO_CONNECT, 0},
+      {NULL, 0, 0, 0}};
 
   glopt_parser_t parser;
   glopt_init(&parser, options);

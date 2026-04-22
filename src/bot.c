@@ -262,11 +262,11 @@ int main(int argc, char *argv[]) {
 
   enum { OPT_HOST = 1, OPT_PORT, OPT_NICK, OPT_HELP };
   static const glopt_option_t options[] = {
-      {"host", GLOPT_REQUIRED_ARG, OPT_HOST},
-      {"port", GLOPT_REQUIRED_ARG, OPT_PORT},
-      {"nick", GLOPT_REQUIRED_ARG, OPT_NICK},
-      {"help", GLOPT_NO_ARG, OPT_HELP},
-      {NULL, 0, 0},
+      {"host", GLOPT_REQUIRED_ARG, OPT_HOST, 0},
+      {"port", GLOPT_REQUIRED_ARG, OPT_PORT, 0},
+      {"nick", GLOPT_REQUIRED_ARG, OPT_NICK, 0},
+      {"help", GLOPT_NO_ARG, OPT_HELP, 'h'},
+      {NULL, 0, 0, 0},
   };
   glopt_parser_t parser;
   glopt_init(&parser, options);
