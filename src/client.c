@@ -707,8 +707,7 @@ static void layout_board_cards(CardWidget_t card_context[MAX_PLAYERS][MAX_HAND_S
                                const int board_player_id, const SDL_Point *player_pos,
                                const int community_start) {
   const int board_x = player_pos[0].x + (int)(CARD_W * 0.5f);
-  /* Position one card-height above the status panel (which starts at g_center.y) */
-  const int board_y = g_center.y - CARD_H * 2;
+  const int board_y = g_center.y - CARD_H * 2 - 40;
 
   for (int card_n = community_start; card_n < MAX_HAND_SIZE; card_n++) {
     int slot = card_n - community_start;
