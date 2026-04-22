@@ -2234,7 +2234,7 @@ bool get_socket_context_and_run_client(PlayerConfig_t *player_config, const CliA
     GameSettings_t game_settings = {0};
     ClientState_t client_state = {0};
     char *nick = player_config->nick;
-    uint16_t len = (uint16_t)(strlen(nick) + 1);
+    uint16_t len = (uint16_t)strlen(nick);
     uint16_t net_len = SDL_SwapBE16(len);
     send_all_tcp(sock, &net_len, sizeof(net_len));
     if (send_all_tcp(sock, player_config->nick, len) != 0)

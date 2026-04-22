@@ -16,7 +16,8 @@ typedef struct {
   bool masked; /* render as asterisks (e.g. for passwords) */
   ConfigType type;
   TTF_Font *font;
-  long max_val; /* for numeric types: upper bound (0 = no limit) */
+  long max_val;   /* for numeric types: upper bound (0 = no limit) */
+  size_t max_len; /* for string types: max byte length (0 = MAX_INPUT_LENGTH-1) */
 } InputWidget_t;
 
 /* Create an input widget with an optional initial value, font, pixel width,

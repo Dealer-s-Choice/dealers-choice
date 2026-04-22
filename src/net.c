@@ -626,7 +626,7 @@ bool bot_connect(const char *host_str, uint16_t port, const char *nick, const ch
   }
 
   {
-    uint16_t len = (uint16_t)(strlen(nick) + 1);
+    uint16_t len = (uint16_t)strlen(nick);
     uint16_t net_len = SDL_SwapBE16(len);
     if (send_all_tcp(sock, &net_len, sizeof(net_len)) != 0 || send_all_tcp(sock, nick, len) != 0) {
       fprintf(stderr, "Failed to send nick\n");

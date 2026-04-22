@@ -21,6 +21,9 @@
   + Add 7-card no peek
   * bugfix: Community cards (Hold'em, Omaha) disappear after a player folds
     (#252)
+  * Server: nick too long is truncated instead of causing disconnect; client
+    and bot no longer include null terminator in nick length; nicks up to 14
+    characters are now accepted as expected
   * dealers-choice-bot: no longer links against SDL2_ttf or SDL2_image
   * Bump GAME_PROTOCOL_VERSION from 8 to 9
 

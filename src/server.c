@@ -2006,12 +2006,14 @@ static ELoop_t register_new_client(ArgsBroadcastGameState_t *args) {
         uint16_t len = SDL_SwapBE16(net_len);
 
         // Step 3: Validate length
-        if (len == 0 || len >= sizeof(player->nick)) {
+        if (len == 0) {
           fprintf(stderr, "Invalid nickname length: %d\n", len);
           do_socket_cleanup(new_client, args->socket_set, args->slot_taken, slot, player,
                             &args->clients[slot]);
           return LOOP_CONTINUE;
         }
+        if (len >= sizeof(player->nick))
+          len = (uint16_t)(sizeof(player->nick) - 1);
 
         // Step 4: Read nickname
         memset(player->nick, 0, sizeof(player->nick));

@@ -401,6 +401,8 @@ static void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *s
       ui_destroy_all(&reg);
       return;
     }
+    if (player_config_entries[i].type == CFG_TYPE_STRING && player_config_entries[i].size > 1)
+      inputs[i]->max_len = player_config_entries[i].size - 1;
     ui_register(&reg, &inputs[i]->base);
     int col = (int)(display_pos % 2);
     int row = (int)(display_pos / 2);

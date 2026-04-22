@@ -157,7 +157,8 @@ bool input_widget_append(InputWidget_t *iw, const char *text) {
     return false;
 
   size_t add_len = strlen(text);
-  if (iw->len + add_len >= MAX_INPUT_LENGTH)
+  size_t limit = (iw->max_len > 0) ? iw->max_len : (MAX_INPUT_LENGTH - 1);
+  if (iw->len + add_len > limit)
     return false;
 
   if (!chars_allowed(text, iw->type, iw->buf))
