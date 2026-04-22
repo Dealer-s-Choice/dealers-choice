@@ -1923,69 +1923,44 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
               client_state.call_complete_fold || client_state.complete_check_fold) {
             if (SDL_PointInRect(&mouse_pos, &action_bw[FOLD]->base.rect) ||
                 event.key.keysym.sym == action_bw[FOLD]->hotkey) {
-              verbose_puts("folding");
-              if (send_player_action(&client_state, sock, ACTION_FOLD, 0) != 0)
-                fprintf(stderr, "Failed to fold\n");
+              send_player_action(&client_state, sock, ACTION_FOLD, 0);
             }
           }
           if (client_state.bet_check_fold) {
             // TODO: use existing array (or modify it) to loop through each action
             if (SDL_PointInRect(&mouse_pos, &action_bw[BET]->base.rect) ||
                 event.key.keysym.sym == action_bw[BET]->hotkey) {
-              verbose_printf("betting %d\n", client_state.selected_amount);
-              if (send_player_action(&client_state, sock, ACTION_BET,
-                                     client_state.selected_amount) != 0)
-                fprintf(stderr, "Failed to send bet\n");
+              send_player_action(&client_state, sock, ACTION_BET, client_state.selected_amount);
             } else if (SDL_PointInRect(&mouse_pos, &action_bw[CHECK]->base.rect) ||
                        event.key.keysym.sym == action_bw[CHECK]->hotkey) {
-              verbose_puts("checking");
-              if (send_player_action(&client_state, sock, ACTION_CHECK, 0) != 0)
-                fprintf(stderr, "Failed to check\n");
+              send_player_action(&client_state, sock, ACTION_CHECK, 0);
             }
           } else if (client_state.call_raise_fold) {
             if (action_bw[RAISE]->interactive &&
                 (SDL_PointInRect(&mouse_pos, &action_bw[RAISE]->base.rect) ||
                  event.key.keysym.sym == action_bw[RAISE]->hotkey)) {
-              if (send_player_action(&client_state, sock, ACTION_RAISE,
-                                     client_state.selected_amount) == 0)
-                verbose_printf("raising %d\n", client_state.selected_amount);
-              else
-                fputs("Failed to raise\n", stderr);
+              send_player_action(&client_state, sock, ACTION_RAISE, client_state.selected_amount);
             } else if (SDL_PointInRect(&mouse_pos, &action_bw[CALL]->base.rect) ||
                        event.key.keysym.sym == action_bw[CALL]->hotkey) {
-              verbose_puts("calling");
-              if (send_player_action(&client_state, sock, ACTION_CALL, 0) != 0)
-                fprintf(stderr, "Failed to call\n");
+              send_player_action(&client_state, sock, ACTION_CALL, 0);
             }
           } else if (client_state.call_complete_fold) {
             if (action_bw[COMPLETE]->interactive &&
                 (SDL_PointInRect(&mouse_pos, &action_bw[COMPLETE]->base.rect) ||
                  event.key.keysym.sym == action_bw[COMPLETE]->hotkey)) {
-              if (send_player_action(&client_state, sock, ACTION_BET,
-                                     client_state.selected_amount) == 0)
-                verbose_printf("completing %d\n", client_state.selected_amount);
-              else
-                fputs("Failed to complete\n", stderr);
+              send_player_action(&client_state, sock, ACTION_BET, client_state.selected_amount);
             } else if (SDL_PointInRect(&mouse_pos, &action_bw[CALL]->base.rect) ||
                        event.key.keysym.sym == action_bw[CALL]->hotkey) {
-              verbose_puts("calling");
-              if (send_player_action(&client_state, sock, ACTION_CALL, 0) != 0)
-                fprintf(stderr, "Failed to call\n");
+              send_player_action(&client_state, sock, ACTION_CALL, 0);
             }
           } else if (client_state.complete_check_fold) {
             if (action_bw[COMPLETE]->interactive &&
                 (SDL_PointInRect(&mouse_pos, &action_bw[COMPLETE]->base.rect) ||
                  event.key.keysym.sym == action_bw[COMPLETE]->hotkey)) {
-              if (send_player_action(&client_state, sock, ACTION_BET,
-                                     client_state.selected_amount) == 0)
-                verbose_printf("completing %d\n", client_state.selected_amount);
-              else
-                fputs("Failed to complete\n", stderr);
+              send_player_action(&client_state, sock, ACTION_BET, client_state.selected_amount);
             } else if (SDL_PointInRect(&mouse_pos, &action_bw[CHECK]->base.rect) ||
                        event.key.keysym.sym == action_bw[CHECK]->hotkey) {
-              verbose_puts("checking");
-              if (send_player_action(&client_state, sock, ACTION_CHECK, 0) != 0)
-                fprintf(stderr, "Failed to check\n");
+              send_player_action(&client_state, sock, ACTION_CHECK, 0);
             }
           }
         } else if (action_bw[DISCARD]->interactive && client_state.do_discard_draw &&
@@ -2008,11 +1983,8 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
           // Reset the flag that's used to indicate to the client it's their turn to draw
           client_state.do_discard_draw = false;
 
-          if (send_discards_request_new_cards(sock, discard_indices, discard_count) != 0)
-            fprintf(stderr, "Failed to send discards\n");
-          else {
-            verbose_puts("Discards sent");
-          }
+          send_discards_request_new_cards(sock, discard_indices, discard_count);
+          verbose_puts("Discards sent");
         }
       }
     } // End Poll event

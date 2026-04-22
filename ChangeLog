@@ -27,6 +27,11 @@
   * Server: nick too long is truncated instead of causing disconnect; client
     and bot no longer include null terminator in nick length; nicks up to 14
     characters are now accepted as expected
+  * dealers-choice-bot: add --verbose flag; verbose_printf/verbose_puts at key
+    decision points (hand strength, each action, discard count); action name
+    output moved into send_player_action so client and bot share the same path
+  * send_player_action / send_discards_request_new_cards print error to stderr
+    on failure; client.c no longer duplicates per-action error messages (#256)
   * dealers-choice-bot: no longer links against SDL2_ttf or SDL2_image
   * Bump GAME_PROTOCOL_VERSION from 8 to 9
 

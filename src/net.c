@@ -653,10 +653,19 @@ int send_player_action(ClientState_t *client_state, TCPsocket sock, uint8_t acti
   payload[3] = (amount >> 8) & 0xFF;
   payload[4] = (amount) & 0xFF;
 
+  static const char *action_names[] = {NULL, "check", "call", "bet", "raise", "fold"};
+  if (amount > 0)
+    verbose_printf("%s %u\n", action_names[action], amount);
+  else
+    verbose_puts(action_names[action]);
+
   client_state->bet_check_fold = false;
   client_state->call_raise_fold = false;
 
-  return send_message(sock, MSG_PLAYER_ACTION, payload, sizeof(payload));
+  int rc = send_message(sock, MSG_PLAYER_ACTION, payload, sizeof(payload));
+  if (rc != 0)
+    fputs("Failed to send action\n", stderr);
+  return rc;
 }
 
 int send_discards_request_new_cards(TCPsocket sock, const uint8_t *discard_indices, uint8_t count) {
@@ -668,5 +677,8 @@ int send_discards_request_new_cards(TCPsocket sock, const uint8_t *discard_indic
   for (int i = 0; i < 4; ++i)
     payload[1 + i] = (i < count) ? discard_indices[i] : 0xFF;
 
-  return send_message(sock, MSG_DRAW_REQUEST, payload, sizeof(payload));
+  int rc = send_message(sock, MSG_DRAW_REQUEST, payload, sizeof(payload));
+  if (rc != 0)
+    fputs("Failed to send discards\n", stderr);
+  return rc;
 }

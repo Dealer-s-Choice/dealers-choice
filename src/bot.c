@@ -41,6 +41,7 @@
 #include "globals.h"
 #include "net.h"
 #include "types.h"
+#include "util.h"
 
 /*
  * Choose which cards to discard for draw games.
@@ -249,6 +250,7 @@ static void print_usage(const char *argv0) {
           "  --host <host>   Server host (default: " BOT_DEFAULT_HOST ")\n"
           "  --port <port>   Server port (default: %d)\n"
           "  --nick <nick>   Bot nickname (default: " BOT_DEFAULT_NICK ")\n"
+          "  --verbose       Enable verbose debug output\n"
           "\n"
           "Set DC_PASSWORD in the environment to authenticate with a\n"
           "password-protected server.\n",
@@ -260,13 +262,11 @@ int main(int argc, char *argv[]) {
   uint16_t port = BOT_DEFAULT_PORT;
   const char *nick = BOT_DEFAULT_NICK;
 
-  enum { OPT_HOST = 1, OPT_PORT, OPT_NICK, OPT_HELP };
+  enum { OPT_HOST = 1, OPT_PORT, OPT_NICK, OPT_HELP, OPT_VERBOSE };
   static const glopt_option_t options[] = {
-      {"host", GLOPT_REQUIRED_ARG, OPT_HOST, 0},
-      {"port", GLOPT_REQUIRED_ARG, OPT_PORT, 0},
-      {"nick", GLOPT_REQUIRED_ARG, OPT_NICK, 0},
-      {"help", GLOPT_NO_ARG, OPT_HELP, 'h'},
-      {NULL, 0, 0, 0},
+      {"host", GLOPT_REQUIRED_ARG, OPT_HOST, 0}, {"port", GLOPT_REQUIRED_ARG, OPT_PORT, 0},
+      {"nick", GLOPT_REQUIRED_ARG, OPT_NICK, 0}, {"help", GLOPT_NO_ARG, OPT_HELP, 'h'},
+      {"verbose", GLOPT_NO_ARG, OPT_VERBOSE, 0}, {NULL, 0, 0, 0},
   };
   glopt_parser_t parser;
   glopt_init(&parser, options);
@@ -285,6 +285,9 @@ int main(int argc, char *argv[]) {
     case OPT_HELP:
       print_usage(argv[0]);
       return 0;
+    case OPT_VERBOSE:
+      verbose = true;
+      break;
     default:
       print_usage(argv[0]);
       return 1;
@@ -472,6 +475,8 @@ int main(int argc, char *argv[]) {
       }
     }
 
+    verbose_printf("hand: strength=%d draw=%d\n", strength, draw_strength);
+
     /* Count opponents who are still active in this hand. */
     int active_opponents = 0;
     for (int i = 0; i < MAX_PLAYERS; i++) {
@@ -521,10 +526,12 @@ int main(int argc, char *argv[]) {
         bet_pct = 95;
 
       if (can_raise && (int)pcg32_boundedrand_r(&rng, 100) < bet_pct) {
+        verbose_printf("bet_pct=%d\n", bet_pct);
         rc = send_player_action(&client_state, socket_ctx.sock, ACTION_BET, bet_amount);
         was_aggressor = true;
         checked_strong = false;
       } else {
+        verbose_puts("(open, no bet)");
         rc = send_player_action(&client_state, socket_ctx.sock, ACTION_CHECK, 0);
         /* Remember if we checked a strong hand — we may be setting up a check-raise. */
         checked_strong = (strength >= 3);
@@ -536,50 +543,61 @@ int main(int argc, char *argv[]) {
          * They did — almost always raise, occasionally just call to keep them guessing. */
         checked_strong = false;
         if (pcg32_boundedrand_r(&rng, 100) < 88) {
+          verbose_puts("check-raise");
           rc = send_player_action(&client_state, socket_ctx.sock, ACTION_RAISE, bet_amount);
           was_aggressor = true;
         } else {
+          verbose_puts("(check-raise disguise)");
           rc = send_player_action(&client_state, socket_ctx.sock, ACTION_CALL, 0);
         }
       } else if (strength >= 4) {
         checked_strong = false;
         /* Monster: raise most of the time, otherwise call */
         if (can_raise && pcg32_boundedrand_r(&rng, 100) < 75) {
+          verbose_puts("(monster)");
           rc = send_player_action(&client_state, socket_ctx.sock, ACTION_RAISE, bet_amount);
           was_aggressor = true;
         } else {
+          verbose_puts("(monster slow-play)");
           rc = send_player_action(&client_state, socket_ctx.sock, ACTION_CALL, 0);
         }
       } else if (strength == 3) {
         checked_strong = false;
         /* Trips / straight / flush: raise half the time */
         if (can_raise && pcg32_boundedrand_r(&rng, 100) < 50) {
+          verbose_puts("(trips/str/flush)");
           rc = send_player_action(&client_state, socket_ctx.sock, ACTION_RAISE, bet_amount);
           was_aggressor = true;
         } else {
+          verbose_puts("(trips/str/flush)");
           rc = send_player_action(&client_state, socket_ctx.sock, ACTION_CALL, 0);
         }
       } else if (strength == 2) {
         /* Two pair: call unless pot odds are poor; tighten with more opponents */
         int fold_pct = 10 + active_opponents * 8; /* ~18% hu, 26% vs 2, 34% vs 3+ */
         if (pot_odds_pct > 45 || (int)pcg32_boundedrand_r(&rng, 100) < fold_pct) {
+          verbose_printf("(two pair, pot_odds=%d%% fold_pct=%d)\n", pot_odds_pct, fold_pct);
           rc = send_player_action(&client_state, socket_ctx.sock, ACTION_FOLD, 0);
           was_aggressor = false;
         } else {
+          verbose_puts("(two pair)");
           rc = send_player_action(&client_state, socket_ctx.sock, ACTION_CALL, 0);
         }
       } else if (strength == 1) {
         /* One pair: pot-odds driven.  Approximate equity shrinks with more opponents.
          * With a flush draw on top, semi-bluff raise occasionally. */
         if (draw_strength == 2 && can_raise && pcg32_boundedrand_r(&rng, 100) < 25) {
+          verbose_puts("(pair+flush draw semi-bluff)");
           rc = send_player_action(&client_state, socket_ctx.sock, ACTION_RAISE, bet_amount);
           was_aggressor = true;
         } else {
           int equity_pct = (active_opponents <= 1) ? 38 : (active_opponents == 2 ? 26 : 18);
           if (pot_odds_pct > equity_pct) {
+            verbose_printf("(pair, pot_odds=%d%% > equity=%d%%)\n", pot_odds_pct, equity_pct);
             rc = send_player_action(&client_state, socket_ctx.sock, ACTION_FOLD, 0);
             was_aggressor = false;
           } else {
+            verbose_puts("(pair)");
             rc = send_player_action(&client_state, socket_ctx.sock, ACTION_CALL, 0);
           }
         }
@@ -602,11 +620,14 @@ int main(int argc, char *argv[]) {
         }
         int r = (int)pcg32_boundedrand_r(&rng, 100);
         if (can_raise && r < raise_pct) {
+          verbose_printf("(high card bluff, raise_pct=%d)\n", raise_pct);
           rc = send_player_action(&client_state, socket_ctx.sock, ACTION_RAISE, bet_amount);
           was_aggressor = true;
         } else if (r < raise_pct + call_pct) {
+          verbose_puts("(high card float)");
           rc = send_player_action(&client_state, socket_ctx.sock, ACTION_CALL, 0);
         } else {
+          verbose_puts("(high card)");
           rc = send_player_action(&client_state, socket_ctx.sock, ACTION_FOLD, 0);
           was_aggressor = false;
         }
@@ -648,11 +669,14 @@ int main(int argc, char *argv[]) {
       }
       int r = (int)pcg32_boundedrand_r(&rng, 100);
       if (r < raise_pct) {
+        verbose_printf("(bring-in, raise_pct=%d)\n", raise_pct);
         rc = send_player_action(&client_state, socket_ctx.sock, ACTION_BET, bet_amount);
         was_aggressor = true;
       } else if (r < raise_pct + call_pct) {
+        verbose_puts("(bring-in)");
         rc = send_player_action(&client_state, socket_ctx.sock, ACTION_CALL, 0);
       } else {
+        verbose_puts("(bring-in fold)");
         rc = send_player_action(&client_state, socket_ctx.sock, ACTION_FOLD, 0);
         was_aggressor = false;
       }
@@ -686,9 +710,11 @@ int main(int argc, char *argv[]) {
       if (!can_raise)
         raise_pct = 0;
       if ((int)pcg32_boundedrand_r(&rng, 100) < raise_pct) {
+        verbose_printf("(raise_pct=%d)\n", raise_pct);
         rc = send_player_action(&client_state, socket_ctx.sock, ACTION_BET, bet_amount);
         was_aggressor = true;
       } else {
+        verbose_puts("(free action)");
         rc = send_player_action(&client_state, socket_ctx.sock, ACTION_CHECK, 0);
       }
       client_state.complete_check_fold = false;
@@ -700,6 +726,7 @@ int main(int argc, char *argv[]) {
           (client_state.game_choice && client_state.game_choice->g == CALIFORNIA_LOWBALL);
       uint8_t n_discards =
           bot_choose_discards(&game_state.player[my_id].hand, hand_size, lowball, discard_indices);
+      verbose_printf("discarding %d card(s)\n", n_discards);
       rc = send_discards_request_new_cards(socket_ctx.sock, discard_indices, n_discards);
       client_state.do_discard_draw = false;
     }
