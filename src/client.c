@@ -583,7 +583,7 @@ static void make_human_readable_card(DH_Card *card, CardWidget_t *cw) {
 static void create_card_context(CardWidget_t card_context[MAX_PLAYERS][MAX_HAND_SIZE],
                                 const int start_i, Player_t *players_array,
                                 const SDL_Point *player_pos, TTF_Font *font, const int my_id,
-                                const bool deuces_wild, const GameChoice_t *game_choice) {
+                                const bool deuces_wild) {
   memset(card_context, 0, sizeof(CardWidget_t) * MAX_PLAYERS * MAX_HAND_SIZE);
   Player_t *turn = &players_array[start_i];
   Player_t *starting_turn = turn;
@@ -604,14 +604,6 @@ static void create_card_context(CardWidget_t card_context[MAX_PLAYERS][MAX_HAND_
       cw->my_card = (id == my_id);
 
       cw->is_null = DH_is_card_null(*card);
-      /* Community cards are public — never hide them as backs even if the
-       * player has folded.  layout_board_cards will null them for non-board
-       * player slots so they won't appear at the wrong position. */
-      bool is_community = game_choice && card_n < MAX_HAND_SIZE &&
-                          game_choice->card_slot[card_n] == CARD_SLOT_COMMUNITY;
-      if (!turn->in && !cw->is_null && !is_community)
-        memcpy(card, &DH_card_back, sizeof(DH_card_back));
-
       cw->is_back = DH_is_card_back(*card);
 
       if (!cw->is_back && !cw->is_null) {
@@ -1142,10 +1134,14 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
 
   bool was_connected[MAX_PLAYERS];
   int32_t prev_coins[MAX_PLAYERS];
+  bool was_in[MAX_PLAYERS];
+  POKEVAL_Hand_9 preserved_hands[MAX_PLAYERS];
   int last_bettor_id = 0;
   for (int i = 0; i < MAX_PLAYERS; i++) {
     was_connected[i] = game_state->player[i].is_connected;
     prev_coins[i] = game_state->player[i].coins;
+    was_in[i] = game_state->player[i].in;
+    preserved_hands[i] = game_state->player[i].hand;
   }
 
   SDL_Point player_pos[MAX_PLAYERS] = {0};
@@ -1303,11 +1299,22 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
   TCPsocket sock = socket_context->sock;
 
   while (running) {
+    POKEVAL_Hand_9 prev_hands[MAX_PLAYERS];
+    for (int i = 0; i < MAX_PLAYERS; i++)
+      prev_hands[i] = game_state->player[i].hand;
+
     ERecvStatus_t recv_status = recv_game_state(socket_context, game_state, &client_state, my_id);
     // printf("%d\n", __LINE__);
     if (recv_status == RECV_ERROR)
       running = false;
     else if (recv_status == RECV_SUCCESS) {
+      for (int i = 0; i < MAX_PLAYERS; i++) {
+        if (was_in[i] && !game_state->player[i].in)
+          preserved_hands[i] = prev_hands[i];
+        if (game_state->player[i].is_connected && !game_state->player[i].in)
+          game_state->player[i].hand = preserved_hands[i];
+        was_in[i] = game_state->player[i].in;
+      }
       if (!game_state->winner_declared) {
         cards_created = false;
         winner_highlighted = false;
@@ -1405,8 +1412,7 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
     if (!cards_created) {
       // printf("%d\n", __LINE__);
       create_card_context(card_context, starting_turn->id, players_array, player_pos,
-                          font->fonts[FONT_CARD], my_id, client_state.deuces_wild,
-                          client_state.game_choice);
+                          font->fonts[FONT_CARD], my_id, client_state.deuces_wild);
       layout_cards(card_context, players_array, player_pos);
       if (client_state.game_choice) {
         int community_start = -1;
@@ -1642,6 +1648,19 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
         player_ptr = get_next_connected_client(players_array, player_ptr->id);
       } while (player_ptr != starting_turn);
     }
+
+    SDL_SetRenderDrawBlendMode(sdl_context->renderer, SDL_BLENDMODE_BLEND);
+    SDL_SetRenderDrawColor(sdl_context->renderer, 0, 0, 0, 120);
+    for (int8_t id = 0; id < MAX_PLAYERS; id++) {
+      if (!game_state->player[id].is_connected || game_state->player[id].in)
+        continue;
+      SDL_Rect card_area = {player_pos[id].x, player_pos[id].y,
+                            MAX_HAND_SIZE * (CARD_W + CARD_PADDING) - CARD_PADDING, CARD_H};
+      SDL_RenderFillRect(sdl_context->renderer, &card_area);
+      if (nameplate_rects[id].w > 0)
+        SDL_RenderFillRect(sdl_context->renderer, &nameplate_rects[id]);
+    }
+    SDL_SetRenderDrawBlendMode(sdl_context->renderer, SDL_BLENDMODE_NONE);
 
     if (client_state.play_coin_sound) {
       ma_sound_start(

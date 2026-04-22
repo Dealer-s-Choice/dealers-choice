@@ -21,6 +21,8 @@
   + Add 7-card no peek
   * bugfix: Community cards (Hold'em, Omaha) disappear after a player folds
     (#252)
+  * Folded players: preserve cards (face-up or face-down) and grey out the
+    player area instead of removing cards when a player folds
   * server.conf: end_of_game_timeout, action_timeout, and dealer_timeout are
     now specified in seconds instead of milliseconds; keys renamed to drop
     the _ms suffix
