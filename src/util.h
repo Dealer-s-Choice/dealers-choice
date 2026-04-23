@@ -33,9 +33,6 @@ extern bool verbose;
 
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
 
-char *real_join_paths(long path_max, const char *first, ...);
-#define join_paths(...) real_join_paths(__VA_ARGS__, NULL)
-
 typedef struct {
   char data[2048];
   char config[2048];
@@ -48,24 +45,15 @@ typedef enum {
   PATH_ERROR = -1,
 } EPathState;
 
-typedef struct {
-  long path_max;
-  long name_max;
-} PathconfLimits_t;
-
 void get_data_dir(Path_t *path);
 
 EPathState check_pathname_state(const char *pathname);
 
 EPathState check_pathname_state(const char *pathname);
 
-char *get_config_dir(void);
-
 int make_directory_recursive(const char *path);
 
 void *calloc_wrap(const size_t n, const size_t size);
-
-int get_pathconf_limits(const char *path, PathconfLimits_t *limits);
 
 void verbose_printf(const char *fmt, ...);
 

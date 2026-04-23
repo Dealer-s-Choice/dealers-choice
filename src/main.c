@@ -26,6 +26,7 @@
 
 */
 
+#include <canfigger.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h> // For setenv()
@@ -330,10 +331,9 @@ static void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *s
   UIRegistry_t reg = {0};
 
   /* Back arrow image (top-left) */
-  PathconfLimits_t img_limits = {0};
-  get_pathconf_limits(path->data, &img_limits);
-  char *back_img_path = join_paths(img_limits.path_max, path->data, "images", "arrow_back.png");
-  ImageWidget_t *back_img = image_widget_create(back_img_path, back_btn_size, back_btn_size);
+  char *back_img_path = canfigger_path_join(path->data, "images/arrow_back.png");
+  ImageWidget_t *back_img =
+      back_img_path ? image_widget_create(back_img_path, back_btn_size, back_btn_size) : NULL;
   free(back_img_path);
   if (back_img) {
     back_img->base.rect.x = g_viewport.x + g_viewport.w - back_btn_size - 20;

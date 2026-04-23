@@ -35,6 +35,9 @@
   * Client returns to the connect screen on server disconnect or send failure,
     from both the lobby and game screens (#217, #256)
   * dealers-choice-bot: no longer links against SDL2_ttf or SDL2_image
+  * Use canfigger_config_dir() and canfigger_path_join() for config/data
+    paths; remove get_config_dir(), join_paths(), and PathconfLimits_t
+    from util.c
   * Bump GAME_PROTOCOL_VERSION from 8 to 9
 
 2026-04-13

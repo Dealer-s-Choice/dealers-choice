@@ -93,39 +93,6 @@ void get_data_dir(Path_t *path) {
   exit(EXIT_FAILURE);
 }
 
-char *get_config_dir(void) {
-  const char *subdir = DEALERSCHOICE_NAME;
-  char *result = NULL;
-
-#ifdef _WIN32
-  char path[MAX_PATH];
-  if (SUCCEEDED(SHGetFolderPathA(NULL, CSIDL_APPDATA, NULL, 0, path))) {
-    size_t len = strlen(path) + strlen(subdir) + 2;
-    result = malloc(len);
-    if (result)
-      snprintf(result, len, "%s\\%s", path, subdir);
-  }
-#else
-  const char *base = getenv("XDG_CONFIG_HOME");
-  if (!base) {
-    const char *home = getenv("HOME");
-    if (!home)
-      return NULL;
-    size_t len = strlen(home) + strlen("/.config/") + strlen(subdir) + 1;
-    result = malloc(len);
-    if (result)
-      snprintf(result, len, "%s/.config/%s", home, subdir);
-  } else {
-    size_t len = strlen(base) + strlen("/") + strlen(subdir) + 1;
-    result = malloc(len);
-    if (result)
-      snprintf(result, len, "%s/%s", base, subdir);
-  }
-#endif
-
-  return result;
-}
-
 EPathState check_pathname_state(const char *pathname) {
 #ifdef _WIN32
   DWORD attrs = GetFileAttributesA(pathname);
@@ -200,99 +167,6 @@ void *calloc_wrap(const size_t n, const size_t size) {
 
   perror("calloc");
   exit(EXIT_FAILURE);
-}
-
-#ifdef _WIN32
-static long get_path_max(const char *path) {
-  (void)path; // unused
-  return 260; // Traditional Windows MAX_PATH
-}
-
-static long get_name_max(const char *path) {
-  (void)path; // unused
-  return 255; // Common NTFS limit
-}
-
-#else
-static long get_single_pathconf_limit(const char *path, int name, long fallback,
-                                      const char *label) {
-  if (!path) {
-    fprintf(stderr, "Error: Path is NULL.\n");
-    return -1;
-  }
-
-  errno = 0;
-  long limit = pathconf(path, name);
-  if (limit == -1) {
-    if (errno == 0)
-      return fallback; // Limit not defined
-    perror(label);
-    return -1;
-  }
-
-  return limit;
-}
-
-static long get_path_max(const char *path) {
-  return get_single_pathconf_limit(path, _PC_PATH_MAX, PATH_MAX, "PATH_MAX");
-}
-
-static long get_name_max(const char *path) {
-  return get_single_pathconf_limit(path, _PC_NAME_MAX, NAME_MAX, "NAME_MAX");
-}
-#endif
-
-int get_pathconf_limits(const char *path, PathconfLimits_t *limits) {
-  if (!limits)
-    return -1;
-
-  limits->path_max = get_path_max(path);
-  if (limits->path_max == -1)
-    return -1;
-
-  limits->name_max = get_name_max(path);
-  if (limits->name_max == -1)
-    return -1;
-
-  return 0;
-}
-
-char *real_join_paths(long path_max, const char *first, ...) {
-  char *path = calloc(1, path_max);
-  if (!path) {
-    perror("calloc");
-    exit(EXIT_FAILURE);
-  }
-
-  va_list ap;
-  va_start(ap, first);
-  const char *segment = first;
-
-  size_t len = 0;
-
-  while (segment != NULL) {
-    size_t seg_len = strlen(segment);
-
-    // Ensure enough room: +1 for possible '/', +1 for '\0'
-    if (len + seg_len + 2 > (size_t)path_max) {
-      fprintf(stderr, "Path length exceeds maximum allowed (%ld)\n", path_max);
-      free(path);
-      exit(EXIT_FAILURE);
-    }
-
-    // Add separator if needed
-    if (len > 0 && path[len - 1] != PATH_SEP && segment[0] != PATH_SEP) {
-      path[len++] = PATH_SEP;
-    }
-
-    strcpy(path + len, segment);
-    len += seg_len;
-
-    segment = va_arg(ap, const char *);
-  }
-
-  va_end(ap);
-  return path;
 }
 
 void verbose_printf(const char *fmt, ...) {

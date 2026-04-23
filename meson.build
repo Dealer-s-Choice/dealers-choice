@@ -72,7 +72,7 @@ endif
 
 canfigger_dep = dependency(
   'canfigger',
-  version: '>=0.3.0',
+  version: '>=0.3.1',
   fallback: ['canfigger', 'canfigger_dep'],
   default_options: ['default_library=static'],
 )

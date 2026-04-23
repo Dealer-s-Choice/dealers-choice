@@ -157,17 +157,18 @@ static void config_field_to_string(const void *cfg, const ConfigEntry *entry, ch
 }
 
 void save_player_config(const PlayerConfig_t *config) {
-  char *cfgdir = get_config_dir();
+  char *cfgdir = canfigger_config_dir(DEALERSCHOICE_NAME);
   if (!cfgdir) {
     fprintf(stderr, "Unable to determine config directory.\n");
     return;
   }
 
-  PathconfLimits_t limits = {0};
-  get_pathconf_limits(cfgdir, &limits);
-  char *cfg_pathname = calloc_wrap(limits.path_max, 1);
-  snprintf(cfg_pathname, limits.path_max, "%s/player.conf", cfgdir);
+  char *cfg_pathname = canfigger_path_join(cfgdir, "player.conf");
   free(cfgdir);
+  if (!cfg_pathname) {
+    fprintf(stderr, "canfigger_path_join failed\n");
+    return;
+  }
 
   FILE *fp = fopen(cfg_pathname, "w");
   if (!fp) {
@@ -194,15 +195,14 @@ void player_config_set_field(PlayerConfig_t *cfg, size_t entry_idx, const char *
 ServerConfig_t get_server_config(Path_t *path, const CliArgs_t *cli_args) {
   ServerConfig_t config = {0};
 
-  PathconfLimits_t limits = {0};
   if (!cli_args->server_conf) {
-    get_pathconf_limits(path->data, &limits);
-    path->server_conf_name = calloc_wrap(limits.path_max, 1);
-    snprintf(path->server_conf_name, limits.path_max, "%s/%s", path->data, "server.conf");
+    path->server_conf_name = canfigger_path_join(path->data, "server.conf");
+    if (!path->server_conf_name) {
+      fprintf(stderr, "canfigger_path_join failed\n");
+      return config;
+    }
   } else {
-    get_pathconf_limits(cli_args->server_conf, &limits);
-    path->server_conf_name = calloc_wrap(limits.path_max, 1);
-    snprintf(path->server_conf_name, limits.path_max, "%s", cli_args->server_conf);
+    path->server_conf_name = strdup(cli_args->server_conf);
   }
 
   printf("Reading server config: %s\n", path->server_conf_name);
@@ -271,7 +271,7 @@ PlayerConfig_t get_player_config(void) {
   PlayerConfig_t config = {0};
   config.loaded = false;
 
-  char *cfgdir = get_config_dir(); // your cross-platform config dir resolver
+  char *cfgdir = canfigger_config_dir(DEALERSCHOICE_NAME);
   if (!cfgdir) {
     fprintf(stderr, "Unable to determine config directory.\n");
     return config;
@@ -290,11 +290,12 @@ PlayerConfig_t get_player_config(void) {
     return config;
   }
 
-  PathconfLimits_t limits = {0};
-  get_pathconf_limits(cfgdir, &limits);
-  char *cfg_pathname = calloc_wrap(limits.path_max, 1);
-  snprintf(cfg_pathname, limits.path_max, "%s/player.conf", cfgdir);
+  char *cfg_pathname = canfigger_path_join(cfgdir, "player.conf");
   free(cfgdir);
+  if (!cfg_pathname) {
+    fprintf(stderr, "canfigger_path_join failed\n");
+    return config;
+  }
 
   printf("Reading config: %s\n", cfg_pathname);
   struct Canfigger *cfg_node = canfigger_parse_file(cfg_pathname, ',');

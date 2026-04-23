@@ -26,6 +26,7 @@
 
 */
 
+#include <canfigger.h>
 #include <math.h>
 #include <stdatomic.h>
 
@@ -226,10 +227,9 @@ static EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_confi
 
   EGameSelResult_t result = GAME_SEL_SUCCESS;
 
-  PathconfLimits_t img_limits = {0};
-  get_pathconf_limits(path->data, &img_limits);
-  char *back_img_path = join_paths(img_limits.path_max, path->data, "images", "arrow_back.png");
-  ImageWidget_t *back_img = image_widget_create(back_img_path, back_btn_size, back_btn_size);
+  char *back_img_path = canfigger_path_join(path->data, "images/arrow_back.png");
+  ImageWidget_t *back_img =
+      back_img_path ? image_widget_create(back_img_path, back_btn_size, back_btn_size) : NULL;
   free(back_img_path);
   if (back_img) {
     back_img->base.rect.x = g_viewport.x + g_viewport.w - back_btn_size - 20;
@@ -2320,13 +2320,17 @@ bool get_socket_context_and_run_client(PlayerConfig_t *player_config, const CliA
     sound_context.sounds = sounds;
     sound_context.coin_hit_sounds = coin_hit_sounds;
 
-    PathconfLimits_t limits;
-    get_pathconf_limits(path->data, &limits);
     size_t i;
     size_t n_sounds_init = 0;
     size_t n_coin_sounds_init = 0;
     for (i = 0; i < SND_NUM_SOUNDS; i++) {
-      char *snd_path = join_paths(limits.path_max, path->data, "sounds", sounds[i].filename);
+      char *sub = canfigger_path_join("sounds", sounds[i].filename);
+      char *snd_path = canfigger_path_join(path->data, sub);
+      free(sub);
+      if (!snd_path) {
+        fprintf(stderr, "Failed to build sound path %zd\n", i);
+        goto cleanup_audio;
+      }
       bool ok = ma_sound_init_from_file(&sound_context.engine, snd_path, 0, NULL, NULL,
                                         &sounds[i].sound) == MA_SUCCESS;
       free(snd_path);
@@ -2338,8 +2342,13 @@ bool get_socket_context_and_run_client(PlayerConfig_t *player_config, const CliA
     }
 
     for (i = 0; i < ARRAY_SIZE(coin_hit_sounds); i++) {
-      char *snd_path =
-          join_paths(limits.path_max, path->data, "sounds/coin", coin_hit_sounds[i].filename);
+      char *sub = canfigger_path_join("sounds/coin", coin_hit_sounds[i].filename);
+      char *snd_path = canfigger_path_join(path->data, sub);
+      free(sub);
+      if (!snd_path) {
+        fprintf(stderr, "Failed to build sound path %zd\n", i);
+        goto cleanup_audio;
+      }
       bool ok = ma_sound_init_from_file(&sound_context.engine, snd_path, 0, NULL, NULL,
                                         &coin_hit_sounds[i].sound) == MA_SUCCESS;
       free(snd_path);
