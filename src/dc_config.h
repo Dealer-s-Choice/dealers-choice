@@ -82,14 +82,14 @@ typedef struct {
   size_t size;               // Size of the target field
 } ConfigEntry;
 
-#define PLAYER_CONFIG_ENTRY_COUNT 8
-#define SERVER_CONFIG_ENTRY_COUNT 13
+#define MAX_PLAYER_CONFIG_ENTRIES 16
+#define MAX_SERVER_CONFIG_ENTRIES 32
 
-extern const ConfigEntry player_config_entries[PLAYER_CONFIG_ENTRY_COUNT];
-extern const ConfigEntry server_config_entries[SERVER_CONFIG_ENTRY_COUNT];
+extern const ConfigEntry player_config_entries[];
+extern const ConfigEntry server_config_entries[];
 
-enum { player_config_entry_count = PLAYER_CONFIG_ENTRY_COUNT };
-enum { server_config_entry_count = SERVER_CONFIG_ENTRY_COUNT };
+extern const size_t player_config_entry_count;
+extern const size_t server_config_entry_count;
 
 ServerConfig_t get_server_config(Path_t *path, const CliArgs_t *cli_args);
 

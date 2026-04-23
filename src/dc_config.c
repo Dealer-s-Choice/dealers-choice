@@ -38,7 +38,7 @@
 #include "dc_config.h"
 #include "util.h"
 
-const ConfigEntry player_config_entries[PLAYER_CONFIG_ENTRY_COUNT] = {
+const ConfigEntry player_config_entries[] = {
     {"nick", CFG_TYPE_STRING, "New Player", offsetof(PlayerConfig_t, nick),
      sizeof(((PlayerConfig_t *)0)->nick)},
     {"host", CFG_TYPE_STRING, "127.0.0.1", offsetof(PlayerConfig_t, host),
@@ -52,9 +52,10 @@ const ConfigEntry player_config_entries[PLAYER_CONFIG_ENTRY_COUNT] = {
     {"connect.attempts", CFG_TYPE_UINT8, "6", offsetof(PlayerConfig_t, connect_attempts),
      sizeof(uint8_t)},
     {"password", CFG_TYPE_STRING, "", offsetof(PlayerConfig_t, password),
-     sizeof(((PlayerConfig_t *)0)->password)}};
+     sizeof(((PlayerConfig_t *)0)->password)},
+    {0}};
 
-const ConfigEntry server_config_entries[SERVER_CONFIG_ENTRY_COUNT] = {
+const ConfigEntry server_config_entries[] = {
     {"bind_address", CFG_TYPE_STRING, "127.0.0.1", offsetof(ServerConfig_t, bind_address),
      sizeof(((ServerConfig_t *)0)->bind_address)},
     {"port", CFG_TYPE_UINT16, DEFAULT_PORT, offsetof(ServerConfig_t, port), sizeof(uint16_t)},
@@ -77,12 +78,16 @@ const ConfigEntry server_config_entries[SERVER_CONFIG_ENTRY_COUNT] = {
     {"max_connections_per_minute", CFG_TYPE_UINT32, "10",
      offsetof(ServerConfig_t, max_connections_per_minute), sizeof(uint32_t)},
     {"max_connections_per_ip", CFG_TYPE_UINT32, "0",
-     offsetof(ServerConfig_t, max_connections_per_ip), sizeof(uint32_t)}};
+     offsetof(ServerConfig_t, max_connections_per_ip), sizeof(uint32_t)},
+    {0}};
 
-_Static_assert(ARRAY_SIZE(player_config_entries) == PLAYER_CONFIG_ENTRY_COUNT,
-               "PLAYER_CONFIG_ENTRY_COUNT is out of sync");
-_Static_assert(ARRAY_SIZE(server_config_entries) == SERVER_CONFIG_ENTRY_COUNT,
-               "SERVER_CONFIG_ENTRY_COUNT is out of sync");
+const size_t player_config_entry_count = ARRAY_SIZE(player_config_entries) - 1;
+const size_t server_config_entry_count = ARRAY_SIZE(server_config_entries) - 1;
+
+_Static_assert(ARRAY_SIZE(player_config_entries) - 1 <= MAX_PLAYER_CONFIG_ENTRIES,
+               "Too many player config entries; increase MAX_PLAYER_CONFIG_ENTRIES");
+_Static_assert(ARRAY_SIZE(server_config_entries) - 1 <= MAX_SERVER_CONFIG_ENTRIES,
+               "Too many server config entries; increase MAX_SERVER_CONFIG_ENTRIES");
 
 #define CFG_SET_SIGNED(TYPE, MIN, MAX)                                                             \
   do {                                                                                             \
@@ -212,7 +217,7 @@ ServerConfig_t get_server_config(Path_t *path, const CliArgs_t *cli_args) {
     exit(EXIT_FAILURE);
 
   // Track which keys were found
-  bool found_keys[server_config_entry_count];
+  bool found_keys[MAX_SERVER_CONFIG_ENTRIES];
   memset(found_keys, 0, sizeof(found_keys));
 
   bool found_bet_amounts = false;
@@ -326,7 +331,7 @@ PlayerConfig_t get_player_config(void) {
     }
   } else {
     // Track which keys were found
-    bool found_keys[player_config_entry_count];
+    bool found_keys[MAX_PLAYER_CONFIG_ENTRIES];
     memset(found_keys, 0, sizeof(found_keys));
 
     while (cfg_node) {

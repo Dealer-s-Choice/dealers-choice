@@ -357,8 +357,8 @@ static void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *s
     ui_register(&reg, &turn_cb->base);
 
   /* Text inputs for displayed non-bool entries (skip host=1, port=2) */
-  char init_str[player_config_entry_count][MAX_INPUT_LENGTH];
-  InputWidget_t *inputs[player_config_entry_count];
+  char init_str[MAX_PLAYER_CONFIG_ENTRIES][MAX_INPUT_LENGTH];
+  InputWidget_t *inputs[MAX_PLAYER_CONFIG_ENTRIES];
   size_t n_text_inputs = 0;
   size_t display_pos = 0;
   for (size_t i = 0; i < player_config_entry_count; i++) {
@@ -418,7 +418,7 @@ static void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *s
   }
 
   /* focused_slot indexes only the text input slots (skips host, port, bool_idx) */
-  size_t text_input_indices[player_config_entry_count];
+  size_t text_input_indices[MAX_PLAYER_CONFIG_ENTRIES];
   size_t n_ti = 0;
   for (size_t i = 0; i < player_config_entry_count; i++)
     if (i != bool_idx && i != 1 && i != 2)
@@ -463,7 +463,7 @@ static void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *s
   if (tw_settings_title)
     ui_widget_place(&tw_settings_title->base, title_rect.x, title_rect.y);
 
-  TextWidget_t *tw_labels[player_config_entry_count];
+  TextWidget_t *tw_labels[MAX_PLAYER_CONFIG_ENTRIES];
   for (size_t i = 0; i < player_config_entry_count; i++)
     tw_labels[i] = NULL;
   {
