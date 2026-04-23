@@ -563,6 +563,8 @@ static void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *s
           }
           break;
         case SDLK_TAB: {
+          if (n_ti == 0)
+            break;
           inputs[text_input_indices[focused_slot]]->focused = false;
           int dir = (e.key.keysym.mod & KMOD_SHIFT) ? -1 : 1;
           focused_slot = (int)((focused_slot + dir + (int)n_ti) % (int)n_ti);
