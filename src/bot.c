@@ -100,15 +100,13 @@ static uint8_t bot_choose_discards(const POKEVAL_Hand_9 *hand, uint8_t hand_size
 
   /* ---- Standard high-hand strategy ---- */
 
-  /* Find quads, trips, pairs */
-  int quad_face = -1, trip_face = -1;
+  /* Find trips, pairs */
+  int trip_face = -1;
   int pairs[2] = {-1, -1};
   int n_pairs = 0;
 
   for (int f = 1; f <= 14; f++) {
-    if (face_count[f] == 4)
-      quad_face = f;
-    else if (face_count[f] == 3)
+    if (face_count[f] == 3)
       trip_face = f;
     else if (face_count[f] == 2 && n_pairs < 2)
       pairs[n_pairs++] = f;
@@ -131,15 +129,6 @@ static uint8_t bot_choose_discards(const POKEVAL_Hand_9 *hand, uint8_t hand_size
 
   /* Stand pat on any made hand of straight or better */
   if (rank >= POKEVAL_STRAIGHT)
-    return 0;
-
-  /* Quads: stand pat (full_house already handled above via rank check, but
-     let's be explicit in case of edge cases) */
-  if (quad_face >= 0)
-    return 0;
-
-  /* Full house */
-  if (trip_face >= 0 && n_pairs > 0)
     return 0;
 
   /* Trips: discard the two non-matching cards */
