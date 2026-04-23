@@ -105,6 +105,12 @@ typedef enum {
   GAME_SEL_BACK = 2,
 } EGameSelResult_t;
 
+typedef enum {
+  GAME_LOGIC_QUIT = 0,
+  GAME_LOGIC_AT_MENU = 1,
+  GAME_LOGIC_DISCONNECTED = 2,
+} EGameLogicResult_t;
+
 static EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_config,
                                               SocketContext_t *socket_context, const int8_t my_id,
                                               GameState_t *game_state, ClientState_t *client_state,
@@ -1118,10 +1124,12 @@ static void render_text_pot(const char *text, const SDL_Point center, const Font
   SDL_DestroyTexture(texture);
 }
 
-static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext_t *socket_context,
-                              const GameSettings_t *game_settings, GameState_t *game_state,
-                              SdlContext_t *sdl_context, const Font_t *font, Path_t *path,
-                              const SoundContext_t *sound_context) {
+static EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
+                                            SocketContext_t *socket_context,
+                                            const GameSettings_t *game_settings,
+                                            GameState_t *game_state, SdlContext_t *sdl_context,
+                                            const Font_t *font, Path_t *path,
+                                            const SoundContext_t *sound_context) {
   card_widget_select_back_for_game();
 
   ClientState_t client_state = {0};
@@ -1131,6 +1139,7 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
   TextWidget_t *game_coins_tw[MAX_PLAYERS] = {0};
   int8_t selected_nick = -1;
 
+  bool disconnected = false;
   bool was_connected[MAX_PLAYERS];
   int32_t prev_coins[MAX_PLAYERS];
   bool was_in[MAX_PLAYERS];
@@ -1304,9 +1313,10 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
 
     ERecvStatus_t recv_status = recv_game_state(socket_context, game_state, &client_state, my_id);
     // printf("%d\n", __LINE__);
-    if (recv_status == RECV_ERROR)
+    if (recv_status == RECV_ERROR) {
+      disconnected = true;
       running = false;
-    else if (recv_status == RECV_SUCCESS) {
+    } else if (recv_status == RECV_SUCCESS) {
       for (int i = 0; i < MAX_PLAYERS; i++) {
         if (was_in[i] && !game_state->player[i].in)
           preserved_hands[i] = prev_hands[i];
@@ -1335,6 +1345,7 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
     if (!starting_turn->is_connected || !starting_turn->in) {
       starting_turn = get_next_player(players_array, starting_turn->id);
       if (!starting_turn) {
+        disconnected = true;
         running = false;
         break;
       }
@@ -2021,7 +2032,11 @@ static bool handle_game_logic(const PlayerConfig_t *player_config, SocketContext
   for (int i = 0; i < SIZEOF_STATUS_MSGS; i++)
     ui_widget_destroy(&status_tw[i]->base);
   ui_destroy_all(&registry);
-  return running;
+  if (running)
+    return GAME_LOGIC_AT_MENU;
+  if (disconnected)
+    return GAME_LOGIC_DISCONNECTED;
+  return GAME_LOGIC_QUIT;
 }
 
 typedef struct {
@@ -2352,11 +2367,17 @@ bool get_socket_context_and_run_client(PlayerConfig_t *player_config, const CliA
           went_back = true;
           break;
         }
-        if (sel == GAME_SEL_ERROR)
+        if (sel == GAME_SEL_ERROR) {
+          went_back = true;
           break;
+        }
 
-        running = handle_game_logic(player_config, &socket_context, &game_settings, &game_state,
-                                    sdl_context, font, path, &sound_context);
+        EGameLogicResult_t result =
+            handle_game_logic(player_config, &socket_context, &game_settings, &game_state,
+                              sdl_context, font, path, &sound_context);
+        if (result == GAME_LOGIC_DISCONNECTED)
+          went_back = true;
+        running = (result == GAME_LOGIC_AT_MENU);
       } while (running);
       went_back_result = went_back;
     }
