@@ -24,7 +24,7 @@ makedepends=(
 )
 
 source=("https://github.com/Dealer-s-Choice/dealers_choice/releases/download/v${pkgver}/${pkgname}-${pkgver}.tar.xz")
-sha256sums=('SKIP')
+sha256sums=('ad9f927eee79f0264fb3d99a258dc0e377ba41507d679066110e388be8dfd8d8')
 
 build() {
   arch-meson $pkgname-$pkgver build -Db_sanitize=none
