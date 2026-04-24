@@ -11,8 +11,41 @@ on:
       - 'docs/**'
       - '!**.yml'
       - '**/deploy-docs.yml'
+  workflow_dispatch:
 
 jobs:
+  update-screenshots-readme:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout github.io repo
+        uses: actions/checkout@v6
+        with:
+          repository: dealer-s-choice/dealer-s-choice.github.io
+          ssh-key: ${{ secrets.ACTIONS_DEPLOY_KEY }}
+          ref: trunk
+
+      - name: Regenerate screenshots/README.md
+        run: |
+          cd screenshots
+          {
+            echo "# Screenshots"
+            echo ""
+            for f in $(ls *.png *.gif *.jpg *.jpeg 2>/dev/null | sort); do
+              echo "[![${f}](${f})](${f})"
+              echo ""
+            done
+          } > README.md
+
+      - name: Commit and push if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add screenshots/README.md
+          if ! git diff --cached --quiet; then
+            git commit -m "Update screenshots/README.md"
+            git push
+          fi
+
   deploy:
     runs-on: ubuntu-latest
 
