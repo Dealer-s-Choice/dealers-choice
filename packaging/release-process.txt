@@ -15,6 +15,8 @@ test locally with simulated lag
   `meson wrap promote subprojects/deckhandler/subprojects/pcg`
   https://github.com/mesonbuild/meson/issues/12489
 
+- Pin the current git revision for the subprojects that use git
+
 - Ensure all CI workflows are passing on trunk
 - Checkout release branch
 - Update ChangeLog: set the release date and version (replace "in progress")
