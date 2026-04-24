@@ -85,7 +85,7 @@ jobs:
 
     - name: Dist test
       if: ${{ contains(matrix.name, 'dist-test') }}
-      run: meson dist -C _build
+      run: meson dist --include-subprojects -C _build
 
     - name: Install test
       run: meson install --destdir=install_test -C _build

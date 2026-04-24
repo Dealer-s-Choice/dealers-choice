@@ -5,6 +5,9 @@ subprojects/**
 !subprojects/miniaudio/
 !subprojects/miniaudio/**
 
+!subprojects/pcg/
+!subprojects/pcg/**
+
 # Allow traversal into packagefiles
 !subprojects/packagefiles/
 !subprojects/packagefiles/**
