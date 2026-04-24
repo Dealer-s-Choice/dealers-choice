@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: dealers-choice\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-04-13 07:31-0500\n"
+"POT-Creation-Date: 2026-04-23 16:26-0500\n"
 "PO-Revision-Date: 2025-07-02 00:18-0500\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -18,94 +18,94 @@ msgstr ""
 "Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
 "n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
 
-#: src/client.c:196
+#: src/client.c:129 src/client.c:1231
 msgid "Deuces Wild"
 msgstr ""
 
-#: src/client.c:240
+#: src/client.c:173
 msgid "Players"
 msgstr ""
 
-#: src/client.c:244
+#: src/client.c:177
 msgid "Dealer"
 msgstr ""
 
-#: src/client.c:248
+#: src/client.c:181
 msgid "Ping"
 msgstr ""
 
-#: src/client.c:252
+#: src/client.c:195
 msgid "Waiting for more players..."
 msgstr ""
 
-#: src/client.c:258
+#: src/client.c:201
 msgid "Waiting for dealer to select game..."
 msgstr ""
 
-#: src/client.c:263 src/client.c:1271
+#: src/client.c:206 src/client.c:1214
 msgid "Kick"
 msgstr ""
 
-#: src/client.c:265 src/client.c:1273
+#: src/client.c:208 src/client.c:1216
 msgid "Ban"
 msgstr ""
 
 #. Show dealing screen immediately after click
-#: src/client.c:596
+#: src/client.c:565
 msgid "Dealing..."
 msgstr ""
 
-#: src/client.c:900
+#: src/client.c:833
 msgid "Check"
 msgstr "Чек"
 
-#: src/client.c:900
+#: src/client.c:833
 msgid "Bet"
 msgstr "Ставка"
 
-#: src/client.c:901
+#: src/client.c:834
 msgid "Fold"
 msgstr "Пас"
 
-#: src/client.c:901
+#: src/client.c:834
 msgid "Call"
 msgstr "Колл"
 
-#: src/client.c:902
+#: src/client.c:835
 msgid "Raise"
 msgstr "Рейз"
 
-#: src/client.c:902
+#: src/client.c:835
 msgid "Complete"
 msgstr ""
 
-#: src/client.c:903
+#: src/client.c:836
 msgid "Discard"
 msgstr "Сбросить"
 
-#: src/client.c:2058
+#: src/client.c:2078
 msgid "Cancel"
 msgstr ""
 
-#: src/client.c:2065 src/client.c:2081
+#: src/client.c:2085 src/client.c:2101
 #, c-format
 msgid "Attempting connection to: %s... (%d/%d)"
 msgstr ""
 
-#: src/main.c:57
+#: src/main.c:58
 msgid "Connect"
 msgstr "Подключиться"
 
-#: src/main.c:59 src/main.c:427
+#: src/main.c:60 src/main.c:462
 msgid "Settings"
 msgstr ""
 
 #. index into text_input_indices
-#: src/main.c:94 src/main.c:402
+#: src/main.c:95 src/main.c:428
 msgid "Save"
 msgstr ""
 
-#: src/main.c:100 src/main.c:413
+#: src/main.c:101 src/main.c:439
 msgid "Load Defaults"
 msgstr ""
 
@@ -119,53 +119,58 @@ msgstr " Канал Discord (на сервере проекта Lazarus) "
 msgid "Website"
 msgstr ""
 
-#: src/server.c:640
+#: src/server.c:715
 #, fuzzy
 msgid "checked"
 msgstr "Чек"
 
-#: src/server.c:654
+#: src/server.c:730
 msgid "folded"
 msgstr ""
 
-#: src/server.c:843 src/server.c:866
+#: src/server.c:919 src/server.c:942
 msgid "completed "
 msgstr ""
 
-#: src/server.c:843
+#: src/server.c:919
 msgid "bet "
 msgstr ""
 
-#: src/server.c:858 src/server.c:880
+#: src/server.c:934 src/server.c:956
 msgid "called"
 msgstr ""
 
-#: src/server.c:884
+#: src/server.c:960
 #, fuzzy
 msgid "raised "
 msgstr "Рейз"
 
-#: src/server.c:1012
+#: src/server.c:1088
 #, c-format
 msgid "%s disconnected"
 msgstr ""
 
-#: src/server.c:1028
+#: src/server.c:1104
 #, c-format
 msgid "%s was kicked"
 msgstr ""
 
-#: src/server.c:1045
+#: src/server.c:1121
 #, c-format
 msgid "%s was banned"
 msgstr ""
 
-#: src/server.c:1283
+#: src/server.c:1359
 #, c-format
 msgid "%s brings in for %u"
 msgstr ""
 
-#: src/server.c:1475
+#: src/server.c:1552
+#, c-format
+msgid "%s ran out of cards"
+msgstr ""
+
+#: src/server.c:1649
 #, c-format
 msgid "Game: %s%s"
 msgstr ""
