@@ -40,7 +40,7 @@ if cc.get_id() != 'msvc'
     '-fstack-protector-strong',
     '-Wformat-security',
     '-Wshadow',
-    '-Wstrict-overflow=5',
+    '-Wstrict-overflow=2',
     '-Werror=odr',
     '-Werror=lto-type-mismatch',
     '-Werror=strict-aliasing',
