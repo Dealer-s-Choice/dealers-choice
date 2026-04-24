@@ -1,5 +1,6 @@
-- dealers-choice (in-progress):
+2026-04-24
 
+- dealers-choice 0.0.13:
   + Add "X" quit button (top-right, red) to all four screens (connect, settings,
     lobby, game); ESC is a hotkey for the same action; both paths go through a
     confirmation dialog (SDL_ShowMessageBox) before quitting
@@ -15,9 +16,7 @@
   + Add --auto-connect: skip the connect dialog and connect immediately on
     startup using host/port from player.conf; ignored if --server is set;
     reverts to normal menu on return from lobby (#253)
-  + Coins placed in the pot are rendered at a random rotation angle; later
-    coins land closer to the center, creating a stacking effect; coin spins
-    during flight to the pot
+  + Coins placed in the pot are rendered at a random rotation angle
   + Add 7-card no peek
   * bugfix: Community cards (Hold'em, Omaha) disappear after a player folds
     (#252)
@@ -26,7 +25,7 @@
   * server.conf: end_of_game_timeout, action_timeout, and dealer_timeout are
     now specified in seconds instead of milliseconds; keys renamed to drop
     the _ms suffix
-  * Server: nick too long is truncated instead of causing disconnect; client
+  * bugfix: Server: nick too long is truncated instead of causing disconnect; client
     and bot no longer include null terminator in nick length; nicks up to 14
     characters are now accepted as expected
   * dealers-choice-bot: add --verbose flag; verbose_printf/verbose_puts at key
