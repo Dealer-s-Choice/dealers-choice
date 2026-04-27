@@ -50,7 +50,7 @@ page](https://github.com/Dealer-s-Choice/dealers-choice/releases/tag/snapshot).
 * [Texas Hold'em](https://en.wikipedia.org/wiki/Texas_hold_%27em)
 * [7-card no peek](https://youtu.be/0r6BI3NZsvo?si=wlBftL25LLQcL8C7)
 
-Any of the games above can be played with the [Deuces (Twos) Wild
+Most of the games above can be played with the [Deuces (Twos) Wild
 option](https://dealer-s-choice.github.io/docs/GAME_PLAY.html#using-wild-cards)
 enabled.
 

@@ -87,8 +87,10 @@ may check or bet freely — there is no forced bring-in on later streets.
 Selecting Deuces Wild will temporarily disable the following games until it is
 unselected:
 
+* Omaha
 * Texas Hold’em
 * California Lowball
+* 7-card No Peek
 
 Only 2s can be wild, and only if the dealer has enabled wild cards. The server
 evaluates wild hands automatically at showdown.
