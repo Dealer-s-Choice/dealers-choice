@@ -128,27 +128,33 @@ tcpme_socket_t tcpme_listen(const char *host, uint16_t port) {
     return TCPME_INVALID_SOCKET;
   }
 
+  static const int families[2] = {AF_INET6, AF_INET};
   tcpme_socket_t sock = TCPME_INVALID_SOCKET;
-  for (struct addrinfo *ai = res; ai != NULL; ai = ai->ai_next) {
-    sock = socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol);
-    if (sock == TCPME_INVALID_SOCKET)
-      continue;
+  for (int fi = 0; fi < 2 && sock == TCPME_INVALID_SOCKET; fi++) {
+    for (struct addrinfo *ai = res; ai != NULL; ai = ai->ai_next) {
+      if (ai->ai_family != families[fi])
+        continue;
 
-    int one = 1;
-    setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (const char *)&one, sizeof(one));
+      sock = socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol);
+      if (sock == TCPME_INVALID_SOCKET)
+        continue;
+
+      int one = 1;
+      setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (const char *)&one, sizeof(one));
 #ifdef IPV6_V6ONLY
-    if (ai->ai_family == AF_INET6) {
-      int zero = 0;
-      setsockopt(sock, IPPROTO_IPV6, IPV6_V6ONLY, (const char *)&zero, sizeof(zero));
-    }
+      if (ai->ai_family == AF_INET6) {
+        int zero = 0;
+        setsockopt(sock, IPPROTO_IPV6, IPV6_V6ONLY, (const char *)&zero, sizeof(zero));
+      }
 #endif
 
-    if (bind(sock, ai->ai_addr, (socklen_t)ai->ai_addrlen) != 0 || listen(sock, SOMAXCONN) != 0) {
-      close_socket(sock);
-      sock = TCPME_INVALID_SOCKET;
-      continue;
+      if (bind(sock, ai->ai_addr, (socklen_t)ai->ai_addrlen) != 0 || listen(sock, SOMAXCONN) != 0) {
+        close_socket(sock);
+        sock = TCPME_INVALID_SOCKET;
+        continue;
+      }
+      break;
     }
-    break;
   }
 
   freeaddrinfo(res);
