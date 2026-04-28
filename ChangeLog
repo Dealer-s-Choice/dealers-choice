@@ -1,3 +1,11 @@
+- (in-progress)
+
+  * server: silently skip MSG_PING_RESPONSE frames in recv_turn_player_msg and
+    handle_draw; the server only sends ping requests in the lobby, but on slow
+    or emulated hardware (e.g. s390x under QEMU) a ping response from the lobby
+    phase can still be buffered in the TCP socket when the game starts, causing
+    an "Unrecognised opcode" error and a spurious disconnection
+
 2026-04-24
 
 - dealers-choice 0.0.13:
