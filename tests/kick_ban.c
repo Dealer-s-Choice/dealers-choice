@@ -45,8 +45,13 @@ static void drain_all(SocketContext_t *sc, GameState_t *gs, ClientState_t *cs, G
 int main(int argc, char *argv[]) {
   (void)argc;
   (void)argv;
-  if (SDL_Init(0) == -1 || SDLNet_Init() == -1) {
-    fprintf(stderr, "[kick_ban] SDL/SDLNet init failed: %s\n", SDL_GetError());
+  if (SDL_Init(0) == -1) {
+    fprintf(stderr, "[kick_ban] SDL init failed: %s\n", SDL_GetError());
+    return 1;
+  }
+  if (tcpme_init() != 0) {
+    fprintf(stderr, "[kick_ban] tcpme_init failed: %s\n", tcpme_get_error());
+    SDL_Quit();
     return 1;
   }
 
@@ -74,7 +79,7 @@ int main(int argc, char *argv[]) {
     get_socket_context_and_run_client(&player_config, &cli_args, "127.0.0.1", test_port, NULL, NULL,
                                       &path,
                                       /*test_mode=*/true, links, &socket_context[i]);
-    assert(socket_context[i].sock != NULL);
+    assert(tcpme_socket_valid(socket_context[i].sock));
     recv_game_settings(socket_context[i].sock, socket_context[i].set, &game_settings[i]);
     SDL_Delay(n_ms);
   }
@@ -158,20 +163,18 @@ int main(int argc, char *argv[]) {
    * Open a raw TCP socket to the server; the server should accept the TCP
    * handshake and then immediately close the connection.                  */
   fprintf(stderr, "[kick_ban] testing reconnect from banned IP...\n");
-  IPaddress probe_addr;
-  SDLNet_ResolveHost(&probe_addr, "127.0.0.1", test_port);
-  TCPsocket probe_sock = SDLNet_TCP_Open(&probe_addr);
-  if (probe_sock) {
-    SDLNet_SocketSet probe_set = SDLNet_AllocSocketSet(1);
-    SDLNet_TCP_AddSocket(probe_set, probe_sock);
+  tcpme_socket_t probe_sock = tcpme_connect("127.0.0.1", test_port);
+  if (tcpme_socket_valid(probe_sock)) {
+    tcpme_set_t *probe_set = tcpme_alloc_set(1);
+    tcpme_add_socket(probe_set, probe_sock);
     /* Wait up to 500 ms for the server to close the connection. */
-    int ready = SDLNet_CheckSockets(probe_set, 500);
-    assert(ready > 0 && SDLNet_SocketReady(probe_sock));
+    int ready = tcpme_check_sockets(probe_set, 500);
+    assert(ready > 0 && tcpme_socket_ready(probe_set, probe_sock));
     char buf[1];
-    int r = SDLNet_TCP_Recv(probe_sock, buf, sizeof(buf));
+    int r = tcpme_recv(probe_sock, buf, sizeof(buf));
     assert(r <= 0); /* FIN or RST → banned IP was rejected */
-    SDLNet_FreeSocketSet(probe_set);
-    SDLNet_TCP_Close(probe_sock);
+    tcpme_free_set(probe_set);
+    tcpme_close(probe_sock);
     fprintf(stderr, "[kick_ban] PASS: reconnect from banned IP rejected (recv=%d)\n", r);
   } else {
     /* Connection refused entirely — also a valid rejection. */
@@ -182,7 +185,7 @@ int main(int argc, char *argv[]) {
   SDL_Delay(1000);
   for (int i = 0; i < N_PLAYERS; i++)
     socket_cleanup(&socket_context[i]);
-  SDLNet_Quit();
+  tcpme_quit();
   SDL_Quit();
 
   return 0;

@@ -9,7 +9,6 @@ RUN pacman -Syu --noconfirm \
     sdl2 \
     sdl2_image \
     sdl2_ttf \
-    sdl2_net \
     protobuf-c
 
 RUN useradd -U builder

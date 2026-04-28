@@ -31,7 +31,6 @@
 #include <string.h>
 
 #include <SDL.h>
-#include <SDL_net.h>
 
 #include <pokeval.h>
 
@@ -285,8 +284,13 @@ int main(int argc, char *argv[]) {
 
   pcg_srand_auto();
 
-  if (SDL_Init(0) == -1 || SDLNet_Init() == -1) {
-    fprintf(stderr, "SDL/SDLNet init failed: %s\n", SDL_GetError());
+  if (SDL_Init(0) == -1) {
+    fprintf(stderr, "SDL init failed: %s\n", SDL_GetError());
+    return 1;
+  }
+  if (tcpme_init() != 0) {
+    fprintf(stderr, "tcpme_init failed: %s\n", tcpme_get_error());
+    SDL_Quit();
     return 1;
   }
 
@@ -294,7 +298,7 @@ int main(int argc, char *argv[]) {
   const char *password = getenv("DC_PASSWORD");
   if (!bot_connect(host, port, nick, password ? password : "", &socket_ctx)) {
     fprintf(stderr, "Failed to connect to %s:%d\n", host, port);
-    SDLNet_Quit();
+    tcpme_quit();
     SDL_Quit();
     return 1;
   }
@@ -312,7 +316,7 @@ int main(int argc, char *argv[]) {
     if (s != RECV_SUCCESS) {
       fprintf(stderr, "Failed to receive game settings\n");
       socket_cleanup(&socket_ctx);
-      SDLNet_Quit();
+      tcpme_quit();
       SDL_Quit();
       return 1;
     }
@@ -726,7 +730,7 @@ int main(int argc, char *argv[]) {
   }
 
   socket_cleanup(&socket_ctx);
-  SDLNet_Quit();
+  tcpme_quit();
   SDL_Quit();
   return 0;
 }

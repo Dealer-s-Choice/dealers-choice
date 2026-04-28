@@ -101,8 +101,8 @@ typedef struct {
 struct ServerConfig_t;
 
 typedef struct {
-  TCPsocket *clients;
-  SDLNet_SocketSet socket_set;
+  tcpme_socket_t *clients;
+  tcpme_set_t *socket_set;
   GameState_t *game_state;
   // Server-side real (unmasked) card values — never serialized directly.
   // broadcast_game_state derives what each client may see from this array
@@ -110,7 +110,7 @@ typedef struct {
   POKEVAL_Hand_9 real_hand[MAX_PLAYERS];
   bool *slot_taken;
   const CliArgs_t *cli_args;
-  TCPsocket *server_sock;
+  tcpme_socket_t *server_sock;
   GameSettings_t *game_settings;
   struct ServerConfig_t *config;
   uint8_t game_type;
@@ -118,7 +118,7 @@ typedef struct {
   int8_t turn_id;
   bool deuces_wild;
   uint8_t player_timeouts[MAX_PLAYERS];
-  Uint32 ban_list[64];
+  char ban_list[64][TCPME_ADDRSTRLEN];
   int ban_count;
   // No-peek: cards flipped face-up per player, used when building visible hands.
   int no_peek_n_flipped[MAX_PLAYERS];

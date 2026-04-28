@@ -37,7 +37,6 @@ jobs:
           protobuf-c \
           sdl2 \
           sdl2_image \
-          sdl2_net \
           sdl2_ttf \
           libsodium
 

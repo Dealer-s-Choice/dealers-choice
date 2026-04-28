@@ -35,7 +35,7 @@ extern int n_passes;
   for (int i = 0; i < N_PLAYERS; i++) {                                                            \
     socket_cleanup(&socket_context[i]);                                                            \
   }                                                                                                \
-  SDLNet_Quit();                                                                                   \
+  tcpme_quit();                                                                                    \
   SDL_Quit();
 
 #define _RECEIVE_GAME_STATE()                                                                      \
@@ -46,12 +46,17 @@ extern int n_passes;
     assert(recv_status != RECV_ERROR);                                                             \
     if (recv_status == RECV_NOTHING)                                                               \
       fprintf(stderr, "Received nothing\n");                                                       \
-    assert(socket_context[i].sock != NULL);                                                        \
+    assert(tcpme_socket_valid(socket_context[i].sock));                                            \
   }
 
 #define _SETUP_SOCKET_CONTEXT()                                                                    \
-  if (SDL_Init(0) == -1 || SDLNet_Init() == -1) {                                                  \
-    fprintf(stderr, "SDL/SDLNet init failed: %s\n", SDL_GetError());                               \
+  if (SDL_Init(0) == -1) {                                                                         \
+    fprintf(stderr, "SDL init failed: %s\n", SDL_GetError());                                      \
+    return 1;                                                                                      \
+  }                                                                                                \
+  if (tcpme_init() != 0) {                                                                         \
+    fprintf(stderr, "tcpme_init failed: %s\n", tcpme_get_error());                                 \
+    SDL_Quit();                                                                                    \
     return 1;                                                                                      \
   }                                                                                                \
   GameSettings_t game_settings[N_PLAYERS] = {0};                                                   \
@@ -80,7 +85,7 @@ extern int n_passes;
   for (int i = 0; i < N_PLAYERS; i++) {                                                            \
     get_socket_context_and_run_client(&player_config, &cli_args, "127.0.0.1", test_port, NULL,     \
                                       NULL, &path, test_mode, NULL, &socket_context[i]);           \
-    assert(socket_context[i].sock != NULL);                                                        \
+    assert(tcpme_socket_valid(socket_context[i].sock));                                            \
     recv_game_settings(socket_context[i].sock, socket_context[i].set, &game_settings[i]);          \
     SDL_Delay(n_ms);                                                                               \
   }                                                                                                \

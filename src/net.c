@@ -258,18 +258,18 @@ Player_t deserialize_player(const uint8_t *data, size_t size) {
   return result;
 }
 
-int send_all_tcp(TCPsocket sock, const void *data, size_t length) {
+int send_all_tcp(tcpme_socket_t sock, const void *data, size_t length) {
   const uint8_t *buf = (const uint8_t *)data;
   size_t total_sent = 0;
 
   while (total_sent < length) {
-    int sent = SDLNet_TCP_Send(sock, buf + total_sent, (int)(length - total_sent));
+    int sent = tcpme_send(sock, buf + total_sent, (int)(length - total_sent));
     if (sent < 0) {
-      fprintf(stderr, "SDLNet_TCP_Send failed: %s\n", SDLNet_GetError());
+      fprintf(stderr, "tcpme_send failed: %s\n", tcpme_get_error());
       return -1;
     }
     if (sent == 0) {
-      fprintf(stderr, "SDLNet_TCP_Send: connection closed\n");
+      fprintf(stderr, "tcpme_send: connection closed\n");
       return -1;
     }
     total_sent += sent;
@@ -278,12 +278,12 @@ int send_all_tcp(TCPsocket sock, const void *data, size_t length) {
   return 0;
 }
 
-int recv_all_tcp(TCPsocket sock, void *buf, size_t len) {
+int recv_all_tcp(tcpme_socket_t sock, void *buf, size_t len) {
   uint8_t *p = buf;
   size_t total = 0;
 
   while (total < len) {
-    int r = SDLNet_TCP_Recv(sock, p + total, (int)(len - total));
+    int r = tcpme_recv(sock, p + total, (int)(len - total));
 
     if (r <= 0)
       return -1;
@@ -297,16 +297,16 @@ int recv_all_tcp(TCPsocket sock, void *buf, size_t len) {
 // via opcodes, like what's done for the discard/draw request
 ERecvStatus_t recv_game_state(SocketContext_t *socket_context, GameState_t *game_state,
                               ClientState_t *client_state, const int8_t id) {
-  int result = SDLNet_CheckSockets(socket_context->set, 0);
+  int result = tcpme_check_sockets(socket_context->set, 0);
   if (result == -1) {
-    fputs(SDLNet_GetError(), stderr);
+    fputs(tcpme_get_error(), stderr);
     return RECV_ERROR;
   }
   if (result == 0)
     return RECV_NOTHING;
 
-  TCPsocket sock = socket_context->sock;
-  if (!SDLNet_SocketReady(sock)) {
+  tcpme_socket_t sock = socket_context->sock;
+  if (!tcpme_socket_ready(socket_context->set, sock)) {
     fprintf(stderr, "[recv_game_state] sock not ready\n");
     return RECV_ERROR;
   }
@@ -334,8 +334,8 @@ ERecvStatus_t recv_game_state(SocketContext_t *socket_context, GameState_t *game
   if (r_payload != (int)size) {
     fprintf(stderr,
             "[recv_game_state] Disconnected while reading game state payload (got %d, expected "
-            "%u). SDLNet_GetError(): %s\n",
-            r_payload, size, SDLNet_GetError());
+            "%u). tcpme_get_error(): %s\n",
+            r_payload, size, tcpme_get_error());
     free(buffer);
     return RECV_ERROR;
   }
@@ -469,11 +469,11 @@ ERecvStatus_t recv_game_state(SocketContext_t *socket_context, GameState_t *game
   return RECV_SUCCESS;
 }
 
-ERecvStatus_t recv_game_settings(TCPsocket client_socket, SDLNet_SocketSet socket_set,
+ERecvStatus_t recv_game_settings(tcpme_socket_t client_socket, tcpme_set_t *socket_set,
                                  GameSettings_t *game_settings) {
-  int result = SDLNet_CheckSockets(socket_set, 100);
+  int result = tcpme_check_sockets(socket_set, 100);
   if (result == -1) {
-    fputs(SDLNet_GetError(), stderr);
+    fputs(tcpme_get_error(), stderr);
     return RECV_ERROR;
   }
 
@@ -483,7 +483,7 @@ ERecvStatus_t recv_game_settings(TCPsocket client_socket, SDLNet_SocketSet socke
     return RECV_NOTHING;
   }
 
-  if (!SDLNet_SocketReady(client_socket)) {
+  if (!tcpme_socket_ready(socket_set, client_socket)) {
     printf("[recv_game_settings] client_socket not ready\n");
     return RECV_ERROR;
   }
@@ -521,13 +521,13 @@ ERecvStatus_t recv_game_settings(TCPsocket client_socket, SDLNet_SocketSet socke
 }
 
 void socket_cleanup(SocketContext_t *socket_context) {
-  if (SDLNet_TCP_DelSocket(socket_context->set, socket_context->sock) == -1)
-    fputs(SDLNet_GetError(), stderr);
-  SDLNet_FreeSocketSet(socket_context->set);
-  SDLNet_TCP_Close(socket_context->sock);
+  if (tcpme_del_socket(socket_context->set, socket_context->sock) == -1)
+    fputs(tcpme_get_error(), stderr);
+  tcpme_free_set(socket_context->set);
+  tcpme_close(socket_context->sock);
 }
 
-int send_message(TCPsocket sock, uint16_t opcode, const uint8_t *payload, size_t payload_len) {
+int send_message(tcpme_socket_t sock, uint16_t opcode, const uint8_t *payload, size_t payload_len) {
   if (payload_len > UINT32_MAX - 2)
     return -1;
   uint32_t total_size = SDL_SwapBE32((uint32_t)(2 + payload_len));
@@ -547,7 +547,7 @@ int send_message(TCPsocket sock, uint16_t opcode, const uint8_t *payload, size_t
   return 0;
 }
 
-int send_protocol_header(TCPsocket sock, uint8_t flags) {
+int send_protocol_header(tcpme_socket_t sock, uint8_t flags) {
   verbose_puts("Exchanging protocol information...");
   GameProtocolHeader_t hdr = {0};
   snprintf(hdr.magic, sizeof(hdr.magic), "%s", GAME_PROTOCOL_MAGIC);
@@ -573,7 +573,7 @@ int send_protocol_header(TCPsocket sock, uint8_t flags) {
   return 0;
 }
 
-int authenticate_with_server(TCPsocket sock, const char *password) {
+int authenticate_with_server(tcpme_socket_t sock, const char *password) {
   unsigned char nonce[NONCE_SIZE];
   unsigned char hash[HASH_SIZE];
 
@@ -598,24 +598,18 @@ int authenticate_with_server(TCPsocket sock, const char *password) {
 
 bool bot_connect(const char *host_str, uint16_t port, const char *nick, const char *password,
                  SocketContext_t *out) {
-  IPaddress server_ip;
-  if (SDLNet_ResolveHost(&server_ip, host_str, port) == -1) {
-    fprintf(stderr, "Failed to resolve server: %s\n", SDLNet_GetError());
+  tcpme_socket_t sock = tcpme_connect(host_str, port);
+  if (!tcpme_socket_valid(sock)) {
+    fprintf(stderr, "Failed to connect: %s\n", tcpme_get_error());
     return false;
   }
 
-  TCPsocket sock = SDLNet_TCP_Open(&server_ip);
-  if (!sock) {
-    fprintf(stderr, "Failed to connect: %s\n", SDLNet_GetError());
-    return false;
-  }
-
-  SDLNet_SocketSet set = SDLNet_AllocSocketSet(1);
+  tcpme_set_t *set = tcpme_alloc_set(1);
   if (!set) {
-    SDLNet_TCP_Close(sock);
+    tcpme_close(sock);
     return false;
   }
-  SDLNet_TCP_AddSocket(set, sock);
+  tcpme_add_socket(set, sock);
 
   if (send_protocol_header(sock, PROTO_FLAG_BOT) != 0)
     goto fail;
@@ -639,12 +633,12 @@ bool bot_connect(const char *host_str, uint16_t port, const char *nick, const ch
   return true;
 
 fail:
-  SDLNet_FreeSocketSet(set);
-  SDLNet_TCP_Close(sock);
+  tcpme_free_set(set);
+  tcpme_close(sock);
   return false;
 }
 
-int send_player_action(ClientState_t *client_state, TCPsocket sock, uint8_t action,
+int send_player_action(ClientState_t *client_state, tcpme_socket_t sock, uint8_t action,
                        uint32_t amount) {
   uint8_t payload[5];
   payload[0] = action;
@@ -668,7 +662,8 @@ int send_player_action(ClientState_t *client_state, TCPsocket sock, uint8_t acti
   return rc;
 }
 
-int send_discards_request_new_cards(TCPsocket sock, const uint8_t *discard_indices, uint8_t count) {
+int send_discards_request_new_cards(tcpme_socket_t sock, const uint8_t *discard_indices,
+                                    uint8_t count) {
   if (count > 4)
     return -1;
 

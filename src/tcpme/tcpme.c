@@ -1,0 +1,384 @@
+/*
+ tcpme.c
+ https://github.com/Dealer-s-Choice/dealers-choice
+
+ MIT License
+
+ Copyright (c) 2026 Andy Alt
+*/
+
+#ifdef _WIN32
+// clang-format off
+#  include <winsock2.h>
+#  include <ws2tcpip.h>
+// clang-format on
+#define close_socket(s) closesocket(s)
+#define sock_error() WSAGetLastError()
+#else
+#include <arpa/inet.h>
+#include <errno.h>
+#include <netdb.h>
+#include <netinet/in.h>
+#include <sys/select.h>
+#include <sys/socket.h>
+#include <unistd.h>
+#define close_socket(s) close(s)
+#define sock_error() errno
+#endif
+
+#include "tcpme.h"
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+// --- Error handling ---------------------------------------------------------
+
+// MSVC does not implement _Thread_local even in /std:c11 mode.
+#ifdef _MSC_VER
+#define TCPME_TLS __declspec(thread)
+#else
+#define TCPME_TLS _Thread_local
+#endif
+
+static TCPME_TLS char tcpme_errbuf[256];
+
+static void set_error(const char *msg) {
+  strncpy(tcpme_errbuf, msg, sizeof(tcpme_errbuf) - 1);
+  tcpme_errbuf[sizeof(tcpme_errbuf) - 1] = '\0';
+}
+
+static void set_error_sys(const char *prefix) {
+#ifdef _WIN32
+  int err = WSAGetLastError();
+  char msg[200] = "";
+  FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, (DWORD)err,
+                 MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), msg, (DWORD)sizeof(msg), NULL);
+  int len = (int)strlen(msg);
+  while (len > 0 && (msg[len - 1] == '\r' || msg[len - 1] == '\n'))
+    msg[--len] = '\0';
+  snprintf(tcpme_errbuf, sizeof(tcpme_errbuf), "%s: %s (%d)", prefix, msg, err);
+#else
+  snprintf(tcpme_errbuf, sizeof(tcpme_errbuf), "%s: %s", prefix, strerror(errno));
+#endif
+}
+
+const char *tcpme_get_error(void) { return tcpme_errbuf; }
+
+// --- Init / quit ------------------------------------------------------------
+
+int tcpme_init(void) {
+#ifdef _WIN32
+  WSADATA wsa;
+  if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0) {
+    set_error_sys("WSAStartup failed");
+    return -1;
+  }
+#endif
+  return 0;
+}
+
+void tcpme_quit(void) {
+#ifdef _WIN32
+  WSACleanup();
+#endif
+}
+
+// --- Internal helpers -------------------------------------------------------
+
+static bool format_sockaddr(const struct sockaddr *sa, socklen_t salen, bool with_port, char *buf,
+                            size_t buflen) {
+  char host[INET6_ADDRSTRLEN];
+  char port[8];
+  int flags = NI_NUMERICHOST | NI_NUMERICSERV;
+  int rc = getnameinfo(sa, salen, host, sizeof(host), with_port ? port : NULL,
+                       with_port ? (socklen_t)sizeof(port) : 0, flags);
+  if (rc != 0) {
+    set_error(gai_strerror(rc));
+    return false;
+  }
+  if (!with_port) {
+    strncpy(buf, host, buflen - 1);
+    buf[buflen - 1] = '\0';
+    return true;
+  }
+  if (sa->sa_family == AF_INET6)
+    snprintf(buf, buflen, "[%s]:%s", host, port);
+  else
+    snprintf(buf, buflen, "%s:%s", host, port);
+  return true;
+}
+
+// --- Listen / accept / connect ----------------------------------------------
+
+tcpme_socket_t tcpme_listen(const char *host, uint16_t port) {
+  char portstr[8];
+  snprintf(portstr, sizeof(portstr), "%u", (unsigned)port);
+
+  struct addrinfo hints;
+  memset(&hints, 0, sizeof(hints));
+  hints.ai_family = AF_UNSPEC;
+  hints.ai_socktype = SOCK_STREAM;
+  hints.ai_flags = AI_PASSIVE;
+
+  struct addrinfo *res = NULL;
+  int rc = getaddrinfo(host, portstr, &hints, &res);
+  if (rc != 0) {
+    set_error(gai_strerror(rc));
+    return TCPME_INVALID_SOCKET;
+  }
+
+  tcpme_socket_t sock = TCPME_INVALID_SOCKET;
+  for (struct addrinfo *ai = res; ai != NULL; ai = ai->ai_next) {
+    sock = socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol);
+    if (sock == TCPME_INVALID_SOCKET)
+      continue;
+
+    int one = 1;
+    setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (const char *)&one, sizeof(one));
+#ifdef IPV6_V6ONLY
+    if (ai->ai_family == AF_INET6) {
+      int zero = 0;
+      setsockopt(sock, IPPROTO_IPV6, IPV6_V6ONLY, (const char *)&zero, sizeof(zero));
+    }
+#endif
+
+    if (bind(sock, ai->ai_addr, (socklen_t)ai->ai_addrlen) != 0 || listen(sock, SOMAXCONN) != 0) {
+      close_socket(sock);
+      sock = TCPME_INVALID_SOCKET;
+      continue;
+    }
+    break;
+  }
+
+  freeaddrinfo(res);
+
+  if (sock == TCPME_INVALID_SOCKET)
+    set_error_sys("Failed to bind/listen");
+
+  return sock;
+}
+
+tcpme_socket_t tcpme_accept(tcpme_socket_t server_sock) {
+  if (!tcpme_socket_valid(server_sock))
+    return TCPME_INVALID_SOCKET;
+
+  // Use select with zero timeout so this never blocks.
+  fd_set rfds;
+  FD_ZERO(&rfds);
+  FD_SET(server_sock, &rfds);
+  struct timeval tv = {0, 0};
+
+  int n = select(
+#ifdef _WIN32
+      0,
+#else
+      (int)server_sock + 1,
+#endif
+      &rfds, NULL, NULL, &tv);
+
+  if (n <= 0)
+    return TCPME_INVALID_SOCKET; // nothing pending; n<0 is system error but we return invalid
+
+  struct sockaddr_storage addr;
+  socklen_t addrlen = sizeof(addr);
+  tcpme_socket_t client = accept(server_sock, (struct sockaddr *)&addr, &addrlen);
+  if (client == TCPME_INVALID_SOCKET)
+    set_error_sys("accept() failed");
+  return client;
+}
+
+tcpme_socket_t tcpme_connect(const char *host, uint16_t port) {
+  char portstr[8];
+  snprintf(portstr, sizeof(portstr), "%u", (unsigned)port);
+
+  struct addrinfo hints;
+  memset(&hints, 0, sizeof(hints));
+  hints.ai_family = AF_UNSPEC;
+  hints.ai_socktype = SOCK_STREAM;
+
+  struct addrinfo *res = NULL;
+  int rc = getaddrinfo(host, portstr, &hints, &res);
+  if (rc != 0) {
+    set_error(gai_strerror(rc));
+    return TCPME_INVALID_SOCKET;
+  }
+
+  tcpme_socket_t sock = TCPME_INVALID_SOCKET;
+  for (struct addrinfo *ai = res; ai != NULL; ai = ai->ai_next) {
+    sock = socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol);
+    if (sock == TCPME_INVALID_SOCKET)
+      continue;
+    if (connect(sock, ai->ai_addr, (socklen_t)ai->ai_addrlen) != 0) {
+      close_socket(sock);
+      sock = TCPME_INVALID_SOCKET;
+      continue;
+    }
+    break;
+  }
+
+  freeaddrinfo(res);
+
+  if (sock == TCPME_INVALID_SOCKET)
+    set_error_sys("Failed to connect");
+
+  return sock;
+}
+
+// --- Close / send / recv ----------------------------------------------------
+
+void tcpme_close(tcpme_socket_t sock) {
+  if (sock != TCPME_INVALID_SOCKET)
+    close_socket(sock);
+}
+
+int tcpme_send(tcpme_socket_t sock, const void *buf, int len) {
+  int n = (int)send(sock, (const char *)buf, len, 0);
+  if (n < 0)
+    set_error_sys("send() failed");
+  return n;
+}
+
+int tcpme_recv(tcpme_socket_t sock, void *buf, int len) {
+  int n = (int)recv(sock, (char *)buf, len, 0);
+  if (n < 0)
+    set_error_sys("recv() failed");
+  return n;
+}
+
+// --- Address queries --------------------------------------------------------
+
+bool tcpme_get_peer_addr(tcpme_socket_t sock, char *buf, size_t buflen) {
+  struct sockaddr_storage sa;
+  socklen_t salen = sizeof(sa);
+  if (getpeername(sock, (struct sockaddr *)&sa, &salen) != 0) {
+    set_error_sys("getpeername() failed");
+    return false;
+  }
+  return format_sockaddr((const struct sockaddr *)&sa, salen, true, buf, buflen);
+}
+
+bool tcpme_get_local_addr(tcpme_socket_t sock, char *buf, size_t buflen) {
+  struct sockaddr_storage sa;
+  socklen_t salen = sizeof(sa);
+  if (getsockname(sock, (struct sockaddr *)&sa, &salen) != 0) {
+    set_error_sys("getsockname() failed");
+    return false;
+  }
+  return format_sockaddr((const struct sockaddr *)&sa, salen, true, buf, buflen);
+}
+
+bool tcpme_get_peer_ip(tcpme_socket_t sock, char *buf, size_t buflen) {
+  struct sockaddr_storage sa;
+  socklen_t salen = sizeof(sa);
+  if (getpeername(sock, (struct sockaddr *)&sa, &salen) != 0) {
+    set_error_sys("getpeername() failed");
+    return false;
+  }
+  return format_sockaddr((const struct sockaddr *)&sa, salen, false, buf, buflen);
+}
+
+// --- Socket set -------------------------------------------------------------
+
+struct tcpme_set_t {
+  tcpme_socket_t *sockets;
+  bool *ready;
+  int count;
+  int capacity;
+};
+
+tcpme_set_t *tcpme_alloc_set(int capacity) {
+  if (capacity <= 0) {
+    set_error("capacity must be > 0");
+    return NULL;
+  }
+  tcpme_set_t *set = (tcpme_set_t *)malloc(sizeof(*set));
+  if (!set)
+    return NULL;
+  set->sockets = (tcpme_socket_t *)malloc((size_t)capacity * sizeof(tcpme_socket_t));
+  set->ready = (bool *)calloc((size_t)capacity, sizeof(bool));
+  if (!set->sockets || !set->ready) {
+    free(set->sockets);
+    free(set->ready);
+    free(set);
+    return NULL;
+  }
+  set->count = 0;
+  set->capacity = capacity;
+  return set;
+}
+
+void tcpme_free_set(tcpme_set_t *set) {
+  if (set) {
+    free(set->sockets);
+    free(set->ready);
+    free(set);
+  }
+}
+
+int tcpme_add_socket(tcpme_set_t *set, tcpme_socket_t sock) {
+  if (!set || set->count >= set->capacity) {
+    set_error("socket set is full");
+    return -1;
+  }
+  set->sockets[set->count] = sock;
+  set->ready[set->count] = false;
+  set->count++;
+  return 0;
+}
+
+int tcpme_del_socket(tcpme_set_t *set, tcpme_socket_t sock) {
+  if (!set)
+    return -1;
+  for (int i = 0; i < set->count; i++) {
+    if (set->sockets[i] == sock) {
+      set->count--;
+      set->sockets[i] = set->sockets[set->count];
+      set->ready[i] = set->ready[set->count];
+      return 0;
+    }
+  }
+  set_error("socket not found in set");
+  return -1;
+}
+
+int tcpme_check_sockets(tcpme_set_t *set, uint32_t timeout_ms) {
+  if (!set || set->count == 0)
+    return 0;
+
+  fd_set rfds;
+  FD_ZERO(&rfds);
+  int nfds = 0;
+  for (int i = 0; i < set->count; i++) {
+    FD_SET(set->sockets[i], &rfds);
+#ifndef _WIN32
+    if ((int)set->sockets[i] > nfds)
+      nfds = (int)set->sockets[i];
+#endif
+  }
+
+  struct timeval tv;
+  tv.tv_sec = (long)(timeout_ms / 1000);
+  tv.tv_usec = (long)((timeout_ms % 1000) * 1000);
+
+  int n = select(nfds + 1, &rfds, NULL, NULL, &tv);
+  if (n < 0) {
+    set_error_sys("select() failed");
+    return -1;
+  }
+
+  for (int i = 0; i < set->count; i++)
+    set->ready[i] = (FD_ISSET(set->sockets[i], &rfds) != 0);
+
+  return n;
+}
+
+bool tcpme_socket_ready(const tcpme_set_t *set, tcpme_socket_t sock) {
+  if (!set)
+    return false;
+  for (int i = 0; i < set->count; i++) {
+    if (set->sockets[i] == sock)
+      return set->ready[i];
+  }
+  return false;
+}

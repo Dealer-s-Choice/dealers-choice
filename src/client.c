@@ -134,7 +134,7 @@ static EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_confi
   layout_links(links, LINK_DEFS_COUNT);
 
   static uint8_t saved_n_clients = 0;
-  TCPsocket sock = socket_context->sock;
+  tcpme_socket_t sock = socket_context->sock;
 
   UIRegistry_t registry = {0};
   ui_register(&registry, &button_deuces_wild->base);
@@ -1304,7 +1304,7 @@ static EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
   client_state.hourglass_rotate_start = client_state.timer_start;
 
   const int8_t my_id = game_settings->client_id;
-  TCPsocket sock = socket_context->sock;
+  tcpme_socket_t sock = socket_context->sock;
 
   while (running) {
     POKEVAL_Hand_9 prev_hands[MAX_PLAYERS];
@@ -2040,15 +2040,22 @@ static EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
 }
 
 typedef struct {
-  IPaddress server_ip;
-  TCPsocket sock;
+  const char *host_str;
+  uint16_t port;
+  tcpme_socket_t sock;
   SDL_atomic_t done;
+  SDL_atomic_t orphaned;
 } ConnectAttempt_t;
 
 static int connect_thread_fn(void *data) {
   ConnectAttempt_t *ca = data;
-  ca->sock = SDLNet_TCP_Open(&ca->server_ip);
+  ca->sock = tcpme_connect(ca->host_str, ca->port);
   SDL_AtomicSet(&ca->done, 1);
+  if (SDL_AtomicGet(&ca->orphaned)) {
+    if (tcpme_socket_valid(ca->sock))
+      tcpme_close(ca->sock);
+    SDL_free(ca);
+  }
   return 0;
 }
 
@@ -2057,20 +2064,13 @@ bool get_socket_context_and_run_client(PlayerConfig_t *player_config, const CliA
                                        SdlContext_t *sdl_context, Font_t *font, Path_t *path,
                                        const bool test_mode, LinkWidget_t **links,
                                        SocketContext_t *out_socket_context) {
-  IPaddress server_ip;
   SocketContext_t socket_context = {0};
 
-  if (SDLNet_ResolveHost(&server_ip, host_str, port) == -1) {
-    fprintf(stderr, "Failed to resolve server: %s\n", SDLNet_GetError());
-    return false;
-  }
-
-  // SDLNet_TCP_Open blocks for the OS TCP timeout on unreachable hosts.
+  // tcpme_connect blocks for the OS TCP timeout on unreachable hosts.
   // Run each attempt on a background thread; heap-allocate the state so we
   // can safely SDL_DetachThread (rather than WaitThread) on cancel/timeout.
   // Per-attempt timeout keeps the counter advancing on slow/unreachable hosts.
   static const Uint32 ATTEMPT_TIMEOUT_MS = 5000;
-  static const Uint32 RETRY_DELAY_MS = 2000;
 
   ButtonWidget_t *btn_cancel = NULL;
   TextWidget_t *status_tw = NULL;
@@ -2108,14 +2108,16 @@ bool get_socket_context_and_run_client(PlayerConfig_t *player_config, const CliA
     ConnectAttempt_t *ca = SDL_malloc(sizeof(ConnectAttempt_t));
     if (!ca)
       break;
-    ca->server_ip = server_ip;
-    ca->sock = NULL;
+    ca->host_str = host_str;
+    ca->port = port;
+    ca->sock = TCPME_INVALID_SOCKET;
     SDL_AtomicSet(&ca->done, 0);
+    SDL_AtomicSet(&ca->orphaned, 0);
 
     SDL_Thread *thread = SDL_CreateThread(connect_thread_fn, "tcp_connect", ca);
     if (!thread) {
       // Fallback: blocking connect with no event handling this attempt
-      ca->sock = SDLNet_TCP_Open(&server_ip);
+      ca->sock = tcpme_connect(host_str, port);
       SDL_AtomicSet(&ca->done, 1);
     }
 
@@ -2155,18 +2157,19 @@ bool get_socket_context_and_run_client(PlayerConfig_t *player_config, const CliA
     }
 
     if (thread && !SDL_AtomicGet(&ca->done)) {
-      // Thread is still running (cancelled or timed out). Detach it and leave
-      // ca allocated — the thread will write to it and exit on its own.
+      // Thread is still running (cancelled or timed out). Mark it orphaned so
+      // the thread closes any socket it opens and frees ca itself.
+      SDL_AtomicSet(&ca->orphaned, 1);
       SDL_DetachThread(thread);
       thread = NULL;
     } else {
       // Thread finished normally; safe to wait and free.
       if (thread)
         SDL_WaitThread(thread, NULL);
-      TCPsocket s = ca->sock;
+      tcpme_socket_t s = ca->sock;
       SDL_free(ca);
       ca = NULL;
-      if (s) {
+      if (tcpme_socket_valid(s)) {
         socket_context.sock = s;
         break;
       }
@@ -2177,12 +2180,16 @@ bool get_socket_context_and_run_client(PlayerConfig_t *player_config, const CliA
 
     if (!timed_out)
       fprintf(stderr, "Attempt %d: Failed to connect to server: %s\n", attempts + 1,
-              SDLNet_GetError());
+              tcpme_get_error());
 
-    // Brief pause between retries (skip if this was the last attempt)
+    // Wait out the remainder of ATTEMPT_TIMEOUT_MS so each attempt cycle
+    // takes the full 5 seconds even when the connect fails immediately
+    // (e.g. ECONNREFUSED). Skip on last attempt.
     if (attempts < (uint8_t)(player_config->connect_attempts - 1)) {
+      Uint32 elapsed = SDL_GetTicks() - attempt_start;
+      Uint32 wait_ms = elapsed < ATTEMPT_TIMEOUT_MS ? ATTEMPT_TIMEOUT_MS - elapsed : 0;
       Uint32 start = SDL_GetTicks();
-      while (SDL_GetTicks() - start < RETRY_DELAY_MS && !cancelled && !sdl_quit) {
+      while (SDL_GetTicks() - start < wait_ms && !cancelled && !sdl_quit) {
         SDL_Event e;
         while (SDL_PollEvent(&e)) {
           SDL_Point mp = {e.button.x, e.button.y};
@@ -2209,21 +2216,21 @@ bool get_socket_context_and_run_client(PlayerConfig_t *player_config, const CliA
   if (status_tw)
     ui_widget_destroy(&status_tw->base);
 
-  if (!socket_context.sock) {
+  if (!tcpme_socket_valid(socket_context.sock)) {
     if (!cancelled && !sdl_quit)
       printf("All %d attempts failed.\n", attempts);
     return !sdl_quit;
   }
 
-  TCPsocket sock = socket_context.sock;
-  socket_context.set = SDLNet_AllocSocketSet(1);
+  tcpme_socket_t sock = socket_context.sock;
+  socket_context.set = tcpme_alloc_set(1);
   if (!socket_context.set) {
-    fprintf(stderr, "Failed to allocate socket set: %s\n", SDLNet_GetError());
-    SDLNet_TCP_Close(sock);
+    fprintf(stderr, "Failed to allocate socket set: %s\n", tcpme_get_error());
+    tcpme_close(sock);
     return false;
   }
 
-  if (SDLNet_TCP_AddSocket(socket_context.set, sock) == -1)
+  if (tcpme_add_socket(socket_context.set, sock) != 0)
     fputs("Socket set full\n", stderr);
 
   if (send_protocol_header(sock, 0) != 0)
@@ -2399,7 +2406,6 @@ bool get_socket_context_and_run_client(PlayerConfig_t *player_config, const CliA
     g_sound_context = NULL;
     ma_engine_uninit(&sound_context.engine);
     socket_cleanup(&socket_context);
-    SDLNet_Quit();
 
     return went_back_result;
   } else {
@@ -2410,7 +2416,6 @@ bool get_socket_context_and_run_client(PlayerConfig_t *player_config, const CliA
 
 cleanup:
   socket_cleanup(&socket_context);
-  SDLNet_Quit();
   return false;
 }
 

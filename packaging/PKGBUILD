@@ -13,7 +13,6 @@ depends=(
   'sdl2'
   'sdl2_ttf'
   'sdl2_image'
-  'sdl2_net'
   'protobuf-c'
   'hicolor-icon-theme'
 )

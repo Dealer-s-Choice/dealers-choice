@@ -36,7 +36,7 @@
 #include "util.h"
 
 typedef struct ServerConfig_t {
-  char bind_address[INET6_ADDRSTRLEN];
+  char bind_address[TCPME_ADDRSTRLEN];
   uint16_t port;
   uint32_t end_of_game_timeout_ms;
   uint32_t action_timeout_ms;
