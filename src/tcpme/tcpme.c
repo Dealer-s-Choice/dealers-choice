@@ -7,6 +7,13 @@
  Copyright (c) 2026 Andy Alt
 */
 
+/*
+  "tcpme" was inspired by libsdl_net <https://github.com/libsdl-org/SDL_net>
+  A portable network library for use with SDL. It's goal is to simplify the
+  use of the usual socket interfaces and use SDL infrastructure to handle
+  some portability things (such as threading and reporting errors).
+*/
+
 #ifdef _WIN32
 // clang-format off
 #  include <winsock2.h>

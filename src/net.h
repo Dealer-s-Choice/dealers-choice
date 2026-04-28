@@ -43,7 +43,7 @@
 #endif
 
 #define GAME_PROTOCOL_MAGIC "DCPROTO"
-#define GAME_PROTOCOL_VERSION 9
+#define GAME_PROTOCOL_VERSION 10
 
 /* Flags sent in GameProtocolHeader_t.flags */
 #define PROTO_FLAG_BOT 0x01

@@ -25,6 +25,13 @@
  SOFTWARE.
 */
 
+/*
+  "tcpme" was inspired by libsdl_net <https://github.com/libsdl-org/SDL_net>
+  A portable network library for use with SDL. It's goal is to simplify the
+  use of the usual socket interfaces and use SDL infrastructure to handle
+  some portability things (such as threading and reporting errors).
+*/
+
 #pragma once
 
 #ifdef __cplusplus
