@@ -87,11 +87,15 @@ Dealer's Choice is a lightweight 2D application and runs on modest hardware.
 | OS        | Linux (kernel 4.x+), macOS 14, Windows 10 |
 | CPU       | 1 GHz single-core |
 | RAM       | 2 GB |
-| Graphics  | Any GPU or integrated graphics with OpenGL 2.0 support |
+| Graphics  | Any display output supported by SDL2 |
 | Storage   | 100 MB |
 | Network   | LAN or internet connection to reach a server |
 | Audio     | Optional — any audio output device |
 | Display   | 1280 × 720 minimum, 1920 × 1080 recommended |
+
+The server (`--server` mode) has no graphics, audio, or display
+requirements and can run on any architecture where SDL2 is available,
+including headless systems.
 
 ## Player Config
 
