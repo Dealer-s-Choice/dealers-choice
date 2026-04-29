@@ -20,9 +20,7 @@
 #  include <ws2tcpip.h>
 // clang-format on
 #define close_socket(s) closesocket(s)
-#define sock_error() WSAGetLastError()
 #else
-#include <arpa/inet.h>
 #include <errno.h>
 #include <netdb.h>
 #include <netinet/in.h>
@@ -30,7 +28,6 @@
 #include <sys/socket.h>
 #include <unistd.h>
 #define close_socket(s) close(s)
-#define sock_error() errno
 #endif
 
 #include "tcpme.h"
@@ -190,8 +187,12 @@ tcpme_socket_t tcpme_accept(tcpme_socket_t server_sock) {
 #endif
       &rfds, NULL, NULL, &tv);
 
-  if (n <= 0)
-    return TCPME_INVALID_SOCKET; // nothing pending; n<0 is system error but we return invalid
+  if (n < 0) {
+    set_error_sys("accept: select() failed");
+    return TCPME_INVALID_SOCKET;
+  }
+  if (n == 0)
+    return TCPME_INVALID_SOCKET;
 
   struct sockaddr_storage addr;
   socklen_t addrlen = sizeof(addr);
@@ -306,11 +307,14 @@ tcpme_set_t *tcpme_alloc_set(int capacity) {
     return NULL;
   }
   tcpme_set_t *set = (tcpme_set_t *)malloc(sizeof(*set));
-  if (!set)
+  if (!set) {
+    set_error_sys("tcpme_alloc_set: malloc failed");
     return NULL;
+  }
   set->sockets = (tcpme_socket_t *)malloc((size_t)capacity * sizeof(tcpme_socket_t));
   set->ready = (bool *)calloc((size_t)capacity, sizeof(bool));
   if (!set->sockets || !set->ready) {
+    set_error_sys("tcpme_alloc_set: malloc failed");
     free(set->sockets);
     free(set->ready);
     free(set);
@@ -330,7 +334,11 @@ void tcpme_free_set(tcpme_set_t *set) {
 }
 
 int tcpme_add_socket(tcpme_set_t *set, tcpme_socket_t sock) {
-  if (!set || set->count >= set->capacity) {
+  if (!set) {
+    set_error("tcpme_add_socket: NULL socket set");
+    return -1;
+  }
+  if (set->count >= set->capacity) {
     set_error("socket set is full");
     return -1;
   }

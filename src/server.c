@@ -1841,6 +1841,8 @@ static void flush_client_socket(tcpme_socket_t sock) {
   char buffer[512];
   int len;
   tcpme_set_t *tmp_set = tcpme_alloc_set(1);
+  if (!tmp_set)
+    return;
   tcpme_add_socket(tmp_set, sock);
 
   for (;;) {
