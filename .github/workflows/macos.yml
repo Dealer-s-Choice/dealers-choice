@@ -23,7 +23,8 @@ jobs:
       matrix:
         os:
           - macos-15
-          - macos-14
+          - macOS-15-arm64
+          - macOS-26
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v6
