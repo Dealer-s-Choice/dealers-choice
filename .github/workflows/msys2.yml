@@ -53,6 +53,7 @@ jobs:
           SDL2_net:p
           SDL2_ttf:p
         update: true
+        cache: true
 
     - name: Meson setup
       shell: msys2 {0}
