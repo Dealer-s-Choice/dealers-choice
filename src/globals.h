@@ -29,7 +29,7 @@
 #ifndef __GLOBALS_H
 #define __GLOBALS_H
 
-#include <pcg_basic.h>
+#include <deckhandler.h>
 
 #include "config.h"
 #include "graphics.h"

@@ -6,6 +6,7 @@
     or emulated hardware (e.g. s390x under QEMU) a ping response from the lobby
     phase can still be buffered in the TCP socket when the game starts, causing
     an "Unrecognised opcode" error and a spurious disconnection
+  * Move deckhandler and pokeval inline (no longer imported as meson subprojects)
 
 2026-04-24
 
