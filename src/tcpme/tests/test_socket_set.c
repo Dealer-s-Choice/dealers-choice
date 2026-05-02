@@ -3,24 +3,11 @@
  * socket_ready, del, free. Uses a loopback pair as concrete sockets.
  */
 
-#ifdef NDEBUG
-#undef NDEBUG
-#endif
-#include <assert.h>
-#include <stdint.h>
+#include "tcpme_test_helpers.h"
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 
 #include "tcpme.h"
-
-static uint16_t extract_port(const char *addr) {
-  const char *colon = strrchr(addr, ':');
-  assert(colon != NULL);
-  int p = atoi(colon + 1);
-  assert(p > 0 && p <= 65535);
-  return (uint16_t)p;
-}
 
 int main(void) {
   assert(tcpme_init() == 0);

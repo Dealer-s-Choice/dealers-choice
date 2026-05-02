@@ -3,10 +3,7 @@
  * and graceful failure paths.
  */
 
-#ifdef NDEBUG
-#undef NDEBUG
-#endif
-#include <assert.h>
+#include "tcpme_test_helpers.h"
 #include <string.h>
 
 #include "tcpme.h"
