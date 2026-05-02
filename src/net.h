@@ -29,7 +29,7 @@
 #ifndef __NET_H
 #define __NET_H
 
-#include <SDL2/SDL_net.h>
+#include "tcpme/tcpme.h"
 
 #include "globals.h"
 #include "netpoker.pb-c.h"
@@ -43,7 +43,7 @@
 #endif
 
 #define GAME_PROTOCOL_MAGIC "DCPROTO"
-#define GAME_PROTOCOL_VERSION 9
+#define GAME_PROTOCOL_VERSION 10
 
 /* Flags sent in GameProtocolHeader_t.flags */
 #define PROTO_FLAG_BOT 0x01
@@ -62,12 +62,6 @@ GameProtocolHeader_t;
 #pragma pack(pop)
 #else
 __attribute__((packed)) GameProtocolHeader_t;
-#endif
-
-// On Windows, this is defined in <ws2tcpip.h>. Rather than include the file
-// let's just do this...
-#ifndef INET6_ADDRSTRLEN
-#define INET6_ADDRSTRLEN 46
 #endif
 
 #define OPCODE_SIZE sizeof(uint16_t)
@@ -101,8 +95,8 @@ typedef enum {
 } ERecvStatus_t;
 
 typedef struct {
-  TCPsocket sock;
-  SDLNet_SocketSet set;
+  tcpme_socket_t sock;
+  tcpme_set_t *set;
 } SocketContext_t;
 
 typedef struct {
@@ -147,30 +141,31 @@ POKEVAL_Hand_9 deserialize_hand(const uint8_t *data, size_t size);
 uint8_t *serialize_player(const Player_t *src, size_t *size_out);
 Player_t deserialize_player(const uint8_t *data, size_t size);
 
-int send_all_tcp(TCPsocket sock, const void *data, size_t length);
+int send_all_tcp(tcpme_socket_t sock, const void *data, size_t length);
 
-int recv_all_tcp(TCPsocket sock, void *buf, size_t len);
+int recv_all_tcp(tcpme_socket_t sock, void *buf, size_t len);
 
 ERecvStatus_t recv_game_state(SocketContext_t *socket_context, GameState_t *game_state,
                               ClientState_t *client_state, const int8_t id);
 
-ERecvStatus_t recv_game_settings(TCPsocket client_socket, SDLNet_SocketSet socket_set,
+ERecvStatus_t recv_game_settings(tcpme_socket_t client_socket, tcpme_set_t *socket_set,
                                  GameSettings_t *game_settings);
 
 void socket_cleanup(SocketContext_t *socket_context);
 
-int send_message(TCPsocket sock, uint16_t opcode, const uint8_t *payload, size_t payload_len);
+int send_message(tcpme_socket_t sock, uint16_t opcode, const uint8_t *payload, size_t payload_len);
 
-int send_protocol_header(TCPsocket sock, uint8_t flags);
+int send_protocol_header(tcpme_socket_t sock, uint8_t flags);
 
-int authenticate_with_server(TCPsocket sock, const char *password);
+int authenticate_with_server(tcpme_socket_t sock, const char *password);
 
 bool bot_connect(const char *host_str, uint16_t port, const char *nick, const char *password,
                  SocketContext_t *out);
 
-int send_player_action(ClientState_t *client_state, TCPsocket sock, uint8_t action,
+int send_player_action(ClientState_t *client_state, tcpme_socket_t sock, uint8_t action,
                        uint32_t amount);
 
-int send_discards_request_new_cards(TCPsocket sock, const uint8_t *discard_indices, uint8_t count);
+int send_discards_request_new_cards(tcpme_socket_t sock, const uint8_t *discard_indices,
+                                    uint8_t count);
 
 #endif

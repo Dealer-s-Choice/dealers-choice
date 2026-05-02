@@ -11,7 +11,6 @@ RUN apk update && apk add --no-cache \
     protobuf-c-dev \
     sdl2-dev \
     sdl2_image-dev \
-    sdl2_net-dev \
     sdl2_ttf-dev \
     musl-dev
 
@@ -30,7 +29,6 @@ RUN apk add --no-cache \
     libsodium \
     sdl2 \
     sdl2_image \
-    sdl2_net \
     sdl2_ttf \
     protobuf-c \
     libstdc++

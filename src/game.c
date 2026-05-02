@@ -163,7 +163,7 @@ const GameChoice_t *find_game_choice_by_type(const uint8_t type) {
   return NULL; // Not found
 }
 
-int send_game_select(TCPsocket sock, uint8_t game_type, bool deuces_wild) {
+int send_game_select(tcpme_socket_t sock, uint8_t game_type, bool deuces_wild) {
   GameSelectPayload_t payload = {game_type, deuces_wild ? 1 : 0};
 
   const uint32_t payload_size = OPCODE_SIZE + sizeof(payload);
@@ -195,12 +195,12 @@ int send_game_select(TCPsocket sock, uint8_t game_type, bool deuces_wild) {
   return result;
 }
 
-int send_kick_player(TCPsocket sock, int8_t target_id) {
+int send_kick_player(tcpme_socket_t sock, int8_t target_id) {
   uint8_t payload = (uint8_t)target_id;
   return send_message(sock, MSG_KICK_PLAYER, &payload, sizeof(payload));
 }
 
-int send_ban_player(TCPsocket sock, int8_t target_id) {
+int send_ban_player(tcpme_socket_t sock, int8_t target_id) {
   uint8_t payload = (uint8_t)target_id;
   return send_message(sock, MSG_BAN_PLAYER, &payload, sizeof(payload));
 }

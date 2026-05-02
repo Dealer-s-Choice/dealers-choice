@@ -23,26 +23,20 @@ static int SDLCALL server_thread(void *data) {
   ServerArgs_t *args = (ServerArgs_t *)data;
   args->result = -1;
 
-  IPaddress ip;
-  if (SDLNet_ResolveHost(&ip, NULL, args->port) != 0) {
-    fprintf(stderr, "server: ResolveHost failed: %s\n", SDLNet_GetError());
+  tcpme_socket_t server_sock = tcpme_listen(NULL, args->port);
+  if (!tcpme_socket_valid(server_sock)) {
+    fprintf(stderr, "server: listen failed: %s\n", tcpme_get_error());
     return -1;
   }
 
-  TCPsocket server_sock = SDLNet_TCP_Open(&ip);
-  if (!server_sock) {
-    fprintf(stderr, "server: TCP_Open failed: %s\n", SDLNet_GetError());
-    return -1;
-  }
-
-  TCPsocket client = NULL;
-  for (int i = 0; i < 50 && !client; i++) {
-    client = SDLNet_TCP_Accept(server_sock);
+  tcpme_socket_t client = TCPME_INVALID_SOCKET;
+  for (int i = 0; i < 50 && !tcpme_socket_valid(client); i++) {
+    client = tcpme_accept(server_sock);
     SDL_Delay(50);
   }
-  SDLNet_TCP_Close(server_sock);
+  tcpme_close(server_sock);
 
-  if (!client) {
+  if (!tcpme_socket_valid(client)) {
     fprintf(stderr, "server: no client connected within timeout\n");
     return -1;
   }
@@ -53,7 +47,7 @@ static int SDLCALL server_thread(void *data) {
   memset(nonce, 0, sizeof(nonce));
   if (send_all_tcp(client, nonce, NONCE_SIZE) != 0) {
     fprintf(stderr, "server: failed to send nonce\n");
-    SDLNet_TCP_Close(client);
+    tcpme_close(client);
     return -1;
   }
 
@@ -61,7 +55,7 @@ static int SDLCALL server_thread(void *data) {
      sends exactly HASH_SIZE bytes without hanging or erroring. */
   unsigned char hash[HASH_SIZE];
   int rc = recv_all_tcp(client, hash, HASH_SIZE);
-  SDLNet_TCP_Close(client);
+  tcpme_close(client);
 
   args->result = (rc < 0) ? -1 : 0;
   return args->result;
@@ -70,8 +64,13 @@ static int SDLCALL server_thread(void *data) {
 int main(int argc, char *argv[]) {
   (void)argc;
   (void)argv;
-  if (SDL_Init(0) != 0 || SDLNet_Init() != 0) {
-    fprintf(stderr, "SDL/SDLNet init failed: %s\n", SDL_GetError());
+  if (SDL_Init(0) != 0) {
+    fprintf(stderr, "SDL init failed: %s\n", SDL_GetError());
+    return 1;
+  }
+  if (tcpme_init() != 0) {
+    fprintf(stderr, "tcpme_init failed: %s\n", tcpme_get_error());
+    SDL_Quit();
     return 1;
   }
 
@@ -89,19 +88,16 @@ int main(int argc, char *argv[]) {
 
   SDL_Delay(200);
 
-  IPaddress ip;
-  assert(SDLNet_ResolveHost(&ip, "127.0.0.1", port) == 0);
-
-  TCPsocket sock = NULL;
-  for (int i = 0; i < 20 && !sock; i++) {
-    sock = SDLNet_TCP_Open(&ip);
-    if (!sock)
+  tcpme_socket_t sock = TCPME_INVALID_SOCKET;
+  for (int i = 0; i < 20 && !tcpme_socket_valid(sock); i++) {
+    sock = tcpme_connect("127.0.0.1", port);
+    if (!tcpme_socket_valid(sock))
       SDL_Delay(100);
   }
-  assert(sock != NULL);
+  assert(tcpme_socket_valid(sock));
 
   int client_rc = authenticate_with_server(sock, "");
-  SDLNet_TCP_Close(sock);
+  tcpme_close(sock);
 
   int thread_rc;
   SDL_WaitThread(thread, &thread_rc);
@@ -112,7 +108,7 @@ int main(int argc, char *argv[]) {
 
   fprintf(stderr, "sodium_compat: handshake OK (client=%d server=%d)\n", client_rc, thread_rc);
 
-  SDLNet_Quit();
+  tcpme_quit();
   SDL_Quit();
   return 0;
 }

@@ -748,12 +748,11 @@ static CliArgs_t parse_cli_args(int argc, char *argv[]) {
     case '?':
     default:
       print_version();
-      // https://github.com/Dealer-s-Choice/dealers-choice/issues/48
-      // "  --server [--bind-address IP]\n"
       fputs("Usage:\n"
             "  --verbose\n"
             "  --server-log-game-results [path/to/file]\n"
             "  --server-conf [Path to alternate server config file]\n"
+            "  --bind-address [IP]        Address for the server to bind to (default: all interfaces)\n"
             "  --host [IP]\n"
             "  --port [port]\n"
             "  --disable-audio\n"
@@ -837,8 +836,13 @@ int main(int argc, char *argv[]) {
     return run_server(&cli_args, &path);
   }
 
-  if (SDL_Init(SDL_INIT_VIDEO) == -1 || SDLNet_Init() == -1) {
-    fprintf(stderr, "SDL or SDL_net init failed: %s\n", SDLNet_GetError());
+  if (SDL_Init(SDL_INIT_VIDEO) == -1) {
+    fprintf(stderr, "SDL init failed: %s\n", SDL_GetError());
+    return 1;
+  }
+  if (tcpme_init() != 0) {
+    fprintf(stderr, "tcpme_init failed: %s\n", tcpme_get_error());
+    SDL_Quit();
     return 1;
   }
 
@@ -934,6 +938,7 @@ int main(int argc, char *argv[]) {
   for (int i = 0; i < NUM_FONTS; ++i)
     TTF_CloseFont(font.fonts[i]);
   TTF_Quit();
+  tcpme_quit();
   do_sdl_cleanup(&sdl_context);
 
   return 0;

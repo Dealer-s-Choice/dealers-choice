@@ -50,7 +50,6 @@ jobs:
           protobuf-c:p
           SDL2:p
           SDL2_image:p
-          SDL2_net:p
           SDL2_ttf:p
         update: true
         cache: true

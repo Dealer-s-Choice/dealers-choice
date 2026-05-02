@@ -1,5 +1,6 @@
 - (in-progress)
-
+  * Replace SDL2_net with tcpme (thin POSIX/Winsock wrapper)
+  * Bump GAME_PROTOCOL_VERSION from 9 to 10
   * server: silently skip MSG_PING_RESPONSE frames in recv_turn_player_msg and
     handle_draw; the server only sends ping requests in the lobby, but on slow
     or emulated hardware (e.g. s390x under QEMU) a ping response from the lobby
