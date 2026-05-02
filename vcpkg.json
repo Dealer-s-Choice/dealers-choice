@@ -6,7 +6,6 @@
     "protobuf-c",
     "sdl2",
     "sdl2-image",
-    "sdl2-net",
     "sdl2-ttf"
   ]
 }
