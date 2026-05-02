@@ -1,6 +1,7 @@
 foreach t : [
   'test_basic',
   'test_loopback',
+  'test_ipv6',
   'test_socket_set',
   'test_error_paths',
   'test_hostname',

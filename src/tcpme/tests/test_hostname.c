@@ -28,7 +28,7 @@ int main(void) {
   tcpme_socket_t client = tcpme_connect("localhost", port);
   assert(tcpme_socket_valid(client));
 
-  tcpme_socket_t peer = tcpme_accept(server);
+  tcpme_socket_t peer = tc_accept_retry(server);
   assert(tcpme_socket_valid(peer));
 
   const char msg[] = "hostname test";
@@ -60,7 +60,7 @@ int main(void) {
     c2 = tcpme_connect("::1", all_port);
   assert(tcpme_socket_valid(c2));
 
-  tcpme_socket_t p2 = tcpme_accept(all_server);
+  tcpme_socket_t p2 = tc_accept_retry(all_server);
   assert(tcpme_socket_valid(p2));
 
   tcpme_close(p2);

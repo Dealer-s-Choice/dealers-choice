@@ -45,12 +45,14 @@ if cc.get_id() != 'msvc'
   ]
   add_project_arguments(cc.get_supported_arguments(extra_flags), language: 'c')
 
-  # To enable PATH_MAX and friends on Alpine Linux
-  definitions = [
-    '-D_XOPEN_SOURCE',
-    '-D_POSIX_C_SOURCE=200112L',  # enable setenv() on Ubuntu Jammy
-  ]
-  add_project_arguments(definitions, language: 'c')
+  if host_sys == 'linux'
+    # To enable PATH_MAX and friends on Alpine Linux
+    definitions = [
+      '-D_XOPEN_SOURCE',
+      '-D_POSIX_C_SOURCE=200112L',  # enable setenv() on Ubuntu Jammy
+    ]
+    add_project_arguments(definitions, language: 'c')
+  endif
 else
   add_project_arguments(
     [

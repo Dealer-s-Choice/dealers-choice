@@ -25,13 +25,10 @@ int main(void) {
   printf("server listening at %s\n", local_addr);
   uint16_t port = extract_port(local_addr);
 
-  /* Connect from client side (blocking). The loopback TCP handshake
-   * completes before connect() returns, so accept() below is non-blocking. */
   tcpme_socket_t client = tcpme_connect("127.0.0.1", port);
   assert(tcpme_socket_valid(client));
 
-  /* Non-blocking accept — connection is already in the queue. */
-  tcpme_socket_t peer = tcpme_accept(server);
+  tcpme_socket_t peer = tc_accept_retry(server);
   assert(tcpme_socket_valid(peer));
 
   /* Verify peer IP seen from the server side. */
