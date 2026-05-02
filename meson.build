@@ -74,12 +74,6 @@ canfigger_dep = dependency(
   default_options: ['default_library=static'],
 )
 
-deckhandler_dep = dependency(
-  'deckhandler',
-  default_options: 'default_library=static',
-)
-
-pokeval_dep = dependency('pokeval', default_options: 'default_library=static')
 protobuf_dep = dependency('libprotobuf-c')
 
 conf = configuration_data()
@@ -88,9 +82,7 @@ miniaudio_dep = subproject('miniaudio').get_variable('miniaudio_dep')
 
 shared_dep = [
   canfigger_dep,
-  deckhandler_dep,
   miniaudio_dep,
-  pokeval_dep,
   win_deps,
 ]
 
@@ -136,6 +128,7 @@ subdir('po')
 
 subdir('src/tcpme')
 shared_dep += tcpme_dep
+
 conf.set_quoted(
   'DEALERSCHOICE_LOCALEDIR',
   join_paths(get_option('prefix'), get_option('localedir')),
@@ -157,6 +150,7 @@ conf.set_quoted(
 )
 
 subdir('src')
+
 configure_file(output: 'config.h', configuration: conf)
 
 _lib = static_library(

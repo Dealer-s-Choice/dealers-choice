@@ -42,3 +42,8 @@ bot_src = files(
   'server.c',
   'util.c',
 )
+
+subdir('deckhandler')
+shared_dep += deckhandler_dep
+subdir('pokeval')
+shared_dep += pokeval_dep
