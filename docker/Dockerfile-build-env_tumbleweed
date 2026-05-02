@@ -6,12 +6,10 @@ RUN zypper --non-interactive refresh && \
     gettext \
     gcc \
     git \
-    glib2-devel \
-    libSDL2-devel \
-    libSDL2_image-devel \
-    libSDL2_ttf-devel \
+    SDL2-devel \
+    SDL2_image-devel \
+    SDL2_ttf-devel \
     libsodium-devel \
-    ncurses-devel \
     meson \
     ninja \
     protobuf-c-devel && \
