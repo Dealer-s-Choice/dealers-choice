@@ -10,6 +10,7 @@ on:
     - '**'
     - '!**.yml'
     - '!**.md'
+    - '!docker/Dockerfile-build-env_**'
     - '**/msvc.yml'
 
   pull_request:

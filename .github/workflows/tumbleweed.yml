@@ -10,6 +10,7 @@ on:
       - '**'
       - '!**.yml'
       - '!**.md'
+      - '!docker/Dockerfile-build-env_**'
       - '**/tumbleweed.yml'
   pull_request:
     branches: [ trunk ]

@@ -18,6 +18,7 @@ on:
     - '**'
     - '!**.md'
     - '!**.yml'
+    - '!docker/Dockerfile-build-env_**'
     - 'packaging/appimage/**'
     - '**/appimage.yml'
 

@@ -16,6 +16,7 @@ on:
       - '**'
       - '!**.yml'
       - '!**.md'
+      - '!docker/Dockerfile-build-env_**'
       - '**/linux.yml'
 
   pull_request:
