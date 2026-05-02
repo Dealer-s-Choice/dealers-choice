@@ -1,0 +1,23 @@
+FROM opensuse/tumbleweed
+
+RUN zypper --non-interactive refresh && \
+    zypper --non-interactive update && \
+    zypper --non-interactive install \
+    gettext \
+    gcc \
+    git \
+    glib2-devel \
+    libSDL2-devel \
+    libSDL2_image-devel \
+    libSDL2_ttf-devel \
+    libsodium-devel \
+    ncurses-devel \
+    meson \
+    ninja \
+    protobuf-c-devel && \
+    zypper clean
+
+RUN useradd -U builder && \
+    passwd -d builder
+
+CMD ["/bin/bash", "-l"]

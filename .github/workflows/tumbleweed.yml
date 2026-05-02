@@ -1,0 +1,49 @@
+name: OpenSUSE Tumbleweed
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
+
+on:
+  push:
+    branches: [ trunk ]
+    paths: &shared_paths
+      - '**'
+      - '!**.yml'
+      - '!**.md'
+      - '**/tumbleweed.yml'
+  pull_request:
+    branches: [ trunk ]
+    paths: *shared_paths
+
+jobs:
+  tumbleweed:
+    name: s390x
+    runs-on: ubuntu-latest
+    env:
+      IMAGE: ghcr.io/dealer-s-choice/build_env:build-env-tumbleweed
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v4
+
+      - name: Meson setup
+        run: |
+          docker run --rm --platform linux/s390x \
+            -v "${{ github.workspace }}:/src" -w /src \
+            "$IMAGE" \
+            sh -c "CFLAGS='-Werror' meson setup _build"
+
+      - name: Build
+        run: |
+          docker run --rm --platform linux/s390x \
+            -v "${{ github.workspace }}:/src" -w /src \
+            "$IMAGE" \
+            meson compile -C _build
+
+      - name: Test
+        run: |
+          docker run --rm --platform linux/s390x \
+            -v "${{ github.workspace }}:/src" -w /src \
+            "$IMAGE" \
+            meson test --no-stdsplit -v -C _build
