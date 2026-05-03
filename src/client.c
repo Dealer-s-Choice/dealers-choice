@@ -2059,6 +2059,20 @@ static int connect_thread_fn(void *data) {
   return 0;
 }
 
+typedef struct {
+  ma_engine_config engineConfig;
+  ma_engine *engine;
+  ma_result result;
+  SDL_atomic_t done;
+} AudioInitAttempt_t;
+
+static int audio_init_thread_fn(void *data) {
+  AudioInitAttempt_t *aa = data;
+  aa->result = ma_engine_init(&aa->engineConfig, aa->engine);
+  SDL_AtomicSet(&aa->done, 1);
+  return 0;
+}
+
 bool get_socket_context_and_run_client(PlayerConfig_t *player_config, const CliArgs_t *cli_args,
                                        const char *host_str, const uint16_t port,
                                        SdlContext_t *sdl_context, Font_t *font, Path_t *path,
@@ -2287,6 +2301,10 @@ bool get_socket_context_and_run_client(PlayerConfig_t *player_config, const CliA
       exit(EXIT_FAILURE);
 
     bool went_back_result = false;
+    bool audio_sdl_quit = false;
+    size_t i;
+    size_t n_sounds_init = 0;
+    size_t n_coin_sounds_init = 0;
     atomic_store(&g_audio_needs_restart, false);
     atomic_store(&g_audio_shutting_down, false);
     SoundContext_t sound_context = {0};
@@ -2295,16 +2313,50 @@ bool get_socket_context_and_run_client(PlayerConfig_t *player_config, const CliA
       sound_context.engineConfig.noDevice = MA_TRUE;
       sound_context.engineConfig.channels = 2;
       sound_context.engineConfig.sampleRate = 48000;
+      sound_context.result = ma_engine_init(&sound_context.engineConfig, &sound_context.engine);
     } else {
+      // ma_engine_init can block for seconds when a sound server (e.g. PulseAudio)
+      // is unreachable. Run it on a background thread so the window stays responsive.
       verbose_puts("Initializing audio engine (powered by miniaudio: https://miniaud.io/)");
       sound_context.engineConfig.notificationCallback = on_audio_device_notification;
+      AudioInitAttempt_t aa = {.engineConfig = sound_context.engineConfig,
+                               .engine = &sound_context.engine};
+      SDL_AtomicSet(&aa.done, 0);
+      SDL_Thread *audio_thread = SDL_CreateThread(audio_init_thread_fn, "audio_init", &aa);
+      if (!audio_thread) {
+        aa.result = ma_engine_init(&aa.engineConfig, aa.engine);
+        SDL_AtomicSet(&aa.done, 1);
+      }
+      while (!SDL_AtomicGet(&aa.done)) {
+        SDL_Event e;
+        while (SDL_PollEvent(&e)) {
+          if (e.type == SDL_QUIT)
+            audio_sdl_quit = true;
+        }
+        SDL_Delay(16);
+      }
+      if (audio_thread)
+        SDL_WaitThread(audio_thread, NULL);
+      sound_context.result = aa.result;
+      if (sound_context.result != MA_SUCCESS) {
+        fprintf(
+            stderr,
+            "Warning: Failed to initialize audio engine (code: %d), continuing without audio.\n",
+            sound_context.result);
+        sound_context.engineConfig.noDevice = MA_TRUE;
+        sound_context.engineConfig.channels = 2;
+        sound_context.engineConfig.sampleRate = 48000;
+        sound_context.engineConfig.notificationCallback = NULL;
+        sound_context.result = ma_engine_init(&sound_context.engineConfig, &sound_context.engine);
+      }
     }
-    sound_context.result = ma_engine_init(&sound_context.engineConfig, &sound_context.engine);
     if (sound_context.result != MA_SUCCESS) {
-      fprintf(stderr, "Error: Failed to initialize miniaudio engine (code: %d).\n",
+      fprintf(stderr, "Error: Failed to initialize audio engine (code: %d).\n",
               sound_context.result);
       exit(EXIT_FAILURE);
     }
+    if (audio_sdl_quit)
+      goto cleanup_audio;
     if (!sound_context.engineConfig.noDevice)
       g_sound_context = &sound_context;
     ma_engine_set_volume(&sound_context.engine, player_config->volume * .1f);
@@ -2326,10 +2378,6 @@ bool get_socket_context_and_run_client(PlayerConfig_t *player_config, const CliA
 
     sound_context.sounds = sounds;
     sound_context.coin_hit_sounds = coin_hit_sounds;
-
-    size_t i;
-    size_t n_sounds_init = 0;
-    size_t n_coin_sounds_init = 0;
     for (i = 0; i < SND_NUM_SOUNDS; i++) {
       char *sub = canfigger_path_join("sounds", sounds[i].filename);
       char *snd_path = canfigger_path_join(path->data, sub);
