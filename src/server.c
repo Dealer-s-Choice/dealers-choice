@@ -922,11 +922,6 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args, uint32_t i
                 handle_check(&action);
                 break;
               case ACTION_BET:
-                // Completing the bring-in (COMPLETE_CHECK_FOLD) or opening a new
-                // bet (BET_CHECK_FOLD) both count against the raise cap when there
-                // is already money in the pot.
-                if (total_bets_plus_raises > 0 && args->game_state->raises_remaining > 0)
-                  args->game_state->raises_remaining--;
                 server_handle_bet(args->game_state, &player_total_paid[turn->id], turn->id,
                                   action.amount, &total_bets_plus_raises);
                 action.str = (opcode == MSG_COMPLETE_CHECK_FOLD) ? _("completed ") : _("bet ");
@@ -948,8 +943,7 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args, uint32_t i
                 break;
               case ACTION_BET:
                 // Complete: raise to full bet from the bring-in (MSG_CALL_COMPLETE_FOLD).
-                if (opcode == MSG_CALL_COMPLETE_FOLD && args->game_state->raises_remaining > 0) {
-                  args->game_state->raises_remaining--;
+                if (opcode == MSG_CALL_COMPLETE_FOLD) {
                   server_handle_bet(args->game_state, &player_total_paid[turn->id], turn->id,
                                     action.amount, &total_bets_plus_raises);
                   action.str = _("completed ");

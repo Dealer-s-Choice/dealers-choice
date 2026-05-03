@@ -50,6 +50,7 @@ game_logic = [
   '5_card_stud',
   'kick_ban',
   'texas_holdem',
+  'raises',
 ]
 
 port = base_port + 1
