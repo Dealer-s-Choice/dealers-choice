@@ -42,9 +42,9 @@ page](https://github.com/Dealer-s-Choice/dealers-choice/releases/tag/snapshot).
 
 * [5-card single and double draw](https://en.wikipedia.org/wiki/Draw_poker)
 * 5-card showdown (Similar to 5-card draw, but with no discard/draw round)
-* [5-card stud](https://en.wikipedia.org/wiki/Five-card_stud) (not all the rules have been implemented yet, such as the bring-in bet)
-* [6-card stud](https://en.wikipedia.org/wiki/Stud_poker#Six-card_stud) (not all the rules have been implemented yet, such as the bring-in bet)
-* [7-card stud](https://en.wikipedia.org/wiki/Seven-card_stud) (not all the rules have been implemented yet, such as the bring-in bet)
+* [5-card stud](https://en.wikipedia.org/wiki/Five-card_stud)
+* [6-card stud](https://en.wikipedia.org/wiki/Stud_poker#Six-card_stud)
+* [7-card stud](https://en.wikipedia.org/wiki/Seven-card_stud)
 * [California lowball](https://en.wikipedia.org/wiki/Lowball_(poker))
 * [Omaha](https://en.wikipedia.org/wiki/Omaha_hold_%27em)
 * [Texas Hold'em](https://en.wikipedia.org/wiki/Texas_hold_%27em)
