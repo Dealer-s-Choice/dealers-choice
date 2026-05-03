@@ -23,7 +23,7 @@ static int SDLCALL server_thread(void *data) {
   ServerArgs_t *args = (ServerArgs_t *)data;
   args->result = -1;
 
-  tcpme_socket_t server_sock = tcpme_listen(NULL, args->port);
+  tcpme_socket_t server_sock = tcpme_listen("127.0.0.1", args->port);
   if (!tcpme_socket_valid(server_sock)) {
     fprintf(stderr, "server: listen failed: %s\n", tcpme_get_error());
     return -1;

@@ -149,6 +149,16 @@ tcpme_socket_t tcpme_listen(const char *host, uint16_t port) {
       if (ai->ai_family == AF_INET6) {
         int zero = 0;
         setsockopt(sock, IPPROTO_IPV6, IPV6_V6ONLY, (const char *)&zero, sizeof(zero));
+        // Verify dual-stack actually took effect; OpenBSD ignores IPV6_V6ONLY=0
+        // and the socket would only accept IPv6, so fall through to the IPv4 pass.
+        int v6only = 1;
+        socklen_t vlen = sizeof(v6only);
+        getsockopt(sock, IPPROTO_IPV6, IPV6_V6ONLY, (char *)&v6only, &vlen);
+        if (v6only != 0) {
+          close_socket(sock);
+          sock = TCPME_INVALID_SOCKET;
+          continue;
+        }
       }
 #endif
 

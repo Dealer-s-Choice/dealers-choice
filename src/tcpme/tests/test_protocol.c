@@ -14,7 +14,7 @@
 #include "tcpme.h"
 
 #define N_CLIENTS 3
-#define N_ROUNDS  8
+#define N_ROUNDS 8
 
 /* listen socket + one slot per client */
 #define SET_CAP (N_CLIENTS + 1)
@@ -23,7 +23,7 @@
 
 typedef struct {
   tcpme_socket_t listen_sock;
-  int            error;
+  int error;
 } ServerArg_t;
 
 static TC_THREAD_FN server_thread(void *varg) {
@@ -83,8 +83,8 @@ static TC_THREAD_FN server_thread(void *varg) {
 
 typedef struct {
   uint16_t port;
-  int      id;
-  int      error;
+  int id;
+  int error;
 } ClientArg_t;
 
 static TC_THREAD_FN client_thread(void *varg) {
@@ -118,8 +118,8 @@ static TC_THREAD_FN client_thread(void *varg) {
     char expected[32];
     snprintf(expected, sizeof(expected), "PONG %d:%d", ca->id, r);
     if (strcmp(reply, expected) != 0) {
-      fprintf(stderr, "client %d round %d: expected \"%s\", got \"%s\"\n",
-              ca->id, r, expected, reply);
+      fprintf(stderr, "client %d round %d: expected \"%s\", got \"%s\"\n", ca->id, r, expected,
+              reply);
       ca->error = 1;
     }
   }
