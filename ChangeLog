@@ -8,6 +8,9 @@
     phase can still be buffered in the TCP socket when the game starts, causing
     an "Unrecognised opcode" error and a spurious disconnection
   * Move deckhandler and pokeval inline (no longer imported as meson subprojects)
+  * bugfix: Window becomes unresponsive on systems where audio initialisation
+    blocks (e.g. PulseAudio socket absent); run ma_engine_init on a background
+    thread and fall back to silent (noDevice) mode on failure
 
 2026-04-24
 
