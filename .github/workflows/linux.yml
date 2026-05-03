@@ -41,6 +41,20 @@ jobs:
     - name: Test
       run: meson test --no-stdsplit -v -C _build
 
+    - name: ASan/UBSan setup
+      run: CC=clang CFLAGS="-Werror -fno-sanitize-recover=all" meson setup _build_asan -Db_sanitize=address,undefined -Db_lundef=false
+    - name: ASan/UBSan build
+      run: meson compile -C _build_asan
+    - name: ASan/UBSan test
+      run: meson test --no-stdsplit -v -C _build_asan
+
+    - name: TSan setup
+      run: CC=clang CFLAGS="-Werror -fno-sanitize-recover=all" meson setup _build_tsan -Db_sanitize=thread -Db_lundef=false
+    - name: TSan build
+      run: meson compile -C _build_tsan
+    - name: TSan test
+      run: meson test --no-stdsplit -v -C _build_tsan
+
   Ubuntu:
     if: github.event_name != 'workflow_dispatch'
     needs: gate
