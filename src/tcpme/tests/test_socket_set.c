@@ -22,7 +22,7 @@ int main(void) {
   tcpme_socket_t client = tcpme_connect("127.0.0.1", port);
   assert(tcpme_socket_valid(client));
 
-  tcpme_socket_t peer = tcpme_accept(server);
+  tcpme_socket_t peer = tc_accept_retry(server);
   assert(tcpme_socket_valid(peer));
 
   /* --- set operations --- */
