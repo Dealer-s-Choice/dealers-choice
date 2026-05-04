@@ -1,3 +1,4 @@
-exe = executable('test_01', 'test_01.c', dependencies: deckhandler_dep)
-
-test('test_01', exe, suite: 'deckhandler')
+foreach t : ['test_shuffle_deal', 'test_cut_strings']
+  exe = executable(t, t + '.c', dependencies: deckhandler_dep)
+  test(t, exe, suite: 'deckhandler')
+endforeach
