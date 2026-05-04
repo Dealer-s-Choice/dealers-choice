@@ -71,6 +71,12 @@ typedef struct {
     int back_img_y;           /* y of settings back-arrow image */
     int links_center_x;       /* horizontal center for link widgets */
   } menu;
+
+  struct {
+    int waiting_y; /* y of "Waiting for players/dealer" status text */
+    int kick_x;    /* x of Kick / Ban admin buttons */
+    int kick_y;    /* y of Kick / Ban admin buttons */
+  } lobby;
 } GameLayout_t;
 
 extern GameLayout_t g_layout;

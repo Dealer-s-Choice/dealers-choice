@@ -199,22 +199,22 @@ static EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_confi
       _("Waiting for more players..."), font->fonts[FONT_DEFAULT], get_color(COLOR_WHITE));
   ui_register(&registry, &waiting_players_tw->base);
   waiting_players_tw->base.rect.x = g_center.x;
-  waiting_players_tw->base.rect.y = g_viewport.h - 200;
+  waiting_players_tw->base.rect.y = g_layout.lobby.waiting_y;
 
   TextWidget_t *waiting_dealer_tw = text_widget_create(
       _("Waiting for dealer to select game..."), font->fonts[FONT_DEFAULT], get_color(COLOR_WHITE));
   ui_register(&registry, &waiting_dealer_tw->base);
   waiting_dealer_tw->base.rect.x = g_center.x;
-  waiting_dealer_tw->base.rect.y = g_viewport.h - 200;
+  waiting_dealer_tw->base.rect.y = g_layout.lobby.waiting_y;
 
   ButtonWidget_t *btn_kick = button_widget_create(_("Kick"), (EColor_t){COLOR_WHITE, COLOR_BROWN},
                                                   font->fonts[FONT_BOLD], (SDL_Keycode)0);
   ButtonWidget_t *btn_ban = button_widget_create(_("Ban"), (EColor_t){COLOR_WHITE, COLOR_BROWN},
                                                  font->fonts[FONT_BOLD], (SDL_Keycode)0);
-  btn_kick->base.rect.x = g_viewport.w / 10;
-  btn_kick->base.rect.y = g_viewport.h * 82 / 100;
+  btn_kick->base.rect.x = g_layout.lobby.kick_x;
+  btn_kick->base.rect.y = g_layout.lobby.kick_y;
   btn_ban->base.rect.x = btn_kick->base.rect.x + btn_kick->base.rect.w + 16;
-  btn_ban->base.rect.y = btn_kick->base.rect.y;
+  btn_ban->base.rect.y = g_layout.lobby.kick_y;
   ui_register(&registry, &btn_kick->base);
   ui_register(&registry, &btn_ban->base);
 
@@ -223,7 +223,7 @@ static EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_confi
   if (btn_quit_lobby) {
     btn_quit_lobby->base.rect.x =
         g_viewport.x + g_viewport.w - btn_quit_lobby->base.rect.w - MARGIN;
-    btn_quit_lobby->base.rect.y = g_viewport.y + MARGIN;
+    btn_quit_lobby->base.rect.y = g_layout.menu.quit_y;
     ui_register(&registry, &btn_quit_lobby->base);
   }
 
@@ -236,8 +236,8 @@ static EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_confi
       back_img_path ? image_widget_create(back_img_path, back_btn_size, back_btn_size) : NULL;
   free(back_img_path);
   if (back_img) {
-    back_img->base.rect.x = g_viewport.x + g_viewport.w - back_btn_size - 20;
-    back_img->base.rect.y = g_viewport.y + g_viewport.h / 2;
+    back_img->base.rect.x = g_layout.menu.back_img_x;
+    back_img->base.rect.y = g_layout.menu.back_img_y;
     ui_register(&registry, &back_img->base);
   }
 

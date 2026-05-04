@@ -91,4 +91,9 @@ void layout_compute(void) {
   g_layout.menu.back_img_x         = vp.x + vp.w - back_btn_size - MARGIN;
   g_layout.menu.back_img_y         = vp.y + vp.h / 2;
   g_layout.menu.links_center_x     = g_center.x + 200;
+
+  /* Lobby (game selection) screen */
+  g_layout.lobby.waiting_y = vp.y + vp.h - 200;
+  g_layout.lobby.kick_x    = vp.x + vp.w / 10;
+  g_layout.lobby.kick_y    = vp.y + vp.h * 82 / 100;
 }
