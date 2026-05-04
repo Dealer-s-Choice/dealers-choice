@@ -27,7 +27,11 @@
 */
 
 #include <canfigger.h>
+#ifdef _WIN32
+#include "dc_windows.h"
+#else
 #include <dirent.h>
+#endif
 #include <math.h>
 #include <stdatomic.h>
 
@@ -775,12 +779,34 @@ static size_t load_coin_textures(SDL_Renderer *renderer, const char *base_path,
   char *dirpath = calloc_wrap(strlen(base_path) + strlen(suffix) + 1, 1);
   snprintf(dirpath, strlen(base_path) + strlen(suffix) + 1, "%s%s", base_path, suffix);
 
+  size_t i = 0;
+
+#ifdef _WIN32
+  char pattern[512];
+  snprintf(pattern, sizeof pattern, "%s\\*.png", dirpath);
+  free(dirpath);
+  WIN32_FIND_DATAA fd;
+  HANDLE h = FindFirstFileA(pattern, &fd);
+  if (h == INVALID_HANDLE_VALUE)
+    return 0;
+  do {
+    if (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+      continue;
+    if (i >= max_count) {
+      fprintf(stderr, "Warning: more than %zu coin images found; increase MAX_COIN_IMAGES\n",
+              max_count);
+      break;
+    }
+    char rel[512];
+    snprintf(rel, sizeof rel, "coins/%s", fd.cFileName);
+    out[i++] = load_coin_texture(renderer, base_path, rel);
+  } while (FindNextFileA(h, &fd));
+  FindClose(h);
+#else
   DIR *d = opendir(dirpath);
   free(dirpath);
   if (!d)
     return 0;
-
-  size_t i = 0;
   struct dirent *ent;
   while ((ent = readdir(d)) != NULL) {
     size_t nlen = strlen(ent->d_name);
@@ -791,11 +817,13 @@ static size_t load_coin_textures(SDL_Renderer *renderer, const char *base_path,
               max_count);
       break;
     }
-    char rel[strlen("coins/") + nlen + 1];
+    char rel[512];
     snprintf(rel, sizeof rel, "coins/%s", ent->d_name);
     out[i++] = load_coin_texture(renderer, base_path, rel);
   }
   closedir(d);
+#endif
+
   return i;
 }
 
