@@ -1479,7 +1479,7 @@ static EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
 
     bool new_coin = false;
 
-    if (prev_winner_declared && !game_state->winner_declared) {
+    if (prev_winner_declared != game_state->winner_declared) {
       coins = 0;
       coin_anim.active = false;
     }
