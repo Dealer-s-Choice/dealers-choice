@@ -75,4 +75,20 @@ void layout_compute(void) {
 
   /* Buttons start just to the right of the message panel */
   g_layout.action_btn_x = g_layout.msg_panel_right + 50;
+
+  /* Menu screens (connect + settings) */
+  g_layout.menu.title_x            = g_center.x * 2 / 3;
+  g_layout.menu.title_y            = 60;
+  g_layout.menu.margin_x           = vp.x + 100;
+  g_layout.menu.connect_btn_y      = vp.y + 160;
+  g_layout.menu.connect_host_y     = vp.y + 220;
+  g_layout.menu.quit_y             = vp.y + MARGIN;
+  g_layout.menu.settings_x_right   = vp.x + 700;
+  g_layout.menu.settings_row_y[0]  = vp.y + 160;
+  g_layout.menu.settings_row_y[1]  = vp.y + 360;
+  g_layout.menu.settings_row_y[2]  = vp.y + 560;
+  g_layout.menu.settings_save_y    = vp.y + 750;
+  g_layout.menu.back_img_x         = vp.x + vp.w - back_btn_size - MARGIN;
+  g_layout.menu.back_img_y         = vp.y + vp.h / 2;
+  g_layout.menu.links_center_x     = g_center.x + 200;
 }

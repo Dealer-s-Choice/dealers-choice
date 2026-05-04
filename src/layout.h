@@ -44,6 +44,10 @@
 /* Number of scrolling status message lines shown in the panel */
 #define SIZEOF_STATUS_MSGS 16
 
+/* Settings screen fixed input geometry */
+#define SETTINGS_INPUT_W        350
+#define SETTINGS_INPUT_Y_OFFSET 40
+
 typedef struct {
   SDL_Point player_pos[MAX_PLAYERS]; /* top-left origin of each player's card row */
   SDL_Point timer;                   /* center of the circular countdown timer */
@@ -52,6 +56,21 @@ typedef struct {
   int       msg_panel_right;         /* x of right edge of msg_panel */
   int       action_btn_x;            /* left margin for action / amount buttons */
   int       status_line_h;           /* TTF line height of FONT_STATUS_MSG */
+
+  struct {
+    int title_x;              /* x of screen title widget (both screens) */
+    int title_y;              /* y of screen title widget (both screens) */
+    int margin_x;             /* left column x: connect inputs and settings x_left */
+    int connect_btn_y;        /* y of Connect / Settings nav buttons */
+    int connect_host_y;       /* y of host input field */
+    int quit_y;               /* y of top-right X quit button */
+    int settings_x_right;     /* right column x for settings grid */
+    int settings_row_y[3];    /* y of each settings row (label baseline) */
+    int settings_save_y;      /* y of Save / Load Defaults buttons */
+    int back_img_x;           /* x of settings back-arrow image */
+    int back_img_y;           /* y of settings back-arrow image */
+    int links_center_x;       /* horizontal center for link widgets */
+  } menu;
 } GameLayout_t;
 
 extern GameLayout_t g_layout;
