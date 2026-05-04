@@ -30,6 +30,7 @@
 #include <stdlib.h>
 
 #include "graphics.h"
+#include "layout.h"
 #include "translate.h"
 #include "ui_widget.h"
 #include "widgets/button.h"
@@ -326,6 +327,7 @@ bool toggle_fullscreen(SdlContext_t *c) {
   SDL_RenderGetViewport(c->renderer, &g_viewport);
   g_center.x = g_viewport.x + g_viewport.w / 2;
   g_center.y = g_viewport.y + g_viewport.h / 2;
+  layout_compute();
   return true;
 }
 

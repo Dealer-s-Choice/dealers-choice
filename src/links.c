@@ -12,7 +12,7 @@ const LinkDef_t LINK_DEFS[] = {
     {N_("Website"), DEALERSCHOICE_URL}};
 
 void layout_links(LinkWidget_t **links, size_t count) {
-  int center_x = g_center.x + 200;
+  int center_x = g_layout.menu.links_center_x;
 
   for (size_t i = 0; i < count; i++) {
     links[i]->base.rect.x = center_x - (links[i]->base.rect.w / 2);

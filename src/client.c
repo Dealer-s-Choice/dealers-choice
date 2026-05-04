@@ -61,8 +61,6 @@ static const uint8_t coin_px = 96;
 
 #define POT_BOUNDARY 450
 
-#define x_begin_action_button 500
-
 #define ma_sound_start_checked(pSound) ma_sound_start_wrap((pSound), __FILE__, __LINE__)
 
 // Build fails using gcc on Ubuntu 24.04 (and maybe others) without this
@@ -201,22 +199,22 @@ static EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_confi
       _("Waiting for more players..."), font->fonts[FONT_DEFAULT], get_color(COLOR_WHITE));
   ui_register(&registry, &waiting_players_tw->base);
   waiting_players_tw->base.rect.x = g_center.x;
-  waiting_players_tw->base.rect.y = g_viewport.h - 200;
+  waiting_players_tw->base.rect.y = g_layout.lobby.waiting_y;
 
   TextWidget_t *waiting_dealer_tw = text_widget_create(
       _("Waiting for dealer to select game..."), font->fonts[FONT_DEFAULT], get_color(COLOR_WHITE));
   ui_register(&registry, &waiting_dealer_tw->base);
   waiting_dealer_tw->base.rect.x = g_center.x;
-  waiting_dealer_tw->base.rect.y = g_viewport.h - 200;
+  waiting_dealer_tw->base.rect.y = g_layout.lobby.waiting_y;
 
   ButtonWidget_t *btn_kick = button_widget_create(_("Kick"), (EColor_t){COLOR_WHITE, COLOR_BROWN},
                                                   font->fonts[FONT_BOLD], (SDL_Keycode)0);
   ButtonWidget_t *btn_ban = button_widget_create(_("Ban"), (EColor_t){COLOR_WHITE, COLOR_BROWN},
                                                  font->fonts[FONT_BOLD], (SDL_Keycode)0);
-  btn_kick->base.rect.x = g_viewport.w / 10;
-  btn_kick->base.rect.y = g_viewport.h * 82 / 100;
+  btn_kick->base.rect.x = g_layout.lobby.kick_x;
+  btn_kick->base.rect.y = g_layout.lobby.kick_y;
   btn_ban->base.rect.x = btn_kick->base.rect.x + btn_kick->base.rect.w + 16;
-  btn_ban->base.rect.y = btn_kick->base.rect.y;
+  btn_ban->base.rect.y = g_layout.lobby.kick_y;
   ui_register(&registry, &btn_kick->base);
   ui_register(&registry, &btn_ban->base);
 
@@ -225,7 +223,7 @@ static EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_confi
   if (btn_quit_lobby) {
     btn_quit_lobby->base.rect.x =
         g_viewport.x + g_viewport.w - btn_quit_lobby->base.rect.w - MARGIN;
-    btn_quit_lobby->base.rect.y = g_viewport.y + MARGIN;
+    btn_quit_lobby->base.rect.y = g_layout.menu.quit_y;
     ui_register(&registry, &btn_quit_lobby->base);
   }
 
@@ -238,8 +236,8 @@ static EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_confi
       back_img_path ? image_widget_create(back_img_path, back_btn_size, back_btn_size) : NULL;
   free(back_img_path);
   if (back_img) {
-    back_img->base.rect.x = g_viewport.x + g_viewport.w - back_btn_size - 20;
-    back_img->base.rect.y = g_viewport.y + g_viewport.h / 2;
+    back_img->base.rect.x = g_layout.menu.back_img_x;
+    back_img->base.rect.y = g_layout.menu.back_img_y;
     ui_register(&registry, &back_img->base);
   }
 
@@ -874,7 +872,7 @@ enum {
 };
 
 static void layout_amount_buttons(ButtonWidget_t **b, const size_t count) {
-  int left_margin = 500;
+  int left_margin = g_layout.action_btn_x;
   for (size_t i = 0; i < count; i++) {
     b[i]->base.rect.x = left_margin;
     b[i]->base.rect.y = g_viewport.h - (b[i]->base.rect.h * 4);
@@ -900,27 +898,6 @@ static void layout_action_buttons(ButtonWidget_t **b) {
   }
 }
 
-static void layout_player_pos(SDL_Point *player_pos) {
-  SDL_Rect vp = g_viewport;
-
-  int right_x = vp.x + vp.w - (CARD_W * 7 + CARD_PADDING * 7 + MARGIN);
-
-  player_pos[0].x = vp.x + MARGIN;
-  player_pos[0].y = vp.y + CARD_H * 4;
-
-  player_pos[1].x = vp.x + 20;
-  player_pos[1].y = vp.y + CARD_H;
-
-  player_pos[2].x = right_x;
-  player_pos[2].y = vp.y + CARD_H;
-
-  player_pos[3].x = right_x;
-  player_pos[3].y = vp.y + CARD_H * 4;
-
-  player_pos[4].x = right_x;
-  player_pos[4].y = vp.y + CARD_H * 7;
-}
-
 typedef struct {
   SDL_Point offset;
   SDL_Rect rect;
@@ -937,11 +914,6 @@ static void layout_coins(CoinInPot_t *coins, SDL_Point *p, int count) {
   }
 }
 
-static void layout_table_center(SDL_Point *p) {
-  p->x = g_center.x;
-  p->y = g_center.y;
-}
-
 static void layout_indicator(Indicator_t *ind, int x, int y) {
   ui_widget_place(&ind->base, x, y); // sets base.rect.x/y
 
@@ -952,31 +924,17 @@ static void layout_indicator(Indicator_t *ind, int x, int y) {
   ind->cy = ind->base.rect.y + ind->ry;
 }
 
-/* Circle timer radius — used here and in layout_timer/render_circle_timer */
-#define CIRCLE_TIMER_R 50
-
-/* x of the right edge of the status message panel (matches msg_panel in handle_game_logic) */
-#define MSG_PANEL_RIGHT (g_viewport.x + 30 + 420)
-
 static void layout_game_name_indicator(Indicator_t *ind) {
-  const int timer_cy = g_viewport.h - MARGIN - CIRCLE_TIMER_R;
   /* center between status panel right edge and timer left edge */
-  const int ind_cx = (MSG_PANEL_RIGHT + (g_center.x - CIRCLE_TIMER_R)) / 2;
-  layout_indicator(ind, ind_cx - ind->rx, timer_cy - ind->base.rect.h / 2);
+  const int ind_cx = (g_layout.msg_panel_right + (g_center.x - CIRCLE_TIMER_R)) / 2;
+  layout_indicator(ind, ind_cx - ind->rx, g_layout.timer.y - ind->base.rect.h / 2);
 }
 
 static void layout_deuces_wild_indicator(Indicator_t *ind) {
-  const int timer_cy = g_viewport.h - MARGIN - CIRCLE_TIMER_R;
-  /* mirror the game name offset on the right side of the timer */
-  const int game_cx = (MSG_PANEL_RIGHT + (g_center.x - CIRCLE_TIMER_R)) / 2;
+  /* mirror the game name indicator on the right side of the timer */
+  const int game_cx = (g_layout.msg_panel_right + (g_center.x - CIRCLE_TIMER_R)) / 2;
   const int ind_cx = 2 * g_center.x - game_cx;
-  layout_indicator(ind, ind_cx - ind->rx, timer_cy - ind->base.rect.h / 2);
-}
-
-static void layout_timer(SDL_Point *p) {
-  p->x = g_center.x;
-  /* Bottom of circle aligns with MARGIN from viewport bottom */
-  p->y = g_viewport.h - MARGIN - CIRCLE_TIMER_R;
+  layout_indicator(ind, ind_cx - ind->rx, g_layout.timer.y - ind->base.rect.h / 2);
 }
 
 static __attribute__((noinline)) void draw_filled_circle(SDL_Renderer *r, int cx, int cy,
@@ -1211,10 +1169,6 @@ static EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
     preserved_hands[i] = game_state->player[i].hand;
   }
 
-  SDL_Point player_pos[MAX_PLAYERS] = {0};
-  layout_player_pos(player_pos);
-
-#define SIZEOF_STATUS_MSGS 16
   char status_msgs[SIZEOF_STATUS_MSGS][LEN_STATUS_STR] = {0};
   char last_status_str[LEN_STATUS_STR] = {0};
   TextWidget_t *status_tw[SIZEOF_STATUS_MSGS] = {0};
@@ -1230,7 +1184,7 @@ static EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
   TextWidget_t *discard_hint_tw = text_widget_create(
       "You may only discard a maximum of 3 cards", font->fonts[FONT_BOLD], get_color(COLOR_WHITE));
   if (discard_hint_tw)
-    ui_widget_place(&discard_hint_tw->base, x_begin_action_button,
+    ui_widget_place(&discard_hint_tw->base, g_layout.action_btn_x,
                     action_bw[DISCARD]->base.rect.y + CARD_H);
   uint8_t last_max_allowed = 3;
 
@@ -1248,9 +1202,6 @@ static EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
   }
 
   ButtonWidget_t *amount_bw[MAX_BET_AMOUNTS] = {0};
-
-  SDL_Point timer = {0};
-  layout_timer(&timer);
 
   char amount_str[MAX_BET_AMOUNTS][16]; // enough for uint32_t
 
@@ -1319,22 +1270,12 @@ static EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
   uint8_t coins = 0;
   CoinAnimation_t coin_anim = {0};
   bool prev_winner_declared = game_state->winner_declared;
-  SDL_Point table_center = {0};
-  layout_table_center(&table_center);
-
-  int line_h = TTF_FontHeight(font->fonts[FONT_STATUS_MSG]);
-
-  const int pad_x = 8;
-  const int pad_y = 6;
-
-  SDL_Rect msg_panel = {g_viewport.x + 30, g_center.y, 420,
-                        (line_h + 2) * SIZEOF_STATUS_MSGS + pad_y * 2};
 
   for (int i = 0; i < SIZEOF_STATUS_MSGS; i++) {
     status_tw[i] = text_widget_create(" ", font->fonts[FONT_STATUS_MSG], get_color(COLOR_BLACK));
     if (status_tw[i])
-      ui_widget_place(&status_tw[i]->base, msg_panel.x + pad_x,
-                      msg_panel.y + pad_y + i * (line_h + 2));
+      ui_widget_place(&status_tw[i]->base, g_layout.msg_panel.x + MSG_PANEL_PAD_X,
+                      g_layout.msg_panel.y + MSG_PANEL_PAD_Y + i * (g_layout.status_line_h + 2));
   }
 
   client_state.timer_start = SDL_GetTicks();
@@ -1435,7 +1376,7 @@ static EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
     if (strcmp(client_state.server_status_str, last_status_str) != 0) {
       snprintf(last_status_str, LEN_STATUS_STR, "%s", client_state.server_status_str);
 
-      int max_w = msg_panel.w - pad_x * 2;
+      int max_w = g_layout.msg_panel.w - MSG_PANEL_PAD_X * 2;
       char wrapped[SIZEOF_STATUS_MSGS][LEN_STATUS_STR];
       int n = word_wrap_status(font->fonts[FONT_STATUS_MSG], client_state.server_status_str, max_w,
                                wrapped, SIZEOF_STATUS_MSGS);
@@ -1458,9 +1399,9 @@ static EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
     // the server sends new information about cards.
     if (!cards_created) {
       // printf("%d\n", __LINE__);
-      create_card_context(card_context, starting_turn->id, players_array, player_pos,
+      create_card_context(card_context, starting_turn->id, players_array, g_layout.player_pos,
                           font->fonts[FONT_CARD], my_id, client_state.deuces_wild);
-      layout_cards(card_context, players_array, player_pos);
+      layout_cards(card_context, players_array, g_layout.player_pos);
       if (client_state.game_choice) {
         int community_start = -1;
         for (int cs = 0; cs < MAX_HAND_SIZE; cs++) {
@@ -1470,7 +1411,7 @@ static EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
           }
         }
         if (community_start > 0)
-          layout_board_cards(card_context, starting_turn->id, player_pos, community_start);
+          layout_board_cards(card_context, starting_turn->id, g_layout.player_pos, community_start);
       }
       if (game_state->winner_declared) {
         if (game_state->player_count > 1)
@@ -1544,14 +1485,14 @@ static EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
 
     if (new_coin) {
       // FIRST: compute rects
-      layout_coins(coin_in_pot, &table_center, coins);
+      layout_coins(coin_in_pot, &g_layout.table_center, coins);
 
       int last = coins - 1;
 
       // NOW rect is valid
       coin_anim = (CoinAnimation_t){
           .texture = coin_tex_front,
-          .start = (SDL_Point){player_pos[last_bettor_id].x, player_pos[last_bettor_id].y},
+          .start = (SDL_Point){g_layout.player_pos[last_bettor_id].x, g_layout.player_pos[last_bettor_id].y},
           .end = (SDL_Point){coin_in_pot[last].rect.x, coin_in_pot[last].rect.y},
           .start_time = SDL_GetTicks(),
           .duration = 300,
@@ -1621,8 +1562,8 @@ static EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
       if (!game_nick_widgets[id] || !game_coin_widgets[id] || !game_coins_tw[id])
         continue;
       UITable_t player_table = {0};
-      ui_table_begin(&player_table, player_pos[id].x + CARD_W / 2,
-                     player_pos[id].y + (int)(CARD_H * 1.2), 3);
+      ui_table_begin(&player_table, g_layout.player_pos[id].x + CARD_W / 2,
+                     g_layout.player_pos[id].y + (int)(CARD_H * 1.2), 3);
       for (int c = 0; c < 3; c++)
         player_table.col_width[c] = max_col_w[c];
       player_table.col_align[0] = 1; // left-align nick
@@ -1651,8 +1592,8 @@ static EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
     for (int8_t id = 0; id < MAX_PLAYERS; id++) {
       if (game_state->player[id].is_connected)
         continue;
-      int ox = player_pos[id].x + CARD_W / 2 - open_pad;
-      int oy = player_pos[id].y + (int)(CARD_H * 1.2) - open_pad;
+      int ox = g_layout.player_pos[id].x + CARD_W / 2 - open_pad;
+      int oy = g_layout.player_pos[id].y + (int)(CARD_H * 1.2) - open_pad;
       SDL_Rect open_rect = {ox, oy, open_w, open_h};
       draw_nameplate(sdl_context->renderer, open_rect, 70);
       if (open_seat_tw[id]) {
@@ -1669,19 +1610,19 @@ static EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
       draw_rect_border(sdl_context->renderer, turn_outline);
     }
 
-    draw_3d_border(sdl_context->renderer, msg_panel, 10);
+    draw_3d_border(sdl_context->renderer, g_layout.msg_panel, 10);
 
     /* Vertical gradient: white at top → light gray at bottom */
-    for (int row = 0; row < msg_panel.h; row++) {
-      float t = (float)row / (float)(msg_panel.h - 1);
+    for (int row = 0; row < g_layout.msg_panel.h; row++) {
+      float t = (float)row / (float)(g_layout.msg_panel.h - 1);
       uint8_t c = (uint8_t)(255.0f - t * 30.0f);
       SDL_SetRenderDrawColor(sdl_context->renderer, c, c, c, 255);
       SDL_RenderFillRect(sdl_context->renderer,
-                         &(SDL_Rect){msg_panel.x, msg_panel.y + row, msg_panel.w, 1});
+                         &(SDL_Rect){g_layout.msg_panel.x, g_layout.msg_panel.y + row, g_layout.msg_panel.w, 1});
     }
 
     SDL_SetRenderDrawColor(sdl_context->renderer, 0, 0, 0, 255);
-    draw_rect_border(sdl_context->renderer, msg_panel);
+    draw_rect_border(sdl_context->renderer, g_layout.msg_panel);
 
     for (int i = 0; i < SIZEOF_STATUS_MSGS; i++)
       ui_widget_render(&status_tw[i]->base);
@@ -1701,7 +1642,7 @@ static EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
     for (int8_t id = 0; id < MAX_PLAYERS; id++) {
       if (!game_state->player[id].is_connected || game_state->player[id].in)
         continue;
-      SDL_Rect card_area = {player_pos[id].x, player_pos[id].y,
+      SDL_Rect card_area = {g_layout.player_pos[id].x, g_layout.player_pos[id].y,
                             MAX_HAND_SIZE * (CARD_W + CARD_PADDING) - CARD_PADDING, CARD_H};
       SDL_RenderFillRect(sdl_context->renderer, &card_area);
       if (nameplate_rects[id].w > 0)
@@ -1760,7 +1701,7 @@ static EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
           }
         uint8_t max_allowed = client_state.has_ace ? 4 : 3;
         action_bw[DISCARD]->interactive = client_state.n_cards_selected <= max_allowed;
-        action_bw[DISCARD]->base.rect.x = x_begin_action_button;
+        action_bw[DISCARD]->base.rect.x = g_layout.action_btn_x;
         if (!action_bw[DISCARD]->interactive) {
           if (max_allowed != last_max_allowed) {
             char tmp[50];
@@ -1773,7 +1714,7 @@ static EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
         ui_widget_render(&action_bw[DISCARD]->base);
       } else if (client_state.bet_check_fold || client_state.call_raise_fold ||
                  client_state.call_complete_fold || client_state.complete_check_fold) {
-        int x_offset = x_begin_action_button;
+        int x_offset = g_layout.action_btn_x;
         if (client_state.bet_check_fold) {
           action_bw[BET]->base.rect.x = x_offset;
           ui_widget_render(&action_bw[BET]->base);
@@ -1845,12 +1786,12 @@ static EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
       if (fill_ratio < 0.0f)
         fill_ratio = 0.0f;
 
-      render_circle_timer(sdl_context->renderer, timer, fill_ratio);
+      render_circle_timer(sdl_context->renderer, g_layout.timer, fill_ratio);
     }
 
     char buffer[128];
     snprintf(buffer, sizeof(buffer), "%" PRIu32, game_state->pot);
-    render_text_pot(buffer, table_center, font);
+    render_text_pot(buffer, g_layout.table_center, font);
 
     SDL_RenderPresent(sdl_context->renderer);
     SDL_Delay(16);
