@@ -117,22 +117,20 @@ uint8_t *serialize_game_state(const GameState_t *src, uint32_t *size_out) {
   return buffer;
 }
 
-GameState_t deserialize_game_state(const uint8_t *data, uint32_t size) {
-  GameState_t result = {0};
-
+bool deserialize_game_state(const uint8_t *data, uint32_t size, GameState_t *out) {
   GameState *msg = game_state__unpack(NULL, size, data);
   if (!msg) {
     fprintf(stderr, "Failed to unpack GameState message\n");
-    return result;
+    return false;
   }
 
-  result.pot = msg->pot;
-  result.dealer_id = (int8_t)msg->dealer_id;
-  result.at_menu = msg->at_menu;
-  result.raises_remaining = msg->raises_remaining;
-  result.prev_bet_amount = msg->prev_bet_amount;
-  result.player_count = (uint8_t)msg->player_count;
-  result.winner_declared = msg->winner_declared;
+  out->pot = msg->pot;
+  out->dealer_id = (int8_t)msg->dealer_id;
+  out->at_menu = msg->at_menu;
+  out->raises_remaining = msg->raises_remaining;
+  out->prev_bet_amount = msg->prev_bet_amount;
+  out->player_count = (uint8_t)msg->player_count;
+  out->winner_declared = msg->winner_declared;
 
   size_t n = msg->n_player < MAX_PLAYERS ? msg->n_player : MAX_PLAYERS;
   for (size_t i = 0; i < n; ++i) {
@@ -140,11 +138,11 @@ GameState_t deserialize_game_state(const uint8_t *data, uint32_t size) {
     if (!pmsg)
       continue;
 
-    fill_player_from_message(&result.player[i], pmsg);
+    fill_player_from_message(&out->player[i], pmsg);
   }
 
   game_state__free_unpacked(msg, NULL);
-  return result;
+  return true;
 }
 
 uint8_t *serialize_game_settings(const GameSettings_t *src, size_t *size_out) {
@@ -461,8 +459,9 @@ ERecvStatus_t recv_game_state(SocketContext_t *socket_context, GameState_t *game
   }
 
   default:
-    // printf("[recv_game_state] Received %u bytes, deserializing...\n", size);
-    *game_state = deserialize_game_state(buffer, size);
+    if (!deserialize_game_state(buffer, size, game_state))
+      fprintf(stderr, "[recv_game_state] unrecognized opcode 0x%04X (size=%u) could not be parsed as GameState\n",
+              opcode, size);
   }
 
   free(buffer);

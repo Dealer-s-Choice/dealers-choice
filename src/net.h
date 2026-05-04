@@ -130,7 +130,7 @@ struct player_message_builder_t {
 };
 
 uint8_t *serialize_game_state(const GameState_t *src, uint32_t *size_out);
-GameState_t deserialize_game_state(const uint8_t *data, uint32_t size);
+bool deserialize_game_state(const uint8_t *data, uint32_t size, GameState_t *out);
 
 uint8_t *serialize_game_settings(const GameSettings_t *src, size_t *size_out);
 GameSettings_t deserialize_game_settings(const uint8_t *data, size_t size);
