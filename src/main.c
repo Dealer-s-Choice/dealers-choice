@@ -878,6 +878,8 @@ int main(int argc, char *argv[]) {
       return -1;
   }
 
+  layout_init(TTF_FontHeight(font.fonts[FONT_STATUS_MSG]));
+
   PlayerConfig_t player_config = get_player_config();
   if (!player_config.loaded) {
     fprintf(stderr, "Unable to load config\n");
