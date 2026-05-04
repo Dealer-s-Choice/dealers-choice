@@ -27,6 +27,7 @@
 */
 
 #include <canfigger.h>
+#include <dirent.h>
 #include <math.h>
 #include <stdatomic.h>
 
@@ -69,6 +70,7 @@ static const uint8_t coin_px = 96;
 // SIZEOF_CARD_TEXT is defined in client.h
 
 #define MAX_POT_COINS 60
+#define MAX_COIN_IMAGES 16
 
 static void ma_sound_start_wrap(ma_sound *pSound, const char *file, const int line) {
   ma_result result = ma_sound_start(pSound);
@@ -752,10 +754,6 @@ void layout_cards(CardWidget_t card_context[MAX_PLAYERS][MAX_HAND_SIZE], Player_
   } while (turn && turn != starting_turn);
 }
 
-typedef struct {
-  const char *front;
-} Coin_t;
-
 static SDL_Texture *load_coin_texture(SDL_Renderer *renderer, const char *base_path,
                                       const char *coin) {
   const char *subdir = "/images/";
@@ -767,6 +765,38 @@ static SDL_Texture *load_coin_texture(SDL_Renderer *renderer, const char *base_p
   SDL_Texture *tex = load_texture(renderer, full_path);
   free(full_path);
   return tex;
+}
+
+/* Reads {base_path}/images/coins/, loads up to max_count .png files as
+ * textures into out[]. Returns the number loaded. Warns if capped. */
+static size_t load_coin_textures(SDL_Renderer *renderer, const char *base_path,
+                                 SDL_Texture **out, size_t max_count) {
+  const char *suffix = "/images/coins";
+  char *dirpath = calloc_wrap(strlen(base_path) + strlen(suffix) + 1, 1);
+  snprintf(dirpath, strlen(base_path) + strlen(suffix) + 1, "%s%s", base_path, suffix);
+
+  DIR *d = opendir(dirpath);
+  free(dirpath);
+  if (!d)
+    return 0;
+
+  size_t i = 0;
+  struct dirent *ent;
+  while ((ent = readdir(d)) != NULL) {
+    size_t nlen = strlen(ent->d_name);
+    if (nlen <= 4 || strcmp(ent->d_name + nlen - 4, ".png") != 0)
+      continue;
+    if (i >= max_count) {
+      fprintf(stderr, "Warning: more than %zu coin images found; increase MAX_COIN_IMAGES\n",
+              max_count);
+      break;
+    }
+    char rel[strlen("coins/") + nlen + 1];
+    snprintf(rel, sizeof rel, "coins/%s", ent->d_name);
+    out[i++] = load_coin_texture(renderer, base_path, rel);
+  }
+  closedir(d);
+  return i;
 }
 
 typedef struct {
@@ -1129,7 +1159,8 @@ static EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
                                             const GameSettings_t *game_settings,
                                             GameState_t *game_state, SdlContext_t *sdl_context,
                                             const Font_t *font, Path_t *path,
-                                            const SoundContext_t *sound_context) {
+                                            const SoundContext_t *sound_context,
+                                            SDL_Texture **coin_textures, size_t n_coin_images) {
   card_widget_select_back_for_game();
 
   ClientState_t client_state = {0};
@@ -1243,30 +1274,8 @@ static EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
   Player_t *turn = NULL;
   Player_t *starting_turn = NULL;
 
-  Coin_t coin[] = {
-      {
-          "96x96_front_1907_Saint_Gaudens_gold_coin.png",
-      },
-      {
-          "96x96_front_Gaius-Julius-Caesar-denarius-44-BC-RRC-480-3.png",
-      },
-      {
-          "96x96-1984_rv_marie_curie.png",
-      },
-      {
-          "96x96-head_of_Aphrodite_with_turreted_crown.png",
-      },
-      {
-          "96x96-Marcus Antonius - Cleopatra 32 BC 90020163_front.png",
-      },
-      {
-          "96x96-Marcus Antonius - Cleopatra 32 BC 90020163_back.png",
-      },
-  };
-
-  const int which_coin = pcg32_boundedrand_r(&rng, ARRAY_SIZE(coin));
-  SDL_Texture *coin_tex_front =
-      load_coin_texture(sdl_context->renderer, path->data, coin[which_coin].front);
+  const size_t which_coin = n_coin_images > 0 ? pcg32_boundedrand_r(&rng, n_coin_images) : 0;
+  SDL_Texture *coin_tex_front = n_coin_images > 0 ? coin_textures[which_coin] : NULL;
 
   SDL_Texture *felt_tex =
       load_coin_texture(sdl_context->renderer, path->data, "100x100-green-felt-seamless-tile.png");
@@ -2018,7 +2027,6 @@ static EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
       }
     } // End Poll event
   }
-  SDL_DestroyTexture(coin_tex_front);
   SDL_DestroyTexture(felt_tex);
   SDL_DestroyTexture(vignette_tex);
   for (int i = 0; i < MAX_PLAYERS; i++)
@@ -2305,6 +2313,8 @@ bool get_socket_context_and_run_client(PlayerConfig_t *player_config, const CliA
     size_t i;
     size_t n_sounds_init = 0;
     size_t n_coin_sounds_init = 0;
+    size_t n_coin_images = 0;
+    SDL_Texture *coin_textures[MAX_COIN_IMAGES] = {NULL};
     atomic_store(&g_audio_needs_restart, false);
     atomic_store(&g_audio_shutting_down, false);
     SoundContext_t sound_context = {0};
@@ -2414,6 +2424,9 @@ bool get_socket_context_and_run_client(PlayerConfig_t *player_config, const CliA
       n_coin_sounds_init++;
     }
 
+    n_coin_images = load_coin_textures(sdl_context->renderer, path->data, coin_textures,
+                                       MAX_COIN_IMAGES);
+
     {
       bool running = true;
       bool went_back = false;
@@ -2438,7 +2451,8 @@ bool get_socket_context_and_run_client(PlayerConfig_t *player_config, const CliA
 
         EGameLogicResult_t result =
             handle_game_logic(player_config, &socket_context, &game_settings, &game_state,
-                              sdl_context, font, path, &sound_context);
+                              sdl_context, font, path, &sound_context, coin_textures,
+                              n_coin_images);
         if (result == GAME_LOGIC_DISCONNECTED)
           went_back = true;
         running = (result == GAME_LOGIC_AT_MENU);
@@ -2450,6 +2464,8 @@ bool get_socket_context_and_run_client(PlayerConfig_t *player_config, const CliA
       ma_sound_uninit(&sounds[i].sound);
     for (i = 0; i < n_coin_sounds_init; i++)
       ma_sound_uninit(&coin_hit_sounds[i].sound);
+    for (i = 0; i < n_coin_images; i++)
+      SDL_DestroyTexture(coin_textures[i]);
     atomic_store(&g_audio_shutting_down, true);
     g_sound_context = NULL;
     ma_engine_uninit(&sound_context.engine);
