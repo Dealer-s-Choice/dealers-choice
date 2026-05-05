@@ -42,10 +42,12 @@ void test_game_state(void) {
   size = SDL_SwapBE32(size_net);
   fprintf(stderr, "after conversion: %d\n", size);
 
-  GameState_t game_state_receiver = deserialize_game_state(data, size);
+  GameState_t game_state_receiver = {0};
+  bool ok = deserialize_game_state(data, size, &game_state_receiver);
 
   free(data);
 
+  assert(ok);
   assert(game_state_receiver.pot == 500);
   assert(game_state_receiver.at_menu == true);
   assert(strcmp(game_state_receiver.player[0].nick, "Foo") == 0);

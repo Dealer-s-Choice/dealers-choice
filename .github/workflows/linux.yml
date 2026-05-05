@@ -53,7 +53,7 @@ jobs:
     - name: TSan build
       run: meson compile -C _build_tsan
     - name: TSan test
-      run: meson test --no-stdsplit -v -C _build_tsan
+      run: meson test --no-stdsplit -v --setup One_pass -C _build_tsan
 
   Ubuntu:
     if: github.event_name != 'workflow_dispatch'
