@@ -84,12 +84,15 @@ typedef struct {
 
 #define MAX_PLAYER_CONFIG_ENTRIES 16
 #define MAX_SERVER_CONFIG_ENTRIES 32
+#define MAX_LAYOUT_CONFIG_ENTRIES 64
 
 extern const ConfigEntry player_config_entries[];
 extern const ConfigEntry server_config_entries[];
+extern const ConfigEntry layout_config_entries[];
 
 extern const size_t player_config_entry_count;
 extern const size_t server_config_entry_count;
+extern const size_t layout_config_entry_count;
 
 ServerConfig_t get_server_config(Path_t *path, const CliArgs_t *cli_args);
 

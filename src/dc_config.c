@@ -36,6 +36,7 @@
 #endif
 
 #include "dc_config.h"
+#include "layout.h"
 #include "util.h"
 
 const ConfigEntry player_config_entries[] = {
@@ -88,6 +89,72 @@ _Static_assert(ARRAY_SIZE(player_config_entries) - 1 <= MAX_PLAYER_CONFIG_ENTRIE
                "Too many player config entries; increase MAX_PLAYER_CONFIG_ENTRIES");
 _Static_assert(ARRAY_SIZE(server_config_entries) - 1 <= MAX_SERVER_CONFIG_ENTRIES,
                "Too many server config entries; increase MAX_SERVER_CONFIG_ENTRIES");
+
+#define LC(key, default_val, field) \
+  {key, CFG_TYPE_INT, default_val, offsetof(LayoutConfig_t, field), sizeof(int)}
+
+const ConfigEntry layout_config_entries[] = {
+    LC("margin",                    "20",  margin),
+    LC("button_x_spacing",         "10",  button_x_spacing),
+    LC("back_btn_size",             "96",  back_btn_size),
+    LC("circle_timer_r",           "50",  circle_timer_r),
+    LC("msg_panel_x_offset",       "30",  msg_panel_x_offset),
+    LC("msg_panel_w",             "420",  msg_panel_w),
+    LC("msg_panel_pad_x",           "8",  msg_panel_pad_x),
+    LC("msg_panel_pad_y",           "6",  msg_panel_pad_y),
+    LC("settings_input_w",        "350",  settings_input_w),
+    LC("settings_input_y_offset",  "40",  settings_input_y_offset),
+    LC("card_w",                   "80",  card_w),
+    LC("card_h",                   "50",  card_h),
+    LC("card_padding",             "10",  card_padding),
+    LC("link_pad_x",               "10",  link_pad_x),
+    LC("link_pad_y",                "2",  link_pad_y),
+    LC("action_btn_x_gap",         "50",  action_btn_x_gap),
+    LC("menu_title_y",             "60",  menu_title_y),
+    LC("menu_margin_x_offset",    "100",  menu_margin_x_offset),
+    LC("menu_connect_btn_y_offset",  "160", menu_connect_btn_y_offset),
+    LC("menu_connect_host_y_offset", "220", menu_connect_host_y_offset),
+    LC("menu_settings_x_right_offset", "700", menu_settings_x_right_offset),
+    LC("menu_settings_row_y_0",   "160",  menu_settings_row_y_0),
+    LC("menu_settings_row_y_1",   "360",  menu_settings_row_y_1),
+    LC("menu_settings_row_y_2",   "560",  menu_settings_row_y_2),
+    LC("menu_settings_save_y_offset", "750", menu_settings_save_y_offset),
+    LC("menu_links_center_x_offset", "200", menu_links_center_x_offset),
+    LC("lobby_waiting_from_bottom", "200", lobby_waiting_from_bottom),
+    LC("lobby_kick_x_divisor",     "10",  lobby_kick_x_divisor),
+    LC("lobby_kick_y_pct",         "82",  lobby_kick_y_pct),
+    LC("kick_ban_btn_gap",         "16",  kick_ban_btn_gap),
+    LC("game_kick_y_gap",          "20",  game_kick_y_gap),
+    LC("pot_boundary",            "450",  pot_boundary),
+    LC("board_y_offset",           "40",  board_y_offset),
+    LC("timer_border",             "10",  timer_border),
+    LC("indicator_pad",            "14",  indicator_pad),
+    LC("indicator_min_r",          "24",  indicator_min_r),
+    LC("nameplate_pad",            "20",  nameplate_pad),
+    LC("open_card_pad",            "20",  open_card_pad),
+    LC("nameplate_radius",         "20",  nameplate_radius),
+    LC("confirm_quit_pad",         "40",  confirm_quit_pad),
+    LC("confirm_quit_btn_gap",     "20",  confirm_quit_btn_gap),
+    LC("connect_settings_btn_gap", "20",  connect_settings_btn_gap),
+    LC("input_field_v_gap",        "20",  input_field_v_gap),
+    LC("connect_input_w_pad",      "20",  connect_input_w_pad),
+    LC("connect_save_btn_gap",     "12",  connect_save_btn_gap),
+    LC("settings_save_btn_gap",    "20",  settings_save_btn_gap),
+    LC("version_x_offset",         "40",  version_x_offset),
+    LC("version_y_offset",         "80",  version_y_offset),
+    LC("checkbox_pad",             "16",  checkbox_pad),
+    LC("button_w_pad",             "20",  button_w_pad),
+    LC("button_h_pad",             "10",  button_h_pad),
+    LC("input_text_pad_x",          "8",  input_text_pad_x),
+    LC("input_h_pad",              "16",  input_h_pad),
+    {0}};
+
+#undef LC
+
+const size_t layout_config_entry_count = ARRAY_SIZE(layout_config_entries) - 1;
+
+_Static_assert(ARRAY_SIZE(layout_config_entries) - 1 <= MAX_LAYOUT_CONFIG_ENTRIES,
+               "Too many layout config entries; increase MAX_LAYOUT_CONFIG_ENTRIES");
 
 #define CFG_SET_SIGNED(TYPE, MIN, MAX)                                                             \
   do {                                                                                             \
@@ -369,5 +436,50 @@ PlayerConfig_t get_player_config(void) {
   free(cfg_pathname);
 
   config.loaded = true;
+  return config;
+}
+
+LayoutConfig_t get_layout_config(const char *data_dir) {
+  LayoutConfig_t config = {0};
+
+  char *cfg_pathname = canfigger_path_join(data_dir, "layout.conf");
+  if (!cfg_pathname) {
+    fprintf(stderr, "canfigger_path_join failed for layout.conf\n");
+    goto use_defaults;
+  }
+
+  printf("Reading layout config: %s\n", cfg_pathname);
+  struct Canfigger *cfg_node = canfigger_parse_file(cfg_pathname, ',');
+  free(cfg_pathname);
+  if (!cfg_node)
+    goto use_defaults;
+
+  bool found_keys[MAX_LAYOUT_CONFIG_ENTRIES];
+  memset(found_keys, 0, sizeof(found_keys));
+
+  while (cfg_node) {
+    for (size_t i = 0; i < layout_config_entry_count; i++) {
+      if (strcasecmp(cfg_node->key, layout_config_entries[i].key) == 0) {
+        config_set_from_string_real(&config, &layout_config_entries[i],
+                                    cfg_node->value ? cfg_node->value
+                                                    : layout_config_entries[i].default_value);
+        found_keys[i] = true;
+        break;
+      }
+    }
+    canfigger_free_current_key_node_advance(&cfg_node);
+  }
+
+  for (size_t i = 0; i < layout_config_entry_count; i++)
+    if (!found_keys[i])
+      config_set_from_string_real(&config, &layout_config_entries[i],
+                                  layout_config_entries[i].default_value);
+
+  return config;
+
+use_defaults:
+  for (size_t i = 0; i < layout_config_entry_count; i++)
+    config_set_from_string_real(&config, &layout_config_entries[i],
+                                layout_config_entries[i].default_value);
   return config;
 }

@@ -32,21 +32,69 @@
 #include <SDL2/SDL.h>
 #include "types.h"
 
-/* Radius of the circular countdown timer */
-#define CIRCLE_TIMER_R 50
-
-/* Status message panel geometry */
-#define MSG_PANEL_X_OFFSET 30
-#define MSG_PANEL_W        420
-#define MSG_PANEL_PAD_X    8
-#define MSG_PANEL_PAD_Y    6
-
-/* Number of scrolling status message lines shown in the panel */
+/* Number of scrolling status message lines shown in the panel.
+ * Must remain a compile-time constant (used as static array dimension). */
 #define SIZEOF_STATUS_MSGS 16
 
-/* Settings screen fixed input geometry */
-#define SETTINGS_INPUT_W        350
-#define SETTINGS_INPUT_Y_OFFSET 40
+typedef struct {
+  int margin;
+  int button_x_spacing;
+  int back_btn_size;
+  int circle_timer_r;
+  int msg_panel_x_offset;
+  int msg_panel_w;
+  int msg_panel_pad_x;
+  int msg_panel_pad_y;
+  int settings_input_w;
+  int settings_input_y_offset;
+  int card_w;
+  int card_h;
+  int card_padding;
+  int link_pad_x;
+  int link_pad_y;
+  int action_btn_x_gap;
+  int menu_title_y;
+  int menu_margin_x_offset;
+  int menu_connect_btn_y_offset;
+  int menu_connect_host_y_offset;
+  int menu_settings_x_right_offset;
+  int menu_settings_row_y_0;
+  int menu_settings_row_y_1;
+  int menu_settings_row_y_2;
+  int menu_settings_save_y_offset;
+  int menu_links_center_x_offset;
+  int lobby_waiting_from_bottom;
+  int lobby_kick_x_divisor;
+  int lobby_kick_y_pct;
+  int kick_ban_btn_gap;
+  int game_kick_y_gap;
+  int pot_boundary;
+  int board_y_offset;
+  int timer_border;
+  int indicator_pad;
+  int indicator_min_r;
+  int nameplate_pad;
+  int open_card_pad;
+  int nameplate_radius;
+  int confirm_quit_pad;
+  int confirm_quit_btn_gap;
+  int connect_settings_btn_gap;
+  int input_field_v_gap;
+  int connect_input_w_pad;
+  int connect_save_btn_gap;
+  int settings_save_btn_gap;
+  int version_x_offset;
+  int version_y_offset;
+  int checkbox_pad;
+  int button_w_pad;
+  int button_h_pad;
+  int input_text_pad_x;
+  int input_h_pad;
+} LayoutConfig_t;
+
+extern LayoutConfig_t g_layout_cfg;
+
+LayoutConfig_t get_layout_config(const char *data_dir);
 
 typedef struct {
   SDL_Point player_pos[MAX_PLAYERS]; /* top-left origin of each player's card row */

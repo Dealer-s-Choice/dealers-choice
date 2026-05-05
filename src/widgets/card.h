@@ -32,9 +32,6 @@
 #include "ui_widget.h"
 #include <SDL2/SDL_ttf.h>
 
-#define CARD_W 80
-#define CARD_H 50
-#define CARD_PADDING 10
 #define SIZEOF_CARD_TEXT 20
 
 typedef struct {

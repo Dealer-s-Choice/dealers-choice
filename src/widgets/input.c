@@ -56,8 +56,8 @@ static void input_widget_render(UIWidget_t *w) {
   draw_rect_border(r, w->rect);
 
   /* Text */
-  int text_x = w->rect.x + 8;
-  int available_w = w->rect.w - 16; /* 8px padding each side */
+  int text_x = w->rect.x + g_layout_cfg.input_text_pad_x;
+  int available_w = w->rect.w - g_layout_cfg.input_text_pad_x * 2;
 
   /* Build display string: asterisks for masked fields, raw buf otherwise */
   char masked_buf[MAX_INPUT_LENGTH];
@@ -145,7 +145,7 @@ InputWidget_t *input_widget_create(const char *initial, TTF_Font *font, int w, C
     TTF_SizeUTF8(font, "Ag", NULL, &th);
 
   iw->base.rect.w = w;
-  iw->base.rect.h = th + 16;
+  iw->base.rect.h = th + g_layout_cfg.input_h_pad;
   iw->base.render = input_widget_render;
   iw->base.destroy = input_widget_destroy;
 

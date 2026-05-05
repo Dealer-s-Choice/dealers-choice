@@ -26,12 +26,11 @@
 
 */
 
-#include "globals.h"      /* full dep chain: tcpme → types.h; also g_viewport, g_center */
-#include "layout.h"       /* GameLayout_t, layout_init, layout_compute */
-#include "graphics.h"     /* MARGIN */
-#include "widgets/card.h" /* CARD_W, CARD_H, CARD_PADDING */
+#include "globals.h"
+#include "layout.h"
 
 GameLayout_t g_layout;
+LayoutConfig_t g_layout_cfg;
 
 void layout_init(int status_font_line_h) {
   g_layout.status_line_h = status_font_line_h;
@@ -40,60 +39,60 @@ void layout_init(int status_font_line_h) {
 
 void layout_compute(void) {
   SDL_Rect vp = g_viewport;
+  const LayoutConfig_t *c = &g_layout_cfg;
 
-  int right_x = vp.x + vp.w - (CARD_W * 7 + CARD_PADDING * 7 + MARGIN);
+  int right_x = vp.x + vp.w - (c->card_w * 7 + c->card_padding * 7 + c->margin);
 
-  g_layout.player_pos[0].x = vp.x + MARGIN;
-  g_layout.player_pos[0].y = vp.y + CARD_H * 4;
+  g_layout.player_pos[0].x = vp.x + c->margin;
+  g_layout.player_pos[0].y = vp.y + c->card_h * 4;
 
-  g_layout.player_pos[1].x = vp.x + MARGIN;
-  g_layout.player_pos[1].y = vp.y + CARD_H;
+  g_layout.player_pos[1].x = vp.x + c->margin;
+  g_layout.player_pos[1].y = vp.y + c->card_h;
 
   g_layout.player_pos[2].x = right_x;
-  g_layout.player_pos[2].y = vp.y + CARD_H;
+  g_layout.player_pos[2].y = vp.y + c->card_h;
 
   g_layout.player_pos[3].x = right_x;
-  g_layout.player_pos[3].y = vp.y + CARD_H * 4;
+  g_layout.player_pos[3].y = vp.y + c->card_h * 4;
 
   g_layout.player_pos[4].x = right_x;
-  g_layout.player_pos[4].y = vp.y + CARD_H * 7;
+  g_layout.player_pos[4].y = vp.y + c->card_h * 7;
 
   g_layout.timer.x = g_center.x;
-  g_layout.timer.y = vp.y + vp.h - MARGIN - CIRCLE_TIMER_R;
+  g_layout.timer.y = vp.y + vp.h - c->margin - c->circle_timer_r;
 
   g_layout.table_center.x = g_center.x;
   g_layout.table_center.y = g_center.y;
 
-  g_layout.msg_panel.x = vp.x + MSG_PANEL_X_OFFSET;
+  g_layout.msg_panel.x = vp.x + c->msg_panel_x_offset;
   g_layout.msg_panel.y = g_center.y;
-  g_layout.msg_panel.w = MSG_PANEL_W;
+  g_layout.msg_panel.w = c->msg_panel_w;
   g_layout.msg_panel.h = g_layout.status_line_h > 0
-      ? (g_layout.status_line_h + 2) * SIZEOF_STATUS_MSGS + MSG_PANEL_PAD_Y * 2
+      ? (g_layout.status_line_h + 2) * SIZEOF_STATUS_MSGS + c->msg_panel_pad_y * 2
       : 0;
 
   g_layout.msg_panel_right = g_layout.msg_panel.x + g_layout.msg_panel.w;
 
-  /* Buttons start just to the right of the message panel */
-  g_layout.action_btn_x = g_layout.msg_panel_right + 50;
+  g_layout.action_btn_x = g_layout.msg_panel_right + c->action_btn_x_gap;
 
   /* Menu screens (connect + settings) */
   g_layout.menu.title_x            = g_center.x * 2 / 3;
-  g_layout.menu.title_y            = 60;
-  g_layout.menu.margin_x           = vp.x + 100;
-  g_layout.menu.connect_btn_y      = vp.y + 160;
-  g_layout.menu.connect_host_y     = vp.y + 220;
-  g_layout.menu.quit_y             = vp.y + MARGIN;
-  g_layout.menu.settings_x_right   = vp.x + 700;
-  g_layout.menu.settings_row_y[0]  = vp.y + 160;
-  g_layout.menu.settings_row_y[1]  = vp.y + 360;
-  g_layout.menu.settings_row_y[2]  = vp.y + 560;
-  g_layout.menu.settings_save_y    = vp.y + 750;
-  g_layout.menu.back_img_x         = vp.x + vp.w - back_btn_size - MARGIN;
+  g_layout.menu.title_y            = c->menu_title_y;
+  g_layout.menu.margin_x           = vp.x + c->menu_margin_x_offset;
+  g_layout.menu.connect_btn_y      = vp.y + c->menu_connect_btn_y_offset;
+  g_layout.menu.connect_host_y     = vp.y + c->menu_connect_host_y_offset;
+  g_layout.menu.quit_y             = vp.y + c->margin;
+  g_layout.menu.settings_x_right   = vp.x + c->menu_settings_x_right_offset;
+  g_layout.menu.settings_row_y[0]  = vp.y + c->menu_settings_row_y_0;
+  g_layout.menu.settings_row_y[1]  = vp.y + c->menu_settings_row_y_1;
+  g_layout.menu.settings_row_y[2]  = vp.y + c->menu_settings_row_y_2;
+  g_layout.menu.settings_save_y    = vp.y + c->menu_settings_save_y_offset;
+  g_layout.menu.back_img_x         = vp.x + vp.w - c->back_btn_size - c->margin;
   g_layout.menu.back_img_y         = vp.y + vp.h / 2;
-  g_layout.menu.links_center_x     = g_center.x + 200;
+  g_layout.menu.links_center_x     = g_center.x + c->menu_links_center_x_offset;
 
   /* Lobby (game selection) screen */
-  g_layout.lobby.waiting_y = vp.y + vp.h - 200;
-  g_layout.lobby.kick_x    = vp.x + vp.w / 10;
-  g_layout.lobby.kick_y    = vp.y + vp.h * 82 / 100;
+  g_layout.lobby.waiting_y = vp.y + vp.h - c->lobby_waiting_from_bottom;
+  g_layout.lobby.kick_x    = vp.x + vp.w / c->lobby_kick_x_divisor;
+  g_layout.lobby.kick_y    = vp.y + vp.h * c->lobby_kick_y_pct / 100;
 }

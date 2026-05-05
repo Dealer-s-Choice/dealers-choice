@@ -28,6 +28,12 @@ players_array[1].in = true;
 player_pos[1].x = 100;
 player_pos[1].y = 200;
 
+// layout_cards uses g_layout_cfg for card dimensions; set non-zero values
+// matching the defaults in layout.conf so rect.w assertions are meaningful.
+g_layout_cfg.card_w = 80;
+g_layout_cfg.card_h = 50;
+g_layout_cfg.card_padding = 10;
+
 // Before the fix this would loop forever; after the fix it returns immediately.
 layout_cards(card_context, players_array, player_pos);
 

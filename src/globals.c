@@ -35,4 +35,3 @@ pcg32_random_t rng;
 SDL_Rect g_viewport = {0};
 SDL_Point g_center = {0};
 
-const int back_btn_size = 96;
