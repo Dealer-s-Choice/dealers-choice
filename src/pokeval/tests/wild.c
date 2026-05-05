@@ -242,4 +242,40 @@ _MAIN_HEAD_
   assert(rank == POKEVAL_STRAIGHT_FLUSH);
 }
 
+/* --- compare_hands_wild: trips comparison ---
+ * J J 2 3 4 (wild 2 = three Jacks) must beat 7 7 7 K Q (three Sevens) even
+ * though K Q sort higher than J in a raw high-card comparison.
+ * Regression test: compare_hands_wild must use rank-aware tiebreaking, not
+ * raw compare_high_cards, when both hands evaluate to the same rank.
+ *
+ * PAD_NULL_CARDS after the 5 real cards is required so that
+ * hand5_from_hand7_wild stops at n=5 and takes the direct copy path instead
+ * of the combo path, which would otherwise treat zero-initialized trailing
+ * slots as a phantom pair and inflate both hands to Full House. */
+{
+  POKEVAL_NeedComparing hands[2] = {
+    /* Hand 0: 7 7 7 K Q — three Sevens with high kickers */
+    {.id = 0,
+     .hand = {{{DH_CARD_SEVEN, DH_SUIT_HEARTS},
+               {DH_CARD_SEVEN, DH_SUIT_DIAMONDS},
+               {DH_CARD_SEVEN, DH_SUIT_SPADES},
+               {DH_CARD_KING, DH_SUIT_CLUBS},
+               {DH_CARD_QUEEN, DH_SUIT_CLUBS},
+               PAD_NULL_CARDS}}},
+    /* Hand 1: J J 2 3 4 — wild 2 fills the third Jack */
+    {.id = 1,
+     .hand = {{{DH_CARD_JACK, DH_SUIT_HEARTS},
+               {DH_CARD_JACK, DH_SUIT_DIAMONDS},
+               {DH_CARD_TWO, DH_SUIT_SPADES},
+               {DH_CARD_THREE, DH_SUIT_CLUBS},
+               {DH_CARD_FOUR, DH_SUIT_HEARTS},
+               PAD_NULL_CARDS}}},
+  };
+  uint8_t n_wins = POKEVAL_compare_hands_wild(hands, 2, DH_CARD_TWO);
+  fprintf(stderr, "wild trips compare (J J 2 3 4 vs 7 7 7 K Q): %d winner(s)\n", n_wins);
+  assert(n_wins == 1);
+  assert(!hands[0].won); /* three Sevens loses */
+  assert(hands[1].won);  /* three Jacks (wild) wins */
+}
+
 _MAIN_TAIL_
