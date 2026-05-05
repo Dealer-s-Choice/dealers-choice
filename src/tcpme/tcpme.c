@@ -24,6 +24,7 @@
 #include <errno.h>
 #include <netdb.h>
 #include <netinet/in.h>
+#include <netinet/tcp.h>
 #include <sys/select.h>
 #include <sys/socket.h>
 #include <unistd.h>
@@ -50,6 +51,16 @@ static TCPME_TLS char tcpme_errbuf[256];
 static void set_error(const char *msg) {
   strncpy(tcpme_errbuf, msg, sizeof(tcpme_errbuf) - 1);
   tcpme_errbuf[sizeof(tcpme_errbuf) - 1] = '\0';
+}
+
+static void set_nodelay(tcpme_socket_t sock) {
+#ifndef _WIN32
+  int one = 1;
+  setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, &one, sizeof(one));
+#else
+  BOOL one = TRUE;
+  setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, (const char *)&one, sizeof(one));
+#endif
 }
 
 static void set_error_sys(const char *prefix) {
@@ -207,8 +218,11 @@ tcpme_socket_t tcpme_accept(tcpme_socket_t server_sock) {
   struct sockaddr_storage addr;
   socklen_t addrlen = sizeof(addr);
   tcpme_socket_t client = accept(server_sock, (struct sockaddr *)&addr, &addrlen);
-  if (client == TCPME_INVALID_SOCKET)
+  if (client == TCPME_INVALID_SOCKET) {
     set_error_sys("accept() failed");
+    return TCPME_INVALID_SOCKET;
+  }
+  set_nodelay(client);
   return client;
 }
 
@@ -238,6 +252,7 @@ tcpme_socket_t tcpme_connect(const char *host, uint16_t port) {
       sock = TCPME_INVALID_SOCKET;
       continue;
     }
+    set_nodelay(sock);
     break;
   }
 
@@ -257,14 +272,28 @@ void tcpme_close(tcpme_socket_t sock) {
 }
 
 int tcpme_send(tcpme_socket_t sock, const void *buf, int len) {
-  int n = (int)send(sock, (const char *)buf, len, 0);
+  int n;
+#ifndef _WIN32
+  do {
+    n = (int)send(sock, (const char *)buf, len, 0);
+  } while (n < 0 && errno == EINTR);
+#else
+  n = (int)send(sock, (const char *)buf, len, 0);
+#endif
   if (n < 0)
     set_error_sys("send() failed");
   return n;
 }
 
 int tcpme_recv(tcpme_socket_t sock, void *buf, int len) {
-  int n = (int)recv(sock, (char *)buf, len, 0);
+  int n;
+#ifndef _WIN32
+  do {
+    n = (int)recv(sock, (char *)buf, len, 0);
+  } while (n < 0 && errno == EINTR);
+#else
+  n = (int)recv(sock, (char *)buf, len, 0);
+#endif
   if (n < 0)
     set_error_sys("recv() failed");
   return n;
