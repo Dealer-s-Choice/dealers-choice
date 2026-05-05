@@ -105,8 +105,8 @@ bool confirm_quit(TTF_Font *font) {
     return false;
   }
 
-  const int pad = 40;
-  const int btn_gap = 20;
+  const int pad = g_layout_cfg.confirm_quit_pad;
+  const int btn_gap = g_layout_cfg.confirm_quit_btn_gap;
   const int dialog_w =
       SDL_max(msg_tw->base.rect.w + pad * 2,
               btn_cancel->base.rect.w + btn_gap + btn_quit_w->base.rect.w + pad * 2);
@@ -181,7 +181,7 @@ bool confirm_quit(TTF_Font *font) {
 }
 
 void draw_nameplate(SDL_Renderer *r, SDL_Rect rect, uint8_t alpha) {
-  const int radius = 20;
+  const int radius = g_layout_cfg.nameplate_radius;
   SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_BLEND);
   SDL_SetRenderDrawColor(r, 0, 0, 0, alpha);
 

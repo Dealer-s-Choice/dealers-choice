@@ -40,6 +40,4 @@ extern pcg32_random_t rng;
 extern SDL_Rect g_viewport;
 extern SDL_Point g_center;
 
-extern const int back_btn_size;
-
 #endif

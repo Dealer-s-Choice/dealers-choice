@@ -104,8 +104,8 @@ ButtonWidget_t *button_widget_create(const char *text, EColor_t color, TTF_Font 
     th = 20;
   }
 
-  bw->base.rect.w = tw + 20;
-  bw->base.rect.h = th + 10;
+  bw->base.rect.w = tw + g_layout_cfg.button_w_pad;
+  bw->base.rect.h = th + g_layout_cfg.button_h_pad;
   bw->base.render = button_widget_render;
   bw->base.destroy = button_widget_destroy;
 

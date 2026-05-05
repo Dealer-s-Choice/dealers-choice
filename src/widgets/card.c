@@ -544,8 +544,8 @@ static void card_widget_render(UIWidget_t *w) {
     exit(EXIT_FAILURE);
   }
 
-  SDL_Rect textRect = {w->rect.x + (CARD_W - textSurface->w) / 2,
-                       w->rect.y + (CARD_H - textSurface->h) / 2, textSurface->w, textSurface->h};
+  SDL_Rect textRect = {w->rect.x + (g_layout_cfg.card_w - textSurface->w) / 2,
+                       w->rect.y + (g_layout_cfg.card_h - textSurface->h) / 2, textSurface->w, textSurface->h};
 
   SDL_RenderCopy(renderer, textTexture, NULL, &textRect);
   SDL_FreeSurface(textSurface);
@@ -556,8 +556,8 @@ static void card_widget_destroy(UIWidget_t *w) { free(w); }
 
 void card_widget_init(CardWidget_t *cw, TTF_Font *font) {
   cw->font = font;
-  cw->base.rect.w = CARD_W;
-  cw->base.rect.h = CARD_H;
+  cw->base.rect.w = g_layout_cfg.card_w;
+  cw->base.rect.h = g_layout_cfg.card_h;
   cw->base.render = card_widget_render;
   cw->base.destroy = card_widget_destroy;
 }

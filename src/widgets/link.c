@@ -2,9 +2,6 @@
 #include "globals.h"
 #include "graphics.h"
 
-#define LINK_PAD_X 10
-#define LINK_PAD_Y 2
-
 static void link_widget_render(UIWidget_t *w) {
   LinkWidget_t *lw = (LinkWidget_t *)w;
   SDL_Renderer *r = g_sdl_context->renderer;
@@ -17,8 +14,8 @@ static void link_widget_render(UIWidget_t *w) {
 
   TextWidget_t *tw = w->hovered ? lw->text_hovered : lw->text_normal;
   if (tw) {
-    tw->base.rect.x = w->rect.x + LINK_PAD_X;
-    tw->base.rect.y = w->rect.y + LINK_PAD_Y;
+    tw->base.rect.x = w->rect.x + g_layout_cfg.link_pad_x;
+    tw->base.rect.y = w->rect.y + g_layout_cfg.link_pad_y;
     ui_widget_render(&tw->base);
   }
 }
@@ -57,8 +54,8 @@ LinkWidget_t *link_widget_create(const char *text, const char *url, TTF_Font *fo
     return NULL;
   }
 
-  lw->base.rect.w = lw->text_normal->base.rect.w + LINK_PAD_X * 2;
-  lw->base.rect.h = lw->text_normal->base.rect.h + LINK_PAD_Y * 2;
+  lw->base.rect.w = lw->text_normal->base.rect.w + g_layout_cfg.link_pad_x * 2;
+  lw->base.rect.h = lw->text_normal->base.rect.h + g_layout_cfg.link_pad_y * 2;
 
   lw->base.render = link_widget_render;
   lw->base.destroy = link_widget_destroy;
