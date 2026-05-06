@@ -30,5 +30,5 @@ can update them by using:
 
 while in the repo root directory. If you encounter an error when updating,
 it's usually simplest to remove the subproject directory associate with the
-error (e.g. pokeval, deckhandler) and re-running `ninja` or `meson compile` in
+error (e.g. canfigger) and re-running `ninja` or `meson compile` in
 the build directory.

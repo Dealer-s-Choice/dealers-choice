@@ -126,7 +126,5 @@ These are some of the libraries used by Dealer's Choice. The source code is
 bundled with this project and there is no need to install these dependencies.
 
 * [miniaudio](https://miniaud.io/)
-* [Pokeval](https://github.com/Dealer-s-Choice/pokeval)
-* [deckhandler](https://github.com/Dealer-s-Choice/deckhandler)
 * [pcg-c-basic](https://www.pcg-random.org/using-pcg-c-basic.html)
 * [canfigger](https://github.com/andy5995/canfigger/)
