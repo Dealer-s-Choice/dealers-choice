@@ -8,6 +8,13 @@
     phase can still be buffered in the TCP socket when the game starts, causing
     an "Unrecognised opcode" error and a spurious disconnection
   * Move deckhandler and pokeval inline (no longer imported as meson subprojects)
+  * pokeval: fix compare_hands_wild tiebreaking for THREE_OF_A_KIND (and
+    FOUR_OF_A_KIND, FULL_HOUSE, FIVE_OF_A_KIND): the previous code compared raw
+    sorted face values, so a wild hand like J J 2 could lose to 7 7 7 when the
+    natural hand held higher kickers (K, Q) that sorted above the wild hand's
+    trip card; now uses rank-aware group-value comparison that correctly
+    identifies the effective triplet/quad/quint face regardless of which cards
+    are wild
   * bugfix: Window becomes unresponsive on systems where audio initialisation
     blocks (e.g. PulseAudio socket absent); run ma_engine_init on a background
     thread and fall back to silent (noDevice) mode on failure

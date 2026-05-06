@@ -866,6 +866,29 @@ uint8_t POKEVAL_compare_hands_omaha(POKEVAL_NeedComparing *need_comparing, uint8
   return compare_hands_5(need_comparing, count);
 }
 
+// Returns the face value of the highest N-of-a-kind group in a wild hand.
+// Checks for a natural group of exactly `group_size` first, then falls back
+// to the highest non-wild face whose natural count plus available wilds
+// reaches `group_size`.
+static int get_group_value_wild(const POKEVAL_Hand_5 *hand, int32_t wild_face, int group_size) {
+  for (int i = 0; i < POKEVAL_HAND_SIZE; i++) {
+    int fv = hand->card[i].face_val;
+    if (fv != wild_face && count_face(hand, fv) == group_size)
+      return fv;
+  }
+  int n_wild = 0;
+  for (int i = 0; i < POKEVAL_HAND_SIZE; i++)
+    if (hand->card[i].face_val == wild_face) n_wild++;
+  int best = -1;
+  for (int i = 0; i < POKEVAL_HAND_SIZE; i++) {
+    int fv = hand->card[i].face_val;
+    if (fv == wild_face) continue;
+    if (count_face(hand, fv) + n_wild >= group_size && fv > best)
+      best = fv;
+  }
+  return best;
+}
+
 uint8_t POKEVAL_compare_hands_wild(POKEVAL_NeedComparing *need_comparing, uint8_t count,
                                    int32_t wild_face) {
   for (size_t i = 0; i < count; ++i)
@@ -893,10 +916,76 @@ uint8_t POKEVAL_compare_hands_wild(POKEVAL_NeedComparing *need_comparing, uint8_
       POKEVAL_Hand_5 b = current_hand;
       POKEVAL_sort_hand(&a);
       POKEVAL_sort_hand(&b);
-      int cmp = compare_high_cards(&a, &b);
-      if (cmp == 0) {
+
+      bool b_wins = false;
+      bool tie = false;
+
+      switch (rank) {
+      case POKEVAL_ROYAL_FLUSH:
+        tie = true;
+        break;
+      case POKEVAL_FIVE_OF_A_KIND: {
+        int av = get_group_value_wild(&a, wild_face, 5);
+        int bv = get_group_value_wild(&b, wild_face, 5);
+        if (av == bv) tie = true;
+        else b_wins = bv > av;
+        break;
+      }
+      case POKEVAL_FOUR_OF_A_KIND: {
+        int aq = get_group_value_wild(&a, wild_face, 4);
+        int bq = get_group_value_wild(&b, wild_face, 4);
+        if (aq != bq) {
+          b_wins = bq > aq;
+        } else {
+          int cmp = compare_high_cards(&a, &b);
+          if (cmp == 0) tie = true;
+          else if (cmp < 0) b_wins = true;
+        }
+        break;
+      }
+      case POKEVAL_FULL_HOUSE: {
+        int at = get_group_value_wild(&a, wild_face, 3);
+        int bt = get_group_value_wild(&b, wild_face, 3);
+        if (at != bt) {
+          b_wins = bt > at;
+        } else {
+          int ap = -1, bp = -1;
+          for (int j = 0; j < POKEVAL_HAND_SIZE; j++) {
+            int val = a.card[j].face_val;
+            if (val != at && val != wild_face && count_face(&a, val) == 2) { ap = val; break; }
+          }
+          for (int j = 0; j < POKEVAL_HAND_SIZE; j++) {
+            int val = b.card[j].face_val;
+            if (val != bt && val != wild_face && count_face(&b, val) == 2) { bp = val; break; }
+          }
+          if (ap == bp) tie = true;
+          else b_wins = bp > ap;
+        }
+        break;
+      }
+      case POKEVAL_THREE_OF_A_KIND: {
+        int at = get_group_value_wild(&a, wild_face, 3);
+        int bt = get_group_value_wild(&b, wild_face, 3);
+        if (at != bt) {
+          b_wins = bt > at;
+        } else {
+          int cmp = compare_high_cards(&a, &b);
+          if (cmp == 0) tie = true;
+          else if (cmp < 0) b_wins = true;
+        }
+        break;
+      }
+      default: {
+        int cmp = compare_high_cards(&a, &b);
+        if (cmp == 0) tie = true;
+        else if (cmp < 0) b_wins = true;
+        break;
+      }
+      }
+
+      if (tie) {
         winner_indices[num_winners++] = i;
-      } else if (cmp < 0) {
+      } else if (b_wins) {
         best_hand = current_hand;
         winner_indices[0] = i;
         num_winners = 1;
