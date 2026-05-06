@@ -927,8 +927,12 @@ int main(int argc, char *argv[]) {
           get_socket_context_and_run_client(&player_config, &cli_args, host_str, port, &sdl_context,
                                             &font, &path, cli_args.test_mode, links, NULL);
       if (went_back) {
-        loop_to_connect = true;
-        first_connect = false;
+        SDL_Event peek;
+        SDL_PumpEvents();
+        if (SDL_PeepEvents(&peek, 1, SDL_PEEKEVENT, SDL_QUIT, SDL_QUIT) <= 0) {
+          loop_to_connect = true;
+          first_connect = false;
+        }
       }
     }
   }
