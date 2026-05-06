@@ -2050,6 +2050,18 @@ static int audio_init_thread_fn(void *data) {
   return 0;
 }
 
+typedef struct {
+  ma_engine *engine;
+  SDL_atomic_t done;
+} AudioUninitAttempt_t;
+
+static int audio_uninit_thread_fn(void *data) {
+  AudioUninitAttempt_t *au = data;
+  ma_engine_uninit(au->engine);
+  SDL_AtomicSet(&au->done, 1);
+  return 0;
+}
+
 bool get_socket_context_and_run_client(PlayerConfig_t *player_config, const CliArgs_t *cli_args,
                                        const char *host_str, const uint16_t port,
                                        SdlContext_t *sdl_context, Font_t *font, Path_t *path,
@@ -2437,7 +2449,21 @@ bool get_socket_context_and_run_client(PlayerConfig_t *player_config, const CliA
       SDL_DestroyTexture(coin_textures[i]);
     atomic_store(&g_audio_shutting_down, true);
     g_sound_context = NULL;
-    ma_engine_uninit(&sound_context.engine);
+    {
+      AudioUninitAttempt_t au;
+      au.engine = &sound_context.engine;
+      SDL_AtomicSet(&au.done, 0);
+      SDL_Thread *uninit_thread = SDL_CreateThread(audio_uninit_thread_fn, "audio_uninit", &au);
+      if (!uninit_thread) {
+        ma_engine_uninit(&sound_context.engine);
+      } else {
+        while (!SDL_AtomicGet(&au.done)) {
+          SDL_PumpEvents();
+          SDL_Delay(16);
+        }
+        SDL_WaitThread(uninit_thread, NULL);
+      }
+    }
     socket_cleanup(&socket_context);
 
     return went_back_result;
