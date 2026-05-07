@@ -10,6 +10,7 @@ RUN zypper --non-interactive refresh && \
     SDL2_image-devel \
     SDL2_ttf-devel \
     libcanfigger0-devel \
+    libpcg-c0-devel \
     libsodium-devel \
     meson \
     ninja \
