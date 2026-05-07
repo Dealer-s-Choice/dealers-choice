@@ -21,10 +21,7 @@ fprintf(stderr, "Dealer %d selecting game\n", *dealer_id);
 assert(send_game_select(socket_context[*dealer_id].sock, game_choices[FIVE_CARD_SHOWDOWN].game_type,
                         false) == 0);
 
-_RECEIVE_GAME_STATE()
-_RECEIVE_GAME_STATE()
-_RECEIVE_GAME_STATE()
-_RECEIVE_GAME_STATE()
+#include "01_recv_game_state_4x.c"
 
 int8_t *turn_id = &client_state[0].turn_id;
 
@@ -40,53 +37,35 @@ SDL_Delay(n_ms);
 /* Opening bet — does NOT count against the raise cap */
 assert(expected_bet_turn[game] == *turn_id);
 assert(send_player_action(client_state, socket_context[*turn_id].sock, ACTION_BET, 500) == 0);
-_RECEIVE_GAME_STATE()
-_RECEIVE_GAME_STATE()
-_RECEIVE_GAME_STATE()
-_RECEIVE_GAME_STATE()
+#include "01_recv_game_state_4x.c"
 assert(game_state[0].raises_remaining == 3);
 
 /* 1st raise */
 assert(expected_r1_turn[game] == *turn_id);
 assert(send_player_action(client_state, socket_context[*turn_id].sock, ACTION_RAISE, 500) == 0);
-_RECEIVE_GAME_STATE()
-_RECEIVE_GAME_STATE()
-_RECEIVE_GAME_STATE()
-_RECEIVE_GAME_STATE()
+#include "01_recv_game_state_4x.c"
 assert(game_state[0].raises_remaining == 2);
 
 /* 2nd raise */
 assert(expected_r2_turn[game] == *turn_id);
 assert(send_player_action(client_state, socket_context[*turn_id].sock, ACTION_RAISE, 500) == 0);
-_RECEIVE_GAME_STATE()
-_RECEIVE_GAME_STATE()
-_RECEIVE_GAME_STATE()
-_RECEIVE_GAME_STATE()
+#include "01_recv_game_state_4x.c"
 assert(game_state[0].raises_remaining == 1);
 
 /* 3rd raise — the key assertion */
 assert(expected_r3_turn[game] == *turn_id);
 assert(send_player_action(client_state, socket_context[*turn_id].sock, ACTION_RAISE, 500) == 0);
-_RECEIVE_GAME_STATE()
-_RECEIVE_GAME_STATE()
-_RECEIVE_GAME_STATE()
-_RECEIVE_GAME_STATE()
+#include "01_recv_game_state_4x.c"
 assert(game_state[0].raises_remaining == 0);
 
 /* Both remaining players call to end the round */
 assert(expected_call1_turn[game] == *turn_id);
 assert(send_player_action(client_state, socket_context[*turn_id].sock, ACTION_CALL, 0) == 0);
-_RECEIVE_GAME_STATE()
-_RECEIVE_GAME_STATE()
-_RECEIVE_GAME_STATE()
-_RECEIVE_GAME_STATE()
+#include "01_recv_game_state_4x.c"
 
 assert(expected_call2_turn[game] == *turn_id);
 assert(send_player_action(client_state, socket_context[*turn_id].sock, ACTION_CALL, 0) == 0);
-_RECEIVE_GAME_STATE()
-_RECEIVE_GAME_STATE()
-_RECEIVE_GAME_STATE()
-_RECEIVE_GAME_STATE()
+#include "01_recv_game_state_4x.c"
 _RECEIVE_GAME_STATE()
 
 assert(game_state[0].pot == 0);

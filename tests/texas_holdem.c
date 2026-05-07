@@ -9,9 +9,7 @@ assert(send_game_select(socket_context[*dealer_id].sock, game_choices[TEXAS_HOLD
                         false) == 0);
 
 /* Receive initial 2-card hole card deal */
-_RECEIVE_GAME_STATE()
-_RECEIVE_GAME_STATE()
-_RECEIVE_GAME_STATE()
+#include "01_recv_game_state_3x.c"
 
 int8_t *turn_id = &client_state[0].turn_id;
 
@@ -22,64 +20,44 @@ for (int p = 0; p < N_PLAYERS; p++) {
   assert(*turn_id == preflop_order[game][p]);
   assert(send_player_action(client_state, socket_context[*turn_id].sock, ACTION_CHECK, 0) == 0);
   SDL_Delay(n_ms);
-  _RECEIVE_GAME_STATE()
-  _RECEIVE_GAME_STATE()
-  _RECEIVE_GAME_STATE()
-  _RECEIVE_GAME_STATE()
+#include "01_recv_game_state_4x.c"
 }
 
 /* Flop: 3 community cards dealt */
-_RECEIVE_GAME_STATE()
-_RECEIVE_GAME_STATE()
-_RECEIVE_GAME_STATE()
+#include "01_recv_game_state_3x.c"
 
 for (int p = 0; p < N_PLAYERS; p++) {
   fprintf(stderr, "flop turn: %d (expected %d)\n", *turn_id, preflop_order[game][p]);
   assert(*turn_id == preflop_order[game][p]);
   assert(send_player_action(client_state, socket_context[*turn_id].sock, ACTION_CHECK, 0) == 0);
   SDL_Delay(n_ms);
-  _RECEIVE_GAME_STATE()
-  _RECEIVE_GAME_STATE()
-  _RECEIVE_GAME_STATE()
-  _RECEIVE_GAME_STATE()
+#include "01_recv_game_state_4x.c"
 }
 
 /* Turn: 1 community card */
-_RECEIVE_GAME_STATE()
-_RECEIVE_GAME_STATE()
-_RECEIVE_GAME_STATE()
+#include "01_recv_game_state_3x.c"
 
 for (int p = 0; p < N_PLAYERS; p++) {
   fprintf(stderr, "turn street turn: %d (expected %d)\n", *turn_id, preflop_order[game][p]);
   assert(*turn_id == preflop_order[game][p]);
   assert(send_player_action(client_state, socket_context[*turn_id].sock, ACTION_CHECK, 0) == 0);
   SDL_Delay(n_ms);
-  _RECEIVE_GAME_STATE()
-  _RECEIVE_GAME_STATE()
-  _RECEIVE_GAME_STATE()
-  _RECEIVE_GAME_STATE()
+#include "01_recv_game_state_4x.c"
 }
 
 /* River: 1 community card */
-_RECEIVE_GAME_STATE()
-_RECEIVE_GAME_STATE()
-_RECEIVE_GAME_STATE()
+#include "01_recv_game_state_3x.c"
 
 for (int p = 0; p < N_PLAYERS; p++) {
   fprintf(stderr, "river turn: %d (expected %d)\n", *turn_id, preflop_order[game][p]);
   assert(*turn_id == preflop_order[game][p]);
   assert(send_player_action(client_state, socket_context[*turn_id].sock, ACTION_CHECK, 0) == 0);
   SDL_Delay(n_ms);
-  _RECEIVE_GAME_STATE()
-  _RECEIVE_GAME_STATE()
-  _RECEIVE_GAME_STATE()
-  _RECEIVE_GAME_STATE()
+#include "01_recv_game_state_4x.c"
 }
 
 /* Showdown */
-_RECEIVE_GAME_STATE()
-_RECEIVE_GAME_STATE()
-_RECEIVE_GAME_STATE()
+#include "01_recv_game_state_3x.c"
 
 for (i = 0; i < N_PLAYERS; i++) {
   debug_print_cards(&game_state[i].player[i].hand);

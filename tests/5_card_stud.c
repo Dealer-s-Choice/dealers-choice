@@ -8,11 +8,7 @@ assert(send_game_select(socket_context[*dealer_id].sock, game_choices[FIVE_CARD_
                         false) == 0);
 
 // Initial deal + game-type broadcast + bring-in status msg + bring-in game state + first turn-id
-_RECEIVE_GAME_STATE()
-_RECEIVE_GAME_STATE()
-_RECEIVE_GAME_STATE()
-_RECEIVE_GAME_STATE()
-_RECEIVE_GAME_STATE()
+#include "01_recv_game_state_5x.c"
 
 for (int n_rounds = 0; n_rounds < game_choices[FIVE_CARD_STUD].n_betting_rounds; n_rounds++) {
   fprintf(stderr, "\n -#- game: %d -#- n_rounds: %d\n", game, n_rounds);
@@ -34,19 +30,13 @@ for (int n_rounds = 0; n_rounds < game_choices[FIVE_CARD_STUD].n_betting_rounds;
     fputc('\n', stderr);
   }
 
-  _RECEIVE_GAME_STATE()
-  _RECEIVE_GAME_STATE()
-  _RECEIVE_GAME_STATE()
-  _RECEIVE_GAME_STATE()
+#include "01_recv_game_state_4x.c"
 
   SDL_Delay(n_ms);
   fprintf(stderr, "turn_id: %d\n", *turn_id);
   assert(send_player_action(client_state, socket_context[*turn_id].sock, ACTION_CALL, 0) == 0);
 
-  _RECEIVE_GAME_STATE()
-  _RECEIVE_GAME_STATE()
-  _RECEIVE_GAME_STATE()
-  _RECEIVE_GAME_STATE()
+#include "01_recv_game_state_4x.c"
 
   SDL_Delay(n_ms);
   fprintf(stderr, "turn_id: %d\n", *turn_id);
@@ -55,10 +45,7 @@ for (int n_rounds = 0; n_rounds < game_choices[FIVE_CARD_STUD].n_betting_rounds;
   uint8_t last_action = (n_rounds == 0) ? ACTION_CHECK : ACTION_CALL;
   assert(send_player_action(client_state, socket_context[*turn_id].sock, last_action, 0) == 0);
 
-  _RECEIVE_GAME_STATE()
-  _RECEIVE_GAME_STATE()
-  _RECEIVE_GAME_STATE()
-  _RECEIVE_GAME_STATE()
+#include "01_recv_game_state_4x.c"
 }
 
 _RECEIVE_GAME_STATE()
