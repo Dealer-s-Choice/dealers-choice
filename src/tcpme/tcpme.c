@@ -58,8 +58,17 @@ static void set_nodelay(tcpme_socket_t sock) {
   int one = 1;
   setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, &one, sizeof(one));
 #else
-  BOOL one = TRUE;
+  DWORD one = 1;
   setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, (const char *)&one, sizeof(one));
+#endif
+}
+
+static void set_nosigpipe(tcpme_socket_t sock) {
+#ifdef SO_NOSIGPIPE
+  int one = 1;
+  setsockopt(sock, SOL_SOCKET, SO_NOSIGPIPE, &one, sizeof(one));
+#else
+  (void)sock;
 #endif
 }
 
@@ -134,7 +143,7 @@ tcpme_socket_t tcpme_listen(const char *host, uint16_t port) {
   memset(&hints, 0, sizeof(hints));
   hints.ai_family = AF_UNSPEC;
   hints.ai_socktype = SOCK_STREAM;
-  hints.ai_flags = AI_PASSIVE;
+  hints.ai_flags = AI_PASSIVE | AI_NUMERICSERV;
 
   struct addrinfo *res = NULL;
   int rc = getaddrinfo(host, portstr, &hints, &res);
@@ -223,6 +232,7 @@ tcpme_socket_t tcpme_accept(tcpme_socket_t server_sock) {
     return TCPME_INVALID_SOCKET;
   }
   set_nodelay(client);
+  set_nosigpipe(client);
   return client;
 }
 
@@ -234,6 +244,7 @@ tcpme_socket_t tcpme_connect(const char *host, uint16_t port) {
   memset(&hints, 0, sizeof(hints));
   hints.ai_family = AF_UNSPEC;
   hints.ai_socktype = SOCK_STREAM;
+  hints.ai_flags = AI_NUMERICSERV;
 
   struct addrinfo *res = NULL;
   int rc = getaddrinfo(host, portstr, &hints, &res);
@@ -253,6 +264,7 @@ tcpme_socket_t tcpme_connect(const char *host, uint16_t port) {
       continue;
     }
     set_nodelay(sock);
+    set_nosigpipe(sock);
     break;
   }
 
@@ -273,7 +285,11 @@ void tcpme_close(tcpme_socket_t sock) {
 
 int tcpme_send(tcpme_socket_t sock, const void *buf, int len) {
   int n;
-#ifndef _WIN32
+#if defined(MSG_NOSIGNAL)
+  do {
+    n = (int)send(sock, (const char *)buf, len, MSG_NOSIGNAL);
+  } while (n < 0 && errno == EINTR);
+#elif !defined(_WIN32)
   do {
     n = (int)send(sock, (const char *)buf, len, 0);
   } while (n < 0 && errno == EINTR);
@@ -388,8 +404,10 @@ int tcpme_add_socket(tcpme_set_t *set, tcpme_socket_t sock) {
 }
 
 int tcpme_del_socket(tcpme_set_t *set, tcpme_socket_t sock) {
-  if (!set)
+  if (!set) {
+    set_error("tcpme_del_socket: NULL socket set");
     return -1;
+  }
   for (int i = 0; i < set->count; i++) {
     if (set->sockets[i] == sock) {
       set->count--;
