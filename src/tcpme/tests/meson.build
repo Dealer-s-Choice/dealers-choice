@@ -1,17 +1,18 @@
 foreach t : [
-  'test_basic',
-  'test_loopback',
-  'test_ipv6',
-  'test_socket_set',
-  'test_error_paths',
-  'test_hostname',
+  'basic',
+  'loopback',
+  'ipv6',
+  'socket_set',
+  'error_paths',
+  'hostname',
+  'peer_close',
 ]
   exe = executable(
-    'tcpme_' + t,
-    t + '.c',
+    'tcpme_test_' + t,
+    'test_' + t + '.c',
     dependencies: tcpme_dep,
   )
-  test('tcpme_' + t, exe, suite: 'tcpme')
+  test('tcpme_test_' + t, exe, suite: 'tcpme')
 endforeach
 
 threads_dep = dependency('threads')
