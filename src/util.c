@@ -30,6 +30,7 @@
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/stat.h>
 
 #ifdef _WIN32
@@ -42,7 +43,6 @@
 // clang-format on
 #else
 #include <fcntl.h>
-#include <string.h>
 #include <unistd.h>
 #define PATH_SEP '/'
 #define mkdir(path, mode) mkdir(path, mode)
@@ -160,12 +160,21 @@ int make_directory_recursive(const char *path) {
   return 0;
 }
 
-void *calloc_wrap(const size_t n, const size_t size) {
+void *real_calloc_wrap(const size_t n, const size_t size, const char *func, int line) {
   void *ptr = calloc(n, size);
   if (ptr)
     return ptr;
 
-  perror("calloc");
+  fprintf(stderr, "calloc: %s in %s() at line %d\n", strerror(errno), func, line);
+  exit(EXIT_FAILURE);
+}
+
+void *real_malloc_wrap(const size_t size, const char *func, int line) {
+  void *ptr = malloc(size);
+  if (ptr)
+    return ptr;
+
+  fprintf(stderr, "malloc: %s in %s() at line %d\n", strerror(errno), func, line);
   exit(EXIT_FAILURE);
 }
 
@@ -215,10 +224,27 @@ char *dc_strdup(const char *s) {
     return NULL;
 
   size_t len = strlen(s) + 1;
-  char *copy = malloc(len);
-  if (!copy)
-    return NULL;
-
+  char *copy = malloc_wrap(len);
   memcpy(copy, s, len);
   return copy;
+}
+
+char *expand_tilde(const char *path) {
+  if (!path || path[0] != '~' || (path[1] != '/' && path[1] != '\0'))
+    return dc_strdup(path);
+
+#ifdef _WIN32
+  const char *home = getenv("USERPROFILE");
+#else
+  const char *home = getenv("HOME");
+#endif
+  if (!home)
+    return dc_strdup(path);
+
+  size_t home_len = strlen(home);
+  size_t path_len = strlen(path);
+  char *result = malloc_wrap(home_len + path_len);
+  memcpy(result, home, home_len);
+  memcpy(result + home_len, path + 1, path_len);
+  return result;
 }
