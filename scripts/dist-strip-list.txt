@@ -4,11 +4,6 @@
 
 .gitignore
 .clang-format
-.cirrus.yml
 .github
 coverity
 packaging
-
-# Not needed by the distribution tarball, except if using `meson dist --include-subprojects`
-# See https://github.com/mesonbuild/meson/issues/12489
-subprojects/pcg
