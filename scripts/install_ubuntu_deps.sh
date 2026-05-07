@@ -3,8 +3,6 @@
 set -e
 
 sudo apt update
-sudo apt remove -y firefox
-sudo apt upgrade -y
 sudo apt-get install --no-install-recommends -y \
   cmake \
   gettext \
