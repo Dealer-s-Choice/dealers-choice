@@ -295,6 +295,10 @@ int recv_all_tcp(tcpme_socket_t sock, void *buf, size_t len) {
 // via opcodes, like what's done for the discard/draw request
 ERecvStatus_t recv_game_state(SocketContext_t *socket_context, GameState_t *game_state,
                               ClientState_t *client_state, const int8_t id) {
+  /* Loop so that server-initiated ping messages are handled transparently:
+   * they are processed and the next message is read without returning to the
+   * caller, so callers never need to account for pings in their receive count. */
+  for (;;) {
   int result = tcpme_check_sockets(socket_context->set, 0);
   if (result == -1) {
     fputs(tcpme_get_error(), stderr);
@@ -342,6 +346,7 @@ ERecvStatus_t recv_game_state(SocketContext_t *socket_context, GameState_t *game
   memcpy(&opcode_be, buffer, sizeof(opcode_be));
   uint16_t opcode = SDL_SwapBE16(opcode_be);
   // fprintf(stderr, "opcode: %04X\n", opcode);
+  bool transparent = false;
   switch (opcode) {
   case MSG_TURN_ID:
     client_state->turn_id = (int8_t)buffer[2];
@@ -390,6 +395,7 @@ ERecvStatus_t recv_game_state(SocketContext_t *socket_context, GameState_t *game
     }
 
     ping_request__free_unpacked(req, NULL);
+    transparent = true;
   } break;
 
   case MSG_PING_BROADCAST: {
@@ -409,6 +415,7 @@ ERecvStatus_t recv_game_state(SocketContext_t *socket_context, GameState_t *game
     }
 
     ping_broadcast__free_unpacked(pb, NULL);
+    transparent = true;
   } break;
 
   case MSG_STATUS_MESSAGE: {
@@ -465,7 +472,9 @@ ERecvStatus_t recv_game_state(SocketContext_t *socket_context, GameState_t *game
   }
 
   free(buffer);
-  return RECV_SUCCESS;
+  if (!transparent)
+    return RECV_SUCCESS;
+  } /* for (;;) */
 }
 
 ERecvStatus_t recv_game_settings(tcpme_socket_t client_socket, tcpme_set_t *socket_set,
