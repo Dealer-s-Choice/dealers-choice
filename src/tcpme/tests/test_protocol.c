@@ -138,7 +138,7 @@ int main(void) {
   tcpme_socket_t listen_sock = tcpme_listen(NULL, 0);
   assert(tcpme_socket_valid(listen_sock));
 
-  char addr_buf[TCPME_ADDRSTRLEN + 16];
+  char addr_buf[TCPME_ADDRPORTSTRLEN];
   assert(tcpme_get_local_addr(listen_sock, addr_buf, sizeof(addr_buf)));
   uint16_t port = extract_port(addr_buf);
   printf("mini-server listening at %s\n", addr_buf);

@@ -57,8 +57,11 @@ typedef int tcpme_socket_t;
 
 static inline bool tcpme_socket_valid(tcpme_socket_t s) { return s != TCPME_INVALID_SOCKET; }
 
-// Buffer size sufficient for a numeric IP address string (IPv4 or IPv6).
+// Buffer size sufficient for a numeric IP address (no port) string.
 #define TCPME_ADDRSTRLEN INET6_ADDRSTRLEN
+
+// Buffer size sufficient for "IP:port" or "[IPv6]:port" strings.
+#define TCPME_ADDRPORTSTRLEN (TCPME_ADDRSTRLEN + 8)
 
 typedef struct tcpme_set_t tcpme_set_t;
 
@@ -101,11 +104,12 @@ int tcpme_send(tcpme_socket_t sock, const void *buf, int len);
 int tcpme_recv(tcpme_socket_t sock, void *buf, int len);
 
 // Write the peer's "IP:port" (IPv4) or "[IP]:port" (IPv6) into buf.
-// buf must be at least TCPME_ADDRSTRLEN bytes. Returns false on failure.
+// buf must be at least TCPME_ADDRPORTSTRLEN bytes. Returns false on failure.
 bool tcpme_get_peer_addr(tcpme_socket_t sock, char *buf, size_t buflen);
 
 // Write the local "IP:port" of sock into buf. Useful for logging the
-// address a server is actually bound to. Returns false on failure.
+// address a server is actually bound to.
+// buf must be at least TCPME_ADDRPORTSTRLEN bytes. Returns false on failure.
 bool tcpme_get_local_addr(tcpme_socket_t sock, char *buf, size_t buflen);
 
 // Write only the IP address (no port) of the peer into buf.

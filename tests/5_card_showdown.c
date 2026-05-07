@@ -7,10 +7,7 @@ fprintf(stderr, "Dealer %d selecting game\n", *dealer_id);
 assert(send_game_select(socket_context[*dealer_id].sock, game_choices[FIVE_CARD_SHOWDOWN].game_type,
                         false) == 0);
 
-_RECEIVE_GAME_STATE()
-_RECEIVE_GAME_STATE()
-_RECEIVE_GAME_STATE()
-_RECEIVE_GAME_STATE()
+#include "01_recv_game_state_4x.c"
 
 int8_t *turn_id = &client_state[0].turn_id;
 const int expected_bet_turn[3] = {1, 2, 0};
@@ -25,10 +22,7 @@ for (i = 0; i < N_PLAYERS; i++) {
   fputc('\n', stderr);
 }
 
-_RECEIVE_GAME_STATE()
-_RECEIVE_GAME_STATE()
-_RECEIVE_GAME_STATE()
-_RECEIVE_GAME_STATE()
+#include "01_recv_game_state_4x.c"
 
 int expected_call_turn[3] = {2, 0, 1};
 assert(expected_call_turn[game] == *turn_id);
@@ -36,10 +30,7 @@ assert(expected_call_turn[game] == *turn_id);
 SDL_Delay(n_ms);
 assert(send_player_action(client_state, socket_context[*turn_id].sock, ACTION_BET, 500) == 0);
 
-_RECEIVE_GAME_STATE()
-_RECEIVE_GAME_STATE()
-_RECEIVE_GAME_STATE()
-_RECEIVE_GAME_STATE()
+#include "01_recv_game_state_4x.c"
 
 expected_call_turn[0] = 0;
 expected_call_turn[1] = 1;
@@ -49,11 +40,7 @@ assert(expected_call_turn[game] == *turn_id);
 SDL_Delay(n_ms);
 assert(send_player_action(client_state, socket_context[*turn_id].sock, ACTION_CALL, 0) == 0);
 
-_RECEIVE_GAME_STATE()
-_RECEIVE_GAME_STATE()
-_RECEIVE_GAME_STATE()
-_RECEIVE_GAME_STATE()
-_RECEIVE_GAME_STATE()
+#include "01_recv_game_state_5x.c"
 
 SDL_Delay(n_ms);
 for (i = 0; i < N_PLAYERS; i++) {

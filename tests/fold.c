@@ -8,9 +8,7 @@ fprintf(stderr, "Dealer %d selecting game\n", *dealer_id);
 assert(send_game_select(socket_context[*dealer_id].sock, game_choices[FIVE_CARD_SHOWDOWN].game_type,
                         false) == 0);
 
-_RECEIVE_GAME_STATE()
-_RECEIVE_GAME_STATE()
-_RECEIVE_GAME_STATE()
+#include "01_recv_game_state_3x.c"
 
 int8_t *turn_id = &client_state[0].turn_id;
 
@@ -21,28 +19,19 @@ if (game == 0) {
   assert(*turn_id == 1);
   assert(send_player_action(client_state, socket_context[*turn_id].sock, ACTION_FOLD, 0) == 0);
 
-  _RECEIVE_GAME_STATE()
-  _RECEIVE_GAME_STATE()
-  _RECEIVE_GAME_STATE()
-  _RECEIVE_GAME_STATE()
+#include "01_recv_game_state_4x.c"
 
   assert(*turn_id == 2);
   assert(send_player_action(client_state, socket_context[*turn_id].sock, ACTION_CHECK, 0) == 0);
   SDL_Delay(n_ms);
 
-  _RECEIVE_GAME_STATE()
-  _RECEIVE_GAME_STATE()
-  _RECEIVE_GAME_STATE()
-  _RECEIVE_GAME_STATE()
+#include "01_recv_game_state_4x.c"
 
   assert(*turn_id == 0);
   assert(send_player_action(client_state, socket_context[*turn_id].sock, ACTION_CHECK, 0) == 0);
   SDL_Delay(n_ms);
 
-  _RECEIVE_GAME_STATE()
-  _RECEIVE_GAME_STATE()
-  _RECEIVE_GAME_STATE()
-  _RECEIVE_GAME_STATE()
+#include "01_recv_game_state_4x.c"
 
   for (i = 0; i < N_PLAYERS; i++) {
     fprintf(stderr, "%d: %d\n", i, game_state[i].player[i].coins);
@@ -53,10 +42,7 @@ if (game == 0) {
   assert(send_player_action(client_state, socket_context[*turn_id].sock, ACTION_CHECK, 0) == 0);
   SDL_Delay(n_ms);
 
-  _RECEIVE_GAME_STATE()
-  _RECEIVE_GAME_STATE()
-  _RECEIVE_GAME_STATE()
-  _RECEIVE_GAME_STATE()
+#include "01_recv_game_state_4x.c"
 
   assert(*turn_id == 0);
   assert(send_player_action(client_state, socket_context[*turn_id].sock, ACTION_BET, 500) == 0);
@@ -67,31 +53,21 @@ if (game == 0) {
     fputc('\n', stderr);
   }
 
-  _RECEIVE_GAME_STATE()
-  _RECEIVE_GAME_STATE()
-  _RECEIVE_GAME_STATE()
-  _RECEIVE_GAME_STATE()
+#include "01_recv_game_state_4x.c"
 
   assert(*turn_id == 1);
   assert(send_player_action(client_state, socket_context[*turn_id].sock, ACTION_FOLD, 0) == 0);
   SDL_Delay(n_ms);
 
-  _RECEIVE_GAME_STATE()
-  _RECEIVE_GAME_STATE()
-  _RECEIVE_GAME_STATE()
-  _RECEIVE_GAME_STATE()
+#include "01_recv_game_state_4x.c"
 
   assert(*turn_id == 2);
   assert(send_player_action(client_state, socket_context[*turn_id].sock, ACTION_CALL, 0) == 0);
   SDL_Delay(n_ms);
 
-  _RECEIVE_GAME_STATE()
-  _RECEIVE_GAME_STATE()
-  _RECEIVE_GAME_STATE()
+#include "01_recv_game_state_3x.c"
 }
-_RECEIVE_GAME_STATE()
-_RECEIVE_GAME_STATE()
-_RECEIVE_GAME_STATE()
+#include "01_recv_game_state_3x.c"
 
 for (i = 0; i < N_PLAYERS; i++) {
   debug_print_cards(&game_state[i].player[i].hand);

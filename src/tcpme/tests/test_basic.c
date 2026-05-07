@@ -27,8 +27,9 @@ int main(void) {
   /* tcpme_accept on an invalid socket must not crash and must return invalid. */
   assert(!tcpme_socket_valid(tcpme_accept(TCPME_INVALID_SOCKET)));
 
-  /* tcpme_del_socket on NULL set must not crash. */
+  /* tcpme_del_socket on NULL set must not crash and must set error. */
   tcpme_del_socket(NULL, TCPME_INVALID_SOCKET);
+  assert(strlen(tcpme_get_error()) > 0);
 
   /* tcpme_check_sockets on NULL must return 0 without crashing. */
   assert(tcpme_check_sockets(NULL, 0) == 0);

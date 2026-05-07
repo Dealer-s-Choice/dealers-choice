@@ -15,7 +15,7 @@ int main(void) {
   tcpme_socket_t server = tcpme_listen("127.0.0.1", 0);
   assert(tcpme_socket_valid(server));
 
-  char local_addr[TCPME_ADDRSTRLEN + 16];
+  char local_addr[TCPME_ADDRPORTSTRLEN];
   assert(tcpme_get_local_addr(server, local_addr, sizeof(local_addr)));
   uint16_t port = extract_port(local_addr);
 

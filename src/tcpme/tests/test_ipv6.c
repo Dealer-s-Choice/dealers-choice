@@ -22,7 +22,7 @@ int main(void) {
     return 77;
   }
 
-  char local_addr[TCPME_ADDRSTRLEN + 16];
+  char local_addr[TCPME_ADDRPORTSTRLEN];
   assert(tcpme_get_local_addr(server, local_addr, sizeof(local_addr)));
   printf("server listening at %s\n", local_addr);
   uint16_t port = extract_port(local_addr);
@@ -38,12 +38,12 @@ int main(void) {
   printf("server sees peer IP: %s\n", ip);
   assert(strcmp(ip, "::1") == 0);
 
-  char peer_addr[TCPME_ADDRSTRLEN + 16];
+  char peer_addr[TCPME_ADDRPORTSTRLEN];
   assert(tcpme_get_peer_addr(peer, peer_addr, sizeof(peer_addr)));
   printf("server sees peer addr: %s\n", peer_addr);
   assert(extract_port(peer_addr) > 0);
 
-  char server_addr[TCPME_ADDRSTRLEN + 16];
+  char server_addr[TCPME_ADDRPORTSTRLEN];
   assert(tcpme_get_peer_addr(client, server_addr, sizeof(server_addr)));
   printf("client sees server addr: %s\n", server_addr);
   assert(extract_port(server_addr) == port);
