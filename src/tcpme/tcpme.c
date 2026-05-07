@@ -423,6 +423,10 @@ int tcpme_check_sockets(tcpme_set_t *set, uint32_t timeout_ms) {
 
   int n = select(nfds + 1, &rfds, NULL, NULL, &tv);
   if (n < 0) {
+#ifndef _WIN32
+    if (errno == EINTR)
+      return 0;
+#endif
     set_error_sys("select() failed");
     return -1;
   }

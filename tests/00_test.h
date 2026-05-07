@@ -41,11 +41,14 @@ extern int n_passes;
 #define _RECEIVE_GAME_STATE()                                                                      \
   SDL_Delay(n_ms);                                                                                 \
   for (i = 0; i < N_PLAYERS; i++) {                                                                \
-    recv_status = recv_game_state(&socket_context[i], &game_state[i], &client_state[i],            \
-                                  game_settings[i].client_id);                                     \
+    for (int _retry = 0; _retry < 20; _retry++) {                                                  \
+      recv_status = recv_game_state(&socket_context[i], &game_state[i], &client_state[i],          \
+                                    game_settings[i].client_id);                                   \
+      if (recv_status != RECV_NOTHING)                                                             \
+        break;                                                                                     \
+      SDL_Delay(50);                                                                               \
+    }                                                                                              \
     assert(recv_status != RECV_ERROR);                                                             \
-    if (recv_status == RECV_NOTHING)                                                               \
-      fprintf(stderr, "Received nothing\n");                                                       \
     assert(tcpme_socket_valid(socket_context[i].sock));                                            \
   }
 
