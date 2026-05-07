@@ -108,6 +108,7 @@ typedef enum {
   GAME_SEL_ERROR = 0,
   GAME_SEL_SUCCESS = 1,
   GAME_SEL_BACK = 2,
+  GAME_SEL_QUIT = 3,
 } EGameSelResult_t;
 
 typedef enum {
@@ -459,7 +460,8 @@ static EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_confi
       switch (e.type) {
 
       case SDL_QUIT:
-        result = false;
+        SDL_PushEvent(&e);
+        result = GAME_SEL_QUIT;
         goto cleanup;
 
       case SDL_MOUSEBUTTONDOWN: {
@@ -468,7 +470,7 @@ static EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_confi
               confirm_quit(font->fonts[FONT_BOLD])) {
             SDL_Event quit = {.type = SDL_QUIT};
             SDL_PushEvent(&quit);
-            result = GAME_SEL_ERROR;
+            result = GAME_SEL_QUIT;
             goto cleanup;
           }
           if (back_img && SDL_PointInRect(&mouse_pos, &back_img->base.rect)) {
@@ -533,7 +535,7 @@ static EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_confi
           if (confirm_quit(font->fonts[FONT_BOLD])) {
             SDL_Event quit = {.type = SDL_QUIT};
             SDL_PushEvent(&quit);
-            result = GAME_SEL_ERROR;
+            result = GAME_SEL_QUIT;
             goto cleanup;
           }
           break;
@@ -2421,11 +2423,7 @@ bool get_socket_context_and_run_client(PlayerConfig_t *player_config, const CliA
         EGameSelResult_t sel = handle_game_selection(
             player_config, &socket_context, game_settings.client_id, &game_state, &client_state,
             sdl_context, font, &sound_context, links, path);
-        if (sel == GAME_SEL_BACK) {
-          went_back = true;
-          break;
-        }
-        if (sel == GAME_SEL_ERROR) {
+        if (sel == GAME_SEL_BACK || sel == GAME_SEL_ERROR || sel == GAME_SEL_QUIT) {
           went_back = true;
           break;
         }
