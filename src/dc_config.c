@@ -274,7 +274,7 @@ ServerConfig_t get_server_config(Path_t *path, const CliArgs_t *cli_args) {
       return config;
     }
   } else {
-    path->server_conf_name = dc_strdup(cli_args->server_conf);
+    path->server_conf_name = expand_tilde(cli_args->server_conf);
   }
 
   printf("Reading server config: %s\n", path->server_conf_name);

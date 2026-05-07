@@ -53,7 +53,11 @@ EPathState check_pathname_state(const char *pathname);
 
 int make_directory_recursive(const char *path);
 
-void *calloc_wrap(const size_t n, const size_t size);
+void *real_calloc_wrap(const size_t n, const size_t size, const char *func, int line);
+void *real_malloc_wrap(const size_t size, const char *func, int line);
+
+#define calloc_wrap(n, size) real_calloc_wrap(n, size, __func__, __LINE__)
+#define malloc_wrap(size) real_malloc_wrap(size, __func__, __LINE__)
 
 void verbose_printf(const char *fmt, ...);
 
@@ -64,5 +68,7 @@ void parse_signed(const char *s, long minv, long maxv, long *out);
 void parse_unsigned(const char *s, unsigned long maxv, unsigned long *out);
 
 char *dc_strdup(const char *s);
+
+char *expand_tilde(const char *path);
 
 #endif
