@@ -2,6 +2,7 @@
 
 set -e
 
+sudo apt update
 sudo apt-get install --no-install-recommends -y \
   cmake \
   gettext \
