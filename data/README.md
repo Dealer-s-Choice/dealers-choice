@@ -25,6 +25,17 @@ ArchaiOptix, [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0), via
 [Classical Numismatic Group Inc.](http://www.cngcoins.com), [CC BY-SA 2.5](https://creativecommons.org/licenses/by-sa/2.5), via Wikimedia Commons
 
 
+96x96_Zeus des Phidias DE-MUS-814819-18200646-rv.png
+
+[Reinhard Saczewski](https://commons.wikimedia.org/wiki/File:Zeus_des_Phidias_DE-MUS-814819-18200646-rv.jpg), CC0, via Wikimedia Commons
+
+
+96x96_Taras Hera statere d'or 8821 collection Alpha banque.png
+
+[G.Garitan](https://commons.wikimedia.org/wiki/File:Taras_H%C3%A9ra_stat%C3%A8re_d%27or_8821_collection_Alpha_banque.JPG), [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0), via Wikimedia Commons
+
+
+
 * arrow_back.png
 
 Adapted from [File:Arrow_curved_left.png](https://commons.wikimedia.org/wiki/File:Arrow_curved_left.png)
