@@ -23,7 +23,6 @@ on:
     branches: [ trunk ]
     paths: *shared_paths
 
-
 jobs:
   gate:
     if: github.event_name != 'workflow_dispatch'
@@ -46,14 +45,14 @@ jobs:
     - name: ASan/UBSan build
       run: meson compile -C _build_asan
     - name: ASan/UBSan test
-      run: meson test --no-stdsplit -v -C _build_asan
+      run: meson test --setup=One_pass --no-stdsplit -v -C _build_asan
 
     - name: TSan setup
       run: CC=clang CFLAGS="-Werror -fno-sanitize-recover=all" meson setup _build_tsan -Db_sanitize=thread -Db_lundef=false
     - name: TSan build
       run: meson compile -C _build_tsan
     - name: TSan test
-      run: meson test --no-stdsplit -v --setup One_pass -C _build_tsan
+      run: meson test --setup=One_pass --no-stdsplit -v --setup One_pass -C _build_tsan
 
   Ubuntu:
     if: github.event_name != 'workflow_dispatch'
