@@ -19,13 +19,14 @@ file for details.
 
 ## Project Links
 
-* [GitHub Repo](https://github.com/Dealer-s-Choice/dealers_choice)
-* [Game Play](docs/GAME_PLAY.md)
+* [Source Code](https://github.com/Dealer-s-Choice/dealers_choice)
+  * [Also on LibreGaming](https://git.libregaming.org/andy5995/dealers-choice)
+* [Downloads](https://github.com/Dealer-s-Choice/dealers_choice/releases/latest)
 * [Screenshots](https://dealer-s-choice.github.io/screenshots/)
+* [Game Play](docs/GAME_PLAY.md)
 * [Game Results](https://dealer-s-choice.github.io/game_results.html)
 * [Discussions](https://github.com/Dealer-s-Choice/dealers_choice/discussions)
 * [Bug Reporting](https://github.com/Dealer-s-Choice/dealers_choice/issues)
-* [Releases](https://github.com/Dealer-s-Choice/dealers_choice/releases/latest)
 
 ## Current state
 
