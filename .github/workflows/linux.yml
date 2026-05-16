@@ -61,7 +61,6 @@ jobs:
       matrix:
         name: [default]
         os:
-          - ubuntu-24.04-arm
           - ubuntu-24.04
         cc:
           - gcc
