@@ -52,6 +52,7 @@ jobs:
           SDL2:p
           SDL2_image:p
           SDL2_ttf:p
+          SDL3:p
         update: true
         cache: true
 

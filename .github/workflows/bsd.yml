@@ -25,10 +25,10 @@ jobs:
         include:
           - os: freebsd
             version: '15.0'
-            install: sudo pkg install -y git gettext libsodium meson ninja pkgconf protobuf-c python3 sdl2 sdl2_image sdl2_ttf
+            install: sudo pkg install -y git gettext libsodium meson ninja pkgconf protobuf-c python3 sdl2 sdl2_image sdl2_ttf sdl3
           - os: openbsd
             version: '7.8'
-            install: sudo pkg_add git gettext libsodium meson ninja pkgconf protobuf-c python3 sdl2 sdl2-image sdl2-ttf
+            install: sudo pkg_add git gettext libsodium meson ninja pkgconf protobuf-c python3 sdl2 sdl2-image sdl2-ttf sdl3
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v6
