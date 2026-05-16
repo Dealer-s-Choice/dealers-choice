@@ -152,10 +152,10 @@ if not sdl3_net_dep.found()
     'CMAKE_BUILD_TYPE':                   _cmake_build_type,
     'CMAKE_SUPPRESS_DEVELOPER_WARNINGS':  'ON',
   })
-  # Meson injects -std=c11 and -Wpedantic from the parent project. Counter with
-  # -std=gnu99 (matching SDL3_net's own CMake build) to expose POSIX networking
-  # symbols, and -Wno-pedantic to allow the function→void* cast in SDL_net.c.
-  sdl3_net_opts.append_compile_args('c', '-std=gnu99', '-Wno-pedantic')
+  # Meson injects -std=c11, -Wpedantic, and -Werror from the parent project.
+  # Use -std=gnu99 (matching SDL3_net's own CMake build) to expose POSIX
+  # networking symbols, and drop pedantic/error flags for this third-party lib.
+  sdl3_net_opts.append_compile_args('c', '-std=gnu99', '-Wno-pedantic', '-Wno-error')
   sdl3_net_sub = cmake.subproject('sdl3_net', options: sdl3_net_opts)
   sdl3_net_dep = sdl3_net_sub.dependency('SDL3_net-static')
 endif
