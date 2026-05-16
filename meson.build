@@ -131,6 +131,36 @@ subdir('po')
 subdir('src/tcpme')
 shared_dep += tcpme_dep
 
+# SDL3_net ships as SDL3_net::SDL3_net-static in vcpkg static builds; specify
+# the CMake target explicitly so Meson doesn't fall back to the imprecise
+# SDL3_net_LIBRARIES variable when pkgconfig is unavailable (e.g. MSVC+vcpkg).
+sdl3_net_dep = dependency('SDL3_net', modules: ['SDL3_net::SDL3_net-static'], required: false)
+if not sdl3_net_dep.found()
+  cmake = import('cmake')
+  _cmake_build_type = {
+    'plain':          'Release',
+    'debug':          'Debug',
+    'debugoptimized': 'RelWithDebInfo',
+    'release':        'Release',
+    'minsize':        'MinSizeRel',
+  }.get(get_option('buildtype'), 'RelWithDebInfo')
+  sdl3_net_opts = cmake.subproject_options()
+  sdl3_net_opts.add_cmake_defines({
+    'BUILD_SHARED_LIBS':                  'OFF',
+    'SDLNET_INSTALL':                     'OFF',
+    'SDLNET_SAMPLES':                     'OFF',
+    'CMAKE_BUILD_TYPE':                   _cmake_build_type,
+    'CMAKE_SUPPRESS_DEVELOPER_WARNINGS':  'ON',
+  })
+  # Meson injects -std=c11 and -Wpedantic from the parent project. Counter with
+  # -std=gnu99 (matching SDL3_net's own CMake build) to expose POSIX networking
+  # symbols, and -Wno-pedantic to allow the function→void* cast in SDL_net.c.
+  sdl3_net_opts.append_compile_args('c', '-std=gnu99', '-Wno-pedantic')
+  sdl3_net_sub = cmake.subproject('sdl3_net', options: sdl3_net_opts)
+  sdl3_net_dep = sdl3_net_sub.dependency('SDL3_net-static')
+endif
+shared_dep += sdl3_net_dep
+
 conf.set_quoted(
   'DEALERSCHOICE_LOCALEDIR',
   join_paths(get_option('prefix'), get_option('localedir')),
