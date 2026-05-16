@@ -26,6 +26,7 @@ OutputBaseFilename=dealers-choice-{#VERSION}-windows-{#ARCH}-setup
 Compression=lzma
 SolidCompression=yes
 WizardStyle=modern
+SetupIconFile=..\..\icons\dealers-choice.ico
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -39,9 +40,11 @@ Source: "..\..\_staging\*.dll";     DestDir: "{app}"; Flags: ignoreversion
 ; Game data (fonts, images, sounds, server.conf)
 Source: "..\..\_staging\data\*"; DestDir: "{app}\data"; \
   Flags: ignoreversion recursesubdirs createallsubdirs
+; Icon
+Source: "..\..\icons\dealers-choice.ico"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
-Name: "{group}\{#AppName}";           Filename: "{app}\{#AppExe}"
+Name: "{group}\{#AppName}";           Filename: "{app}\{#AppExe}"; IconFilename: "{app}\dealers-choice.ico"
 Name: "{group}\Uninstall {#AppName}"; Filename: "{uninstallexe}"
 
 [Run]
