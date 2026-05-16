@@ -621,6 +621,7 @@ static ELoop_t handle_draw(ArgsBroadcastGameState_t *args, tcpme_socket_t sock, 
 
   DrawRequestMsg_t req;
   uint8_t buffer[32] = {0};
+  bool timed_out = false;
 
   uint32_t wait_ms = args->game_settings->action_timeout_ms;
   uint32_t start = SDL_GetTicks();
@@ -663,7 +664,8 @@ static ELoop_t handle_draw(ArgsBroadcastGameState_t *args, tcpme_socket_t sock, 
         printf("exceeded timeout threshold (%d): disconnecting %s\n", m,
                args->game_state->player[id].nick);
       }
-      return LOOP_CONTINUE;
+      timed_out = true;
+      break;
     }
 
     /* Payload buffer must fit both PING_RESPONSE (up to ~12 B) and
@@ -721,7 +723,7 @@ static ELoop_t handle_draw(ArgsBroadcastGameState_t *args, tcpme_socket_t sock, 
     send_new_hand(sock, &args->real_hand[id], MAX_HAND_SIZE);
   }
 
-  return LOOP_OK;
+  return timed_out ? LOOP_CONTINUE : LOOP_OK;
 }
 
 static EPlayerAction_t handle_check(PlayerActionMsg_t *action) {
