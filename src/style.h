@@ -1,5 +1,5 @@
 /*
- globals.h
+ style.h
  https://github.com/Dealer-s-Choice/dealers_choice
 
  MIT License
@@ -26,19 +26,30 @@
 
 */
 
-#ifndef __GLOBALS_H
-#define __GLOBALS_H
+#ifndef __STYLE_H
+#define __STYLE_H
 
-#include <deckhandler.h>
+#include <SDL2/SDL.h>
 
-#include "config.h"
-#include "graphics.h"
-#include "layout.h"
-#include "style.h"
+typedef struct {
+  struct { SDL_Color bg, fg; } button_primary;   /* main actions: black bg, yellow fg */
+  struct { SDL_Color bg, fg; } button_danger;    /* quit/X: white bg, red fg */
+  struct { SDL_Color bg, fg; } button_warn;      /* kick/ban/bet amounts: brown bg, white fg */
+  struct { SDL_Color bg, fg; } button_cancel;    /* cancel dialogs: white bg, gray fg */
+  SDL_Color text_on_dark;   /* text on dark/colored backgrounds */
+  SDL_Color text_on_light;  /* text on light backgrounds */
+  SDL_Color text_muted;     /* subdued labels */
+  SDL_Color link_normal;
+  SDL_Color link_hover;
+  struct { SDL_Color bg, fg; } indicator_wild;
+  struct { SDL_Color bg, fg; } indicator_game;
+  SDL_Color timer_bg;       /* inner circle fill */
+  SDL_Color timer_elapsed;  /* elapsed-time wedge */
+  int button_font;  /* FONT_* index */
+  int link_font;    /* FONT_* index */
+} StyleConfig_t;
 
-extern pcg32_random_t rng;
-
-extern SDL_Rect g_viewport;
-extern SDL_Point g_center;
+extern StyleConfig_t g_style_cfg;
+StyleConfig_t get_style_config(const char *data_dir);
 
 #endif

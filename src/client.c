@@ -130,9 +130,9 @@ static EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_confi
   ButtonWidget_t *game_choice_button[MAX_CHOICES] = {0};
 
   // TRANSLATORS: Name of a poker variant. Usually left untranslated.
-  ButtonWidget_t *button_deuces_wild =
-      button_widget_create(_("Deuces Wild"), (EColor_t){COLOR_WHITE, COLOR_BROWN},
-                           font->fonts[FONT_BOLD], (SDL_Keycode)0);
+  ButtonWidget_t *button_deuces_wild = button_widget_create_colored(
+      _("Deuces Wild"), g_style_cfg.button_warn.bg, g_style_cfg.button_warn.fg,
+      font->fonts[g_style_cfg.button_font], (SDL_Keycode)0);
 
   bool dealing = true;
 
@@ -145,9 +145,9 @@ static EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_confi
   ui_register(&registry, &button_deuces_wild->base);
 
   for (int i = 0; i < MAX_CHOICES; i++) {
-    game_choice_button[i] =
-        button_widget_create(game_choices[i].str, (EColor_t){COLOR_BLACK, COLOR_YELLOW},
-                             font->fonts[FONT_BOLD], (SDL_Keycode)0);
+    game_choice_button[i] = button_widget_create_colored(
+        game_choices[i].str, g_style_cfg.button_primary.bg, g_style_cfg.button_primary.fg,
+        font->fonts[g_style_cfg.button_font], (SDL_Keycode)0);
     ui_register(&registry, &game_choice_button[i]->base);
   }
 
@@ -175,21 +175,21 @@ static EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_confi
   bool table_needs_rebuild = true;
 
   TextWidget_t *connected_tw =
-      text_widget_create(_("Players"), font->fonts[FONT_BOLD], get_color(COLOR_BLACK));
+      text_widget_create(_("Players"), font->fonts[FONT_BOLD], g_style_cfg.text_on_light);
   ui_register(&registry, &connected_tw->base);
 
   TextWidget_t *dealer_label_tw =
-      text_widget_create(_("Dealer"), font->fonts[FONT_BOLD], get_color(COLOR_BLACK));
+      text_widget_create(_("Dealer"), font->fonts[FONT_BOLD], g_style_cfg.text_on_light);
   ui_register(&registry, &dealer_label_tw->base);
 
   TextWidget_t *ping_label_tw =
-      text_widget_create(_("Ping"), font->fonts[FONT_BOLD], get_color(COLOR_BLACK));
+      text_widget_create(_("Ping"), font->fonts[FONT_BOLD], g_style_cfg.text_on_light);
   ui_register(&registry, &ping_label_tw->base);
 
   char version_str[64] = {0};
   snprintf(version_str, sizeof(version_str), "Version " DEALERSCHOICE_VERSION);
   TextWidget_t *tw_version_lobby =
-      text_widget_create(version_str, font->fonts[FONT_VERSION], get_color(COLOR_WHITE));
+      text_widget_create(version_str, font->fonts[FONT_VERSION], g_style_cfg.text_on_dark);
   if (tw_version_lobby) {
     ui_widget_place(&tw_version_lobby->base, g_viewport.x + g_layout_cfg.margin,
                     g_viewport.y + g_viewport.h - tw_version_lobby->base.rect.h - g_layout_cfg.margin);
@@ -197,21 +197,23 @@ static EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_confi
   }
 
   TextWidget_t *waiting_players_tw = text_widget_create(
-      _("Waiting for more players..."), font->fonts[FONT_DEFAULT], get_color(COLOR_WHITE));
+      _("Waiting for more players..."), font->fonts[FONT_DEFAULT], g_style_cfg.text_on_dark);
   ui_register(&registry, &waiting_players_tw->base);
   waiting_players_tw->base.rect.x = g_center.x;
   waiting_players_tw->base.rect.y = g_layout.lobby.waiting_y;
 
   TextWidget_t *waiting_dealer_tw = text_widget_create(
-      _("Waiting for dealer to select game..."), font->fonts[FONT_DEFAULT], get_color(COLOR_WHITE));
+      _("Waiting for dealer to select game..."), font->fonts[FONT_DEFAULT], g_style_cfg.text_on_dark);
   ui_register(&registry, &waiting_dealer_tw->base);
   waiting_dealer_tw->base.rect.x = g_center.x;
   waiting_dealer_tw->base.rect.y = g_layout.lobby.waiting_y;
 
-  ButtonWidget_t *btn_kick = button_widget_create(_("Kick"), (EColor_t){COLOR_WHITE, COLOR_BROWN},
-                                                  font->fonts[FONT_BOLD], (SDL_Keycode)0);
-  ButtonWidget_t *btn_ban = button_widget_create(_("Ban"), (EColor_t){COLOR_WHITE, COLOR_BROWN},
-                                                 font->fonts[FONT_BOLD], (SDL_Keycode)0);
+  ButtonWidget_t *btn_kick = button_widget_create_colored(
+      _("Kick"), g_style_cfg.button_warn.bg, g_style_cfg.button_warn.fg,
+      font->fonts[g_style_cfg.button_font], (SDL_Keycode)0);
+  ButtonWidget_t *btn_ban = button_widget_create_colored(
+      _("Ban"), g_style_cfg.button_warn.bg, g_style_cfg.button_warn.fg,
+      font->fonts[g_style_cfg.button_font], (SDL_Keycode)0);
   btn_kick->base.rect.x = g_layout.lobby.kick_x;
   btn_kick->base.rect.y = g_layout.lobby.kick_y;
   btn_ban->base.rect.x = btn_kick->base.rect.x + btn_kick->base.rect.w + g_layout_cfg.kick_ban_btn_gap;
@@ -219,8 +221,9 @@ static EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_confi
   ui_register(&registry, &btn_kick->base);
   ui_register(&registry, &btn_ban->base);
 
-  ButtonWidget_t *btn_quit_lobby = button_widget_create("X", (EColor_t){COLOR_WHITE, COLOR_RED},
-                                                        font->fonts[FONT_BOLD], (SDL_Keycode)0);
+  ButtonWidget_t *btn_quit_lobby = button_widget_create_colored(
+      "X", g_style_cfg.button_danger.bg, g_style_cfg.button_danger.fg,
+      font->fonts[g_style_cfg.button_font], (SDL_Keycode)0);
   if (btn_quit_lobby) {
     btn_quit_lobby->base.rect.x =
         g_viewport.x + g_viewport.w - btn_quit_lobby->base.rect.w - g_layout_cfg.margin;
@@ -998,18 +1001,20 @@ static void render_circle_timer(SDL_Renderer *renderer, SDL_Point center, float 
     }
   }
 
-  /* --- inner circle background (match table green) ----------------------- */
-  SDL_SetRenderDrawColor(renderer, 0, 125, 0, 255);
+  /* --- inner circle background ------------------------------------------- */
+  SDL_Color tbg = g_style_cfg.timer_bg;
+  SDL_SetRenderDrawColor(renderer, tbg.r, tbg.g, tbg.b, tbg.a);
   for (int y = cy - inner_r; y <= cy + inner_r; y++) {
     int dy = y - cy;
     int hw = (int)sqrtf((float)(inner_r * inner_r - dy * dy));
     SDL_RenderDrawLine(renderer, cx - hw, y, cx + hw, y);
   }
 
-  /* --- brown pie wedge (elapsed time, clockwise from 12 o'clock) --------- */
+  /* --- pie wedge (elapsed time, clockwise from 12 o'clock) --------------- */
   float sweep = (1.0f - fill_ratio) * 2.0f * (float)M_PI;
   if (sweep > 0.001f) {
-    SDL_SetRenderDrawColor(renderer, 240, 204, 48, 255); /* orange(ish) */
+    SDL_Color te = g_style_cfg.timer_elapsed;
+    SDL_SetRenderDrawColor(renderer, te.r, te.g, te.b, te.a);
     for (int y = cy - inner_r; y <= cy + inner_r; y++) {
       int dy = y - cy;
       int hw = (int)sqrtf((float)(inner_r * inner_r - dy * dy));
@@ -1177,14 +1182,14 @@ static EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
 
   ButtonWidget_t *action_bw[MAX_ACTIONS];
   for (int i = 0; i < MAX_ACTIONS; i++) {
-    action_bw[i] =
-        button_widget_create(action_button_attrs[i].text, (EColor_t){COLOR_BLACK, COLOR_YELLOW},
-                             font->fonts[FONT_BOLD], action_button_attrs[i].key);
+    action_bw[i] = button_widget_create_colored(
+        action_button_attrs[i].text, g_style_cfg.button_primary.bg, g_style_cfg.button_primary.fg,
+        font->fonts[g_style_cfg.button_font], action_button_attrs[i].key);
   }
   layout_action_buttons(action_bw);
 
   TextWidget_t *discard_hint_tw = text_widget_create(
-      "You may only discard a maximum of 3 cards", font->fonts[FONT_BOLD], get_color(COLOR_WHITE));
+      "You may only discard a maximum of 3 cards", font->fonts[FONT_BOLD], g_style_cfg.text_on_dark);
   if (discard_hint_tw)
     ui_widget_place(&discard_hint_tw->base, g_layout.action_btn_x,
                     action_bw[DISCARD]->base.rect.y + g_layout_cfg.card_h);
@@ -1209,8 +1214,9 @@ static EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
 
   for (size_t i = 0; i < n_bet_amounts; i++) {
     snprintf(amount_str[i], sizeof(amount_str[i]), "%" PRIu32, amount[i].value);
-    amount_bw[i] = button_widget_create(amount_str[i], (EColor_t){COLOR_WHITE, COLOR_BROWN},
-                                        font->fonts[FONT_BOLD], amount[i].hotkey);
+    amount_bw[i] = button_widget_create_colored(
+        amount_str[i], g_style_cfg.button_warn.bg, g_style_cfg.button_warn.fg,
+        font->fonts[g_style_cfg.button_font], amount[i].hotkey);
   }
   if (n_bet_amounts > 0) {
     amount_bw[0]->base.selected = true;
@@ -1222,12 +1228,15 @@ static EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
 
   UIRegistry_t registry = {0};
 
-  ButtonWidget_t *game_btn_kick = button_widget_create(
-      _("Kick"), (EColor_t){COLOR_WHITE, COLOR_BROWN}, font->fonts[FONT_BOLD], (SDL_Keycode)0);
-  ButtonWidget_t *game_btn_ban = button_widget_create(
-      _("Ban"), (EColor_t){COLOR_WHITE, COLOR_BROWN}, font->fonts[FONT_BOLD], (SDL_Keycode)0);
-  ButtonWidget_t *game_btn_quit = button_widget_create("X", (EColor_t){COLOR_WHITE, COLOR_RED},
-                                                       font->fonts[FONT_BOLD], (SDL_Keycode)0);
+  ButtonWidget_t *game_btn_kick = button_widget_create_colored(
+      _("Kick"), g_style_cfg.button_warn.bg, g_style_cfg.button_warn.fg,
+      font->fonts[g_style_cfg.button_font], (SDL_Keycode)0);
+  ButtonWidget_t *game_btn_ban = button_widget_create_colored(
+      _("Ban"), g_style_cfg.button_warn.bg, g_style_cfg.button_warn.fg,
+      font->fonts[g_style_cfg.button_font], (SDL_Keycode)0);
+  ButtonWidget_t *game_btn_quit = button_widget_create_colored(
+      "X", g_style_cfg.button_danger.bg, g_style_cfg.button_danger.fg,
+      font->fonts[g_style_cfg.button_font], (SDL_Keycode)0);
   game_btn_kick->base.rect.x = g_viewport.w / 10;
   /* Position above the status message panel, which starts at g_center.y */
   game_btn_kick->base.rect.y = g_center.y - game_btn_kick->base.rect.h - g_layout_cfg.game_kick_y_gap;
@@ -1239,8 +1248,9 @@ static EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
   ui_register(&registry, &game_btn_ban->base);
   ui_register(&registry, &game_btn_quit->base);
 
-  Indicator_t *indicator_deuces_wild =
-      create_indicator(_("Deuces Wild"), font->fonts[FONT_BOLD], COLOR_PURPLE, COLOR_WHITE);
+  Indicator_t *indicator_deuces_wild = create_indicator_colored(
+      _("Deuces Wild"), font->fonts[FONT_BOLD],
+      g_style_cfg.indicator_wild.bg, g_style_cfg.indicator_wild.fg);
   ui_register(&registry, &indicator_deuces_wild->base);
 
   layout_deuces_wild_indicator(indicator_deuces_wild);
@@ -1265,7 +1275,7 @@ static EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
   TextWidget_t *open_seat_tw[MAX_PLAYERS] = {0};
   for (int i = 0; i < MAX_PLAYERS; i++)
     open_seat_tw[i] =
-        text_widget_create("Open", font->fonts[FONT_DEFAULT], get_color(COLOR_LIGHTGRAY));
+        text_widget_create("Open", font->fonts[FONT_DEFAULT], g_style_cfg.text_muted);
 
   CoinInPot_t coin_in_pot[MAX_POT_COINS] = {0};
 
@@ -1274,7 +1284,7 @@ static EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
   bool prev_winner_declared = game_state->winner_declared;
 
   for (int i = 0; i < SIZEOF_STATUS_MSGS; i++) {
-    status_tw[i] = text_widget_create(" ", font->fonts[FONT_STATUS_MSG], get_color(COLOR_BLACK));
+    status_tw[i] = text_widget_create(" ", font->fonts[FONT_STATUS_MSG], g_style_cfg.text_on_light);
     if (status_tw[i])
       ui_widget_place(&status_tw[i]->base, g_layout.msg_panel.x + g_layout_cfg.msg_panel_pad_x,
                       g_layout.msg_panel.y + g_layout_cfg.msg_panel_pad_y + i * (g_layout.status_line_h + 2));
@@ -1362,12 +1372,12 @@ static EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
       char coins_str[24] = {0};
       snprintf(coins_str, sizeof coins_str, "%" PRId32, game_state->player[id].coins);
       game_nick_widgets[id] = nick_widget_create(game_state->player[id].nick, id,
-                                                 font->fonts[FONT_BOLD], get_color(COLOR_WHITE));
+                                                 font->fonts[FONT_BOLD], g_style_cfg.text_on_dark);
       game_nick_widgets[id]->highlight = (id == my_id);
       game_nick_widgets[id]->selectable = (game_state->player[my_id].is_admin && id != my_id);
       game_coin_widgets[id] = image_widget_from_texture(coin_tex_front, coin_px / 2, coin_px / 2);
       game_coins_tw[id] =
-          text_widget_create(coins_str, font->fonts[FONT_BOLD], get_color(COLOR_WHITE));
+          text_widget_create(coins_str, font->fonts[FONT_BOLD], g_style_cfg.text_on_dark);
       ui_register(&registry, &game_nick_widgets[id]->base);
       ui_register(&registry, &game_coin_widgets[id]->base);
       ui_register(&registry, &game_coins_tw[id]->base);
@@ -1514,8 +1524,9 @@ static EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
     render_coin_animation(sdl_context->renderer, &coin_anim);
 
     if (!indicator_game_name && client_state.game_choice) {
-      indicator_game_name = create_indicator(client_state.game_choice->str, font->fonts[FONT_BOLD],
-                                             COLOR_ORANGE, COLOR_BLACK);
+      indicator_game_name = create_indicator_colored(
+          client_state.game_choice->str, font->fonts[FONT_BOLD],
+          g_style_cfg.indicator_game.bg, g_style_cfg.indicator_game.fg);
       ui_register(&registry, &indicator_game_name->base);
       layout_game_name_indicator(indicator_game_name);
     }
@@ -2080,8 +2091,9 @@ bool get_socket_context_and_run_client(PlayerConfig_t *player_config, const CliA
   ButtonWidget_t *btn_cancel = NULL;
   TextWidget_t *status_tw = NULL;
   if (sdl_context && font) {
-    btn_cancel = button_widget_create(_("Cancel"), (EColor_t){COLOR_BLACK, COLOR_YELLOW},
-                                      font->fonts[FONT_BOLD], SDLK_ESCAPE);
+    btn_cancel = button_widget_create_colored(
+        _("Cancel"), g_style_cfg.button_primary.bg, g_style_cfg.button_primary.fg,
+        font->fonts[g_style_cfg.button_font], SDLK_ESCAPE);
     if (btn_cancel) {
       btn_cancel->base.rect.x = g_center.x - btn_cancel->base.rect.w / 2;
       btn_cancel->base.rect.y = g_center.y + 60;
@@ -2090,7 +2102,7 @@ bool get_socket_context_and_run_client(PlayerConfig_t *player_config, const CliA
     snprintf(initial_status, sizeof(initial_status), _("Attempting connection to: %s... (%d/%d)"),
              host_str, 1, player_config->connect_attempts);
     status_tw =
-        text_widget_create(initial_status, font->fonts[FONT_DEFAULT], get_color(COLOR_WHITE));
+        text_widget_create(initial_status, font->fonts[FONT_DEFAULT], g_style_cfg.text_on_dark);
     if (status_tw) {
       status_tw->base.rect.x = 10;
       status_tw->base.rect.y = g_center.y;

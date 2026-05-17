@@ -54,10 +54,12 @@ enum { RUN_CLIENT = 20, RUN_SETTINGS = 21 };
 
 static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, uint16_t *port,
                                 SdlContext_t *sdl_context, Font_t *font, LinkWidget_t **links) {
-  ButtonWidget_t *button_connect = button_widget_create(
-      _("Connect"), (EColor_t){COLOR_BLACK, COLOR_YELLOW}, font->fonts[FONT_BOLD], (SDL_Keycode)0);
-  ButtonWidget_t *button_settings = button_widget_create(
-      _("Settings"), (EColor_t){COLOR_BLACK, COLOR_YELLOW}, font->fonts[FONT_BOLD], (SDL_Keycode)0);
+  ButtonWidget_t *button_connect = button_widget_create_colored(
+      _("Connect"), g_style_cfg.button_primary.bg, g_style_cfg.button_primary.fg,
+      font->fonts[g_style_cfg.button_font], (SDL_Keycode)0);
+  ButtonWidget_t *button_settings = button_widget_create_colored(
+      _("Settings"), g_style_cfg.button_primary.bg, g_style_cfg.button_primary.fg,
+      font->fonts[g_style_cfg.button_font], (SDL_Keycode)0);
   UIRegistry_t reg = {0};
 
   button_connect->base.rect.x = g_layout.menu.margin_x;
@@ -89,15 +91,16 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, u
   port_input->base.rect.y = host_input->base.rect.y + host_input->base.rect.h + g_layout_cfg.input_field_v_gap;
   ui_register(&reg, &port_input->base);
 
-  ButtonWidget_t *button_save = button_widget_create(
-      _("Save"), (EColor_t){COLOR_BLACK, COLOR_YELLOW}, font->fonts[FONT_BOLD], (SDL_Keycode)0);
+  ButtonWidget_t *button_save = button_widget_create_colored(
+      _("Save"), g_style_cfg.button_primary.bg, g_style_cfg.button_primary.fg,
+      font->fonts[g_style_cfg.button_font], (SDL_Keycode)0);
   if (!button_save)
     goto err;
   ui_register(&reg, &button_save->base);
 
-  ButtonWidget_t *button_defaults =
-      button_widget_create(_("Load Defaults"), (EColor_t){COLOR_BLACK, COLOR_YELLOW},
-                           font->fonts[FONT_BOLD], (SDL_Keycode)0);
+  ButtonWidget_t *button_defaults = button_widget_create_colored(
+      _("Load Defaults"), g_style_cfg.button_primary.bg, g_style_cfg.button_primary.fg,
+      font->fonts[g_style_cfg.button_font], (SDL_Keycode)0);
   if (!button_defaults)
     goto err;
   ui_register(&reg, &button_defaults->base);
@@ -110,8 +113,9 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, u
   button_defaults->base.rect.x = button_save->base.rect.x + button_save->base.rect.w + g_layout_cfg.connect_save_btn_gap;
   button_defaults->base.rect.y = button_save->base.rect.y;
 
-  ButtonWidget_t *btn_quit_connect = button_widget_create("X", (EColor_t){COLOR_WHITE, COLOR_RED},
-                                                          font->fonts[FONT_BOLD], (SDL_Keycode)0);
+  ButtonWidget_t *btn_quit_connect = button_widget_create_colored(
+      "X", g_style_cfg.button_danger.bg, g_style_cfg.button_danger.fg,
+      font->fonts[g_style_cfg.button_font], (SDL_Keycode)0);
   if (btn_quit_connect) {
     btn_quit_connect->base.rect.x =
         g_viewport.x + g_viewport.w - btn_quit_connect->base.rect.w - g_layout_cfg.margin;
@@ -130,19 +134,19 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, u
   layout_links(links, LINK_DEFS_COUNT);
 
   TextWidget_t *tw_title = text_widget_create(DEALERSCHOICE_FORMAL_NAME, font->fonts[FONT_TITLE],
-                                              get_color(COLOR_BLACK));
+                                              g_style_cfg.text_on_light);
   if (tw_title)
     ui_widget_place(&tw_title->base, g_layout.menu.title_x, g_layout.menu.title_y);
 
   char version[64] = {0};
   snprintf(version, sizeof(version), "Version " DEALERSCHOICE_VERSION);
   TextWidget_t *tw_version =
-      text_widget_create(version, font->fonts[FONT_VERSION], get_color(COLOR_WHITE));
+      text_widget_create(version, font->fonts[FONT_VERSION], g_style_cfg.text_on_dark);
   if (tw_version)
     ui_widget_place(&tw_version->base, g_layout.menu.title_x + g_layout_cfg.version_x_offset, g_layout.menu.title_y + g_layout_cfg.version_y_offset);
 
   TextWidget_t *tw_nick =
-      text_widget_create(player_config->nick, font->fonts[FONT_DEFAULT], get_color(COLOR_BLACK));
+      text_widget_create(player_config->nick, font->fonts[FONT_DEFAULT], g_style_cfg.text_on_light);
   if (tw_nick)
     ui_widget_place(&tw_nick->base, input_nick_pos.x, input_nick_pos.y);
 
@@ -423,8 +427,9 @@ static void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *s
       text_input_indices[n_ti++] = i;
   int focused_slot = 0; /* index into text_input_indices */
 
-  ButtonWidget_t *btn_save = button_widget_create(_("Save"), (EColor_t){COLOR_BLACK, COLOR_YELLOW},
-                                                  font->fonts[FONT_BOLD], (SDL_Keycode)0);
+  ButtonWidget_t *btn_save = button_widget_create_colored(
+      _("Save"), g_style_cfg.button_primary.bg, g_style_cfg.button_primary.fg,
+      font->fonts[g_style_cfg.button_font], (SDL_Keycode)0);
   if (!btn_save) {
     ui_destroy_all(&reg);
     return;
@@ -433,9 +438,9 @@ static void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *s
   btn_save->base.rect.y = g_layout.menu.settings_save_y;
   ui_register(&reg, &btn_save->base);
 
-  ButtonWidget_t *btn_defaults =
-      button_widget_create(_("Load Defaults"), (EColor_t){COLOR_BLACK, COLOR_YELLOW},
-                           font->fonts[FONT_BOLD], (SDL_Keycode)0);
+  ButtonWidget_t *btn_defaults = button_widget_create_colored(
+      _("Load Defaults"), g_style_cfg.button_primary.bg, g_style_cfg.button_primary.fg,
+      font->fonts[g_style_cfg.button_font], (SDL_Keycode)0);
   if (!btn_defaults) {
     ui_destroy_all(&reg);
     return;
@@ -444,8 +449,9 @@ static void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *s
   btn_defaults->base.rect.y = btn_save->base.rect.y;
   ui_register(&reg, &btn_defaults->base);
 
-  ButtonWidget_t *btn_quit_settings = button_widget_create("X", (EColor_t){COLOR_WHITE, COLOR_RED},
-                                                           font->fonts[FONT_BOLD], (SDL_Keycode)0);
+  ButtonWidget_t *btn_quit_settings = button_widget_create_colored(
+      "X", g_style_cfg.button_danger.bg, g_style_cfg.button_danger.fg,
+      font->fonts[g_style_cfg.button_font], (SDL_Keycode)0);
   if (btn_quit_settings) {
     btn_quit_settings->base.rect.x =
         g_viewport.x + g_viewport.w - btn_quit_settings->base.rect.w - g_layout_cfg.margin;
@@ -456,7 +462,7 @@ static void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *s
   Uint32 anim_start = SDL_GetTicks();
 
   TextWidget_t *tw_settings_title =
-      text_widget_create(_("Settings"), font->fonts[FONT_TITLE], get_color(COLOR_BLACK));
+      text_widget_create(_("Settings"), font->fonts[FONT_TITLE], g_style_cfg.text_on_light);
   if (tw_settings_title)
     ui_widget_place(&tw_settings_title->base, g_layout.menu.title_x, g_layout.menu.title_y);
 
@@ -472,7 +478,7 @@ static void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *s
       int row = (int)(rpos / 2);
       int lx = (col == 0) ? x_left : x_right;
       tw_labels[i] = text_widget_create(player_config_entries[i].key, font->fonts[FONT_DEFAULT],
-                                        get_color(COLOR_BLACK));
+                                        g_style_cfg.text_on_light);
       if (tw_labels[i])
         ui_widget_place(&tw_labels[i]->base, lx, row_y[row]);
       rpos++;
@@ -876,6 +882,7 @@ int main(int argc, char *argv[]) {
   }
 
   g_layout_cfg = get_layout_config(path.data);
+  g_style_cfg = get_style_config(path.data);
   layout_init(TTF_FontHeight(font.fonts[FONT_STATUS_MSG]));
 
   PlayerConfig_t player_config = get_player_config();
@@ -899,7 +906,7 @@ int main(int argc, char *argv[]) {
 
   LinkWidget_t *links[LINK_DEFS_COUNT];
   for (size_t i = 0; i < LINK_DEFS_COUNT; i++)
-    links[i] = link_widget_create(_(LINK_DEFS[i].text), LINK_DEFS[i].url, font.fonts[FONT_LINK]);
+    links[i] = link_widget_create(_(LINK_DEFS[i].text), LINK_DEFS[i].url, font.fonts[g_style_cfg.link_font]);
   layout_links(links, LINK_DEFS_COUNT);
 
   char host_str[MAX_INPUT_LENGTH] = {0};

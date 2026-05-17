@@ -75,18 +75,18 @@ static void button_widget_destroy(UIWidget_t *w) {
   free(bw);
 }
 
-ButtonWidget_t *button_widget_create(const char *text, EColor_t color, TTF_Font *font,
-                                     SDL_Keycode hotkey) {
+static ButtonWidget_t *button_init(const char *text, SDL_Color bg, SDL_Color fg,
+                                   TTF_Font *font, SDL_Keycode hotkey) {
   ButtonWidget_t *bw = calloc(1, sizeof(*bw));
   if (!bw)
     return NULL;
 
-  bw->color = (Color_t){get_color(color.bg), get_color(color.fg)};
+  bw->color = (Color_t){bg, fg};
   bw->hotkey = hotkey;
   bw->click.duration = 80;
   bw->interactive = true;
 
-  bw->text = text_widget_create(text, font, get_color(color.fg));
+  bw->text = text_widget_create(text, font, fg);
   if (!bw->text) {
     free(bw);
     return NULL;
@@ -110,4 +110,14 @@ ButtonWidget_t *button_widget_create(const char *text, EColor_t color, TTF_Font 
   bw->base.destroy = button_widget_destroy;
 
   return bw;
+}
+
+ButtonWidget_t *button_widget_create(const char *text, EColor_t color, TTF_Font *font,
+                                     SDL_Keycode hotkey) {
+  return button_init(text, get_color(color.bg), get_color(color.fg), font, hotkey);
+}
+
+ButtonWidget_t *button_widget_create_colored(const char *text, SDL_Color bg, SDL_Color fg,
+                                             TTF_Font *font, SDL_Keycode hotkey) {
+  return button_init(text, bg, fg, font, hotkey);
 }

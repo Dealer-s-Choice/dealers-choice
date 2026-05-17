@@ -39,5 +39,7 @@ typedef struct {
 
 ButtonWidget_t *button_widget_create(const char *text, EColor_t color, TTF_Font *font,
                                      SDL_Keycode hotkey);
+ButtonWidget_t *button_widget_create_colored(const char *text, SDL_Color bg, SDL_Color fg,
+                                             TTF_Font *font, SDL_Keycode hotkey);
 
 #endif

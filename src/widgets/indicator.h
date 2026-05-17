@@ -60,5 +60,7 @@ the pre-created texture.
 
 Indicator_t *create_indicator(const char *text, TTF_Font *font, EColorName_t bg_color,
                               EColorName_t fg_color);
+Indicator_t *create_indicator_colored(const char *text, TTF_Font *font,
+                                      SDL_Color bg_color, SDL_Color fg_color);
 
 #endif
