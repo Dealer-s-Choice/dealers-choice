@@ -76,7 +76,7 @@ static void button_widget_destroy(UIWidget_t *w) {
 }
 
 static ButtonWidget_t *button_init(const char *text, SDL_Color bg, SDL_Color fg,
-                                   TTF_Font *font, SDL_Keycode hotkey) {
+                                   TTF_Font *font, SDL_Keycode hotkey, int w_pad, int h_pad) {
   ButtonWidget_t *bw = calloc(1, sizeof(*bw));
   if (!bw)
     return NULL;
@@ -104,20 +104,16 @@ static ButtonWidget_t *button_init(const char *text, SDL_Color bg, SDL_Color fg,
     th = 20;
   }
 
-  bw->base.rect.w = tw + g_layout_cfg.button_w_pad;
-  bw->base.rect.h = th + g_layout_cfg.button_h_pad;
+  bw->base.rect.w = tw + w_pad;
+  bw->base.rect.h = th + h_pad;
   bw->base.render = button_widget_render;
   bw->base.destroy = button_widget_destroy;
 
   return bw;
 }
 
-ButtonWidget_t *button_widget_create(const char *text, EColor_t color, TTF_Font *font,
-                                     SDL_Keycode hotkey) {
-  return button_init(text, get_color(color.bg), get_color(color.fg), font, hotkey);
-}
-
-ButtonWidget_t *button_widget_create_colored(const char *text, SDL_Color bg, SDL_Color fg,
-                                             TTF_Font *font, SDL_Keycode hotkey) {
-  return button_init(text, bg, fg, font, hotkey);
+ButtonWidget_t *button_widget_create_styled(const char *text, const ButtonRole_t *role,
+                                            TTF_Font * const *fonts, SDL_Keycode hotkey) {
+  return button_init(text, role->bg, role->fg, fonts[role->font_idx], hotkey,
+                     role->w_pad, role->h_pad);
 }

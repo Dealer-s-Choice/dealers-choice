@@ -22,7 +22,7 @@ PingWidget_t *ping_widget_create(int ping, TTF_Font *font) {
   char buf[32];
   snprintf(buf, sizeof buf, "%dms", ping);
 
-  pw->text = text_widget_create(buf, font, g_style_cfg.text_on_dark);
+  pw->text = text_widget_create(buf, font, DC_TEXT_ON_DARK);
   pw->ping = ping;
 
   // IMPORTANT: propagate size to base widget

@@ -4,6 +4,7 @@
 #include <SDL2/SDL.h>
 
 #include "graphics.h"
+#include "style.h"
 #include "text.h"
 
 #define CLICKED_DEFAULT                                                                            \
@@ -23,11 +24,6 @@ typedef struct {
 } Color_t;
 
 typedef struct {
-  EColorName_t bg;
-  EColorName_t fg;
-} EColor_t;
-
-typedef struct {
   UIWidget_t base;
   TextWidget_t *text;
   TextWidget_t *text_disabled;
@@ -37,9 +33,7 @@ typedef struct {
   bool interactive;
 } ButtonWidget_t;
 
-ButtonWidget_t *button_widget_create(const char *text, EColor_t color, TTF_Font *font,
-                                     SDL_Keycode hotkey);
-ButtonWidget_t *button_widget_create_colored(const char *text, SDL_Color bg, SDL_Color fg,
-                                             TTF_Font *font, SDL_Keycode hotkey);
+ButtonWidget_t *button_widget_create_styled(const char *text, const ButtonRole_t *role,
+                                            TTF_Font * const *fonts, SDL_Keycode hotkey);
 
 #endif

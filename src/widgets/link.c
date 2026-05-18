@@ -40,13 +40,13 @@ LinkWidget_t *link_widget_create(const char *text, const char *url, TTF_Font *fo
   lw->url = url;
 
   TTF_SetFontStyle(font, TTF_STYLE_UNDERLINE);
-  lw->text_normal = text_widget_create(text, font, g_style_cfg.link_normal);
+  lw->text_normal = text_widget_create(text, font, DC_LINK_NORMAL);
   if (!lw->text_normal) {
     TTF_SetFontStyle(font, TTF_STYLE_NORMAL);
     free(lw);
     return NULL;
   }
-  lw->text_hovered = text_widget_create(text, font, g_style_cfg.link_hover);
+  lw->text_hovered = text_widget_create(text, font, DC_LINK_HOVER);
   TTF_SetFontStyle(font, TTF_STYLE_NORMAL);
   if (!lw->text_hovered) {
     ui_widget_destroy(&lw->text_normal->base);

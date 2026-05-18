@@ -39,7 +39,7 @@
 
 void show_loading_screen(SDL_Renderer *renderer, TTF_Font *font, const char *message) {
   (void)renderer;
-  TextWidget_t *tw = text_widget_create(message, font, g_style_cfg.text_on_dark);
+  TextWidget_t *tw = text_widget_create(message, font, DC_TEXT_ON_DARK);
   if (!tw)
     return;
   int cx = 640 - tw->base.rect.w / 2;
@@ -83,18 +83,16 @@ void clear_screen(SDL_Renderer *renderer) {
   SDL_RenderClear(renderer);
 }
 
-bool confirm_quit(TTF_Font *font) {
-  if (!g_sdl_context || !font)
+bool confirm_quit(TTF_Font * const *fonts) {
+  if (!g_sdl_context || !fonts)
     return false;
 
   SDL_Renderer *r = g_sdl_context->renderer;
 
   TextWidget_t *msg_tw =
-      text_widget_create(_("Are you sure you want to quit?"), font, g_style_cfg.text_on_dark);
-  ButtonWidget_t *btn_cancel = button_widget_create_colored(
-      _("Cancel"), g_style_cfg.button_cancel.bg, g_style_cfg.button_cancel.fg, font, (SDL_Keycode)0);
-  ButtonWidget_t *btn_quit_w = button_widget_create_colored(
-      _("Quit"), g_style_cfg.button_danger.bg, g_style_cfg.button_danger.fg, font, (SDL_Keycode)0);
+      text_widget_create(_("Are you sure you want to quit?"), fonts[FONT_BOLD], DC_TEXT_ON_DARK);
+  ButtonWidget_t *btn_cancel = button_widget_create_styled(_("Cancel"), &ROLE_CANCEL, fonts, (SDL_Keycode)0);
+  ButtonWidget_t *btn_quit_w = button_widget_create_styled(_("Quit"), &ROLE_DANGER, fonts, (SDL_Keycode)0);
 
   if (!msg_tw || !btn_cancel || !btn_quit_w) {
     if (msg_tw)

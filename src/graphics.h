@@ -97,7 +97,7 @@ TTF_Font *open_font(const FontArgs_t *args);
 
 void clear_screen(SDL_Renderer *renderer);
 void draw_felt_background(SDL_Renderer *renderer, SDL_Texture *felt_tile);
-bool confirm_quit(TTF_Font *font);
+bool confirm_quit(TTF_Font * const *fonts);
 void draw_nameplate(SDL_Renderer *r, SDL_Rect rect, uint8_t alpha);
 SDL_Texture *create_vignette_texture(SDL_Renderer *renderer);
 
