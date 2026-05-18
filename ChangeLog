@@ -1,4 +1,8 @@
 - (in-progress)
+  * regression fix: when a player times out during the discard phase the status
+    message now correctly shows they drew 0 cards; the regression was introduced
+    in 2fd55fb when explicit timeout handling was added to handle_draw() but the
+    status broadcast was not carried over (#265)
   * Replace SDL2_net with tcpme (thin POSIX/Winsock wrapper)
   * Fix OpenBSD build (#270)
   * Bump GAME_PROTOCOL_VERSION from 9 to 10
