@@ -19,6 +19,25 @@
     trip card; now uses rank-aware group-value comparison that correctly
     identifies the effective triplet/quad/quint face regardless of which cards
     are wild
+  * pokeval: fix compare_hands_wild tiebreaking for PAIR and TWO_PAIR; the
+    previous compare_high_cards fallback let a natural pair 5s with a K
+    kicker beat a natural pair 8s with a Q kicker
+  * pokeval: fix compare_hands_wild kicker comparison for THREE_OF_A_KIND
+    and FOUR_OF_A_KIND when both hands have the same trip/quad value (a
+    natural second ace was being counted as a higher kicker than a K)
+  * pokeval: fix compare_hands_wild tiebreaking for STRAIGHT /
+    STRAIGHT_FLUSH; a wild-aided K-high straight could tie a natural
+    Q-high one because wilds were compared as literal 2s
+  * pokeval: fix compare_hands_wild tiebreaking for FLUSH to substitute
+    wild = ACE_HIGH, matching try_wild_combos' rank evaluation
+  * pokeval: fix update_best_5card (hand5_omaha / hand5_from_hand7
+    candidate picker) to use rank-aware tiebreaks for PAIR and TWO_PAIR;
+    Omaha was underpicking two-pair J+7 with Q kicker vs two-pair 7+6
+    with K kicker
+  * pokeval: fix update_best_wild same-rank tiebreak to route through the
+    same wild-aware compare as cross-player winner selection; a wild-aided
+    K-high straight in 7-card stud could otherwise be rejected as the best
+    candidate in favour of an inferior natural Q-high straight
   * bugfix: Window becomes unresponsive on systems where audio initialisation
     blocks (e.g. PulseAudio socket absent); run ma_engine_init on a background
     thread and fall back to silent (noDevice) mode on failure
