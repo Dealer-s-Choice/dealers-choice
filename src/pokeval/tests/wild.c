@@ -417,13 +417,6 @@ _MAIN_HEAD_
   };
   uint8_t n_wins = POKEVAL_compare_hands_wild(hands, 2, DH_CARD_TWO);
   fprintf(stderr, "wild straight compare (K-high wild vs Q-high natural): %d winner(s)\n", n_wins);
-  fprintf(stderr, "  P1 hand_5 face_vals:");
-  for (int i = 0; i < 5; i++)
-    fprintf(stderr, " %d", hands[0].hand_5.card[i].face_val);
-  fprintf(stderr, "\n  P2 hand_5 face_vals:");
-  for (int i = 0; i < 5; i++)
-    fprintf(stderr, " %d", hands[1].hand_5.card[i].face_val);
-  fprintf(stderr, "\n");
   assert(n_wins == 1);
   assert(hands[0].won);  /* K-high straight wins */
   assert(!hands[1].won); /* Q-high straight loses */
