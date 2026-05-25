@@ -9,6 +9,7 @@ on:
     paths:
       - 'README.md'
       - 'docs/**'
+      - 'scripts/extract_project_links.py'
       - '!**.yml'
       - '**/deploy-docs.yml'
   workflow_dispatch:
@@ -26,6 +27,7 @@ jobs:
           mkdir deploy
           cp README.md deploy/
           cp -r docs deploy/
+          python3 scripts/extract_project_links.py README.md deploy/_data/project_links.yml
 
       - name: Deploy to destination repo
         uses: peaceiris/actions-gh-pages@v4
