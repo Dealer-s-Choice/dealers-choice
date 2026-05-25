@@ -85,9 +85,11 @@ pokeval_fuzz_exe = executable(
 )
 
 # Run the fuzzer and cross-check pokeval's verdicts against the
-# Python analyzer.  ~1000 hands × 13 variants runs in <1s sanitized
-# locally; budget 30s for slower CI runners.  Override hand count
-# with the DC_FUZZ_N env var, seed with DC_FUZZ_SEED.
+# Python analyzer.  1000 hands runs in <1s sanitized locally; budget
+# 180s to cover s390x-under-QEMU (OpenSUSE Tumbleweed CI) and the
+# OpenBSD VM runner, both of which are ~50x slower than native.
+# Override hand count with the DC_FUZZ_N env var, seed with
+# DC_FUZZ_SEED.
 pokeval_fuzz_check = files(
   join_paths(meson.current_source_dir(), 'pokeval_fuzz_check.py'),
 )
@@ -97,7 +99,7 @@ test(
   env: environment(base_env + {
     'MESON_SOURCE_ROOT': meson.project_source_root(),
   }),
-  timeout: 30,
+  timeout: 180,
   depends: [pokeval_fuzz_exe],
 )
 

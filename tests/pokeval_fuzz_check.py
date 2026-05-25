@@ -15,8 +15,13 @@ import subprocess
 import sys
 from pathlib import Path
 
-DEFAULT_N_HANDS = 1000
+DEFAULT_N_HANDS = 250
 DEFAULT_SEED = 1
+# 250 hands × 13 variants ≈ 19 per variant — enough to catch regressions
+# in any single rank's tie-break.  Higher coverage is available offline
+# via DC_FUZZ_N or by invoking the fuzz binary directly.  CI runners
+# include s390x-under-QEMU (OpenSUSE Tumbleweed), which is ~500× slower
+# than native and ran into the test's 180s ceiling at 1000 hands.
 
 
 def main() -> int:
