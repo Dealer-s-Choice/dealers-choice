@@ -28,7 +28,10 @@ def main() -> int:
               file=sys.stderr)
         return 2
 
+    # Windows builds (MSVC, MSYS2) emit `.exe`; POSIX builds have no suffix.
     fuzz_bin = Path(test_root) / "test_pokeval_fuzz"
+    if not fuzz_bin.exists():
+        fuzz_bin = fuzz_bin.with_suffix(".exe")
     analyzer = Path(source_root) / "scripts" / "analyze_hands.py"
     if not fuzz_bin.exists():
         print(f"error: {fuzz_bin} not found", file=sys.stderr)
