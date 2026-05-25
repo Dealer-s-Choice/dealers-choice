@@ -537,17 +537,19 @@ int main(int argc, char *argv[]) {
       continue;
     action_after = 0;
 
-    /* Evaluate the current hand.  Use the wild-card evaluator when deuces are
-     * wild so hand strength is correctly assessed in those games. */
-    POKEVAL_Hand_5 h5 = {0};
-    {
-      int k5 = 0;
-      for (int i = 0; i < MAX_HAND_SIZE && k5 < POKEVAL_HAND_SIZE; i++) {
-        DH_Card c = game_state.player[my_id].hand.card[i];
-        if (!DH_is_card_null(c) && !DH_is_card_back(c))
-          h5.card[k5++] = c;
-      }
-    }
+    /* Evaluate the current hand.  Use the variant-aware best-5-of-N
+     * helpers so 6/7-card stud, Texas Hold'em, and Omaha actually
+     * consider every card the bot is holding (the old code took just
+     * the first 5, which underrated nearly every made hand on later
+     * streets).  Use the deuces-wild evaluator when applicable. */
+    POKEVAL_Hand_5 h5;
+    bool is_omaha = (client_state.game_choice && client_state.game_choice->g == OMAHA);
+    if (is_omaha)
+      h5 = POKEVAL_hand5_omaha(&game_state.player[my_id].hand);
+    else if (client_state.deuces_wild)
+      h5 = POKEVAL_hand5_from_hand7_wild(&game_state.player[my_id].hand, DH_CARD_TWO);
+    else
+      h5 = POKEVAL_hand5_from_hand7(&game_state.player[my_id].hand);
     hand_rank_t hand_rank = client_state.deuces_wild
                                 ? (hand_rank_t)POKEVAL_evaluate_hand_wild(h5, DH_CARD_TWO)
                                 : (hand_rank_t)POKEVAL_evaluate_hand(h5);
