@@ -713,6 +713,35 @@ int main(int argc, char *argv[]) {
         rc = send_player_action(&client_state, socket_ctx.sock, ACTION_FOLD, 0);
         was_aggressor = false;
         checked_strong = false;
+      } else if (is_lowball) {
+        /* Lowball has its own equity table — strength=2 here means
+         * 10-K-high unpaired (marginal) and strength=1 means paired
+         * (basically dead), neither of which lines up with the
+         * high-hand strength=2 (\"two pair, good\") logic below.  Pair
+         * equity also collapses much faster against multiple opponents
+         * because every other unpaired hand beats us. */
+        int eq;
+        switch (strength) {
+        case 4: eq = 90; break;  /* 7-high or better — print money */
+        case 3: eq = 65; break;  /* 8/9-high */
+        case 2: eq = (active_opponents <= 1) ? 38 : 25; break;
+        case 1: eq = (active_opponents <= 1) ? 16 : 8; break;   /* paired */
+        default: eq = 4; break;  /* two pair or worse */
+        }
+        if (strength >= 3 && can_raise && (int)pcg32_boundedrand_r(&rng, 100) < 55) {
+          verbose_printf("(lowball value raise, strength=%d)\n", strength);
+          rc = send_player_action(&client_state, socket_ctx.sock, ACTION_RAISE, bet_amount);
+          was_aggressor = true;
+        } else if (pot_odds_pct < eq) {
+          verbose_printf("(lowball call, strength=%d pot_odds=%d%% eq=%d%%)\n",
+                         strength, pot_odds_pct, eq);
+          rc = send_player_action(&client_state, socket_ctx.sock, ACTION_CALL, 0);
+        } else {
+          verbose_printf("(lowball fold, strength=%d pot_odds=%d%% eq=%d%%)\n",
+                         strength, pot_odds_pct, eq);
+          rc = send_player_action(&client_state, socket_ctx.sock, ACTION_FOLD, 0);
+          was_aggressor = false;
+        }
       } else if (checked_strong && can_raise) {
         /* Check-raise: we checked a strong hand last round hoping someone would bet.
          * They did — almost always raise, occasionally just call to keep them guessing. */
