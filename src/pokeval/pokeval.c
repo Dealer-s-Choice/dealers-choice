@@ -866,6 +866,14 @@ uint8_t POKEVAL_compare_hands_omaha(POKEVAL_NeedComparing *need_comparing, uint8
   return compare_hands_5(need_comparing, count);
 }
 
+// Wild-aware pair / two-pair tie-break.  Substitutes wilds into their
+// pair role(s) so the natural compare_one_pair_tiebreak / two_pair
+// helpers can be reused.  Any wild left over (only possible with 2+
+// wilds and a one-pair or two-pair classification) becomes ACE_HIGH so
+// it dominates the kicker comparison.
+static int compare_pair_tiebreak_wild(const POKEVAL_Hand_5 *a, const POKEVAL_Hand_5 *b,
+                                      int32_t wild_face, int n_pairs);
+
 // Returns the face value of the highest N-of-a-kind group in a wild hand.
 // Checks for a natural group of exactly `group_size` first, then falls back
 // to the highest non-wild face whose natural count plus available wilds
@@ -975,7 +983,24 @@ uint8_t POKEVAL_compare_hands_wild(POKEVAL_NeedComparing *need_comparing, uint8_
         }
         break;
       }
+      case POKEVAL_TWO_PAIR: {
+        int cmp = compare_pair_tiebreak_wild(&a, &b, wild_face, 2);
+        if (cmp == 0) tie = true;
+        else if (cmp < 0) b_wins = true;
+        break;
+      }
+      case POKEVAL_PAIR: {
+        int cmp = compare_pair_tiebreak_wild(&a, &b, wild_face, 1);
+        if (cmp == 0) tie = true;
+        else if (cmp < 0) b_wins = true;
+        break;
+      }
       default: {
+        /* HIGH_CARD (only reachable when neither hand has a wild — a
+         * single wild always upgrades at least to a pair) and
+         * STRAIGHT / FLUSH / STRAIGHT_FLUSH (which the best-hand
+         * selector already substituted, so face values are concrete by
+         * the time we get here). */
         int cmp = compare_high_cards(&a, &b);
         if (cmp == 0) tie = true;
         else if (cmp < 0) b_wins = true;
@@ -997,6 +1022,81 @@ uint8_t POKEVAL_compare_hands_wild(POKEVAL_NeedComparing *need_comparing, uint8_
     need_comparing[winner_indices[i]].won = true;
 
   return num_winners;
+}
+
+// Substitute wilds into their pair role(s) and defer to the natural
+// pair/two-pair tie-break.  Without this, the default (compare_high_cards)
+// comparison just walks the sorted hand position-by-position — for a
+// natural pair 5s with K-T kickers vs natural pair 8s with Q-J kickers,
+// both sort with the high non-pair card first (K vs Q), and the kicker
+// comparison fires before the pair value ever gets compared.
+//
+// `n_pairs` is 1 (one-pair) or 2 (two-pair); the wild evaluator already
+// picked the category for us.
+static int compare_pair_tiebreak_wild(const POKEVAL_Hand_5 *a, const POKEVAL_Hand_5 *b,
+                                      int32_t wild_face, int n_pairs) {
+  POKEVAL_Hand_5 as = *a, bs = *b;
+
+  for (int which = 0; which < 2; which++) {
+    POKEVAL_Hand_5 *h = (which == 0) ? &as : &bs;
+
+    // Top pair: get_group_value_wild returns the highest face whose
+    // natural count + wilds reaches 2.  Substitute wilds into it until
+    // we have two cards of that face.
+    int top = get_group_value_wild(h, wild_face, 2);
+    if (top > 0) {
+      int natural_top = count_face(h, top);
+      int wilds_needed_top = (natural_top >= 2) ? 0 : (2 - natural_top);
+      for (int i = 0; i < POKEVAL_HAND_SIZE && wilds_needed_top > 0; i++) {
+        if (h->card[i].face_val == wild_face) {
+          h->card[i].face_val = top;
+          wilds_needed_top--;
+        }
+      }
+    }
+
+    if (n_pairs == 2) {
+      // Second pair: look for the next-highest face whose natural count
+      // (no further wilds available — we may have already consumed them)
+      // is 2, or count + remaining wilds reaches 2.
+      int second = -1;
+      for (int fv = DH_CARD_KING + 1; fv >= DH_CARD_ACE; fv--) {
+        if (fv == wild_face || fv == top) continue;
+        // POKEVAL_ACE == DH_CARD_KING + 1 is the iteration start above;
+        // skip values that aren't dealt as themselves.
+        if (fv == POKEVAL_ACE && fv != DH_CARD_ACE) continue;
+        int cnt = count_face(h, fv);
+        int wilds_left = count_face(h, wild_face);
+        if (cnt + wilds_left >= 2 && fv > second)
+          second = fv;
+      }
+      if (second > 0) {
+        int natural_second = count_face(h, second);
+        int wilds_needed_second = (natural_second >= 2) ? 0 : (2 - natural_second);
+        for (int i = 0; i < POKEVAL_HAND_SIZE && wilds_needed_second > 0; i++) {
+          if (h->card[i].face_val == wild_face) {
+            h->card[i].face_val = second;
+            wilds_needed_second--;
+          }
+        }
+      }
+    }
+
+    // Any remaining wild becomes ace-high (the best kicker).
+    for (int i = 0; i < POKEVAL_HAND_SIZE; i++)
+      if (h->card[i].face_val == wild_face)
+        h->card[i].face_val = POKEVAL_ACE;
+
+    POKEVAL_sort_hand(h);
+  }
+
+  /* compare_one_pair_tiebreak and compare_two_pair_tiebreak use INVERTED
+   * return conventions (one-pair: >0 = a wins; two-pair: <0 = a wins).
+   * Normalize to one-pair convention here so the caller can use a single
+   * "<0 means b wins" check for both ranks. */
+  if (n_pairs == 1)
+    return compare_one_pair_tiebreak(&as, &bs);
+  return -compare_two_pair_tiebreak(&as, &bs);
 }
 
 // Bring-in helpers -----------------------------------------------------------

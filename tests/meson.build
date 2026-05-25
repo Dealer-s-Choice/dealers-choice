@@ -83,9 +83,23 @@ pokeval_fuzz_exe = executable(
   dependencies: game_dep,
   override_options: ['b_lto=false'],
 )
-# Not added as a `test()` — this is an offline fuzz harness.  Run with:
-#   _build_dealers_choice/tests/test_pokeval_fuzz 10000 > hands.jsonl
-#   scripts/analyze_hands.py hands.jsonl
+
+# Run the fuzzer and cross-check pokeval's verdicts against the
+# Python analyzer.  ~1000 hands × 13 variants runs in <1s sanitized
+# locally; budget 30s for slower CI runners.  Override hand count
+# with the DC_FUZZ_N env var, seed with DC_FUZZ_SEED.
+pokeval_fuzz_check = files(
+  join_paths(meson.current_source_dir(), 'pokeval_fuzz_check.py'),
+)
+test(
+  'test_pokeval_fuzz',
+  pokeval_fuzz_check,
+  env: environment(base_env + {
+    'MESON_SOURCE_ROOT': meson.project_source_root(),
+  }),
+  timeout: 30,
+  depends: [pokeval_fuzz_exe],
+)
 
 add_test_setup(
   'One_pass',

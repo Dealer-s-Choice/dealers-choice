@@ -156,7 +156,14 @@ def _rank_5_with_wilds(combo: tuple[dict, ...], lowball: bool, wild_face: int | 
     if wild_face is None or not any(c["f"] == wild_face for c in combo):
         faces = [c["f"] for c in combo]
         suits = [c["s"] for c in combo]
-        return _eval5_lowball(faces) if lowball else _eval5_high(faces, suits)
+        if lowball:
+            return _eval5_lowball(faces)
+        # Five-of-a-kind has no representation in the high evaluator (it's
+        # impossible with a 52-card deck) so detect it here when wilds have
+        # filled every card with the same face.
+        if len(set(faces)) == 1:
+            return (FIVE_OF_A_KIND, faces[0] if faces[0] != 1 else 14)
+        return _eval5_high(faces, suits)
     # Expand each wild to the best of all possible (face, suit) substitutions.
     wild_idx = next(i for i, c in enumerate(combo) if c["f"] == wild_face)
     best: tuple | None = None
@@ -167,12 +174,6 @@ def _rank_5_with_wilds(combo: tuple[dict, ...], lowball: bool, wild_face: int | 
             sub = list(combo)
             sub[wild_idx] = {"f": face, "s": suit}
             rank = _rank_5_with_wilds(tuple(sub), lowball, wild_face)
-            # For deuces wild the substituted hand can also reach
-            # FIVE_OF_A_KIND, which our high evaluator doesn't natively
-            # produce.  Detect it here by counting matching faces (treating
-            # the wild as the chosen face).
-            if rank[0] == FOUR and rank[1] == face:
-                rank = (FIVE_OF_A_KIND, face)
             if best is None or rank > best:
                 best = rank
     assert best is not None
