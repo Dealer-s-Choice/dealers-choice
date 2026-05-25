@@ -1,5 +1,5 @@
 /*
- globals.h
+ style.c
  https://github.com/Dealer-s-Choice/dealers_choice
 
  MIT License
@@ -26,19 +26,25 @@
 
 */
 
-#ifndef __GLOBALS_H
-#define __GLOBALS_H
-
-#include <deckhandler.h>
-
-#include "config.h"
 #include "graphics.h"
-#include "layout.h"
 #include "style.h"
 
-extern pcg32_random_t rng;
+// clang-format off
+const ButtonRole_t ROLE_PRIMARY = { {  0,   0,   0, 255}, {255, 255,   0, 255}, FONT_BOLD, 20, 10 };
+const ButtonRole_t ROLE_DANGER  = { {255, 255, 255, 255}, {255,   0,   0, 255}, FONT_BOLD, 20, 10 };
+const ButtonRole_t ROLE_ALT    = { {255, 255, 255, 255}, {165,  42,  42, 255}, FONT_BOLD, 20, 10 };
+const ButtonRole_t ROLE_CANCEL  = { {255, 255, 255, 255}, {128, 128, 128, 255}, FONT_BOLD, 20, 10 };
 
-extern SDL_Rect g_viewport;
-extern SDL_Point g_center;
+const SDL_Color DC_INDICATOR_WILD_BG = {128,   0, 128, 255};
+const SDL_Color DC_INDICATOR_WILD_FG = {255, 255, 255, 255};
+const SDL_Color DC_INDICATOR_GAME_BG = {255, 165,   0, 255};
+const SDL_Color DC_INDICATOR_GAME_FG = {  0,   0,   0, 255};
 
-#endif
+const SDL_Color DC_TEXT_ON_DARK  = {255, 255, 255, 255};
+const SDL_Color DC_TEXT_ON_LIGHT = {  0,   0,   0, 255};
+const SDL_Color DC_TEXT_MUTED    = {200, 200, 200, 255};
+const SDL_Color DC_LINK_NORMAL   = {  0,   0,   0, 255};
+const SDL_Color DC_LINK_HOVER    = {  0,   0, 255, 255};
+const SDL_Color DC_TIMER_BG      = {  0, 125,   0, 255};
+const SDL_Color DC_TIMER_ELAPSED = {240, 204,  48, 255};
+// clang-format on

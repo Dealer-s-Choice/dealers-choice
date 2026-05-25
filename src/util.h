@@ -33,6 +33,10 @@ extern bool verbose;
 
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
 
+#ifdef _MSC_VER
+#define strcasecmp _stricmp
+#endif
+
 typedef struct {
   char data[2048];
   char config[2048];

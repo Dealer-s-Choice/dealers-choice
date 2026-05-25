@@ -31,10 +31,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#ifdef _MSC_VER
-#define strcasecmp _stricmp
-#endif
-
 #include "dc_config.h"
 #include "layout.h"
 #include "util.h"
@@ -143,8 +139,6 @@ const ConfigEntry layout_config_entries[] = {
     LC("version_x_offset",         "40",  version_x_offset),
     LC("version_y_offset",         "80",  version_y_offset),
     LC("checkbox_pad",             "16",  checkbox_pad),
-    LC("button_w_pad",             "20",  button_w_pad),
-    LC("button_h_pad",             "10",  button_h_pad),
     LC("input_text_pad_x",          "8",  input_text_pad_x),
     LC("input_h_pad",              "16",  input_h_pad),
     {0}};

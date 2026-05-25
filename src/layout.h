@@ -86,8 +86,6 @@ typedef struct {
   int version_x_offset;
   int version_y_offset;
   int checkbox_pad;
-  int button_w_pad;
-  int button_h_pad;
   int input_text_pad_x;
   int input_h_pad;
 } LayoutConfig_t;

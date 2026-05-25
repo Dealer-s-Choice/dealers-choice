@@ -100,8 +100,8 @@ void indicator_render(UIWidget_t *w) {
   ui_widget_render(&ind->text->base);
 }
 
-Indicator_t *create_indicator(const char *text, TTF_Font *font, EColorName_t bg_color,
-                              EColorName_t fg_color) {
+static Indicator_t *indicator_init(const char *text, TTF_Font *font,
+                                   SDL_Color bg_color, SDL_Color fg_color) {
   SDL_Renderer *renderer = g_sdl_context->renderer;
   if (!renderer || !text || !font)
     return NULL;
@@ -111,29 +111,36 @@ Indicator_t *create_indicator(const char *text, TTF_Font *font, EColorName_t bg_
     return NULL;
 
   ind->renderer = renderer;
-  ind->bg_color = get_color(bg_color);
+  ind->bg_color = bg_color;
 
-  ind->text = text_widget_create(text, font, get_color(fg_color));
+  ind->text = text_widget_create(text, font, fg_color);
   if (!ind->text) {
     free(ind);
     return NULL;
   }
 
-  // Compute indicator rectangle with padding
   int text_w = ind->text->base.rect.w;
   int text_h = ind->text->base.rect.h;
-  int pad_x = text_h;     // horizontal padding
-  int pad_y = text_h / 3; // vertical padding
+  int pad_x = text_h;
+  int pad_y = text_h / 3;
   ind->base.rect.w = text_w + pad_x * 2;
   ind->base.rect.h = text_h + pad_y * 2;
 
-  // Precompute oval radii
   ind->rx = ind->base.rect.w / 2;
   ind->ry = ind->base.rect.h / 2;
 
-  // Assign callbacks
   ind->base.render = indicator_render;
   ind->base.destroy = text_wrapper_destroy;
 
   return ind;
+}
+
+Indicator_t *create_indicator(const char *text, TTF_Font *font, EColorName_t bg_color,
+                              EColorName_t fg_color) {
+  return indicator_init(text, font, get_color(bg_color), get_color(fg_color));
+}
+
+Indicator_t *create_indicator_colored(const char *text, TTF_Font *font,
+                                      SDL_Color bg_color, SDL_Color fg_color) {
+  return indicator_init(text, font, bg_color, fg_color);
 }

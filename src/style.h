@@ -1,5 +1,5 @@
 /*
- globals.h
+ style.h
  https://github.com/Dealer-s-Choice/dealers_choice
 
  MIT License
@@ -26,19 +26,35 @@
 
 */
 
-#ifndef __GLOBALS_H
-#define __GLOBALS_H
+#ifndef __STYLE_H
+#define __STYLE_H
 
-#include <deckhandler.h>
+#include <SDL2/SDL.h>
 
-#include "config.h"
-#include "graphics.h"
-#include "layout.h"
-#include "style.h"
+typedef struct {
+  SDL_Color bg;
+  SDL_Color fg;
+  int       font_idx;
+  int       w_pad;
+  int       h_pad;
+} ButtonRole_t;
 
-extern pcg32_random_t rng;
+extern const ButtonRole_t ROLE_PRIMARY;
+extern const ButtonRole_t ROLE_DANGER;
+extern const ButtonRole_t ROLE_ALT;
+extern const ButtonRole_t ROLE_CANCEL;
 
-extern SDL_Rect g_viewport;
-extern SDL_Point g_center;
+extern const SDL_Color DC_INDICATOR_WILD_BG;
+extern const SDL_Color DC_INDICATOR_WILD_FG;
+extern const SDL_Color DC_INDICATOR_GAME_BG;
+extern const SDL_Color DC_INDICATOR_GAME_FG;
+
+extern const SDL_Color DC_TEXT_ON_DARK;
+extern const SDL_Color DC_TEXT_ON_LIGHT;
+extern const SDL_Color DC_TEXT_MUTED;
+extern const SDL_Color DC_LINK_NORMAL;
+extern const SDL_Color DC_LINK_HOVER;
+extern const SDL_Color DC_TIMER_BG;
+extern const SDL_Color DC_TIMER_ELAPSED;
 
 #endif

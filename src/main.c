@@ -54,10 +54,10 @@ enum { RUN_CLIENT = 20, RUN_SETTINGS = 21 };
 
 static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, uint16_t *port,
                                 SdlContext_t *sdl_context, Font_t *font, LinkWidget_t **links) {
-  ButtonWidget_t *button_connect = button_widget_create(
-      _("Connect"), (EColor_t){COLOR_BLACK, COLOR_YELLOW}, font->fonts[FONT_BOLD], (SDL_Keycode)0);
-  ButtonWidget_t *button_settings = button_widget_create(
-      _("Settings"), (EColor_t){COLOR_BLACK, COLOR_YELLOW}, font->fonts[FONT_BOLD], (SDL_Keycode)0);
+  ButtonWidget_t *button_connect = button_widget_create_styled(
+      _("Connect"), &ROLE_PRIMARY, font->fonts, (SDL_Keycode)0);
+  ButtonWidget_t *button_settings = button_widget_create_styled(
+      _("Settings"), &ROLE_PRIMARY, font->fonts, (SDL_Keycode)0);
   UIRegistry_t reg = {0};
 
   button_connect->base.rect.x = g_layout.menu.margin_x;
@@ -89,15 +89,14 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, u
   port_input->base.rect.y = host_input->base.rect.y + host_input->base.rect.h + g_layout_cfg.input_field_v_gap;
   ui_register(&reg, &port_input->base);
 
-  ButtonWidget_t *button_save = button_widget_create(
-      _("Save"), (EColor_t){COLOR_BLACK, COLOR_YELLOW}, font->fonts[FONT_BOLD], (SDL_Keycode)0);
+  ButtonWidget_t *button_save = button_widget_create_styled(
+      _("Save"), &ROLE_PRIMARY, font->fonts, (SDL_Keycode)0);
   if (!button_save)
     goto err;
   ui_register(&reg, &button_save->base);
 
-  ButtonWidget_t *button_defaults =
-      button_widget_create(_("Load Defaults"), (EColor_t){COLOR_BLACK, COLOR_YELLOW},
-                           font->fonts[FONT_BOLD], (SDL_Keycode)0);
+  ButtonWidget_t *button_defaults = button_widget_create_styled(
+      _("Load Defaults"), &ROLE_PRIMARY, font->fonts, (SDL_Keycode)0);
   if (!button_defaults)
     goto err;
   ui_register(&reg, &button_defaults->base);
@@ -110,8 +109,8 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, u
   button_defaults->base.rect.x = button_save->base.rect.x + button_save->base.rect.w + g_layout_cfg.connect_save_btn_gap;
   button_defaults->base.rect.y = button_save->base.rect.y;
 
-  ButtonWidget_t *btn_quit_connect = button_widget_create("X", (EColor_t){COLOR_WHITE, COLOR_RED},
-                                                          font->fonts[FONT_BOLD], (SDL_Keycode)0);
+  ButtonWidget_t *btn_quit_connect = button_widget_create_styled(
+      "X", &ROLE_DANGER, font->fonts, (SDL_Keycode)0);
   if (btn_quit_connect) {
     btn_quit_connect->base.rect.x =
         g_viewport.x + g_viewport.w - btn_quit_connect->base.rect.w - g_layout_cfg.margin;
@@ -130,19 +129,19 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, u
   layout_links(links, LINK_DEFS_COUNT);
 
   TextWidget_t *tw_title = text_widget_create(DEALERSCHOICE_FORMAL_NAME, font->fonts[FONT_TITLE],
-                                              get_color(COLOR_BLACK));
+                                              DC_TEXT_ON_LIGHT);
   if (tw_title)
     ui_widget_place(&tw_title->base, g_layout.menu.title_x, g_layout.menu.title_y);
 
   char version[64] = {0};
   snprintf(version, sizeof(version), "Version " DEALERSCHOICE_VERSION);
   TextWidget_t *tw_version =
-      text_widget_create(version, font->fonts[FONT_VERSION], get_color(COLOR_WHITE));
+      text_widget_create(version, font->fonts[FONT_VERSION], DC_TEXT_ON_DARK);
   if (tw_version)
     ui_widget_place(&tw_version->base, g_layout.menu.title_x + g_layout_cfg.version_x_offset, g_layout.menu.title_y + g_layout_cfg.version_y_offset);
 
   TextWidget_t *tw_nick =
-      text_widget_create(player_config->nick, font->fonts[FONT_DEFAULT], get_color(COLOR_BLACK));
+      text_widget_create(player_config->nick, font->fonts[FONT_DEFAULT], DC_TEXT_ON_LIGHT);
   if (tw_nick)
     ui_widget_place(&tw_nick->base, input_nick_pos.x, input_nick_pos.y);
 
@@ -165,7 +164,7 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, u
         running = false;
       } else if (e.type == SDL_MOUSEBUTTONDOWN) {
         if (btn_quit_connect && SDL_PointInRect(&mouse_pos, &btn_quit_connect->base.rect) &&
-            confirm_quit(font->fonts[FONT_BOLD])) {
+            confirm_quit(font->fonts)) {
           SDL_Event quit = {.type = SDL_QUIT};
           SDL_PushEvent(&quit);
           running = false;
@@ -203,7 +202,7 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, u
       } else if (e.type == SDL_KEYDOWN) {
         switch (e.key.keysym.sym) {
         case SDLK_ESCAPE:
-          if (confirm_quit(font->fonts[FONT_BOLD])) {
+          if (confirm_quit(font->fonts)) {
             SDL_Event quit = {.type = SDL_QUIT};
             SDL_PushEvent(&quit);
             running = false;
@@ -423,8 +422,8 @@ static void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *s
       text_input_indices[n_ti++] = i;
   int focused_slot = 0; /* index into text_input_indices */
 
-  ButtonWidget_t *btn_save = button_widget_create(_("Save"), (EColor_t){COLOR_BLACK, COLOR_YELLOW},
-                                                  font->fonts[FONT_BOLD], (SDL_Keycode)0);
+  ButtonWidget_t *btn_save = button_widget_create_styled(
+      _("Save"), &ROLE_PRIMARY, font->fonts, (SDL_Keycode)0);
   if (!btn_save) {
     ui_destroy_all(&reg);
     return;
@@ -433,9 +432,8 @@ static void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *s
   btn_save->base.rect.y = g_layout.menu.settings_save_y;
   ui_register(&reg, &btn_save->base);
 
-  ButtonWidget_t *btn_defaults =
-      button_widget_create(_("Load Defaults"), (EColor_t){COLOR_BLACK, COLOR_YELLOW},
-                           font->fonts[FONT_BOLD], (SDL_Keycode)0);
+  ButtonWidget_t *btn_defaults = button_widget_create_styled(
+      _("Load Defaults"), &ROLE_PRIMARY, font->fonts, (SDL_Keycode)0);
   if (!btn_defaults) {
     ui_destroy_all(&reg);
     return;
@@ -444,8 +442,8 @@ static void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *s
   btn_defaults->base.rect.y = btn_save->base.rect.y;
   ui_register(&reg, &btn_defaults->base);
 
-  ButtonWidget_t *btn_quit_settings = button_widget_create("X", (EColor_t){COLOR_WHITE, COLOR_RED},
-                                                           font->fonts[FONT_BOLD], (SDL_Keycode)0);
+  ButtonWidget_t *btn_quit_settings = button_widget_create_styled(
+      "X", &ROLE_DANGER, font->fonts, (SDL_Keycode)0);
   if (btn_quit_settings) {
     btn_quit_settings->base.rect.x =
         g_viewport.x + g_viewport.w - btn_quit_settings->base.rect.w - g_layout_cfg.margin;
@@ -456,7 +454,7 @@ static void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *s
   Uint32 anim_start = SDL_GetTicks();
 
   TextWidget_t *tw_settings_title =
-      text_widget_create(_("Settings"), font->fonts[FONT_TITLE], get_color(COLOR_BLACK));
+      text_widget_create(_("Settings"), font->fonts[FONT_TITLE], DC_TEXT_ON_LIGHT);
   if (tw_settings_title)
     ui_widget_place(&tw_settings_title->base, g_layout.menu.title_x, g_layout.menu.title_y);
 
@@ -472,7 +470,7 @@ static void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *s
       int row = (int)(rpos / 2);
       int lx = (col == 0) ? x_left : x_right;
       tw_labels[i] = text_widget_create(player_config_entries[i].key, font->fonts[FONT_DEFAULT],
-                                        get_color(COLOR_BLACK));
+                                        DC_TEXT_ON_LIGHT);
       if (tw_labels[i])
         ui_widget_place(&tw_labels[i]->base, lx, row_y[row]);
       rpos++;
@@ -502,7 +500,7 @@ static void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *s
         running = false;
       } else if (e.type == SDL_MOUSEBUTTONDOWN && e.button.button == SDL_BUTTON_LEFT) {
         if (btn_quit_settings && SDL_PointInRect(&mouse_pos, &btn_quit_settings->base.rect) &&
-            confirm_quit(font->fonts[FONT_BOLD])) {
+            confirm_quit(font->fonts)) {
           SDL_Event quit = {.type = SDL_QUIT};
           SDL_PushEvent(&quit);
           running = false;
@@ -553,7 +551,7 @@ static void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *s
           running = false;
           break;
         case SDLK_ESCAPE:
-          if (confirm_quit(font->fonts[FONT_BOLD])) {
+          if (confirm_quit(font->fonts)) {
             SDL_Event quit = {.type = SDL_QUIT};
             SDL_PushEvent(&quit);
             running = false;

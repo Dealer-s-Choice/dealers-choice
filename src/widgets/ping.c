@@ -1,4 +1,5 @@
 #include "ping.h"
+#include "style.h"
 
 static void ping_widget_render(UIWidget_t *w) {
   PingWidget_t *pw = (PingWidget_t *)w;
@@ -21,7 +22,7 @@ PingWidget_t *ping_widget_create(int ping, TTF_Font *font) {
   char buf[32];
   snprintf(buf, sizeof buf, "%dms", ping);
 
-  pw->text = text_widget_create(buf, font, get_color(COLOR_WHITE));
+  pw->text = text_widget_create(buf, font, DC_TEXT_ON_DARK);
   pw->ping = ping;
 
   // IMPORTANT: propagate size to base widget
