@@ -43,14 +43,9 @@ def main() -> int:
     n_hands = int(os.environ.get("DC_FUZZ_N", DEFAULT_N_HANDS))
     seed = int(os.environ.get("DC_FUZZ_SEED", DEFAULT_SEED))
 
-    # Wild straight-flush / flush tie-breaks are still buggy in pokeval (see
-    # CLAUDE.md "Known issues" #1).  Run only the non-wild variants here so
-    # CI stays green and we still catch regressions in the high-hand,
-    # lowball, omaha, and stud paths.  The full fuzz (with wild) is
-    # available offline with `tests/test_pokeval_fuzz 10000`.
     jsonl_path = Path(test_root) / "pokeval_fuzz.jsonl"
     with jsonl_path.open("w") as fp:
-        rc = subprocess.run([str(fuzz_bin), str(n_hands), str(seed), "--skip-wild"],
+        rc = subprocess.run([str(fuzz_bin), str(n_hands), str(seed)],
                             stdout=fp, stderr=sys.stderr).returncode
     if rc != 0:
         print(f"error: fuzz binary exited {rc}", file=sys.stderr)

@@ -152,8 +152,19 @@ def best5(cards: list[dict], lowball: bool, wild_face: int | None) -> tuple:
 
 
 def _rank_5_with_wilds(combo: tuple[dict, ...], lowball: bool, wild_face: int | None) -> tuple:
-    """Rank a 5-card hand, expanding wilds to the best concrete substitution."""
-    if wild_face is None or not any(c["f"] == wild_face for c in combo):
+    """Rank a 5-card hand, expanding wilds to the best concrete substitution.
+
+    Pokeval allows the wild to play as its own face (e.g. a 2 in deuces wild
+    can still be a 2 — important for the A-2-3-4-5 wheel where the 2 is the
+    wild itself).  We model that by also considering the "treat the wild as
+    literal" choice once per wild card.  Implementation: tag each wild whose
+    contribution is finalized with `"locked": True` so the recursion stops
+    iterating on it but the downstream evaluator still sees its face_val."""
+    has_unlocked_wild = (
+        wild_face is not None
+        and any(c["f"] == wild_face and not c.get("locked") for c in combo)
+    )
+    if not has_unlocked_wild:
         faces = [c["f"] for c in combo]
         suits = [c["s"] for c in combo]
         if lowball:
@@ -164,18 +175,24 @@ def _rank_5_with_wilds(combo: tuple[dict, ...], lowball: bool, wild_face: int | 
         if len(set(faces)) == 1:
             return (FIVE_OF_A_KIND, faces[0] if faces[0] != 1 else 14)
         return _eval5_high(faces, suits)
-    # Expand each wild to the best of all possible (face, suit) substitutions.
-    wild_idx = next(i for i, c in enumerate(combo) if c["f"] == wild_face)
+    wild_idx = next(
+        i for i, c in enumerate(combo) if c["f"] == wild_face and not c.get("locked")
+    )
     best: tuple | None = None
     for face in range(1, 14):
-        if face == wild_face:
-            continue
         for suit in range(4):
             sub = list(combo)
-            sub[wild_idx] = {"f": face, "s": suit}
+            if face == wild_face:
+                # Wild plays as itself — pin the original suit and lock so the
+                # recursion doesn't keep substituting this card forever.
+                sub[wild_idx] = {"f": face, "s": combo[wild_idx]["s"], "locked": True}
+            else:
+                sub[wild_idx] = {"f": face, "s": suit}
             rank = _rank_5_with_wilds(tuple(sub), lowball, wild_face)
             if best is None or rank > best:
                 best = rank
+            if face == wild_face:
+                break  # suit was forced; don't iterate the others
     assert best is not None
     return best
 
