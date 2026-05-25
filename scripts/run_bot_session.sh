@@ -31,6 +31,11 @@ mkdir -p "$OUT_DIR"
 PORT="${DC_PORT:-23123}"
 PASSWORD="${DC_PASSWORD:-bot-test-pw}"
 
+# server.conf mirrors data/server.conf except: a low end_of_game_timeout
+# (so test runs aren't padded with idle waits between hands), a password
+# (bots reject empty-password servers), and a higher
+# max_connections_per_minute so disconnect/reconnect cycles don't trip
+# rate limiting.
 cat >"$OUT_DIR/server.conf" <<EOF
 bind_address = 127.0.0.1
 port = $PORT
