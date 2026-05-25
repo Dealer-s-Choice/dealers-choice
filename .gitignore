@@ -17,3 +17,4 @@ subprojects/**
 
 out/**
 /docker/.env
+__pycache__/

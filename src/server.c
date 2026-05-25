@@ -111,6 +111,99 @@ static void print_socket_addr(tcpme_socket_t sock) {
     printf("%s\n", buf);
 }
 
+/* Machine-readable showdown log: one JSON object per line. Cards are emitted
+ * with numeric face_val (1=Ace low, 11=J, 12=Q, 13=K) and numeric suit, so an
+ * external analyzer can independently re-rank the hands and confirm the
+ * server's declared winner. Null/back cards are omitted. */
+static void log_hands_json(const ArgsBroadcastGameState_t *args, const POKEVAL_NeedComparing *cmp,
+                           uint8_t pl_count, uint32_t pot, bool by_fold) {
+  if (!args->cli_args->server_log_hands_file)
+    return;
+  FILE *fp = fopen(args->cli_args->server_log_hands_file, "a");
+  if (!fp) {
+    perror("fopen");
+    return;
+  }
+  const GameChoice_t *choice = find_game_choice_by_type(args->game_type);
+  fprintf(fp, "{\"ts\":%lld", (long long)time(NULL));
+  fprintf(fp, ",\"game\":\"%s\"", choice ? choice->str : "?");
+  fprintf(fp, ",\"game_type\":%u", (unsigned)args->game_type);
+  fprintf(fp, ",\"deuces_wild\":%s", args->deuces_wild ? "true" : "false");
+  fprintf(fp, ",\"pot\":%u", pot);
+  fprintf(fp, ",\"by_fold\":%s", by_fold ? "true" : "false");
+
+  fprintf(fp, ",\"players\":[");
+  for (uint8_t i = 0; i < pl_count; i++) {
+    int8_t pid = cmp[i].id;
+    const Player_t *p = &args->game_state->player[pid];
+    if (i)
+      fputc(',', fp);
+    fprintf(fp, "{\"id\":%d,\"nick\":\"%s\",\"won\":%s,\"cards\":[", pid, p->nick,
+            cmp[i].won ? "true" : "false");
+    bool first = true;
+    for (int c = 0; c < 9; c++) {
+      DH_Card card = cmp[i].hand.card[c];
+      if (DH_is_card_null(card))
+        continue;
+      if (!first)
+        fputc(',', fp);
+      first = false;
+      fprintf(fp, "{\"f\":%d,\"s\":%d,\"slot\":%d}", card.face_val, card.suit,
+              choice ? (int)choice->card_slot[c] : -1);
+    }
+    fputc(']', fp);
+    if (cmp[i].won) {
+      short rank = args->deuces_wild
+                       ? POKEVAL_evaluate_hand_wild(cmp[i].hand_5, DH_CARD_TWO)
+                       : POKEVAL_evaluate_hand(cmp[i].hand_5);
+      fprintf(fp, ",\"rank\":\"%s\",\"rank_id\":%d,\"best5\":[", POKEVAL_rank[rank], rank);
+      for (int c = 0; c < 5; c++) {
+        DH_Card card = cmp[i].hand_5.card[c];
+        if (c)
+          fputc(',', fp);
+        fprintf(fp, "{\"f\":%d,\"s\":%d}", card.face_val, card.suit);
+      }
+      fputc(']', fp);
+    }
+    fputc('}', fp);
+  }
+  fputs("]}\n", fp);
+  fclose(fp);
+}
+
+/* Variant used when only one player remained (everyone else folded).  No
+ * showdown comparison happened, so we log just the surviving player's hand
+ * for completeness — the analyzer will skip ranking work for these. */
+static void log_hands_fold_json(const ArgsBroadcastGameState_t *args, const Player_t *winner,
+                                uint32_t pot) {
+  if (!args->cli_args->server_log_hands_file)
+    return;
+  FILE *fp = fopen(args->cli_args->server_log_hands_file, "a");
+  if (!fp) {
+    perror("fopen");
+    return;
+  }
+  const GameChoice_t *choice = find_game_choice_by_type(args->game_type);
+  fprintf(fp,
+          "{\"ts\":%lld,\"game\":\"%s\",\"game_type\":%u,\"deuces_wild\":%s,\"pot\":%u,"
+          "\"by_fold\":true,\"players\":[{\"id\":%d,\"nick\":\"%s\",\"won\":true,\"cards\":[",
+          (long long)time(NULL), choice ? choice->str : "?", (unsigned)args->game_type,
+          args->deuces_wild ? "true" : "false", pot, winner->id, winner->nick);
+  bool first = true;
+  for (int c = 0; c < 9; c++) {
+    DH_Card card = args->real_hand[winner->id].card[c];
+    if (DH_is_card_null(card))
+      continue;
+    if (!first)
+      fputc(',', fp);
+    first = false;
+    fprintf(fp, "{\"f\":%d,\"s\":%d,\"slot\":%d}", card.face_val, card.suit,
+            choice ? (int)choice->card_slot[c] : -1);
+  }
+  fputs("]}]}\n", fp);
+  fclose(fp);
+}
+
 ServerConfig_t init_game_state(GameState_t *game_state, Path_t *path, const CliArgs_t *cli_args) {
   ServerConfig_t config = get_server_config(path, cli_args);
 
@@ -602,6 +695,16 @@ static void handle_sort_hand(POKEVAL_Hand_9 *real_hand, const bool is_lowball,
     POKEVAL_sort_hand(&tmp_hand);
   else
     POKEVAL_sort_hand_lowball(&tmp_hand);
+  /* POKEVAL_sort_hand mutates aces from DH_CARD_ACE (1) to POKEVAL_ACE (14)
+   * so its own straight/broadway detector sees them at the top of the sort.
+   * That mutation is fine for pokeval's internal use but must not bleed into
+   * the broadcast hand — clients (and our own JSON hand log) expect cards
+   * with face_val 1..13.  Restore aces before we copy the sorted hand into
+   * the broadcast buffer. */
+  for (int i = 0; i < POKEVAL_HAND_SIZE; ++i) {
+    if (tmp_hand.card[i].face_val == POKEVAL_ACE)
+      tmp_hand.card[i].face_val = DH_CARD_ACE;
+  }
   memcpy(&real_hand->card[0], &tmp_hand.card[0], sizeof(tmp_hand.card));
 
   /* Ensure unused card slots are NULL */
@@ -818,6 +921,7 @@ static void determine_winner(ArgsBroadcastGameState_t *args, RoundResults *resul
     }
     winner->coins += share;
   }
+  log_hands_json(args, need_comparing, pl_count, pot, false);
   free(need_comparing);
   broadcast_game_state(args);
 }
@@ -849,6 +953,7 @@ static void award_last_player_in_game(ArgsBroadcastGameState_t *args, Player_t *
   results->n_winners = 1;
   // fprintf(stderr, "winner id from fold: %d\n", turn->id);
   results->id[0] = turn->id;
+  log_hands_fold_json(args, turn, args->game_state->pot);
   turn->coins += args->game_state->pot;
   args->game_state->pot = 0;
   return;
@@ -1097,7 +1202,13 @@ static void remove_disconnected_player(ArgsBroadcastGameState_t *args, const int
     snprintf(status_str, sizeof status_str, _("%s disconnected"), p->nick);
     broadcast_status_message(args, status_str);
 
-    if (args->game_state->player_count > 1)
+    /* Only rotate the turn pointer if play_game is still active — between
+     * hands `args->starting_turn` is NULL because its backing storage
+     * lives on play_game's (returned) stack frame.  Without this guard
+     * we'd dereference dead stack memory (caught by ASan as
+     * stack-use-after-return). */
+    if (args->starting_turn && *args->starting_turn &&
+        args->game_state->player_count > 1)
       if ((*args->starting_turn)->id == id)
         *args->starting_turn = get_next_player(args->game_state->player, id);
   }
@@ -1758,6 +1869,16 @@ static EReturnCode_t init_game(ArgsBroadcastGameState_t *args, DH_Deck *deck) {
   args->game_state->at_menu = false;
 
   play_game(args, deck);
+
+  /* play_game stores the turn-rotation pointer in `args->starting_turn`,
+   * but the underlying Player_t* lives on play_game's stack frame.  By the
+   * time we return here the frame is gone, so any subsequent
+   * handle_disconnections call below (which can reach into
+   * remove_disconnected_player and dereference args->starting_turn) would
+   * read freed stack memory.  ASan catches it as stack-use-after-return.
+   * Clear the pointer so the dereference guard in remove_disconnected_player
+   * skips the rotation logic that's not meaningful between hands anyway. */
+  args->starting_turn = NULL;
 
   broadcast_game_state(args);
 

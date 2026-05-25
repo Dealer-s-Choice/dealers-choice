@@ -278,4 +278,155 @@ _MAIN_HEAD_
   assert(hands[1].won);  /* three Jacks (wild) wins */
 }
 
+/* --- compare_hands_wild: natural one-pair tie-break ---
+ * Same bug shape as the trips regression above, but for one pair: pair 8s
+ * (8d 8s Qh Jd 6h) must beat pair 5s (5h 5c Kh Tc 3h) even though K (13)
+ * sorts higher than Q (12) in raw position-by-position compare_high_cards.
+ * Both hands are natural (no wilds present) but compare_hands_wild is the
+ * path being exercised; the default tie-break used to fall through to
+ * compare_high_cards which gave the wrong answer.
+ */
+{
+  POKEVAL_NeedComparing hands[2] = {
+    /* Hand 0: 5 5 K T 3 — pair of fives, K-T-3 kickers */
+    {.id = 0,
+     .hand = {{{DH_CARD_FIVE, DH_SUIT_HEARTS},
+               {DH_CARD_FIVE, DH_SUIT_CLUBS},
+               {DH_CARD_KING, DH_SUIT_HEARTS},
+               {DH_CARD_TEN, DH_SUIT_CLUBS},
+               {DH_CARD_THREE, DH_SUIT_HEARTS},
+               PAD_NULL_CARDS}}},
+    /* Hand 1: 8 8 Q J 6 — pair of eights, Q-J-6 kickers (wins) */
+    {.id = 1,
+     .hand = {{{DH_CARD_EIGHT, DH_SUIT_DIAMONDS},
+               {DH_CARD_EIGHT, DH_SUIT_SPADES},
+               {DH_CARD_QUEEN, DH_SUIT_HEARTS},
+               {DH_CARD_JACK, DH_SUIT_DIAMONDS},
+               {DH_CARD_SIX, DH_SUIT_HEARTS},
+               PAD_NULL_CARDS}}},
+  };
+  uint8_t n_wins = POKEVAL_compare_hands_wild(hands, 2, DH_CARD_TWO);
+  fprintf(stderr, "wild pair compare (8 8 Q J 6 vs 5 5 K T 3): %d winner(s)\n", n_wins);
+  assert(n_wins == 1);
+  assert(!hands[0].won); /* pair of fives loses */
+  assert(hands[1].won);  /* pair of eights wins */
+}
+
+/* --- compare_hands_wild: wild-aided pair beats natural lower pair ---
+ * Q J 6 5 2(wild) makes pair of queens (wild = Q, kickers J/6/5).  Must
+ * beat natural pair of eights even though the natural hand's K kicker
+ * (13) outranks the wild hand's Q (12) in raw position-by-position
+ * comparison.
+ */
+{
+  POKEVAL_NeedComparing hands[2] = {
+    /* Hand 0: 8 8 K 7 4 — natural pair of eights, K-7-4 kickers */
+    {.id = 0,
+     .hand = {{{DH_CARD_EIGHT, DH_SUIT_DIAMONDS},
+               {DH_CARD_EIGHT, DH_SUIT_SPADES},
+               {DH_CARD_KING, DH_SUIT_HEARTS},
+               {DH_CARD_SEVEN, DH_SUIT_HEARTS},
+               {DH_CARD_FOUR, DH_SUIT_HEARTS},
+               PAD_NULL_CARDS}}},
+    /* Hand 1: Q J 6 5 2 — wild 2 fills the second queen (wins) */
+    {.id = 1,
+     .hand = {{{DH_CARD_QUEEN, DH_SUIT_HEARTS},
+               {DH_CARD_JACK, DH_SUIT_HEARTS},
+               {DH_CARD_SIX, DH_SUIT_HEARTS},
+               {DH_CARD_FIVE, DH_SUIT_HEARTS},
+               {DH_CARD_TWO, DH_SUIT_CLUBS},
+               PAD_NULL_CARDS}}},
+  };
+  uint8_t n_wins = POKEVAL_compare_hands_wild(hands, 2, DH_CARD_TWO);
+  fprintf(stderr, "wild pair compare (Q J 6 5 2w vs 8 8 K 7 4): %d winner(s)\n", n_wins);
+  assert(n_wins == 1);
+  assert(!hands[0].won); /* pair of eights loses */
+  assert(hands[1].won);  /* wild-pair of queens wins */
+}
+
+/* --- compare_hands_wild: two-pair tie-break by second pair value ---
+ * Both hands have natural two pair aces-up with a queen kicker.  Hand 0
+ * has 3s as second pair; hand 1 has 6s.  Pair-6s beats pair-3s for the
+ * second pair, so hand 1 wins.  Pokeval used to fall through to
+ * compare_high_cards which walked the sorted high cards
+ * (A A Q 3 3 vs A A Q 6 6) — position-by-position it would see A=A,
+ * A=A, Q=Q, 3<6 → hand 1 wins anyway in this particular layout, but
+ * other two-pair shapes (e.g. 3-3 below a higher kicker on one side
+ * but not the other) would silently fail.  This pins down the
+ * second-pair tie-break specifically.
+ */
+{
+  POKEVAL_NeedComparing hands[2] = {
+    /* Hand 0: A A Q 3 3 — two pair, aces-up with threes, Q kicker */
+    {.id = 0,
+     .hand = {{{DH_CARD_ACE, DH_SUIT_HEARTS},
+               {DH_CARD_ACE, DH_SUIT_DIAMONDS},
+               {DH_CARD_QUEEN, DH_SUIT_HEARTS},
+               {DH_CARD_THREE, DH_SUIT_HEARTS},
+               {DH_CARD_THREE, DH_SUIT_DIAMONDS},
+               PAD_NULL_CARDS}}},
+    /* Hand 1: A A Q 6 6 — two pair, aces-up with sixes, Q kicker (wins) */
+    {.id = 1,
+     .hand = {{{DH_CARD_ACE, DH_SUIT_SPADES},
+               {DH_CARD_ACE, DH_SUIT_CLUBS},
+               {DH_CARD_QUEEN, DH_SUIT_DIAMONDS},
+               {DH_CARD_SIX, DH_SUIT_HEARTS},
+               {DH_CARD_SIX, DH_SUIT_DIAMONDS},
+               PAD_NULL_CARDS}}},
+  };
+  uint8_t n_wins = POKEVAL_compare_hands_wild(hands, 2, DH_CARD_TWO);
+  fprintf(stderr, "wild two-pair compare (AA66 vs AA33): %d winner(s)\n", n_wins);
+  assert(n_wins == 1);
+  assert(!hands[0].won); /* two pair AA33 loses */
+  assert(hands[1].won);  /* two pair AA66 wins */
+}
+
+/* --- compare_hands_wild: K-high wild straight beats Q-high natural straight ---
+ * Both hands evaluate to STRAIGHT.  The wild-aware tie-break must compute
+ * the true straight high after substitution.  Without it, the default
+ * compare_high_cards would walk a stored hand containing a wild at
+ * face_val=2, sort it to the bottom, and tie-call the comparison.
+ *
+ * Inputs are the 7-card stud hands that the fuzz harness caught: P1 has
+ * a wild that completes 9-T-J-Q-K, P2 has a natural 8-9-T-J-Q.
+ */
+{
+  POKEVAL_NeedComparing hands[2] = {
+    /* P1: 2s Js 9d 8d Th 5h Qh — wild as K gives K-high straight (wins) */
+    {.id = 0,
+     .hand = {{{DH_CARD_TWO, DH_SUIT_SPADES},
+               {DH_CARD_JACK, DH_SUIT_SPADES},
+               {DH_CARD_NINE, DH_SUIT_DIAMONDS},
+               {DH_CARD_EIGHT, DH_SUIT_DIAMONDS},
+               {DH_CARD_TEN, DH_SUIT_HEARTS},
+               {DH_CARD_FIVE, DH_SUIT_HEARTS},
+               {DH_CARD_QUEEN, DH_SUIT_HEARTS},
+               {DH_CARD_NULL, 0},
+               {DH_CARD_NULL, 0}}}},
+    /* P2: 8h As Jh Tc 9c 7c Qs — natural Q-high straight 8-9-T-J-Q */
+    {.id = 1,
+     .hand = {{{DH_CARD_EIGHT, DH_SUIT_HEARTS},
+               {DH_CARD_ACE, DH_SUIT_SPADES},
+               {DH_CARD_JACK, DH_SUIT_HEARTS},
+               {DH_CARD_TEN, DH_SUIT_CLUBS},
+               {DH_CARD_NINE, DH_SUIT_CLUBS},
+               {DH_CARD_SEVEN, DH_SUIT_CLUBS},
+               {DH_CARD_QUEEN, DH_SUIT_SPADES},
+               {DH_CARD_NULL, 0},
+               {DH_CARD_NULL, 0}}}},
+  };
+  uint8_t n_wins = POKEVAL_compare_hands_wild(hands, 2, DH_CARD_TWO);
+  fprintf(stderr, "wild straight compare (K-high wild vs Q-high natural): %d winner(s)\n", n_wins);
+  fprintf(stderr, "  P1 hand_5 face_vals:");
+  for (int i = 0; i < 5; i++)
+    fprintf(stderr, " %d", hands[0].hand_5.card[i].face_val);
+  fprintf(stderr, "\n  P2 hand_5 face_vals:");
+  for (int i = 0; i < 5; i++)
+    fprintf(stderr, " %d", hands[1].hand_5.card[i].face_val);
+  fprintf(stderr, "\n");
+  assert(n_wins == 1);
+  assert(hands[0].won);  /* K-high straight wins */
+  assert(!hands[1].won); /* Q-high straight loses */
+}
+
 _MAIN_TAIL_
