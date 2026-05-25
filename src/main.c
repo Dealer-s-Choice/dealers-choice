@@ -658,6 +658,7 @@ static CliArgs_t parse_cli_args(int argc, char *argv[]) {
   enum {
     OPT_SERVER = 1,
     OPT_SERVER_LOG_GAME_RESULTS,
+    OPT_SERVER_LOG_HANDS,
     OPT_SERVER_CONF,
     OPT_TEST,
     OPT_BIND,
@@ -674,6 +675,7 @@ static CliArgs_t parse_cli_args(int argc, char *argv[]) {
   static const glopt_option_t options[] = {
       {"server", GLOPT_NO_ARG, OPT_SERVER, 0},
       {"server-log-game-results", GLOPT_REQUIRED_ARG, OPT_SERVER_LOG_GAME_RESULTS, 0},
+      {"server-log-hands", GLOPT_REQUIRED_ARG, OPT_SERVER_LOG_HANDS, 0},
       {"server-conf", GLOPT_REQUIRED_ARG, OPT_SERVER_CONF, 0},
       {"-test", GLOPT_NO_ARG, OPT_TEST, 0},
       {"bind-address", GLOPT_REQUIRED_ARG, OPT_BIND, 0},
@@ -699,6 +701,10 @@ static CliArgs_t parse_cli_args(int argc, char *argv[]) {
       break;
     case OPT_SERVER_LOG_GAME_RESULTS:
       cli_args.server_log_game_results_file = parser.optarg;
+      cli_args.run_server_flag = true;
+      break;
+    case OPT_SERVER_LOG_HANDS:
+      cli_args.server_log_hands_file = parser.optarg;
       cli_args.run_server_flag = true;
       break;
     case OPT_SERVER_CONF:
@@ -746,6 +752,7 @@ static CliArgs_t parse_cli_args(int argc, char *argv[]) {
       fputs("Usage:\n"
             "  --verbose\n"
             "  --server-log-game-results [path/to/file]\n"
+            "  --server-log-hands [path/to/file]\n"
             "  --server-conf [Path to alternate server config file]\n"
             "  --bind-address [IP]        Address for the server to bind to (default: all "
             "interfaces)\n"
