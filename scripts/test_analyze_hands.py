@@ -98,13 +98,22 @@ def test_deuces_wild_upgrades_pair_to_trips():
     assert_eq(rank[0], ah.THREE, "pair + one wild = three of a kind")
 
 
-def test_deuces_wild_does_not_help_lowball_evaluator():
-    # The analyzer treats lowball as a non-wild variant (the existing game
-    # set has no deuces-wild lowball selectable), but assert it doesn't
-    # crash and returns a lowball-comparable tuple.
+def test_lowball_returns_max_dup_first():
+    # The wheel has max-duplicate-count of 1 (all distinct), so the first
+    # tuple element is -1.  This matches pokeval's classification.
     cards = [C(1, 0), C(2, 1), C(3, 2), C(4, 3), C(5, 0)]
     rank = ah.best5(cards, lowball=True, wild_face=None)
-    assert rank[0] == -ah.HIGH_CARD, f"wheel is high card in lowball: {rank}"
+    assert rank[0] == -1, f"unpaired hands have max_dup=1: {rank}"
+
+
+def test_lowball_paired_hands_high_down():
+    # pair-of-7s (7,7,6,4,3) beats pair-of-6s (Q,J,T,6,6) in A-5 because
+    # both have max_dup=2 and the high-down compare runs 7 vs Q first.
+    pair_7s = ah.best5([C(7, 0), C(7, 1), C(6, 2), C(4, 3), C(3, 0)],
+                       lowball=True, wild_face=None)
+    pair_6s = ah.best5([C(11, 0), C(6, 1), C(12, 2), C(10, 3), C(6, 0)],
+                       lowball=True, wild_face=None)
+    assert_gt(pair_7s, pair_6s, "pair-7s (low kickers) beats pair-6s (Q-high kickers) in A-5")
 
 
 def test_lowball_wheel_beats_six_high():

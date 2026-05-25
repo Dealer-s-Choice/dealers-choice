@@ -695,6 +695,16 @@ static void handle_sort_hand(POKEVAL_Hand_9 *real_hand, const bool is_lowball,
     POKEVAL_sort_hand(&tmp_hand);
   else
     POKEVAL_sort_hand_lowball(&tmp_hand);
+  /* POKEVAL_sort_hand mutates aces from DH_CARD_ACE (1) to POKEVAL_ACE (14)
+   * so its own straight/broadway detector sees them at the top of the sort.
+   * That mutation is fine for pokeval's internal use but must not bleed into
+   * the broadcast hand — clients (and our own JSON hand log) expect cards
+   * with face_val 1..13.  Restore aces before we copy the sorted hand into
+   * the broadcast buffer. */
+  for (int i = 0; i < POKEVAL_HAND_SIZE; ++i) {
+    if (tmp_hand.card[i].face_val == POKEVAL_ACE)
+      tmp_hand.card[i].face_val = DH_CARD_ACE;
+  }
   memcpy(&real_hand->card[0], &tmp_hand.card[0], sizeof(tmp_hand.card));
 
   /* Ensure unused card slots are NULL */

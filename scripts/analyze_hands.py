@@ -118,36 +118,23 @@ def _eval5_high(faces: list[int], suits: list[int]) -> tuple:
 def _eval5_lowball(faces: list[int]) -> tuple:
     """California A-5 lowball ranking — straights and flushes don't count.
 
-    Lower is better, so we negate the tuple at the end to keep the
-    'bigger tuple = better hand' invariant.  Aces are always low.
+    Matches pokeval's actual algorithm: rank first by max duplicate count
+    (so any unpaired hand beats any paired hand, any pair-or-two-pair beats
+    any trips-or-full-house, etc.), then read cards high-to-low and the
+    hand with the lowest first-differing card wins.  Aces play low.
+
+    Lower-is-better is converted to higher-is-better by negating each
+    numeric component, so the caller can keep the 'bigger tuple wins'
+    invariant.
     """
+    vals = [1 if f == 1 else f for f in faces]
     counts: dict[int, int] = {}
-    for f in faces:
-        v = 1 if f == 1 else f
+    for v in vals:
         counts[v] = counts.get(v, 0) + 1
-    grouped = sorted(counts.items(), key=lambda kv: (kv[1], kv[0]), reverse=True)
-    counts_sorted = [c for _, c in grouped]
-    values_sorted = [v for v, _ in grouped]
-    if counts_sorted[0] == 4:
-        cat = FOUR
-        ordered = (values_sorted[0], values_sorted[1])
-    elif counts_sorted[:2] == [3, 2]:
-        cat = FULL_HOUSE
-        ordered = (values_sorted[0], values_sorted[1])
-    elif counts_sorted[0] == 3:
-        cat = THREE
-        ordered = (values_sorted[0], *sorted(values_sorted[1:], reverse=True))
-    elif counts_sorted[:2] == [2, 2]:
-        ordered = (*sorted(values_sorted[:2], reverse=True), values_sorted[2])
-        cat = TWO_PAIR
-    elif counts_sorted[0] == 2:
-        ordered = (values_sorted[0], *sorted(values_sorted[1:], reverse=True))
-        cat = PAIR
-    else:
-        cat = HIGH_CARD
-        ordered = tuple(sorted((1 if f == 1 else f for f in faces), reverse=True))
-    # Lower is better, so negate every numeric component.
-    return tuple(-x for x in (cat, *ordered))
+    max_dup = max(counts.values())
+    high_down = tuple(sorted(vals, reverse=True))
+    # (max_dup_neg, high_card_neg, next_neg, ...) — bigger tuple wins.
+    return (-max_dup, *(-x for x in high_down))
 
 
 def best5(cards: list[dict], lowball: bool, wild_face: int | None) -> tuple:

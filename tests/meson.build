@@ -77,6 +77,16 @@ foreach name : game_logic
   port += 1
 endforeach
 
+pokeval_fuzz_exe = executable(
+  'test_pokeval_fuzz',
+  'pokeval_fuzz.c',
+  dependencies: game_dep,
+  override_options: ['b_lto=false'],
+)
+# Not added as a `test()` — this is an offline fuzz harness.  Run with:
+#   _build_dealers_choice/tests/test_pokeval_fuzz 10000 > hands.jsonl
+#   scripts/analyze_hands.py hands.jsonl
+
 add_test_setup(
   'One_pass',
   #exe_wrapper: [join_paths(meson.current_source_dir(), '5_card_showdown.sh')],
