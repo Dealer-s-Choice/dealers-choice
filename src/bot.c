@@ -232,6 +232,143 @@ static uint8_t bot_choose_discards(const POKEVAL_Hand_9 *hand, uint8_t hand_size
 #define BOT_DEFAULT_PORT 22777
 #define BOT_POLL_MS 10
 
+/*
+ * Best made-hand strength visible in any active opponent's face-up cards.
+ *
+ * Stud games expose 4–5 face-up cards per player and the bot is otherwise
+ * blind to opponent strength.  Bluffing into a visible pair-or-better is
+ * almost always a losing line in a 3-handed game, so we use this score to
+ * short-circuit calls and bluffs the bot would otherwise make.
+ *
+ * Returns 0-4 on the same scale as the bot's own `strength`:
+ *   0 = nothing visible / high card only
+ *   1 = pair visible
+ *   2 = two pair visible
+ *   3 = trips OR 5-card flush visible
+ *   4 = full house+ / quads / straight visible
+ *
+ * Wildcards: when deuces are wild, a visible 2 is counted as making the
+ * count of every other face — i.e. an *optimistic* estimate of opponent
+ * strength.  False positives just make the bot fold more, which is the
+ * conservative direction.
+ *
+ * For games without face-up cards (draw, showdown, lowball, no-peek)
+ * every opponent contributes 0, so this acts as a no-op.
+ */
+static int compute_opp_visible_strength(const Player_t *players, int8_t my_id, bool deuces_wild) {
+  int best = 0;
+  for (int i = 0; i < MAX_PLAYERS; i++) {
+    if (i == my_id || !players[i].in || !players[i].is_connected)
+      continue;
+    int face_count[15] = {0};
+    int suit_count[4] = {0};
+    int n_visible = 0;
+    int wild_count = 0;
+    for (int k = 0; k < MAX_HAND_SIZE; k++) {
+      DH_Card c = players[i].hand.card[k];
+      if (DH_is_card_null(c) || DH_is_card_back(c))
+        continue;
+      n_visible++;
+      if (c.face_val == DH_CARD_TWO && deuces_wild) {
+        wild_count++;
+        continue;
+      }
+      if (c.face_val >= 1 && c.face_val <= 13)
+        face_count[c.face_val]++;
+      if (c.suit >= 0 && c.suit < 4)
+        suit_count[c.suit]++;
+    }
+    if (n_visible == 0)
+      continue;
+
+    int pairs = 0, trips = 0, quads = 0;
+    for (int f = 1; f <= 13; f++) {
+      int c = face_count[f] + wild_count; /* wilds optimistically join any face */
+      if (c >= 4)
+        quads++;
+      else if (c == 3)
+        trips++;
+      else if (c == 2)
+        pairs++;
+    }
+
+    int s = 0;
+    if (quads > 0)
+      s = 4;
+    else if (trips > 0 && pairs > 0)
+      s = 4; /* visible full house */
+    else if (trips > 0)
+      s = 3;
+    else if (pairs >= 2)
+      s = 2;
+    else if (pairs == 1)
+      s = 1;
+
+    /* Flush visible if any suit (plus wilds) has 5+ cards. */
+    for (int su = 0; su < 4; su++) {
+      if (suit_count[su] + wild_count >= 5 && s < 3)
+        s = 3;
+    }
+
+    if (s > best)
+      best = s;
+  }
+  return best;
+}
+
+/*
+ * Lowball strength on the same 0-4 scale.  Lower hand = stronger in A-5
+ * lowball, so this inverts the high-hand reading:
+ *   4 = 7-high or better unpaired (very strong — likely the wheel or near it)
+ *   3 = 8- or 9-high unpaired
+ *   2 = T- to K-high unpaired
+ *   1 = single pair
+ *   0 = two pair or worse
+ *
+ * The bot was previously using POKEVAL_evaluate_hand (which ranks PAIR=1
+ * as decent) for lowball betting decisions, which is the exact opposite
+ * of correct.  Use this in the lowball branches instead.
+ */
+static int compute_lowball_strength(const DH_Card *cards, int n) {
+  int face_count[15] = {0};
+  int n_valid = 0;
+  for (int i = 0; i < n; i++) {
+    DH_Card c = cards[i];
+    if (DH_is_card_null(c) || DH_is_card_back(c))
+      continue;
+    if (c.face_val >= 1 && c.face_val <= 13)
+      face_count[c.face_val]++;
+    n_valid++;
+  }
+  if (n_valid < 5)
+    return 0;
+  int max_face = 0;
+  int pair_count = 0;
+  int has_trips_or_more = 0;
+  for (int f = 1; f <= 13; f++) {
+    if (face_count[f] == 0)
+      continue;
+    if (face_count[f] >= 3)
+      has_trips_or_more = 1;
+    else if (face_count[f] == 2)
+      pair_count++;
+    /* Ace is low in California lowball (face_val=1 already represents low). */
+    int v = f;
+    if (v > max_face)
+      max_face = v;
+  }
+  if (has_trips_or_more || pair_count >= 2)
+    return 0;
+  if (pair_count == 1)
+    return 1;
+  /* Unpaired — bin by high card. */
+  if (max_face <= 7)
+    return 4;
+  if (max_face <= 9)
+    return 3;
+  return 2;
+}
+
 static void print_usage(const char *argv0) {
   fprintf(stderr,
           "Usage: %s [options]\n"
@@ -431,6 +568,14 @@ int main(int argc, char *argv[]) {
     else if (hand_rank == POKEVAL_PAIR)
       strength = 1;
 
+    /* The high-hand evaluator above mis-reports strength for California
+     * lowball (a pair is the worst possible result, not a marginal one).
+     * Re-derive strength on a lowball-appropriate scale for that variant. */
+    bool is_lowball =
+        (client_state.game_choice && client_state.game_choice->g == CALIFORNIA_LOWBALL);
+    if (is_lowball)
+      strength = compute_lowball_strength(game_state.player[my_id].hand.card, MAX_HAND_SIZE);
+
     /* Detect drawing hands for semi-bluff purposes.
      * Only meaningful when we don't already have a made hand (strength < 3).
      *   draw_strength 0 = no draw
@@ -468,7 +613,13 @@ int main(int argc, char *argv[]) {
       }
     }
 
-    verbose_printf("hand: strength=%d draw=%d\n", strength, draw_strength);
+    /* Best made-hand strength visible in any opponent's face-up cards.
+     * For non-stud games (no exposed cards) this is always 0. */
+    int opp_visible_strength =
+        compute_opp_visible_strength(game_state.player, my_id, client_state.deuces_wild);
+
+    verbose_printf("hand: strength=%d draw=%d opp_vis=%d\n", strength, draw_strength,
+                   opp_visible_strength);
 
     /* Count opponents who are still active in this hand. */
     int active_opponents = 0;
@@ -476,6 +627,12 @@ int main(int argc, char *argv[]) {
       if (i != my_id && game_state.player[i].in && game_state.player[i].is_connected)
         active_opponents++;
     }
+
+    /* "We're drawing dead-ish" guard: an opponent's visible cards already
+     * make a stronger hand than ours and we don't have a flush draw to
+     * outrun it.  Don't bluff, don't call, just get out. */
+    bool outclassed_by_visible =
+        (opp_visible_strength > strength && draw_strength < 2);
 
     /* Pot odds: what fraction of (pot + call) the call represents (pct).
      * A lower value means better pot odds and more reason to call. */
@@ -518,20 +675,32 @@ int main(int argc, char *argv[]) {
       if (bet_pct > 95)
         bet_pct = 95;
 
+      /* Don't open-bluff into an opponent who's already shown a stronger
+       * hand on the board.  Always-check when outclassed. */
+      if (outclassed_by_visible)
+        bet_pct = 0;
       if (can_raise && (int)pcg32_boundedrand_r(&rng, 100) < bet_pct) {
         verbose_printf("bet_pct=%d\n", bet_pct);
         rc = send_player_action(&client_state, socket_ctx.sock, ACTION_BET, bet_amount);
         was_aggressor = true;
         checked_strong = false;
       } else {
-        verbose_puts("(open, no bet)");
+        verbose_puts(outclassed_by_visible ? "(open, outclassed)" : "(open, no bet)");
         rc = send_player_action(&client_state, socket_ctx.sock, ACTION_CHECK, 0);
         /* Remember if we checked a strong hand — we may be setting up a check-raise. */
         checked_strong = (strength >= 3);
       }
       /* send_player_action clears bet_check_fold and call_raise_fold */
     } else if (client_state.call_raise_fold) {
-      if (checked_strong && can_raise) {
+      /* If an opponent's visible cards already beat us, fold rather than
+       * paying to chase.  Skip this guard when we're holding a flush draw
+       * (handled by the standard call/raise logic below). */
+      if (outclassed_by_visible) {
+        verbose_printf("(outclassed by visible opp_vis=%d, fold)\n", opp_visible_strength);
+        rc = send_player_action(&client_state, socket_ctx.sock, ACTION_FOLD, 0);
+        was_aggressor = false;
+        checked_strong = false;
+      } else if (checked_strong && can_raise) {
         /* Check-raise: we checked a strong hand last round hoping someone would bet.
          * They did — almost always raise, occasionally just call to keep them guessing. */
         checked_strong = false;
@@ -660,6 +829,22 @@ int main(int argc, char *argv[]) {
         call_pct += raise_pct;
         raise_pct = 0;
       }
+      /* Bring-in is the cheapest entry; don't waste even that if an
+       * opponent's exposed cards already make a stronger hand than ours
+       * and we have nothing drawing.  This is the spot where 5-card stud
+       * bots historically called bring-in with king-high vs a visible
+       * pair, then folded on every later street — fold now and save it. */
+      if (outclassed_by_visible) {
+        verbose_printf("(bring-in fold, outclassed opp_vis=%d)\n", opp_visible_strength);
+        rc = send_player_action(&client_state, socket_ctx.sock, ACTION_FOLD, 0);
+        was_aggressor = false;
+        client_state.call_complete_fold = false;
+        if (rc != 0) {
+          fputs("Failed to send action; disconnecting\n", stderr);
+          break;
+        }
+        continue;
+      }
       int r = (int)pcg32_boundedrand_r(&rng, 100);
       if (r < raise_pct) {
         verbose_printf("(bring-in, raise_pct=%d)\n", raise_pct);
@@ -702,12 +887,15 @@ int main(int argc, char *argv[]) {
         raise_pct += 6;
       if (!can_raise)
         raise_pct = 0;
+      /* Free check — never bluff into a clearly stronger visible hand. */
+      if (outclassed_by_visible)
+        raise_pct = 0;
       if ((int)pcg32_boundedrand_r(&rng, 100) < raise_pct) {
         verbose_printf("(raise_pct=%d)\n", raise_pct);
         rc = send_player_action(&client_state, socket_ctx.sock, ACTION_BET, bet_amount);
         was_aggressor = true;
       } else {
-        verbose_puts("(free action)");
+        verbose_puts(outclassed_by_visible ? "(free action, outclassed)" : "(free action)");
         rc = send_player_action(&client_state, socket_ctx.sock, ACTION_CHECK, 0);
       }
       client_state.complete_check_fold = false;
