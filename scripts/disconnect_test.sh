@@ -20,69 +20,25 @@
 
 set -euo pipefail
 
-DURATION="${1:-3600}"
-REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-BUILD_DIR="$REPO_ROOT/_build_dealers_choice"
-SERVER="$BUILD_DIR/dealers-choice"
-BOT="$BUILD_DIR/dealers-choice-bot"
+. "$(dirname "$0")/_harness_common.sh"
 
-if [[ ! -x "$SERVER" || ! -x "$BOT" ]]; then
-  echo "error: build first ('meson compile -C _build_dealers_choice')" >&2
-  exit 1
-fi
+DURATION="${1:-3600}"
+dc_locate_binaries
 
 OUT_DIR="${2:-$REPO_ROOT/disconnect_session.$(date +%Y%m%d_%H%M%S)}"
 mkdir -p "$OUT_DIR"
 PORT="${DC_PORT:-23456}"
 PASSWORD="${DC_PASSWORD:-disc-test-pw}"
 
-cat >"$OUT_DIR/server.conf" <<EOF
-bind_address = 127.0.0.1
-port = $PORT
-end_of_game_timeout = 5
-action_timeout = 30
-action_timeout_max = 3
-dealer_timeout = 30
-ante = 50
-bringin_amount = 50
-starting_coins = 20000
-max_raises = 3
-bet_amounts = list, 100, 250, 500
-password = $PASSWORD
-max_connections_per_minute = 60
-max_connections_per_ip = 0
-EOF
+dc_write_server_conf "$OUT_DIR/server.conf" "$PORT" "$PASSWORD"
 
-export DEALERSCHOICE_DATADIR="$REPO_ROOT/data"
 export DC_PASSWORD="$PASSWORD"
-
-# Same sanitizer + line-buffer setup as run_bot_session.sh.
-PRELOAD_LIBS=()
-if grep -q -- "-fsanitize=address" "$BUILD_DIR/compile_commands.json" 2>/dev/null; then
-  ASAN_LIB="$(gcc -print-file-name=libasan.so 2>/dev/null)"
-  UBSAN_LIB="$(gcc -print-file-name=libubsan.so 2>/dev/null)"
-  [[ -e "$ASAN_LIB" ]] && PRELOAD_LIBS+=("$ASAN_LIB")
-  [[ -e "$UBSAN_LIB" ]] && PRELOAD_LIBS+=("$UBSAN_LIB")
-fi
-for stdbuf_lib in /usr/lib/coreutils/libstdbuf.so /usr/libexec/coreutils/libstdbuf.so \
-                 /usr/lib64/coreutils/libstdbuf.so; do
-  if [[ -e "$stdbuf_lib" ]]; then
-    PRELOAD_LIBS+=("$stdbuf_lib")
-    break
-  fi
-done
-if [[ ${#PRELOAD_LIBS[@]} -gt 0 ]]; then
-  LD_PRELOAD_VAL="$(IFS=:; echo "${PRELOAD_LIBS[*]}")"
-  export LD_PRELOAD="$LD_PRELOAD_VAL"
-fi
-export _STDBUF_O=L _STDBUF_E=L
-export ASAN_OPTIONS="${ASAN_OPTIONS:-abort_on_error=0:halt_on_error=0:log_path=$OUT_DIR/asan}"
-export UBSAN_OPTIONS="${UBSAN_OPTIONS:-print_stacktrace=1:log_path=$OUT_DIR/ubsan}"
+dc_export_runtime_env "$OUT_DIR"
 
 NUM_BOTS=4
 declare -a BOT_PIDS
 
-# Spawn / respawn a bot.  Each call overwrites the bot's log file; the
+# Spawn / respawn a bot.  Each call appends to the bot's log file; the
 # bot{N}_runs.log file records each (re)start with a timestamp.
 spawn_bot() {
   local n="$1"
