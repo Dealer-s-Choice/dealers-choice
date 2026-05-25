@@ -5,6 +5,7 @@ unit_tests = [
   'debug_print_cards',
   'layout_cards',
   'no_peek',
+  'rate_limit',
 ]
 
 base_env = {

@@ -50,8 +50,11 @@ typedef struct {
 static ConnAttempt_t conn_attempts[RATE_LIMIT_CAPACITY];
 static int conn_attempts_count = 0;
 
-static bool rate_limit_check(const char *ip_str, uint32_t max_per_minute) {
-  uint32_t now = SDL_GetTicks();
+/* Same logic as rate_limit_check() below but with `now_ms` injected so the
+ * unit test (tests/rate_limit.c) can advance time without sleeping.  Production
+ * code calls rate_limit_check() which passes SDL_GetTicks(). */
+bool dc_rate_limit_check_at(const char *ip_str, uint32_t max_per_minute, uint32_t now_ms) {
+  uint32_t now = now_ms;
   int j = 0;
   for (int i = 0; i < conn_attempts_count; i++) {
     if (now - conn_attempts[i].ticks < RATE_LIMIT_WINDOW_MS)
@@ -76,6 +79,16 @@ static bool rate_limit_check(const char *ip_str, uint32_t max_per_minute) {
   }
 
   return true;
+}
+
+/* Clear the in-process rate-limit state.  For tests only; production never
+ * needs this because each server invocation starts with empty state. */
+void dc_rate_limit_reset(void) {
+  conn_attempts_count = 0;
+}
+
+static bool rate_limit_check(const char *ip_str, uint32_t max_per_minute) {
+  return dc_rate_limit_check_at(ip_str, max_per_minute, SDL_GetTicks());
 }
 #define MAX_WILDS 4
 
