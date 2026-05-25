@@ -582,9 +582,13 @@ int main(int argc, char *argv[]) {
      * Only meaningful when we don't already have a made hand (strength < 3).
      *   draw_strength 0 = no draw
      *   draw_strength 1 = open-ended straight draw (4 consecutive ranks)
-     *   draw_strength 2 = flush draw (4 cards of the same suit) */
+     *   draw_strength 2 = flush draw (4 cards of the same suit)
+     * Straights and flushes don't count in A-5 lowball, so leave
+     * draw_strength at 0 for that variant — otherwise the bet/call
+     * floors below would treat a four-flush as a semi-bluff opportunity
+     * even though the made hand wouldn't beat any unpaired low. */
     int draw_strength = 0;
-    if (strength < 3) {
+    if (strength < 3 && !is_lowball) {
       int suit_cnt[4] = {0};
       int face_bits = 0; /* bit i = face value i present; ace sets both bit 1 and bit 14 */
       for (int i = 0; i < MAX_HAND_SIZE; i++) {
@@ -658,13 +662,20 @@ int main(int argc, char *argv[]) {
        this client, so no need to check turn_id. */
     int rc = 0;
     if (client_state.bet_check_fold) {
-      /* Base open-bet rates by strength (high-card=10%, pair=20%, two-pair=42%,
-       * trips/str/flush=65%, FH+=85%).  Bonuses:
+      /* Base open-bet rates by strength.
+       * High-hand games: 0=high card, 1=pair, ..., 4=full house+ — pair is
+       *   marginal, two-pair is decent, trips+ is strong.
+       * Lowball: 0=two-pair-or-worse, 1=pair, 2=10..K-high unpaired,
+       *   3=8/9-high unpaired, 4=7-high or better unpaired — so the curve
+       *   is steeper and we never bluff a paired hand.
+       * Bonuses (high-hand only):
        *   +25% c-bet when we were the aggressor last round.
        *   flush draw: raise floor to 38% (semi-bluff).
        *   OESD:       raise floor to 22% (semi-bluff).
        *   multiway (3+ opponents): scale down by ~35% — bluffs work less often. */
-      static const int base_open_pct[5] = {10, 20, 42, 65, 85};
+      static const int base_open_pct_high[5] = {10, 20, 42, 65, 85};
+      static const int base_open_pct_lowball[5] = {0, 0, 18, 60, 90};
+      const int *base_open_pct = is_lowball ? base_open_pct_lowball : base_open_pct_high;
       int bet_pct = base_open_pct[strength];
       if (was_aggressor)
         bet_pct += 25;
