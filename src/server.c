@@ -1202,7 +1202,13 @@ static void remove_disconnected_player(ArgsBroadcastGameState_t *args, const int
     snprintf(status_str, sizeof status_str, _("%s disconnected"), p->nick);
     broadcast_status_message(args, status_str);
 
-    if (args->game_state->player_count > 1)
+    /* Only rotate the turn pointer if play_game is still active — between
+     * hands `args->starting_turn` is NULL because its backing storage
+     * lives on play_game's (returned) stack frame.  Without this guard
+     * we'd dereference dead stack memory (caught by ASan as
+     * stack-use-after-return). */
+    if (args->starting_turn && *args->starting_turn &&
+        args->game_state->player_count > 1)
       if ((*args->starting_turn)->id == id)
         *args->starting_turn = get_next_player(args->game_state->player, id);
   }
@@ -1863,6 +1869,16 @@ static EReturnCode_t init_game(ArgsBroadcastGameState_t *args, DH_Deck *deck) {
   args->game_state->at_menu = false;
 
   play_game(args, deck);
+
+  /* play_game stores the turn-rotation pointer in `args->starting_turn`,
+   * but the underlying Player_t* lives on play_game's stack frame.  By the
+   * time we return here the frame is gone, so any subsequent
+   * handle_disconnections call below (which can reach into
+   * remove_disconnected_player and dereference args->starting_turn) would
+   * read freed stack memory.  ASan catches it as stack-use-after-return.
+   * Clear the pointer so the dereference guard in remove_disconnected_player
+   * skips the rotation logic that's not meaningful between hands anyway. */
+  args->starting_turn = NULL;
 
   broadcast_game_state(args);
 
