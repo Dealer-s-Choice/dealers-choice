@@ -22,6 +22,18 @@ HEADING_RE = re.compile(r"^#{1,6}\s")
 PROJECT_LINKS_HEADING_RE = re.compile(r"^##\s+Project\s+Links\s*$", re.IGNORECASE)
 
 
+def rewrite_url_for_site(url: str) -> str:
+    """Convert relative `.md` paths to `.html` for the rendered Jekyll site.
+    Absolute URLs (http(s)://, mailto:, etc.) and fragment links pass through.
+    The README on github.com still resolves the `.md` paths correctly because
+    only the YAML output is rewritten, not the README itself."""
+    if "://" in url or url.startswith(("#", "mailto:")):
+        return url
+    if url.endswith(".md"):
+        return url[:-3] + ".html"
+    return url
+
+
 def extract(readme: str) -> list[dict]:
     lines = readme.splitlines()
     start = next(
@@ -42,7 +54,7 @@ def extract(readme: str) -> list[dict]:
         m = LINK_RE.match(stripped)
         if not m:
             continue
-        entry = {"title": m.group(1), "url": m.group(2)}
+        entry = {"title": m.group(1), "url": rewrite_url_for_site(m.group(2))}
         if indent == 0:
             items.append(entry)
         elif items:
