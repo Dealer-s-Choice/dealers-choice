@@ -53,4 +53,11 @@ void game_seven_card_no_peek(GAME_ARGS);
 
 int run_server(const CliArgs_t *cli_args, Path_t *path);
 
+/* Connection rate-limit helpers, exposed for tests.  Production code uses
+ * the internal rate_limit_check() wrapper which feeds SDL_GetTicks() into
+ * dc_rate_limit_check_at(); the test (tests/rate_limit.c) injects its own
+ * clock to exercise window expiry without sleeping. */
+bool dc_rate_limit_check_at(const char *ip_str, uint32_t max_per_minute, uint32_t now_ms);
+void dc_rate_limit_reset(void);
+
 #endif
