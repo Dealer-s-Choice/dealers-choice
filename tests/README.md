@@ -142,7 +142,53 @@ making the link so chaotic that real bugs hide under transport noise.
 
     sudo tc qdisc del dev lo root
 
-### What it stresses
+## Profiling memory allocations with heaptrack
+
+When investigating allocation hot paths in the GUI client (e.g. the
+per-frame card text-texture allocations that motivated the
+`card_text_atlas` refactor), use heaptrack against a non-sanitized
+build:
+
+    sudo pacman -S heaptrack                 # Arch / Manjaro — heaptrack_gui
+                                             # ships in the same package
+    # Debian / Ubuntu may split the GUI into a separate heaptrack-gui
+    # package — adjust accordingly.
+    meson setup _build-release -Db_sanitize=none --buildtype=debug
+    meson compile -C _build-release
+
+Then under heaptrack:
+
+    heaptrack ./_build-release/dealers-choice --port 23999 --verbose
+
+Play the scenario you want to profile and quit cleanly (the X button
+or ESC, not `kill`).  heaptrack writes
+`heaptrack.dealers-choice.<pid>.zst` in the current directory.  Open
+it interactively:
+
+    heaptrack_gui heaptrack.dealers-choice.<pid>.zst
+
+Or text summary:
+
+    heaptrack_print heaptrack.dealers-choice.<pid>.zst | head -40
+
+Useful things to look at:
+
+- "MOST CALLS TO ALLOCATION FUNCTIONS" — top callstacks by allocation
+  count.  Per-frame work shows up here even when peak memory is fine.
+- The footer's "calls to allocation functions" rate (calls/s).
+  Anything above ~5k/s for a 2D card game is suspect.
+- "total memory leaked" — non-zero usually means
+  allocate-once-and-forget, not always a bug (think singletons), but
+  worth checking the callstacks.
+
+heaptrack is **not** part of `meson test` (it requires a real GUI
+session) and **not** a checkdepends; treat it as a manual investigation
+tool.
+
+(The `### What it stresses` section below belongs to the netem block
+above — keep that in mind when adding more profiling content here.)
+
+### What netem stresses
 
 - Connection handshake (SYN/ACK + DCPROTO header + nonce auth) under
   realistic latency — exposes any code path that assumed instant

@@ -36,14 +36,22 @@
 
 typedef struct {
   UIWidget_t base; /* base.hovered and base.selected are used for interaction */
+  /* text[] is kept for debug / external observers; rendering goes through
+   * card_text_atlas_get(face_val, suit) so the string itself is no longer
+   * on the render hot path. */
   char text[SIZEOF_CARD_TEXT];
-  SDL_Color textColor;
+  /* Card identity used by the atlas lookup in card_widget_render.
+   * Set by make_human_readable_card() when the card slot is populated;
+   * unused when is_back or is_null. */
+  int face_val;
+  int suit;
   bool is_back;
   bool is_null;
   bool is_wild;
   bool is_winning;
   bool my_card; /* true when this card belongs to the local player */
-  TTF_Font *font;
+  TTF_Font *font; /* kept for the card-back animated patterns that still
+                   * compute glyph metrics; not used for face rendering. */
 } CardWidget_t;
 
 void card_widget_init(CardWidget_t *cw, TTF_Font *font);

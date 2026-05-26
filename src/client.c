@@ -46,6 +46,7 @@
 #include "globals.h"
 #include "graphics.h"
 #include "widgets/button.h"
+#include "widgets/card_text_atlas.h"
 #include "widgets/dealer.h"
 #include "widgets/image.h"
 #include "widgets/indicator.h"
@@ -580,9 +581,11 @@ cleanup:
 static void make_human_readable_card(DH_Card *card, CardWidget_t *cw) {
   const char *face = DH_get_card_face_str(card->face_val);
   const char *suit = DH_get_card_unicode_suit(*card);
-  cw->textColor = (card->suit == DH_SUIT_HEARTS || card->suit == DH_SUIT_DIAMONDS)
-                      ? get_color(COLOR_RED)
-                      : get_color(COLOR_BLACK);
+  /* face_val + suit drive the card_text_atlas lookup in
+   * card_widget_render — the actual TTF render happens once at
+   * GUI startup, not per-frame. */
+  cw->face_val = card->face_val;
+  cw->suit = card->suit;
   snprintf(cw->text, sizeof(cw->text), "%s%s", face, suit);
   if (strlen(cw->text) == 0) {
     fprintf(stderr, "%s:String length 0\n", __func__);
@@ -2478,6 +2481,9 @@ cleanup:
 }
 
 void do_sdl_cleanup(SdlContext_t *sdl_context) {
+  /* Atlas textures are tied to sdl_context->renderer — must be freed
+   * before the renderer they were created with. */
+  card_text_atlas_destroy();
   SDL_DestroyRenderer(sdl_context->renderer);
   SDL_DestroyWindow(sdl_context->window);
   SDL_Quit();
