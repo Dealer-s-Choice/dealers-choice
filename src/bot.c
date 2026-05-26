@@ -490,9 +490,18 @@ int main(int argc, char *argv[]) {
       action_after = SDL_GetTicks() + delay_ms;
     }
 
-    /* Nothing received and no action timer has fired: nothing to do */
+    /* Nothing received and no action timer has fired: nothing to do —
+     * UNLESS we have a pending dealer game-select that's now due to
+     * fire.  Without this exception, the bot would set
+     * game_select_after on the broadcast it sees when the second
+     * player joins, then `continue` past the deal trigger on every
+     * subsequent iteration (recv returns RECV_NOTHING in the menu
+     * lull), and the server's dealer_timeout would expire instead. */
+    bool game_select_due =
+        game_state.at_menu && game_state.dealer_id == my_id && !game_select_sent &&
+        game_select_after != 0 && SDL_GetTicks() >= game_select_after;
     if (status == RECV_NOTHING) {
-      if (!any_action || SDL_GetTicks() < action_after)
+      if ((!any_action || SDL_GetTicks() < action_after) && !game_select_due)
         continue;
     }
 
