@@ -39,6 +39,7 @@ typedef struct {
   bool disable_timeout;
   bool autodeal;
   bool auto_connect;
+  bool card_test;
 } CliArgs_t;
 
 #endif

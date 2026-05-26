@@ -1,4 +1,6 @@
 - (in-progress)
+  + Card suits rendered from bundled SVGs (data/images/suits/), sized larger
+    than the face letter for accessibility; --card-test opens an A+10 grid
   * regression fix: when a player times out during the discard phase the status
     message now correctly shows they drew 0 cards; the regression was introduced
     in 2fd55fb when explicit timeout handling was added to handle_draw() but the
