@@ -87,7 +87,7 @@ Dealer's Choice is a lightweight 2D application and runs on modest hardware.
 |-----------|---------|
 | OS        | Linux (kernel 4.x+), macOS 14, Windows 10 |
 | CPU       | 1 GHz single-core |
-| RAM       | 2 GB |
+| RAM       | 1 GB |
 | Graphics  | Any display output supported by SDL2 |
 | Storage   | 100 MB |
 | Network   | LAN or internet connection to reach a server |
