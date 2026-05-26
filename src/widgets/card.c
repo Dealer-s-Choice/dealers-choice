@@ -31,6 +31,7 @@
 #include <stdlib.h>
 
 #include "card.h"
+#include "card_text_atlas.h"
 #include "globals.h"
 #include "graphics.h"
 #include "util.h"
@@ -531,31 +532,30 @@ static void card_widget_render(UIWidget_t *w) {
   SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
   SDL_RenderDrawRect(renderer, &w->rect);
 
-  SDL_Surface *textSurface = TTF_RenderUTF8_Blended(cw->font, cw->text, cw->textColor);
-  if (!textSurface) {
-    fprintf(stderr, "TTF_RenderUTF8_Blended failed: %s\n", TTF_GetError());
-    exit(EXIT_FAILURE);
+  /* Look up the pre-rendered text texture from the atlas built at GUI
+   * startup.  Replaces the per-frame TTF_RenderUTF8_Blended +
+   * SDL_CreateTextureFromSurface that used to be here — that path was
+   * the #1 allocator in heaptrack profiles, ~6M calls / 4 min of
+   * gameplay. */
+  int text_w = 0, text_h = 0;
+  SDL_Texture *text_texture = card_text_atlas_get(cw->face_val, cw->suit, &text_w, &text_h);
+  if (!text_texture) {
+    /* Either the atlas wasn't initialised or the face/suit pair is
+     * out of range.  Either way an empty card face is the safe
+     * fallback; the card border is already drawn. */
+    return;
   }
-
-  SDL_Texture *textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
-  if (!textTexture) {
-    fprintf(stderr, "SDL_CreateTextureFromSurface failed: %s\n", SDL_GetError());
-    SDL_FreeSurface(textSurface);
-    exit(EXIT_FAILURE);
-  }
-
-  SDL_Rect textRect = {w->rect.x + (g_layout_cfg.card_w - textSurface->w) / 2,
-                       w->rect.y + (g_layout_cfg.card_h - textSurface->h) / 2, textSurface->w, textSurface->h};
-
-  SDL_RenderCopy(renderer, textTexture, NULL, &textRect);
-  SDL_FreeSurface(textSurface);
-  SDL_DestroyTexture(textTexture);
+  SDL_Rect textRect = {w->rect.x + (g_layout_cfg.card_w - text_w) / 2,
+                       w->rect.y + (g_layout_cfg.card_h - text_h) / 2, text_w, text_h};
+  SDL_RenderCopy(renderer, text_texture, NULL, &textRect);
 }
 
 static void card_widget_destroy(UIWidget_t *w) { free(w); }
 
 void card_widget_init(CardWidget_t *cw, TTF_Font *font) {
   cw->font = font;
+  cw->face_val = 0;
+  cw->suit = 0;
   cw->base.rect.w = g_layout_cfg.card_w;
   cw->base.rect.h = g_layout_cfg.card_h;
   cw->base.render = card_widget_render;

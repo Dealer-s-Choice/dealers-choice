@@ -44,6 +44,7 @@
 #include "server.h"
 #include "util.h"
 #include "widgets/button.h"
+#include "widgets/card_text_atlas.h"
 #include "widgets/checkbox.h"
 #include "widgets/image.h"
 #include "widgets/input.h"
@@ -888,6 +889,13 @@ int main(int argc, char *argv[]) {
     fprintf(stderr, "Unable to load config\n");
     exit(EXIT_FAILURE);
   }
+
+  /* Pre-render all 52 card text textures once.  card_widget_render
+   * looks them up by (face_val, suit); otherwise it would call
+   * TTF_RenderUTF8_Blended + SDL_CreateTextureFromSurface every frame
+   * for every card (~6M allocations per 4 min of gameplay before this
+   * cache landed). */
+  card_text_atlas_init(sdl_context.renderer, font.fonts[FONT_CARD]);
 
 #ifdef ENABLE_NLS
   if (strlen(player_config.language) != 0) {
