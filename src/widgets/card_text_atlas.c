@@ -32,7 +32,9 @@
 #include "style.h"
 
 #include <SDL2/SDL_image.h>
+#include <errno.h>
 #include <stdio.h>
+#include <string.h>
 
 #define ATLAS_FACES 15 /* indices 1..13 used; slot 0 wasted */
 #define ATLAS_COLORS 2 /* 0 = black (spades/clubs), 1 = red (hearts/diamonds) */
@@ -51,6 +53,7 @@ static struct {
 static bool g_initialised = false;
 static SDL_Renderer *g_renderer = NULL;
 static TTF_Font *g_face_font = NULL;
+static char g_data_dir[4096] = {0};
 
 static int color_idx_for_suit(int suit) {
   return (suit == DH_SUIT_HEARTS || suit == DH_SUIT_DIAMONDS) ? 1 : 0;
@@ -92,11 +95,13 @@ static void destroy_locked(void) {
 }
 
 void card_text_atlas_init(SDL_Renderer *renderer, TTF_Font *face_font, const char *data_dir) {
-  if (g_initialised && g_renderer == renderer && g_face_font == face_font)
+  if (g_initialised && g_renderer == renderer && g_face_font == face_font &&
+      strcmp(g_data_dir, data_dir) == 0)
     return;
   destroy_locked();
   g_renderer = renderer;
   g_face_font = face_font;
+  snprintf(g_data_dir, sizeof(g_data_dir), "%s", data_dir);
   g_initialised = false;
 
   /* Same color convention as make_human_readable_card in src/client.c:
@@ -147,13 +152,18 @@ void card_text_atlas_init(SDL_Renderer *renderer, TTF_Font *face_font, const cha
     snprintf(path, sizeof(path), "%s/images/suits/%s", data_dir, svg_name);
     SDL_RWops *rw = SDL_RWFromFile(path, "rb");
     if (!rw) {
-      fprintf(stderr, "card_text_atlas_init: open %s failed: %s\n", path, SDL_GetError());
+      /* SDL_RWFromFile sets both SDL_GetError() and errno on failure.
+       * errno via strerror gives the human-friendly OS reason
+       * ("No such file or directory", "Permission denied"); SDL's
+       * own string is usually less specific. */
+      fprintf(stderr, "card_text_atlas_init: open %s failed: %s (SDL: %s)\n", path,
+              strerror(errno), SDL_GetError());
       continue;
     }
     SDL_Surface *surface = IMG_LoadSVG_RW(rw);
     SDL_RWclose(rw);
     if (!surface) {
-      fprintf(stderr, "card_text_atlas_init: IMG_LoadSizedSVG_RW(%s) failed: %s\n", path,
+      fprintf(stderr, "card_text_atlas_init: IMG_LoadSVG_RW(%s) failed: %s\n", path,
               IMG_GetError());
       continue;
     }
@@ -180,6 +190,7 @@ void card_text_atlas_destroy(void) {
   destroy_locked();
   g_renderer = NULL;
   g_face_font = NULL;
+  g_data_dir[0] = '\0';
   g_initialised = false;
 }
 
