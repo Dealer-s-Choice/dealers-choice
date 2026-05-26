@@ -32,6 +32,7 @@
 
 #include "card.h"
 #include "card_text_atlas.h"
+#include "deckhandler.h"
 #include "globals.h"
 #include "graphics.h"
 #include "util.h"
@@ -532,22 +533,42 @@ static void card_widget_render(UIWidget_t *w) {
   SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
   SDL_RenderDrawRect(renderer, &w->rect);
 
-  /* Look up the pre-rendered text texture from the atlas built at GUI
-   * startup.  Replaces the per-frame TTF_RenderUTF8_Blended +
-   * SDL_CreateTextureFromSurface that used to be here — that path was
-   * the #1 allocator in heaptrack profiles, ~6M calls / 4 min of
-   * gameplay. */
-  int text_w = 0, text_h = 0;
-  SDL_Texture *text_texture = card_text_atlas_get(cw->face_val, cw->suit, &text_w, &text_h);
-  if (!text_texture) {
-    /* Either the atlas wasn't initialised or the face/suit pair is
-     * out of range.  Either way an empty card face is the safe
-     * fallback; the card border is already drawn. */
+  /* Look up the pre-rendered face + suit textures from the atlas built
+   * at GUI startup.  Face is TTF-rendered with the suit colour baked
+   * in; suit is loaded white-on-transparent from SVG and tinted here
+   * via SDL_SetTextureColorMod.  The suit texture is oversized (96px
+   * native) and rendered at a smaller display size below — SDL
+   * downscales it cleanly each frame. */
+  CardAtlasEntry_t entry;
+  if (!card_text_atlas_get(cw->face_val, cw->suit, &entry)) {
     return;
   }
-  SDL_Rect textRect = {w->rect.x + (g_layout_cfg.card_w - text_w) / 2,
-                       w->rect.y + (g_layout_cfg.card_h - text_h) / 2, text_w, text_h};
-  SDL_RenderCopy(renderer, text_texture, NULL, &textRect);
+  int gap = 2;
+  /* Suit display size: 3/5 of card height, square aspect.  Bigger
+   * than the face letter so the suit reads at a glance, but with
+   * enough card-edge margin not to feel crowded. */
+  const int suit_disp = (g_layout_cfg.card_h * 3) / 5;
+  int pair_w = entry.face_w + gap + suit_disp;
+  int pair_x = w->rect.x + (g_layout_cfg.card_w - pair_w) / 2;
+  /* Keep at least a small left margin on wide faces ("10") that would
+   * otherwise sit flush against the card border once centered.  When
+   * we clamp, also pull the suit closer to the face so the card
+   * doesn't crowd the right edge either. */
+  const int min_left_margin = 5;
+  if (pair_x - w->rect.x < min_left_margin) {
+    pair_x = w->rect.x + min_left_margin;
+    gap = 0;
+  }
+  SDL_Rect face_rect = {pair_x, w->rect.y + (g_layout_cfg.card_h - entry.face_h) / 2,
+                        entry.face_w, entry.face_h};
+  SDL_Rect suit_rect = {pair_x + entry.face_w + gap,
+                        w->rect.y + (g_layout_cfg.card_h - suit_disp) / 2, suit_disp, suit_disp};
+  SDL_RenderCopy(renderer, entry.face, NULL, &face_rect);
+  if (cw->suit == DH_SUIT_HEARTS || cw->suit == DH_SUIT_DIAMONDS)
+    SDL_SetTextureColorMod(entry.suit, 200, 0, 0);
+  else
+    SDL_SetTextureColorMod(entry.suit, 0, 0, 0);
+  SDL_RenderCopy(renderer, entry.suit, NULL, &suit_rect);
 }
 
 static void card_widget_destroy(UIWidget_t *w) { free(w); }

@@ -33,23 +33,43 @@
 #include <SDL2/SDL_ttf.h>
 #include <stdbool.h>
 
-/* Builds a per-(face, suit) text texture for every card in the deck and
- * caches them for the lifetime of the GUI session.  Replaces the
- * per-frame TTF_RenderUTF8_Blended + SDL_CreateTextureFromSurface
- * pair that card_widget_render used to do — now that path is a single
- * lookup + SDL_RenderCopy per card per frame, zero allocations.
+/* Returned by card_text_atlas_get: the two pre-rendered textures and
+ * their dimensions.  card_widget_render lays them out side-by-side
+ * (face on the left, suit on the right, pair centered in the card
+ * rect).
  *
- * Must be called after SDL + TTF are initialised and after the
- * renderer + font are created.  Safe to call multiple times
- * (subsequent calls reuse the existing atlas if the font hasn't
- * changed; pass a different font to rebuild).
+ * Suit textures are loaded white-on-transparent from SVG and tinted
+ * to red or black per suit via SDL_SetTextureColorMod at render time.
+ * Face textures are TTF-rendered and already coloured per suit. */
+typedef struct {
+  SDL_Texture *face;
+  SDL_Texture *suit;
+  int face_w, face_h;
+  int suit_w, suit_h;
+} CardAtlasEntry_t;
+
+/* Builds two atlases:
  *
- * `font` is the TTF_Font used for card faces — typically
- * font->fonts[FONT_CARD] in the client.  The atlas does NOT take
- * ownership of the font or renderer; callers retain responsibility
- * for those.
- */
-void card_text_atlas_init(SDL_Renderer *renderer, TTF_Font *font);
+ *   - face_atlas[13][2]  — face glyph ("A","2",...,"K") in black and
+ *                          red, TTF-rendered with `face_font`.  Index
+ *                          is (face_val, color_idx) where color_idx
+ *                          = 1 for hearts/diamonds, 0 for spades/clubs.
+ *
+ *   - suit_atlas[4]      — suit symbol (♠/♥/♦/♣) loaded from
+ *                          `data_dir`/images/suits/{spade,heart,
+ *                          diamond,club}.svg via IMG_LoadSizedSVG_RW.
+ *                          Rendered white-on-transparent; the colour
+ *                          is applied per-render via
+ *                          SDL_SetTextureColorMod.
+ *
+ * 26 + 4 = 30 textures total.
+ *
+ * Must be called after SDL + TTF + SDL_image + the renderer are up
+ * and after the face font is open.  Safe to call multiple times —
+ * subsequent calls reuse the existing atlas if the inputs are
+ * unchanged.  The atlas does NOT take ownership of the font or
+ * renderer. */
+void card_text_atlas_init(SDL_Renderer *renderer, TTF_Font *face_font, const char *data_dir);
 
 /* Frees every cached texture and resets the atlas.  Call before
  * destroying the SDL_Renderer the atlas was initialised with —
@@ -57,28 +77,22 @@ void card_text_atlas_init(SDL_Renderer *renderer, TTF_Font *font);
  * undefined behavior. */
 void card_text_atlas_destroy(void);
 
-/* Returns the cached texture for the given face/suit pair, plus its
- * pixel dimensions.  Returns NULL (with *out_w / *out_h untouched)
- * when:
+/* Populates *out with the face + suit textures for the given card.
+ * Returns false (with *out untouched) when:
  *   - the atlas hasn't been initialised yet,
  *   - the (face_val, suit) is outside the dealt range
  *     (face_val 1..13, suit 0..3),
- *   - or the initial render for this card failed and the slot is
- *     empty.  Callers should fall back to a draw-time render in that
- *     case (or, more typically, treat it as a fatal init bug).
+ *   - or either of the initial loads for this card failed.
  *
- * The returned texture is owned by the atlas — do not call
- * SDL_DestroyTexture on it. */
-SDL_Texture *card_text_atlas_get(int face_val, int suit_val, int *out_w, int *out_h);
+ * The returned textures are owned by the atlas — do not call
+ * SDL_DestroyTexture on them. */
+bool card_text_atlas_get(int face_val, int suit_val, CardAtlasEntry_t *out);
 
-/* True once card_text_atlas_init has succeeded.  Tests and asserts
- * use this to confirm the lifecycle without leaking the internal
- * static arrays. */
+/* True once card_text_atlas_init has succeeded. */
 bool card_text_atlas_is_initialised(void);
 
-/* Total number of textures the atlas holds when fully populated.
- * 13 faces × 4 suits = 52.  Exposed for tests so they don't have to
- * encode the constant separately. */
-#define CARD_TEXT_ATLAS_SIZE 52
+/* Total textures the atlas holds when fully populated: 13 faces × 2
+ * colors + 4 suits = 30. */
+#define CARD_TEXT_ATLAS_SIZE 30
 
 #endif

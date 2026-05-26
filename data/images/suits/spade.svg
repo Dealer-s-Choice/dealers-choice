@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 32 32">
+  <g fill="#ffffff">
+    <!-- Body: lobes tucked in tighter so the stem below has room. -->
+    <path d="M 16 3
+             C 16 10, 28 13, 28 21
+             C 28 24, 25.5 26, 22.5 26
+             C 20 26, 18 25, 16 22
+             C 14 25, 12 26, 9.5 26
+             C 6.5 26, 4 24, 4 21
+             C 4 13, 16 10, 16 3 Z"/>
+    <!-- Stem: a touch wider and taller so it stands clear of the
+         body lobes; tiny outward flare at the base. -->
+    <path d="M 10 31 L 22 31
+             C 19 29, 17.5 26, 16 22
+             C 14.5 26, 13 29, 10 31 Z"/>
+  </g>
+</svg>

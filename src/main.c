@@ -44,6 +44,7 @@
 #include "server.h"
 #include "util.h"
 #include "widgets/button.h"
+#include "widgets/card.h"
 #include "widgets/card_text_atlas.h"
 #include "widgets/checkbox.h"
 #include "widgets/image.h"
@@ -671,6 +672,7 @@ static CliArgs_t parse_cli_args(int argc, char *argv[]) {
     OPT_DISABLE_TIMEOUT,
     OPT_AUTODEAL,
     OPT_AUTO_CONNECT,
+    OPT_CARD_TEST,
   };
 
   static const glopt_option_t options[] = {
@@ -688,6 +690,7 @@ static CliArgs_t parse_cli_args(int argc, char *argv[]) {
       {"disable-timeout", GLOPT_NO_ARG, OPT_DISABLE_TIMEOUT, 0},
       {"autodeal", GLOPT_NO_ARG, OPT_AUTODEAL, 0},
       {"auto-connect", GLOPT_NO_ARG, OPT_AUTO_CONNECT, 0},
+      {"card-test", GLOPT_NO_ARG, OPT_CARD_TEST, 0},
       {NULL, 0, 0, 0}};
 
   glopt_parser_t parser;
@@ -747,27 +750,100 @@ static CliArgs_t parse_cli_args(int argc, char *argv[]) {
     case OPT_AUTO_CONNECT:
       cli_args.auto_connect = true;
       break;
+    case OPT_CARD_TEST:
+      cli_args.card_test = true;
+      break;
     case '?':
     default:
       print_version();
       fputs("Usage:\n"
             "  --verbose\n"
             "  --server-log-game-results [path/to/file]\n"
-            "  --server-log-hands [path/to/file]\n"
             "  --server-conf [Path to alternate server config file]\n"
             "  --bind-address [IP]        Address for the server to bind to (default: all "
             "interfaces)\n"
             "  --host [IP]\n"
             "  --port [port]\n"
             "  --disable-audio\n"
+            "  --version\n"
+            "\n"
+            "Testing options:\n"
+            "  --server-log-hands [path/to/file]\n"
             "  --disable-timeout          Server will not disconnect players who exceed the action "
             "timeout threshold\n"
-            "  --version\n",
+            "  --card-test                Open a window showing A and 10 of each suit; x/ESC to exit\n",
             stderr);
       exit(EXIT_FAILURE);
     }
   }
   return cli_args;
+}
+
+/* --card-test mode: open the SDL window, render the A and 10 of each
+ * suit in a 2x4 grid on the green felt, and wait for x / ESC / window
+ * close.  Lets you iterate on suit size, position, and font without
+ * spinning up a server and a bot for every visual check. */
+static int run_card_test(SdlContext_t *sdl_context, Font_t *font, Path_t *path) {
+  char felt_path[4096];
+  snprintf(felt_path, sizeof(felt_path), "%s/images/100x100-green-felt-seamless-tile.png",
+           path->data);
+  SDL_Texture *felt_tex = load_texture(sdl_context->renderer, felt_path);
+
+  static const struct {
+    int face;
+    int suit;
+  } TEST_CARDS[8] = {
+      {DH_CARD_ACE, DH_SUIT_SPADES}, {DH_CARD_ACE, DH_SUIT_HEARTS},
+      {DH_CARD_ACE, DH_SUIT_DIAMONDS}, {DH_CARD_ACE, DH_SUIT_CLUBS},
+      {DH_CARD_TEN, DH_SUIT_SPADES}, {DH_CARD_TEN, DH_SUIT_HEARTS},
+      {DH_CARD_TEN, DH_SUIT_DIAMONDS}, {DH_CARD_TEN, DH_SUIT_CLUBS},
+  };
+
+  const int gap = 24;
+  const int cw_w = g_layout_cfg.card_w;
+  const int cw_h = g_layout_cfg.card_h;
+  const int grid_w = 4 * cw_w + 3 * gap;
+  const int grid_h = 2 * cw_h + gap;
+  const int origin_x = LOGICAL_WIDTH / 2 - grid_w / 2;
+  const int origin_y = LOGICAL_HEIGHT / 2 - grid_h / 2;
+
+  CardWidget_t cards[8];
+  for (int i = 0; i < 8; i++) {
+    int row = i / 4;
+    int col = i % 4;
+    card_widget_init(&cards[i], font->fonts[FONT_CARD]);
+    cards[i].base.rect.x = origin_x + col * (cw_w + gap);
+    cards[i].base.rect.y = origin_y + row * (cw_h + gap);
+    cards[i].face_val = TEST_CARDS[i].face;
+    cards[i].suit = TEST_CARDS[i].suit;
+  }
+
+  bool running = true;
+  while (running) {
+    SDL_Event ev;
+    while (SDL_PollEvent(&ev)) {
+      if (ev.type == SDL_QUIT)
+        running = false;
+      else if (ev.type == SDL_KEYDOWN &&
+               (ev.key.keysym.sym == SDLK_x || ev.key.keysym.sym == SDLK_ESCAPE))
+        running = false;
+    }
+
+    SDL_SetRenderDrawColor(sdl_context->renderer, 0, 100, 0, 255);
+    SDL_RenderClear(sdl_context->renderer);
+    if (felt_tex)
+      draw_felt_background(sdl_context->renderer, felt_tex);
+
+    for (int i = 0; i < 8; i++)
+      cards[i].base.render(&cards[i].base);
+
+    SDL_RenderPresent(sdl_context->renderer);
+    SDL_Delay(16);
+  }
+
+  if (felt_tex)
+    SDL_DestroyTexture(felt_tex);
+  return 0;
 }
 
 static void init_sdl_window(SdlContext_t *c, const char *title) {
@@ -829,24 +905,17 @@ int main(int argc, char *argv[]) {
 
   const CliArgs_t cli_args = parse_cli_args(argc, argv);
 
-  if (sodium_init() < 0) {
-    fprintf(stderr, "libsodium init failed\n");
-    exit(1);
-  }
-
-  pcg_srand_auto();
-
   if (cli_args.run_server_flag) {
+    if (sodium_init() < 0) {
+      fprintf(stderr, "libsodium init failed\n");
+      exit(1);
+    }
+    pcg_srand_auto();
     return run_server(&cli_args, &path);
   }
 
   if (SDL_Init(SDL_INIT_VIDEO) == -1) {
     fprintf(stderr, "SDL init failed: %s\n", SDL_GetError());
-    return 1;
-  }
-  if (tcpme_init() != 0) {
-    fprintf(stderr, "tcpme_init failed: %s\n", tcpme_get_error());
-    SDL_Quit();
     return 1;
   }
 
@@ -895,7 +964,27 @@ int main(int argc, char *argv[]) {
    * TTF_RenderUTF8_Blended + SDL_CreateTextureFromSurface every frame
    * for every card (~6M allocations per 4 min of gameplay before this
    * cache landed). */
-  card_text_atlas_init(sdl_context.renderer, font.fonts[FONT_CARD]);
+  card_text_atlas_init(sdl_context.renderer, font.fonts[FONT_CARD], path.data);
+
+  if (cli_args.card_test) {
+    int rc = run_card_test(&sdl_context, &font, &path);
+    for (int i = 0; i < NUM_FONTS; ++i)
+      TTF_CloseFont(font.fonts[i]);
+    TTF_Quit();
+    do_sdl_cleanup(&sdl_context);
+    return rc;
+  }
+
+  /* Client networking + password hashing — only needed past this point. */
+  if (sodium_init() < 0) {
+    fprintf(stderr, "libsodium init failed\n");
+    exit(1);
+  }
+  pcg_srand_auto();
+  if (tcpme_init() != 0) {
+    fprintf(stderr, "tcpme_init failed: %s\n", tcpme_get_error());
+    return 1;
+  }
 
 #ifdef ENABLE_NLS
   if (strlen(player_config.language) != 0) {

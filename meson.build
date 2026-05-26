@@ -102,9 +102,12 @@ dep_names = [
 
 # SDL2_ttf and SDL2_image are only used by the client (rendering); the bot
 # must not link against them or namcap/lintian will flag them as unused.
-client_only_dep_names = [
-  'SDL2_ttf',
-  'SDL2_image',
+# SDL2_image >= 2.0.5 is needed for IMG_LoadSVG_RW (used by the suit-symbol
+# atlas in src/widgets/card_text_atlas.c).  2.0.5 is what Ubuntu Jammy ships,
+# so this is the practical Linux floor.
+client_only_dep_names = ['SDL2_ttf']
+client_only_deps_versioned = [
+  ['SDL2_image', '>= 2.0.5'],
 ]
 
 # On Slackware, the miniaudio build fails (linking) if dl and threads aren't added here
@@ -122,6 +125,9 @@ endforeach
 client_only_deps = []
 foreach dep : client_only_dep_names
   client_only_deps += dependency(dep)
+endforeach
+foreach pair : client_only_deps_versioned
+  client_only_deps += dependency(pair[0], version: pair[1])
 endforeach
 
 shared_inc = [include_directories(['src', 'src/protobuf'])]
