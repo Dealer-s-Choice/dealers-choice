@@ -44,9 +44,28 @@ typedef struct {
   bool is_winning;
   bool my_card; /* true when this card belongs to the local player */
   TTF_Font *font;
+  /* Cached text texture: TTF_RenderUTF8_Blended + SDL_CreateTextureFromSurface
+   * cost ~thousands of allocations per call, so the cache fires once per
+   * (text, color) tuple instead of every frame. */
+  SDL_Texture *cached_text_texture;
+  int cached_text_w, cached_text_h;
+  char cached_text[SIZEOF_CARD_TEXT];
+  SDL_Color cached_text_color;
 } CardWidget_t;
 
 void card_widget_init(CardWidget_t *cw, TTF_Font *font);
 void card_widget_select_back_for_game(void);
+
+/* Pure helper: returns false if the cached text texture for this widget is
+ * stale (text changed, color changed, or never rendered yet).  Render-path
+ * regenerates the texture only when this returns false.  Exposed for tests
+ * so the cache logic can be verified without spinning up a real renderer. */
+bool card_widget_text_cache_valid(const CardWidget_t *cw);
+
+/* Cache-miss counter: incremented every time card_widget_render has to call
+ * TTF_RenderUTF8_Blended + SDL_CreateTextureFromSurface for a card.  Tests
+ * snapshot this before/after a render burst and assert the miss count
+ * doesn't scale with frame count. */
+extern unsigned long card_widget_text_cache_misses;
 
 #endif

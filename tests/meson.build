@@ -6,6 +6,7 @@ unit_tests = [
   'layout_cards',
   'no_peek',
   'rate_limit',
+  'card_texture_cache',
 ]
 
 base_env = {

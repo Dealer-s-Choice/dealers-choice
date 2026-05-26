@@ -24,8 +24,9 @@ Two groups (see `tests/meson.build`):
 - **Unit tests** — compiled C binaries that exercise specific functions
   in isolation. Includes `serialization`, `get_next_player`,
   `debug_print_cards`, `layout_cards`, `no_peek`, `rate_limit`,
-  `pokeval_fuzz` (a Python wrapper around the offline fuzzer; see
-  below), plus everything under `src/pokeval/tests/`.
+  `card_texture_cache`, `pokeval_fuzz` (a Python wrapper around the
+  offline fuzzer; see below), plus everything under
+  `src/pokeval/tests/`.
 - **Game-logic tests** — Python harness (`game_logic.py`) that spawns a
   server binary plus C test clients over TCP and exercises full hand
   flows. Each test gets a unique TCP port derived from `base_port =
@@ -141,6 +142,48 @@ making the link so chaotic that real bugs hide under transport noise.
 ### Cleanup (important — affects everything else using lo)
 
     sudo tc qdisc del dev lo root
+
+## Profiling memory allocations with heaptrack
+
+When investigating allocation hot paths in the GUI client (e.g. the
+per-frame card text-texture allocations that motivated the
+`card_texture_cache` test), use heaptrack against a non-sanitized
+build:
+
+    sudo pacman -S heaptrack heaptrack-gui   # on Arch / Manjaro
+    meson setup _build-release -Db_sanitize=none --buildtype=debug
+    meson compile -C _build-release
+
+Then under heaptrack:
+
+    heaptrack ./_build-release/dealers-choice --port 23999 --verbose
+
+Play the scenario you want to profile and quit cleanly (the X button
+or ESC, not `kill`).  heaptrack writes
+`heaptrack.dealers-choice.<pid>.zst` in the current directory.  Open
+it interactively:
+
+    heaptrack_gui heaptrack.dealers-choice.<pid>.zst
+
+Or text summary:
+
+    heaptrack_print heaptrack.dealers-choice.<pid>.zst | head -40
+
+Useful things to look at:
+
+- "MOST CALLS TO ALLOCATION FUNCTIONS" — top callstacks by allocation
+  count.  Per-frame work shows up here even when peak memory is fine.
+- The footer's "calls to allocation functions" rate (calls/s).
+  Anything above ~5k/s for a 2D card game is suspect.
+- "total memory leaked" — non-zero usually means
+  allocate-once-and-forget, not always a bug (think singletons), but
+  worth checking the callstacks.
+
+heaptrack is **not** part of `meson test` (it requires a real GUI
+session) and **not** a checkdepends; treat it as a manual investigation
+tool.  The cheap automated equivalent is the `card_texture_cache` unit
+test, which pins the cache-validity contract without needing a
+renderer.
 
 ### What it stresses
 

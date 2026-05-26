@@ -531,28 +531,64 @@ static void card_widget_render(UIWidget_t *w) {
   SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
   SDL_RenderDrawRect(renderer, &w->rect);
 
-  SDL_Surface *textSurface = TTF_RenderUTF8_Blended(cw->font, cw->text, cw->textColor);
-  if (!textSurface) {
-    fprintf(stderr, "TTF_RenderUTF8_Blended failed: %s\n", TTF_GetError());
-    exit(EXIT_FAILURE);
-  }
-
-  SDL_Texture *textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
-  if (!textTexture) {
-    fprintf(stderr, "SDL_CreateTextureFromSurface failed: %s\n", SDL_GetError());
+  /* Cached text texture — only re-rendered when the card's face or color
+   * changes.  Before this cache, TTF_RenderUTF8_Blended +
+   * SDL_CreateTextureFromSurface ran every frame for every card and
+   * accounted for the lion's share of the 32k allocations/sec heaptrack
+   * caught during gameplay. */
+  if (!card_widget_text_cache_valid(cw)) {
+    if (cw->cached_text_texture) {
+      SDL_DestroyTexture(cw->cached_text_texture);
+      cw->cached_text_texture = NULL;
+    }
+    SDL_Surface *textSurface = TTF_RenderUTF8_Blended(cw->font, cw->text, cw->textColor);
+    if (!textSurface) {
+      fprintf(stderr, "TTF_RenderUTF8_Blended failed: %s\n", TTF_GetError());
+      exit(EXIT_FAILURE);
+    }
+    cw->cached_text_texture = SDL_CreateTextureFromSurface(renderer, textSurface);
+    if (!cw->cached_text_texture) {
+      fprintf(stderr, "SDL_CreateTextureFromSurface failed: %s\n", SDL_GetError());
+      SDL_FreeSurface(textSurface);
+      exit(EXIT_FAILURE);
+    }
+    cw->cached_text_w = textSurface->w;
+    cw->cached_text_h = textSurface->h;
     SDL_FreeSurface(textSurface);
-    exit(EXIT_FAILURE);
+    snprintf(cw->cached_text, sizeof(cw->cached_text), "%s", cw->text);
+    cw->cached_text_color = cw->textColor;
+    card_widget_text_cache_misses++;
   }
 
-  SDL_Rect textRect = {w->rect.x + (g_layout_cfg.card_w - textSurface->w) / 2,
-                       w->rect.y + (g_layout_cfg.card_h - textSurface->h) / 2, textSurface->w, textSurface->h};
-
-  SDL_RenderCopy(renderer, textTexture, NULL, &textRect);
-  SDL_FreeSurface(textSurface);
-  SDL_DestroyTexture(textTexture);
+  SDL_Rect textRect = {w->rect.x + (g_layout_cfg.card_w - cw->cached_text_w) / 2,
+                       w->rect.y + (g_layout_cfg.card_h - cw->cached_text_h) / 2,
+                       cw->cached_text_w, cw->cached_text_h};
+  SDL_RenderCopy(renderer, cw->cached_text_texture, NULL, &textRect);
 }
 
-static void card_widget_destroy(UIWidget_t *w) { free(w); }
+unsigned long card_widget_text_cache_misses = 0;
+
+bool card_widget_text_cache_valid(const CardWidget_t *cw) {
+  if (!cw->cached_text_texture)
+    return false;
+  if (strcmp(cw->cached_text, cw->text) != 0)
+    return false;
+  if (cw->cached_text_color.r != cw->textColor.r ||
+      cw->cached_text_color.g != cw->textColor.g ||
+      cw->cached_text_color.b != cw->textColor.b ||
+      cw->cached_text_color.a != cw->textColor.a)
+    return false;
+  return true;
+}
+
+static void card_widget_destroy(UIWidget_t *w) {
+  CardWidget_t *cw = (CardWidget_t *)w;
+  if (cw->cached_text_texture) {
+    SDL_DestroyTexture(cw->cached_text_texture);
+    cw->cached_text_texture = NULL;
+  }
+  free(w);
+}
 
 void card_widget_init(CardWidget_t *cw, TTF_Font *font) {
   cw->font = font;
@@ -560,4 +596,8 @@ void card_widget_init(CardWidget_t *cw, TTF_Font *font) {
   cw->base.rect.h = g_layout_cfg.card_h;
   cw->base.render = card_widget_render;
   cw->base.destroy = card_widget_destroy;
+  cw->cached_text_texture = NULL;
+  cw->cached_text_w = cw->cached_text_h = 0;
+  cw->cached_text[0] = '\0';
+  cw->cached_text_color = (SDL_Color){0};
 }
