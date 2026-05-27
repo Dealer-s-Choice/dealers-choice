@@ -22,6 +22,7 @@ file for details.
 * [Source Code](https://github.com/Dealer-s-Choice/dealers_choice)
   * [Also on LibreGaming](https://git.libregaming.org/andy5995/dealers-choice)
 * [Downloads](https://github.com/Dealer-s-Choice/dealers_choice/releases/latest)
+* [Development Snapshots](https://github.com/Dealer-s-Choice/dealers-choice/releases/tag/snapshot)
 * [Screenshots](https://dealer-s-choice.github.io/screenshots/)
 * [Game Play](docs/GAME_PLAY.md)
 * [Game Results](https://dealer-s-choice.github.io/game_results.html)
