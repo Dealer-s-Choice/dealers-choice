@@ -187,9 +187,18 @@ bot_dep = declare_dependency(
   include_directories: [shared_inc, include_directories('.')],
 )
 
+exe_sources = ['src/main.c']
+if platform_is_windows
+  windows = import('windows')
+  exe_sources += windows.compile_resources(
+    'icons/dealers-choice.rc',
+    depend_files: ['icons/dealers-choice.ico'],
+  )
+endif
+
 exe_target = executable(
   meson.project_name(),
-  ['src/main.c'],
+  exe_sources,
   dependencies: game_dep,
   install: true,
 )
