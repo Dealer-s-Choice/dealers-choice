@@ -23,6 +23,9 @@ on:
     branches: [ trunk ]
     paths: *shared_paths
 
+env:
+  CFLAGS: '-Werror'
+
 jobs:
   gate:
     if: github.event_name != 'workflow_dispatch'
@@ -34,7 +37,7 @@ jobs:
     - name: Install Dependencies
       run: scripts/install_ubuntu_deps.sh
     - name: Meson setup
-      run: CFLAGS="-Werror" meson setup _build
+      run: meson setup _build
     - name: Build
       run: meson compile -C _build
     - name: Test
@@ -57,7 +60,7 @@ jobs:
     - name: Install Dependencies
       run: scripts/install_ubuntu_deps.sh
     - name: Meson setup
-      run: CC=clang CFLAGS="-Werror -fno-sanitize-recover=all" meson setup _build -Db_sanitize=${{ matrix.sanitize }} -Db_lundef=false
+      run: CC=clang CFLAGS="${{ env.CFLAGS }} -fno-sanitize-recover=all" meson setup _build -Db_sanitize=${{ matrix.sanitize }} -Db_lundef=false
     - name: Build
       run: meson compile -C _build
     - name: Test
@@ -97,7 +100,7 @@ jobs:
       run: scripts/install_ubuntu_deps.sh
 
     - name: Meson setup
-      run: CFLAGS="-Werror" meson setup _build
+      run: meson setup _build
 
     - name: Build
       run: meson compile -C _build
