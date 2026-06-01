@@ -51,23 +51,6 @@ jobs:
       run: CC=clang CFLAGS="-Werror -fno-sanitize-recover=all" meson setup _build_tsan -Db_sanitize=thread -Db_lundef=false
     - name: TSan build
       run: meson compile -C _build_tsan
-    - name: TSan dynamic library inventory
-      # Diagnostic for issue #282 — TSAN reports lock-order-inversion in
-      # libdbus-1 internals at process teardown, but no project source
-      # links libdbus directly.  Print the dynamic linker chain so we can
-      # see what's actually pulling it in on the runner.
-      run: |
-        echo "--- ldd test_fold ---"
-        ldd _build_tsan/tests/test_fold || true
-        echo
-        echo "--- dbus/pulse/systemd providers among DT_NEEDED of every linked .so ---"
-        for lib in $(ldd _build_tsan/tests/test_fold | awk '/=>/ {print $3}' | sort -u); do
-          needs=$(readelf -d "$lib" 2>/dev/null | grep NEEDED | grep -Ei 'dbus|pulse|systemd' || true)
-          if [ -n "$needs" ]; then
-            echo "$lib has:"
-            echo "$needs"
-          fi
-        done
     - name: TSan test
       run: meson test --setup=One_pass --no-stdsplit -v --setup One_pass -C _build_tsan
 

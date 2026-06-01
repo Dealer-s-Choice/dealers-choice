@@ -1,0 +1,9 @@
+# ThreadSanitizer suppressions for Dealer's Choice.
+#
+# Lock-order-inversion reported inside PulseAudio's dependency chain
+# (libpulse -> libdbus-1 -> libsystemd) at library init/teardown. These are
+# linked transitively only because the CI runner's SDL2/miniaudio reference
+# libpulse; the lock ordering is inside those third-party libraries, not in
+# project code (the tests run with no audio). Intermittent by nature. See #282.
+called_from_lib:libdbus-1.so
+called_from_lib:libsystemd.so

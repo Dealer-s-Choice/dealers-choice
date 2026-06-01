@@ -45,11 +45,6 @@ if cc.get_id() != 'msvc'
   ]
   add_project_arguments(cc.get_supported_arguments(extra_flags), language: 'c')
 
-  # Drop DT_NEEDED for libraries the binaries don't reference (e.g. libpulse,
-  # which miniaudio dlopens). Probed, so it's a no-op where unsupported.
-  add_project_link_arguments(
-    cc.get_supported_link_arguments('-Wl,--as-needed'), language: 'c')
-
   if host_sys == 'linux'
     # To enable PATH_MAX and friends on Alpine Linux
     definitions = [
