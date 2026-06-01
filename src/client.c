@@ -2033,6 +2033,8 @@ typedef struct {
 static int connect_thread_fn(void *data) {
   ConnectAttempt_t *ca = data;
   ca->sock = tcpme_connect(ca->host_str, ca->port);
+  if (tcpme_socket_valid(ca->sock))
+    tcpme_set_timeout(ca->sock, SOCKET_IO_TIMEOUT_MS);
   SDL_AtomicSet(&ca->done, 1);
   if (SDL_AtomicGet(&ca->orphaned)) {
     if (tcpme_socket_valid(ca->sock))
@@ -2127,6 +2129,8 @@ bool get_socket_context_and_run_client(PlayerConfig_t *player_config, const CliA
     if (!thread) {
       // Fallback: blocking connect with no event handling this attempt
       ca->sock = tcpme_connect(host_str, port);
+      if (tcpme_socket_valid(ca->sock))
+        tcpme_set_timeout(ca->sock, SOCKET_IO_TIMEOUT_MS);
       SDL_AtomicSet(&ca->done, 1);
     }
 

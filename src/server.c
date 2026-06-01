@@ -2018,6 +2018,7 @@ static ELoop_t register_new_client(ArgsBroadcastGameState_t *args) {
   // checks for and accepts incoming connections
   tcpme_socket_t new_client = tcpme_accept(*args->server_sock);
   if (tcpme_socket_valid(new_client)) {
+    tcpme_set_timeout(new_client, SOCKET_IO_TIMEOUT_MS);
     char peer_ip_str[TCPME_ADDRSTRLEN] = "";
     tcpme_get_peer_ip(new_client, peer_ip_str, sizeof(peer_ip_str));
 

@@ -103,6 +103,12 @@ int tcpme_send(tcpme_socket_t sock, const void *buf, int len);
 // Returns bytes received, 0 on clean disconnect, or -1 on error.
 int tcpme_recv(tcpme_socket_t sock, void *buf, int len);
 
+// Set the send and receive timeout for a connected socket, in milliseconds.
+// A blocking send/recv that makes no progress for this long then fails with
+// an error (-1) instead of blocking indefinitely. timeout_ms = 0 disables the
+// timeout (block indefinitely, the default). Returns 0 on success, -1 on error.
+int tcpme_set_timeout(tcpme_socket_t sock, uint32_t timeout_ms);
+
 // Write the peer's "IP:port" (IPv4) or "[IP]:port" (IPv6) into buf.
 // buf must be at least TCPME_ADDRPORTSTRLEN bytes. Returns false on failure.
 bool tcpme_get_peer_addr(tcpme_socket_t sock, char *buf, size_t buflen);

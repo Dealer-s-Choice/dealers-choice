@@ -48,6 +48,10 @@
 /* Flags sent in GameProtocolHeader_t.flags */
 #define PROTO_FLAG_BOT 0x01
 
+/* Cap blocking socket I/O (recv/send) so a stalled or half-dead peer can't
+ * wedge a connection; a timeout returns -1 and is handled as a disconnect. */
+#define SOCKET_IO_TIMEOUT_MS 30000
+
 #ifdef _MSC_VER
 #pragma pack(push, 1)
 #endif

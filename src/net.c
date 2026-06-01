@@ -611,6 +611,7 @@ bool bot_connect(const char *host_str, uint16_t port, const char *nick, const ch
     fprintf(stderr, "Failed to connect: %s\n", tcpme_get_error());
     return false;
   }
+  tcpme_set_timeout(sock, SOCKET_IO_TIMEOUT_MS);
 
   tcpme_set_t *set = tcpme_alloc_set(1);
   if (!set) {

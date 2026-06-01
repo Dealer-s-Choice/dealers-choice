@@ -315,6 +315,26 @@ int tcpme_recv(tcpme_socket_t sock, void *buf, int len) {
   return n;
 }
 
+int tcpme_set_timeout(tcpme_socket_t sock, uint32_t timeout_ms) {
+#ifdef _WIN32
+  DWORD val = (DWORD)timeout_ms;
+  const void *optval = &val;
+  socklen_t optlen = sizeof(val);
+#else
+  struct timeval val;
+  val.tv_sec = timeout_ms / 1000;
+  val.tv_usec = (timeout_ms % 1000) * 1000;
+  const void *optval = &val;
+  socklen_t optlen = sizeof(val);
+#endif
+  if (setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (const char *)optval, optlen) != 0 ||
+      setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, (const char *)optval, optlen) != 0) {
+    set_error_sys("setsockopt(timeout) failed");
+    return -1;
+  }
+  return 0;
+}
+
 // --- Address queries --------------------------------------------------------
 
 bool tcpme_get_peer_addr(tcpme_socket_t sock, char *buf, size_t buflen) {

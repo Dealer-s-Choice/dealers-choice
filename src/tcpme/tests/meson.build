@@ -6,6 +6,7 @@ foreach t : [
   'error_paths',
   'hostname',
   'peer_close',
+  'timeout',
 ]
   exe = executable(
     'tcpme_test_' + t,
