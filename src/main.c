@@ -39,6 +39,7 @@
 #include "getlongopt.h"
 #include "globals.h"
 #include "graphics.h"
+#include "hotkeys.h"
 #include "links.h"
 #include "main.h"
 #include "server.h"
@@ -318,6 +319,232 @@ err:
   return 0;
 }
 
+/* Keys the in-game loop already owns or that are kept for app-level use;
+ * binding an action to one would shadow it.  Digits 1-8 are the bet-amount
+ * buttons; the whole F1-F12 row is reserved (F11 fullscreen, F1 the planned
+ * in-game hotkey overlay, the rest held for future shortcuts). */
+static bool is_reserved_hotkey(SDL_Keycode k) {
+  switch (k) {
+  case SDLK_ESCAPE:
+  case SDLK_RETURN:
+  case SDLK_KP_ENTER:
+  case SDLK_TAB:
+    return true;
+  default:
+    return (k >= SDLK_1 && k <= SDLK_8) || (k >= SDLK_F1 && k <= SDLK_F12);
+  }
+}
+
+/* The configurable hotkeys are exactly the player-config entries whose key is
+ * prefixed "hotkey_"; they are shown on the Hotkeys sub-screen, not the main
+ * Settings grid. */
+static bool is_hotkey_entry(size_t i) {
+  return strncmp(player_config_entries[i].key, "hotkey_", 7) == 0;
+}
+
+/* Press-to-bind editor for the hotkey entries.  Each row shows an action and
+ * its current key; clicking a row captures the next keypress.  Card-selection
+ * and bet-amount digit keys are intentionally not editable. */
+static void menu_display_hotkeys(PlayerConfig_t *player_config, SdlContext_t *sdl_context,
+                                 Font_t *font, const Path_t *path) {
+  const int label_x = g_layout.menu.margin_x;
+  const int box_x = label_x + 300;
+  const int box_w = 240;
+  const int row_h = 70;
+  int box_h;
+  TTF_SizeUTF8(font->fonts[FONT_DEFAULT], "Ag", NULL, &box_h);
+  box_h += g_layout_cfg.checkbox_pad;
+  const int first_row_y = g_layout.menu.title_y + 130;
+
+  /* Collect the hotkey entries (indices into player_config_entries). */
+  size_t idx[MAX_PLAYER_CONFIG_ENTRIES];
+  size_t n = 0;
+  for (size_t i = 0; i < player_config_entry_count; i++)
+    if (is_hotkey_entry(i))
+      idx[n++] = i;
+
+  UIRegistry_t reg = {0};
+
+  char *back_img_path = canfigger_path_join(path->data, "images/arrow_back.png");
+  ImageWidget_t *back_img =
+      back_img_path ? image_widget_create(back_img_path, g_layout_cfg.back_btn_size,
+                                          g_layout_cfg.back_btn_size)
+                    : NULL;
+  free(back_img_path);
+  if (back_img) {
+    back_img->base.rect.x = g_layout.menu.back_img_x;
+    back_img->base.rect.y = g_layout.menu.back_img_y;
+    ui_register(&reg, &back_img->base);
+  }
+
+  TextWidget_t *tw_title =
+      text_widget_create(_("Hotkeys"), font->fonts[FONT_TITLE], DC_TEXT_ON_LIGHT);
+  if (tw_title)
+    ui_widget_place(&tw_title->base, g_layout.menu.title_x, g_layout.menu.title_y);
+
+  TextWidget_t *tw_hint = text_widget_create(
+      _("Click an action, then press a key"), font->fonts[FONT_DEFAULT], DC_TEXT_ON_LIGHT);
+  if (tw_hint)
+    ui_widget_place(&tw_hint->base, label_x, first_row_y - 50);
+
+  /* Working copies of each key name, edited until Save. */
+  char keyname[MAX_PLAYER_CONFIG_ENTRIES][SIZEOF_HOTKEY_NAME];
+  TextWidget_t *tw_label[MAX_PLAYER_CONFIG_ENTRIES] = {0};
+  TextWidget_t *tw_value[MAX_PLAYER_CONFIG_ENTRIES] = {0};
+  SDL_Rect box[MAX_PLAYER_CONFIG_ENTRIES];
+
+  for (size_t r = 0; r < n; r++) {
+    const ConfigEntry *e = &player_config_entries[idx[r]];
+    const char *field = (const char *)((const uint8_t *)player_config + e->offset);
+    snprintf(keyname[r], sizeof(keyname[r]), "%s", field);
+
+    char label[32];
+    const char *suffix = strncmp(e->key, "hotkey_", 7) == 0 ? e->key + 7 : e->key;
+    snprintf(label, sizeof(label), "%s", suffix);
+    if (label[0])
+      label[0] = (char)toupper((unsigned char)label[0]);
+
+    int ry = first_row_y + (int)r * row_h;
+    box[r] = (SDL_Rect){box_x, ry, box_w, box_h};
+
+    tw_label[r] = text_widget_create(label, font->fonts[FONT_DEFAULT], DC_TEXT_ON_LIGHT);
+    if (tw_label[r])
+      ui_widget_place(&tw_label[r]->base, label_x, ry + 4);
+    tw_value[r] = text_widget_create(keyname[r], font->fonts[FONT_DEFAULT], DC_TEXT_ON_DARK);
+    if (tw_value[r])
+      ui_widget_place(&tw_value[r]->base, box_x + 10, ry + 4);
+  }
+
+  ButtonWidget_t *btn_save =
+      button_widget_create_styled(_("Save"), &ROLE_PRIMARY, font->fonts, (SDL_Keycode)0);
+  if (btn_save) {
+    btn_save->base.rect.x = label_x;
+    btn_save->base.rect.y = first_row_y + (int)n * row_h + 20;
+    ui_register(&reg, &btn_save->base);
+  }
+
+  int capturing = -1; /* row index being bound, or -1 */
+  bool running = true;
+  Uint32 anim_start = SDL_GetTicks();
+
+  while (running) {
+    SDL_Event e;
+    while (SDL_PollEvent(&e)) {
+      SDL_Point mouse_pos = {e.button.x, e.button.y};
+      if (btn_save)
+        btn_save->base.hovered = SDL_PointInRect(&mouse_pos, &btn_save->base.rect);
+      if (back_img)
+        back_img->base.hovered = SDL_PointInRect(&mouse_pos, &back_img->base.rect);
+
+      if (e.type == SDL_QUIT) {
+        SDL_PushEvent(&e);
+        running = false;
+      } else if (capturing >= 0 && e.type == SDL_KEYDOWN) {
+        SDL_Keycode sym = e.key.keysym.sym;
+        if (sym == SDLK_ESCAPE) {
+          if (tw_value[capturing])
+            text_widget_set_text(tw_value[capturing], keyname[capturing]);
+          capturing = -1;
+        } else if (is_reserved_hotkey(sym)) {
+          /* Stay in capture mode so the user can pick a different key. */
+          if (tw_hint)
+            text_widget_set_text(tw_hint, _("That key is reserved - pick another"));
+        } else {
+          const char *kn = SDL_GetKeyName(sym);
+          /* A key SDL can't name (some non-Latin layouts) is ignored so the
+           * action keeps its previous, still-resolvable binding. */
+          if (kn && *kn) {
+            snprintf(keyname[capturing], sizeof(keyname[capturing]), "%s", kn);
+            /* SDL names single keys uppercase ("C"); store lowercase to match
+             * the lowercase defaults.  Multi-char names (Space) untouched. */
+            if (keyname[capturing][1] == '\0')
+              keyname[capturing][0] = (char)tolower((unsigned char)keyname[capturing][0]);
+          }
+          if (tw_value[capturing])
+            text_widget_set_text(tw_value[capturing], keyname[capturing]);
+          capturing = -1;
+        }
+      } else if (e.type == SDL_KEYDOWN) {
+        if (e.key.keysym.sym == SDLK_ESCAPE)
+          running = false;
+      } else if (e.type == SDL_MOUSEBUTTONDOWN && e.button.button == SDL_BUTTON_LEFT) {
+        if (btn_save && SDL_PointInRect(&mouse_pos, &btn_save->base.rect)) {
+          btn_save->click.start_time = SDL_GetTicks();
+          for (size_t r = 0; r < n; r++)
+            player_config_set_field(player_config, idx[r], keyname[r]);
+          save_player_config(player_config);
+          init_hotkeys(player_config);
+          running = false;
+        } else if (back_img && SDL_PointInRect(&mouse_pos, &back_img->base.rect)) {
+          running = false;
+        } else {
+          for (size_t r = 0; r < n; r++) {
+            if (SDL_PointInRect(&mouse_pos, &box[r])) {
+              capturing = (int)r;
+              if (tw_value[r])
+                text_widget_set_text(tw_value[r], _("press a key..."));
+              if (tw_hint)
+                text_widget_set_text(tw_hint, _("Click an action, then press a key"));
+              break;
+            }
+          }
+        }
+      }
+    }
+
+    clear_screen(sdl_context->renderer);
+    if (tw_title)
+      ui_widget_render(&tw_title->base);
+    if (tw_hint)
+      ui_widget_render(&tw_hint->base);
+
+    SDL_Point mp;
+    SDL_GetMouseState(&mp.x, &mp.y);
+    for (size_t r = 0; r < n; r++) {
+      bool active = (capturing == (int)r);
+      bool hover = SDL_PointInRect(&mp, &box[r]);
+      SDL_SetRenderDrawColor(sdl_context->renderer, 25, 25, 25, 255);
+      SDL_RenderFillRect(sdl_context->renderer, &box[r]);
+      if (active)
+        SDL_SetRenderDrawColor(sdl_context->renderer, 240, 204, 48, 255);
+      else if (hover)
+        SDL_SetRenderDrawColor(sdl_context->renderer, 200, 200, 200, 255);
+      else
+        SDL_SetRenderDrawColor(sdl_context->renderer, 110, 110, 110, 255);
+      SDL_RenderDrawRect(sdl_context->renderer, &box[r]);
+      if (tw_label[r])
+        ui_widget_render(&tw_label[r]->base);
+      if (tw_value[r])
+        ui_widget_render(&tw_value[r]->base);
+    }
+
+    if (back_img) {
+      float t = (SDL_GetTicks() - anim_start) / 1000.0f;
+      if (t > 1.0f)
+        t = 1.0f;
+      int start_y = g_viewport.y + g_viewport.h * 2 / 3;
+      int end_y = g_viewport.y + g_viewport.h - g_layout_cfg.back_btn_size - 20;
+      back_img->base.rect.y = start_y + (int)(t * (end_y - start_y));
+    }
+
+    ui_render_all(&reg);
+    SDL_RenderPresent(sdl_context->renderer);
+    SDL_Delay(16);
+  }
+
+  for (size_t r = 0; r < n; r++) {
+    if (tw_label[r])
+      ui_widget_destroy(&tw_label[r]->base);
+    if (tw_value[r])
+      ui_widget_destroy(&tw_value[r]->base);
+  }
+  if (tw_title)
+    ui_widget_destroy(&tw_title->base);
+  if (tw_hint)
+    ui_widget_destroy(&tw_hint->base);
+  ui_destroy_all(&reg);
+}
+
 static void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *sdl_context,
                                   Font_t *font, const Path_t *path) {
   /* Two-column layout for nick, language, volume, turn_notify (host/port on startup screen) */
@@ -361,6 +588,10 @@ static void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *s
   size_t n_text_inputs = 0;
   size_t display_pos = 0;
   for (size_t i = 0; i < player_config_entry_count; i++) {
+    if (is_hotkey_entry(i)) {
+      inputs[i] = NULL;
+      continue;
+    }
     if (i == 1 || i == 2) {
       inputs[i] = NULL;
       continue;
@@ -420,7 +651,7 @@ static void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *s
   size_t text_input_indices[MAX_PLAYER_CONFIG_ENTRIES];
   size_t n_ti = 0;
   for (size_t i = 0; i < player_config_entry_count; i++)
-    if (i != bool_idx && i != 1 && i != 2)
+    if (!is_hotkey_entry(i) && i != bool_idx && i != 1 && i != 2)
       text_input_indices[n_ti++] = i;
   int focused_slot = 0; /* index into text_input_indices */
 
@@ -444,6 +675,16 @@ static void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *s
   btn_defaults->base.rect.y = btn_save->base.rect.y;
   ui_register(&reg, &btn_defaults->base);
 
+  ButtonWidget_t *btn_hotkeys =
+      button_widget_create_styled(_("Hotkeys"), &ROLE_PRIMARY, font->fonts, (SDL_Keycode)0);
+  if (!btn_hotkeys) {
+    ui_destroy_all(&reg);
+    return;
+  }
+  btn_hotkeys->base.rect.x = g_layout.menu.settings_x_third;
+  btn_hotkeys->base.rect.y = row_y[0];
+  ui_register(&reg, &btn_hotkeys->base);
+
   ButtonWidget_t *btn_quit_settings = button_widget_create_styled(
       "X", &ROLE_DANGER, font->fonts, (SDL_Keycode)0);
   if (btn_quit_settings) {
@@ -466,6 +707,8 @@ static void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *s
   {
     size_t rpos = 0;
     for (size_t i = 0; i < player_config_entry_count; i++) {
+      if (is_hotkey_entry(i))
+        continue;
       if (i == 1 || i == 2)
         continue;
       int col = (int)(rpos % 2);
@@ -489,6 +732,7 @@ static void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *s
       SDL_Point mouse_pos = {e.button.x, e.button.y};
       btn_save->base.hovered = SDL_PointInRect(&mouse_pos, &btn_save->base.rect);
       btn_defaults->base.hovered = SDL_PointInRect(&mouse_pos, &btn_defaults->base.rect);
+      btn_hotkeys->base.hovered = SDL_PointInRect(&mouse_pos, &btn_hotkeys->base.rect);
       if (back_img)
         back_img->base.hovered = SDL_PointInRect(&mouse_pos, &back_img->base.rect);
       if (btn_quit_settings)
@@ -529,6 +773,9 @@ static void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *s
               input_widget_set_text(inputs[i], player_config_entries[i].default_value);
             }
           }
+        } else if (SDL_PointInRect(&mouse_pos, &btn_hotkeys->base.rect)) {
+          btn_hotkeys->click.start_time = SDL_GetTicks();
+          menu_display_hotkeys(player_config, sdl_context, font, path);
         } else if (back_img && SDL_PointInRect(&mouse_pos, &back_img->base.rect)) {
           running = false;
         } else if (turn_cb && SDL_PointInRect(&mouse_pos, &turn_cb->base.rect)) {
@@ -958,6 +1205,7 @@ int main(int argc, char *argv[]) {
     fprintf(stderr, "Unable to load config\n");
     exit(EXIT_FAILURE);
   }
+  init_hotkeys(&player_config);
 
   /* Pre-render all 52 card text textures once.  card_widget_render
    * looks them up by (face_val, suit); otherwise it would call

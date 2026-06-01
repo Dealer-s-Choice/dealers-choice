@@ -58,6 +58,7 @@ typedef struct {
   int menu_connect_btn_y_offset;
   int menu_connect_host_y_offset;
   int menu_settings_x_right_offset;
+  int menu_settings_x_third_offset;
   int menu_settings_row_y_0;
   int menu_settings_row_y_1;
   int menu_settings_row_y_2;
@@ -111,6 +112,7 @@ typedef struct {
     int connect_host_y;       /* y of host input field */
     int quit_y;               /* y of top-right X quit button */
     int settings_x_right;     /* right column x for settings grid */
+    int settings_x_third;     /* third column x: Hotkeys button */
     int settings_row_y[3];    /* y of each settings row (label baseline) */
     int settings_save_y;      /* y of Save / Load Defaults buttons */
     int back_img_x;           /* x of settings back-arrow image */

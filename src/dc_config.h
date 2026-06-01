@@ -53,6 +53,8 @@ typedef struct ServerConfig_t {
   uint32_t max_connections_per_ip;
 } ServerConfig_t;
 
+#define SIZEOF_HOTKEY_NAME 16
+
 typedef struct {
   bool loaded;
   char nick[SIZEOF_NICK];
@@ -63,6 +65,13 @@ typedef struct {
   bool turn_notify;
   uint8_t connect_attempts;
   char password[MAX_INPUT_LENGTH];
+  char hotkey_check[SIZEOF_HOTKEY_NAME];
+  char hotkey_bet[SIZEOF_HOTKEY_NAME];
+  char hotkey_fold[SIZEOF_HOTKEY_NAME];
+  char hotkey_call[SIZEOF_HOTKEY_NAME];
+  char hotkey_raise[SIZEOF_HOTKEY_NAME];
+  char hotkey_complete[SIZEOF_HOTKEY_NAME];
+  char hotkey_discard[SIZEOF_HOTKEY_NAME];
 } PlayerConfig_t;
 
 typedef enum {
@@ -82,7 +91,7 @@ typedef struct {
   size_t size;               // Size of the target field
 } ConfigEntry;
 
-#define MAX_PLAYER_CONFIG_ENTRIES 16
+#define MAX_PLAYER_CONFIG_ENTRIES 24
 #define MAX_SERVER_CONFIG_ENTRIES 32
 #define MAX_LAYOUT_CONFIG_ENTRIES 64
 

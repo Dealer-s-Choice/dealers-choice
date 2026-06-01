@@ -50,6 +50,12 @@ const ConfigEntry player_config_entries[] = {
      sizeof(uint8_t)},
     {"password", CFG_TYPE_STRING, "", offsetof(PlayerConfig_t, password),
      sizeof(((PlayerConfig_t *)0)->password)},
+#define HK(name, def)                                                                              \
+  {"hotkey_" #name, CFG_TYPE_STRING, def, offsetof(PlayerConfig_t, hotkey_##name),                  \
+   SIZEOF_HOTKEY_NAME}
+    HK(check, "c"),    HK(bet, "b"),      HK(fold, "f"), HK(call, "c"),
+    HK(raise, "r"),    HK(complete, "r"), HK(discard, "d"),
+#undef HK
     {0}};
 
 const ConfigEntry server_config_entries[] = {
@@ -111,6 +117,7 @@ const ConfigEntry layout_config_entries[] = {
     LC("menu_connect_btn_y_offset",  "160", menu_connect_btn_y_offset),
     LC("menu_connect_host_y_offset", "220", menu_connect_host_y_offset),
     LC("menu_settings_x_right_offset", "700", menu_settings_x_right_offset),
+    LC("menu_settings_x_third_offset", "1300", menu_settings_x_third_offset),
     LC("menu_settings_row_y_0",   "160",  menu_settings_row_y_0),
     LC("menu_settings_row_y_1",   "360",  menu_settings_row_y_1),
     LC("menu_settings_row_y_2",   "560",  menu_settings_row_y_2),
