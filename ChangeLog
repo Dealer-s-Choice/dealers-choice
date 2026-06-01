@@ -1,4 +1,6 @@
 - (in-progress)
+  + Game-play action hotkeys are now configurable via a press-to-bind Hotkeys
+    screen (Settings > Hotkeys), persisted in player.conf (#102)
   + Card suits rendered from bundled SVGs (data/images/suits/), sized larger
     than the face letter for accessibility; --card-test opens an A+10 grid
   * regression fix: when a player times out during the discard phase the status

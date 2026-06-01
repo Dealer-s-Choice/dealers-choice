@@ -45,6 +45,7 @@
 #include "game.h"
 #include "globals.h"
 #include "graphics.h"
+#include "hotkeys.h"
 #include "widgets/button.h"
 #include "widgets/card_text_atlas.h"
 #include "widgets/dealer.h"
@@ -885,15 +886,27 @@ static void layout_amount_buttons(ButtonWidget_t **b, const size_t count) {
 
 typedef struct {
   const char *text;
-  SDL_Keycode key;
 } ActionButtonAttrs;
 
-ActionButtonAttrs action_button_attrs[MAX_ACTIONS] = {
-    [CHECK] = {N_("Check"), SDLK_c},     [BET] = {N_("Bet"), SDLK_b},
-    [FOLD] = {N_("Fold"), SDLK_f},       [CALL] = {N_("Call"), SDLK_c},
-    [RAISE] = {N_("Raise"), SDLK_r},     [COMPLETE] = {N_("Complete"), SDLK_r},
-    [DISCARD] = {N_("Discard"), SDLK_d},
+static const ActionButtonAttrs action_button_attrs[MAX_ACTIONS] = {
+    [CHECK] = {N_("Check")},     [BET] = {N_("Bet")},
+    [FOLD] = {N_("Fold")},       [CALL] = {N_("Call")},
+    [RAISE] = {N_("Raise")},     [COMPLETE] = {N_("Complete")},
+    [DISCARD] = {N_("Discard")},
 };
+
+static SDL_Keycode action_hotkey(int action) {
+  switch (action) {
+  case CHECK:    return g_hotkey_cfg.check;
+  case BET:      return g_hotkey_cfg.bet;
+  case FOLD:     return g_hotkey_cfg.fold;
+  case CALL:     return g_hotkey_cfg.call;
+  case RAISE:    return g_hotkey_cfg.raise;
+  case COMPLETE: return g_hotkey_cfg.complete;
+  case DISCARD:  return g_hotkey_cfg.discard;
+  default:       return SDLK_UNKNOWN;
+  }
+}
 
 static void layout_action_buttons(ButtonWidget_t **b) {
   for (int i = 0; i < MAX_ACTIONS; i++) {
@@ -1181,7 +1194,7 @@ static EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
   ButtonWidget_t *action_bw[MAX_ACTIONS];
   for (int i = 0; i < MAX_ACTIONS; i++) {
     action_bw[i] = button_widget_create_styled(
-        action_button_attrs[i].text, &ROLE_PRIMARY, font->fonts, action_button_attrs[i].key);
+        action_button_attrs[i].text, &ROLE_PRIMARY, font->fonts, action_hotkey(i));
   }
   layout_action_buttons(action_bw);
 

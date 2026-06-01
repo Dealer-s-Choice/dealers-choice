@@ -88,3 +88,29 @@ ending.
 
 You can see the available languages in the [po
 directory](https://github.com/Dealer-s-Choice/dealers_choice/tree/trunk/po).
+
+## Game-play hotkeys
+
+The keys used for in-game actions (check, bet, fold, call, raise, complete,
+discard) are configured in your `player.conf`. Defaults are written on
+first run, so existing entries can simply be edited:
+
+```
+hotkey_check = c
+hotkey_bet = b
+hotkey_fold = f
+hotkey_call = c
+hotkey_raise = r
+hotkey_complete = r
+hotkey_discard = d
+```
+
+Values may be a single letter or an SDL key name (e.g. `Space`, `Up`, `Home`).
+
+Some keys are reserved and the editor will refuse them: `Esc`,
+`Enter`/`Return`, `Tab`, the function keys `F1`–`F12`, and the digit keys
+`1`–`8` (the bet-amount buttons). Menu-screen keys are not configurable
+either. (Cards to discard are selected with the mouse, not the keyboard.)
+
+`check` and `call` may safely share a key (they're never offered at the
+same time), and likewise `raise` and `complete`.

@@ -83,6 +83,7 @@ void layout_compute(void) {
   g_layout.menu.connect_host_y     = vp.y + c->menu_connect_host_y_offset;
   g_layout.menu.quit_y             = vp.y + c->margin;
   g_layout.menu.settings_x_right   = vp.x + c->menu_settings_x_right_offset;
+  g_layout.menu.settings_x_third   = vp.x + c->menu_settings_x_third_offset;
   g_layout.menu.settings_row_y[0]  = vp.y + c->menu_settings_row_y_0;
   g_layout.menu.settings_row_y[1]  = vp.y + c->menu_settings_row_y_1;
   g_layout.menu.settings_row_y[2]  = vp.y + c->menu_settings_row_y_2;

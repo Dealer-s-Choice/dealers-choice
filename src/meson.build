@@ -22,6 +22,7 @@ shared_src = files(
   'game.c',
   'globals.c',
   'graphics.c',
+  'hotkeys.c',
   'layout.c',
   'links.c',
   'net.c',
