@@ -872,6 +872,12 @@ static void determine_winner(ArgsBroadcastGameState_t *args, RoundResults *resul
 
   uint8_t pl_count = args->game_state->player_count;
 
+  /* All players left the hand by showdown (e.g. disconnects): nothing to
+   * compare or award.  Guards POKEVAL_compare_hands' assert(count > 0) and the
+   * pot / n_winners divide below (a /0 in release where the assert is gone). */
+  if (pl_count == 0)
+    return;
+
   Player_t *ptr = *args->starting_turn;
 
   /* Do not truncate or sort hands here — clients display all dealt cards and
