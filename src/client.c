@@ -1828,7 +1828,7 @@ static EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
     while (SDL_PollEvent(&event)) {
       for (int card_n = 0; card_n < MAX_HAND_SIZE; card_n++) {
         DH_Card *card = &turn->hand.card[card_n];
-        if (!DH_is_card_null(*card) || !DH_is_card_null(*card)) {
+        if (!DH_is_card_null(*card)) {
           card_context[my_id][card_n].base.hovered =
               SDL_PointInRect(&mouse_pos, &card_context[my_id][card_n].base.rect);
           if (card_context[my_id][card_n].base.hovered && event.type == SDL_MOUSEBUTTONDOWN &&
