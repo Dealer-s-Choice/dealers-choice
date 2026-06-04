@@ -53,6 +53,7 @@
 #include "widgets/indicator.h"
 #include "widgets/nick.h"
 #include "widgets/ping.h"
+#include "widgets/step_scale.h"
 #include "widgets/text.h"
 
 #include "util.h"
@@ -877,15 +878,6 @@ enum {
   MAX_ACTIONS,
 };
 
-static void layout_amount_buttons(ButtonWidget_t **b, const size_t count) {
-  int left_margin = g_layout.action_btn_x;
-  for (size_t i = 0; i < count; i++) {
-    b[i]->base.rect.x = left_margin;
-    b[i]->base.rect.y = g_viewport.h - (b[i]->base.rect.h * 4);
-    left_margin += b[i]->base.rect.w + 10;
-  }
-}
-
 typedef struct {
   const char *text;
 } ActionButtonAttrs;
@@ -1203,37 +1195,18 @@ static EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
 
   TextWidget_t *discard_hint_tw = text_widget_create(
       "You may only discard a maximum of 3 cards", font->fonts[FONT_BOLD], DC_DISCARD_TEXT);
-  TextWidget_t *slider_amount_tw =
-      text_widget_create("0", font->fonts[FONT_CARD], DC_TEXT_ON_DARK);
   uint8_t last_max_allowed = 3;
 
   static const SDL_Keycode bet_hotkeys[MAX_BET_AMOUNTS] = {
       SDLK_1, SDLK_2, SDLK_3, SDLK_4, SDLK_5, SDLK_6, SDLK_7, SDLK_8,
   };
   const size_t n_bet_amounts = game_settings->bet_amount_count;
-  struct Amount_t {
-    uint32_t value;
-    SDL_Keycode hotkey;
-  } amount[MAX_BET_AMOUNTS];
-  for (size_t i = 0; i < n_bet_amounts; i++) {
-    amount[i].value = game_settings->bet_amounts[i];
-    amount[i].hotkey = bet_hotkeys[i];
-  }
 
-  ButtonWidget_t *amount_bw[MAX_BET_AMOUNTS] = {0};
-
-  char amount_str[MAX_BET_AMOUNTS][16]; // enough for uint32_t
-
-  for (size_t i = 0; i < n_bet_amounts; i++) {
-    snprintf(amount_str[i], sizeof(amount_str[i]), "%" PRIu32, amount[i].value);
-    amount_bw[i] = button_widget_create_styled(
-        amount_str[i], &ROLE_ALT, font->fonts, amount[i].hotkey);
-  }
-  if (n_bet_amounts > 0) {
-    amount_bw[0]->base.selected = true;
-    client_state.selected_amount = amount[0].value;
-  }
-  layout_amount_buttons(amount_bw, n_bet_amounts);
+  /* Bet amount is chosen on a notched step scale (widgets/step_scale.c). */
+  StepScaleWidget_t *bet_scale = step_scale_create(game_settings->bet_amounts, bet_hotkeys,
+                                                   (int)n_bet_amounts, font->fonts[FONT_CARD]);
+  if (n_bet_amounts > 0)
+    client_state.selected_amount = game_settings->bet_amounts[0];
 
   CardWidget_t card_context[MAX_PLAYERS][MAX_HAND_SIZE];
 
@@ -1511,9 +1484,6 @@ static EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
         game_btn_ban->interactive && SDL_PointInRect(&mouse_pos, &game_btn_ban->base.rect);
     game_btn_quit->base.hovered = SDL_PointInRect(&mouse_pos, &game_btn_quit->base.rect);
 
-    if (game_state->prev_bet_amount == 0)
-      for (size_t i = 0; i < n_bet_amounts; i++)
-        amount_bw[i]->interactive = true;
 
     bool new_coin = false;
 
@@ -1786,11 +1756,10 @@ static EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
 
     /* ===================== Dashboard ===================== *
      * Bottom-center framed panel above the local hand:
-     *   [ bet-amount slider ] | [ timer ] | [ action buttons ]
-     * Drawn every frame. The amount_bw[] widgets are repositioned as invisible
-     * per-notch hit targets (so the existing click/hotkey selection logic just
-     * works); the action buttons are placed into dash_act_cell and rendered by
-     * the action block below (local turn only); the timer is drawn at
+     *   [ bet-amount step scale ] | [ timer ] | [ action buttons ]
+     * Drawn every frame. The bet_scale (widgets/step_scale.c) is laid out + drawn
+     * in the left cell; the action buttons are placed into dash_act_cell and
+     * rendered by the action block below (local turn only); the timer is drawn at
      * dash_timer_center later, only while a countdown is active. */
     SDL_Rect dash_act_cell = {0};
     SDL_Point dash_timer_center = {0};
@@ -1798,7 +1767,6 @@ static EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
       const LayoutConfig_t *cfg = &g_layout_cfg;
       SDL_Renderer *r = sdl_context->renderer;
       const int pad = cfg->dash_pad;
-      const int n_amt = (int)n_bet_amounts;
       const int btn_h = action_bw[FOLD]->base.rect.h;
       const int timer_d = cfg->circle_timer_r * 2;
 
@@ -1846,38 +1814,10 @@ static EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
       dash_act_cell =
           (SDL_Rect){act_cell_x + pad, dash_y + (dash_h - btn_h) / 2, act_inner, btn_h};
 
-      /* ---- bet-amount slider (left cell) ---- */
-      int track_x = slider_cell_x + pad;
-      int track_w = slider_inner;
-      int track_cy = dash_y + dash_h - pad - cfg->card_h / 4;
-
-      char amt_buf[16];
-      snprintf(amt_buf, sizeof amt_buf, "%" PRIu32, client_state.selected_amount);
-      text_widget_set_text(slider_amount_tw, amt_buf);
-      ui_widget_place(&slider_amount_tw->base,
-                      track_x + (track_w - slider_amount_tw->base.rect.w) / 2, dash_y + pad);
-      ui_widget_render(&slider_amount_tw->base);
-
-      draw_dash_divider(r, (SDL_Rect){track_x, track_cy - 4, track_w, 8}); /* track bar */
-
-      if (n_amt > 0) {
-        int seg_w = track_w / n_amt;
-        int end_pad = seg_w / 4; /* half the old seg_w/2 gap before first / after last */
-        int span = track_w - 2 * end_pad;
-        for (int i = 0; i < n_amt; i++) {
-          int seg_x = track_x + i * seg_w;
-          int cx = (n_amt == 1) ? track_x + track_w / 2
-                                : track_x + end_pad + span * i / (n_amt - 1);
-          /* invisible hit target = the whole segment (click on or near the notch) */
-          amount_bw[i]->base.rect = (SDL_Rect){seg_x, dash_y + pad, seg_w, dash_h - 2 * pad};
-          bool sel = amount_bw[i]->base.selected;
-          SDL_Color nc = sel ? (SDL_Color){255, 215, 0, 255} : (SDL_Color){235, 235, 235, 255};
-          int nw = sel ? 8 : 4;
-          int nh = sel ? cfg->card_h / 2 : cfg->card_h / 3;
-          SDL_SetRenderDrawColor(r, nc.r, nc.g, nc.b, 255);
-          SDL_RenderFillRect(r, &(SDL_Rect){cx - nw / 2, track_cy - nh / 2, nw, nh});
-        }
-      }
+      /* ---- bet-amount step scale (left cell) ---- */
+      step_scale_layout(bet_scale, (SDL_Rect){slider_cell_x + pad, dash_y + pad, slider_inner,
+                                              dash_h - 2 * pad});
+      ui_widget_render(&bet_scale->base);
     }
 
     bool my_turn = *turn_id == my_id;
@@ -2008,11 +1948,11 @@ static EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
 
       // Bet amount is chosen on the slider (drawn in the dashboard above). Here we
       // only disable amounts at/below the current bet so the slider can't pick them.
+      // Disable bet amounts at/below the current bet so the scale can't pick them.
       if (show_amounts) {
-        for (size_t i = 0; i < n_bet_amounts; i++) {
-          if (game_state->prev_bet_amount > amount[i].value && action_bw[RAISE]->interactive)
-            amount_bw[i]->interactive = false;
-        }
+        for (size_t i = 0; i < n_bet_amounts; i++)
+          bet_scale->enabled[i] = !(game_state->prev_bet_amount > game_settings->bet_amounts[i] &&
+                                    action_bw[RAISE]->interactive);
       }
     }
 
@@ -2075,34 +2015,10 @@ static EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
       for (int i = 0; i < MAX_ACTIONS; i++) {
         action_bw[i]->base.hovered = SDL_PointInRect(&mouse_pos, &action_bw[i]->base.rect);
       }
-      bool amount_selected = false;
-      for (size_t i = 0; i < n_bet_amounts; i++) {
-        if (!amount_bw[i]->interactive && amount_bw[i]->base.selected) {
-          amount_bw[i]->base.selected = false;
-          size_t next = (i + 1 < n_bet_amounts) ? i + 1 : 0;
-          amount_bw[next]->base.selected = true;
-          client_state.selected_amount = amount[next].value;
-        }
-
-        amount_bw[i]->base.hovered = SDL_PointInRect(&mouse_pos, &amount_bw[i]->base.rect);
-        amount_selected =
-            (amount_bw[i]->interactive &&
-             ((amount_bw[i]->base.hovered && event.type == SDL_MOUSEBUTTONDOWN) ||
-              (event.type == SDL_KEYDOWN && event.key.keysym.sym == amount_bw[i]->hotkey)));
-        if (amount_selected) {
-          if (!amount_bw[i]->base.selected) {
-            for (size_t j = 0; j < n_bet_amounts; j++) {
-              amount_bw[j]->base.selected = false;
-            }
-            amount_bw[i]->base.selected = true;
-            amount_bw[i]->click.start_time = SDL_GetTicks();
-            client_state.selected_amount = amount[i].value;
-          }
-          break;
-        }
-      }
-      if (amount_selected)
+      if (step_scale_handle(bet_scale, &event, mouse_pos)) {
+        client_state.selected_amount = step_scale_value(bet_scale);
         break;
+      }
 
       if (event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_LEFT &&
           game_state->player[my_id].is_admin) {
@@ -2243,10 +2159,8 @@ static EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
       ui_widget_destroy(&open_seat_tw[i]->base);
   for (int i = 0; i < MAX_ACTIONS; i++)
     ui_widget_destroy(&action_bw[i]->base);
-  for (size_t i = 0; i < n_bet_amounts; i++)
-    ui_widget_destroy(&amount_bw[i]->base);
   ui_widget_destroy(&discard_hint_tw->base);
-  ui_widget_destroy(&slider_amount_tw->base);
+  step_scale_destroy(bet_scale);
   for (int i = 0; i < SIZEOF_STATUS_MSGS; i++)
     ui_widget_destroy(&status_tw[i]->base);
   ui_destroy_all(&registry);
