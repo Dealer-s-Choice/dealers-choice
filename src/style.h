@@ -50,6 +50,9 @@ extern const SDL_Color DC_INDICATOR_GAME_BG;
 extern const SDL_Color DC_INDICATOR_GAME_FG;
 
 extern const SDL_Color DC_TEXT_ON_DARK;
+extern const SDL_Color DC_DISCARD_TEXT;
+extern const SDL_Color DC_DASH_BG;
+extern const SDL_Color DC_DASH_DIVIDER;
 extern const SDL_Color DC_TEXT_ON_LIGHT;
 extern const SDL_Color DC_TEXT_MUTED;
 extern const SDL_Color DC_LINK_NORMAL;

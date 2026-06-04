@@ -58,11 +58,32 @@ void layout_compute(void) {
   g_layout.player_pos[4].x = right_x;
   g_layout.player_pos[4].y = vp.y + c->card_h * 7;
 
-  g_layout.timer.x = g_center.x;
-  g_layout.timer.y = vp.y + vp.h - c->margin - c->circle_timer_r;
+  /* Local player's hand sits bottom-center. x is the row CENTER (layout_seats_for
+   * subtracts half the row width); y is the row top, lifted to leave room for the
+   * local nameplate drawn just below the cards. */
+  g_layout.local_seat.x = g_center.x + c->dash_x_offset;
+  g_layout.local_seat.y = vp.y + vp.h - c->card_h * 3;
 
   g_layout.table_center.x = g_center.x;
-  g_layout.table_center.y = g_center.y;
+  {
+    /* Pot sits halfway between the community-card row (top) and the dashboard
+     * (bottom). Its scatter radius is bounded so coins clear the community cards,
+     * the dashboard, the message window, and the right seat column. */
+    int community_bottom = vp.y + c->community_top_offset + c->card_h;
+    int dash_h = c->circle_timer_r * 2 + 2 * c->dash_pad;
+    int dash_top = g_layout.local_seat.y - c->btn_hand_gap - dash_h;
+    g_layout.table_center.y = (community_bottom + dash_top) / 2;
+
+    int up = g_layout.table_center.y - community_bottom;
+    int left = g_layout.table_center.x - (vp.x + c->msg_panel_x_offset + c->msg_panel_w);
+    int right = right_x - g_layout.table_center.x;
+    int rad = up;
+    if (left < rad)
+      rad = left;
+    if (right < rad)
+      rad = right;
+    g_layout.pot_radius = rad > 0 ? rad : 0;
+  }
 
   g_layout.msg_panel.x = vp.x + c->msg_panel_x_offset;
   g_layout.msg_panel.y = g_center.y;
@@ -74,6 +95,11 @@ void layout_compute(void) {
   g_layout.msg_panel_right = g_layout.msg_panel.x + g_layout.msg_panel.w;
 
   g_layout.action_btn_x = g_layout.msg_panel_right + c->action_btn_x_gap;
+
+  /* Countdown timer sits directly above the status panel, centered on it, with
+   * timer_status_gap px between the timer's bottom edge and the panel's top. */
+  g_layout.timer.x = g_layout.msg_panel.x + g_layout.msg_panel.w / 2;
+  g_layout.timer.y = g_layout.msg_panel.y - c->timer_status_gap - c->circle_timer_r;
 
   /* Menu screens (connect + settings) */
   g_layout.menu.title_x            = g_center.x * 2 / 3;
@@ -96,4 +122,28 @@ void layout_compute(void) {
   g_layout.lobby.waiting_y = vp.y + vp.h - c->lobby_waiting_from_bottom;
   g_layout.lobby.kick_x    = vp.x + vp.w / c->lobby_kick_x_divisor;
   g_layout.lobby.kick_y    = vp.y + vp.h * c->lobby_kick_y_pct / 100;
+}
+
+SDL_Rect rect_anchored(SDL_Point ref, int w, int h, Anchor_t a, int dx, int dy) {
+  int col = a % 3; /* 0 left, 1 center, 2 right */
+  int row = a / 3; /* 0 top, 1 mid, 2 bottom */
+  SDL_Rect r = {ref.x - col * w / 2 + dx, ref.y - row * h / 2 + dy, w, h};
+  return r;
+}
+
+void layout_seats_for(SDL_Point out[MAX_PLAYERS], int local_id, int local_row_w) {
+  if (local_id < 0 || local_id >= MAX_PLAYERS) {
+    for (int g = 0; g < MAX_PLAYERS; g++)
+      out[g] = g_layout.player_pos[g];
+    return;
+  }
+  for (int g = 0; g < MAX_PLAYERS; g++) {
+    if (g == local_id) {
+      out[g].x = g_layout.local_seat.x - local_row_w / 2;
+      out[g].y = g_layout.local_seat.y;
+    } else {
+      int d = (g - local_id + MAX_PLAYERS) % MAX_PLAYERS; /* 1..MAX_PLAYERS-1 */
+      out[g] = g_layout.player_pos[d - 1];
+    }
+  }
 }

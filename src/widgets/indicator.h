@@ -44,6 +44,7 @@ typedef struct {
 
   int cx, cy; // oval center
   int rx, ry; // oval radii
+  bool animated; // false = static fill (e.g. a greyed / inactive indicator)
 } Indicator_t;
 /*
 ChatGPT:
