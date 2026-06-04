@@ -44,8 +44,8 @@ An admin cannot kick or ban themselves.
 
 ### Bet amounts
 
-The bet amount buttons shown during a game are configured as a
-comma-separated list:
+The bet amounts shown during a game (as a notched bet-amount scale) are
+configured as a comma-separated list:
 
 ```
 bet_amounts = list, 100, 250, 500
@@ -109,7 +109,7 @@ Values may be a single letter or an SDL key name (e.g. `Space`, `Up`, `Home`).
 
 Some keys are reserved and the editor will refuse them: `Esc`,
 `Enter`/`Return`, `Tab`, the function keys `F1`–`F12`, and the digit keys
-`1`–`8` (the bet-amount buttons). Menu-screen keys are not configurable
+`1`–`8` (the bet-amount scale). Menu-screen keys are not configurable
 either. (Cards to discard are selected with the mouse, not the keyboard.)
 
 `check` and `call` may safely share a key (they're never offered at the

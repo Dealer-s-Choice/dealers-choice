@@ -89,6 +89,19 @@ typedef struct {
   int checkbox_pad;
   int input_text_pad_x;
   int input_h_pad;
+  int timer_status_gap;      /* px between status panel top and timer bottom */
+  int community_top_offset;  /* y of community card row from viewport top */
+  int discard_overlay_alpha; /* alpha of the discard-hint overlay over the hand */
+  int btn_hand_gap;          /* px between action button row and local hand top */
+  int dash_pad;              /* dashboard inner padding */
+  int dash_divider;          /* dark-green 3D divider between dashboard cells */
+  int dash_row_div;          /* dark-green 3D border between amount and action rows */
+  int dash_btn_div;          /* thin 3D border between adjacent buttons in a row */
+  int amount_btn_min_w;      /* readable floor for shrunk amount buttons */
+  int slider_w;              /* bet-amount slider track width */
+  int indicator_cell_pad;    /* padding around each indicator inside its cell (the "T" top) */
+  int dash_x_offset;         /* shift the whole dashboard right of window center */
+  int act_btn_gap;           /* horizontal gap between adjacent action buttons */
 } LayoutConfig_t;
 
 extern LayoutConfig_t g_layout_cfg;
@@ -96,9 +109,11 @@ extern LayoutConfig_t g_layout_cfg;
 LayoutConfig_t get_layout_config(const char *data_dir);
 
 typedef struct {
-  SDL_Point player_pos[MAX_PLAYERS]; /* top-left origin of each player's card row */
+  SDL_Point player_pos[MAX_PLAYERS]; /* fixed ring anchors (opponent seats) A0..A4 */
+  SDL_Point local_seat;              /* local player's hand: center x, row-top y (bottom-center) */
   SDL_Point timer;                   /* center of the circular countdown timer */
   SDL_Point table_center;            /* center of the table (pot coin landing point) */
+  int       pot_radius;              /* max pot-coin scatter radius (collision-bounded) */
   SDL_Rect  msg_panel;               /* status message panel rect */
   int       msg_panel_right;         /* x of right edge of msg_panel */
   int       action_btn_x;            /* left margin for action / amount buttons */
@@ -135,5 +150,23 @@ void layout_init(int status_font_line_h);
 /* Recompute all positions from g_viewport / g_center.
  * Called by layout_init and again by toggle_fullscreen. */
 void layout_compute(void);
+
+/* ---- Geometry helpers (anchor-relative placement) ----------------------- */
+
+/* Which point of a w*h box is pinned to the reference point.
+ * column = a % 3 (0 left, 1 center, 2 right); row = a / 3 (0 top, 1 mid, 2 bot). */
+typedef enum {
+  ANCHOR_TOP_LEFT,    ANCHOR_TOP_CENTER,    ANCHOR_TOP_RIGHT,
+  ANCHOR_MID_LEFT,    ANCHOR_CENTER,        ANCHOR_MID_RIGHT,
+  ANCHOR_BOTTOM_LEFT, ANCHOR_BOTTOM_CENTER, ANCHOR_BOTTOM_RIGHT,
+} Anchor_t;
+
+/* Box of size w*h whose `a` anchor sits at ref, then shifted by (dx, dy). */
+SDL_Rect rect_anchored(SDL_Point ref, int w, int h, Anchor_t a, int dx, int dy);
+
+/* Fill out[game_id] with each player's card-row top-left origin, rotated so the
+ * local player is bottom-center (g_layout.local_seat) and opponents fill the
+ * fixed ring clockwise. local_row_w centers the local player's row. */
+void layout_seats_for(SDL_Point out[MAX_PLAYERS], int local_id, int local_row_w);
 
 #endif

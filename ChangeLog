@@ -1,8 +1,12 @@
 - (in-progress)
+  + Game-play display overhaul: the local player is now seated bottom-centre
+    with opponents rotating clockwise; a bottom dashboard holds the bet-amount
+    slider, countdown timer and action buttons; an anchor-based layout system
+    makes future layout changes cheaper; and card suits are rendered from
+    bundled SVGs (data/images/suits/) sized larger than the face letter for
+    accessibility (--card-test opens an A+10 grid)
   + Game-play action hotkeys are now configurable via a press-to-bind Hotkeys
     screen (Settings > Hotkeys), persisted in player.conf (#102)
-  + Card suits rendered from bundled SVGs (data/images/suits/), sized larger
-    than the face letter for accessibility; --card-test opens an A+10 grid
   * regression fix: when a player times out during the discard phase the status
     message now correctly shows they drew 0 cards; the regression was introduced
     in 2fd55fb when explicit timeout handling was added to handle_draw() but the

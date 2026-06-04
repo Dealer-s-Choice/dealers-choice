@@ -41,6 +41,9 @@ const SDL_Color DC_INDICATOR_GAME_BG = {255, 165,   0, 255};
 const SDL_Color DC_INDICATOR_GAME_FG = {  0,   0,   0, 255};
 
 const SDL_Color DC_TEXT_ON_DARK  = {255, 255, 255, 255};
+const SDL_Color DC_DISCARD_TEXT  = {255, 255,   0, 255};
+const SDL_Color DC_DASH_BG       = {  0,   0,   0, 130};
+const SDL_Color DC_DASH_DIVIDER  = { 25,  75,  35, 255};
 const SDL_Color DC_TEXT_ON_LIGHT = {  0,   0,   0, 255};
 const SDL_Color DC_TEXT_MUTED    = {200, 200, 200, 255};
 const SDL_Color DC_LINK_NORMAL   = {  0,   0,   0, 255};

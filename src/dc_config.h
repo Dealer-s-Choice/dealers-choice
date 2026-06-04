@@ -93,7 +93,7 @@ typedef struct {
 
 #define MAX_PLAYER_CONFIG_ENTRIES 24
 #define MAX_SERVER_CONFIG_ENTRIES 32
-#define MAX_LAYOUT_CONFIG_ENTRIES 64
+#define MAX_LAYOUT_CONFIG_ENTRIES 80
 
 extern const ConfigEntry player_config_entries[];
 extern const ConfigEntry server_config_entries[];

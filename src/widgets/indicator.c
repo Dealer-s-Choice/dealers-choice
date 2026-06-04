@@ -81,14 +81,20 @@ void indicator_render(UIWidget_t *w) {
   };
 
   SDL_Color base = ind->bg_color;
-  float t = SDL_GetTicks() * 0.001f;
   SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_BLEND);
-  for (int i = 0; i < 7; i++) {
-    float a = t * layers[i].speed + layers[i].phase;
-    int ox = (int)(sinf(a) * ind->rx * layers[i].fx);
-    int oy = (int)(cosf(a * 0.7f) * ind->ry * layers[i].fy);
-    SDL_SetRenderDrawColor(r, base.r, base.g, base.b, layers[i].alpha);
-    draw_filled_ellipse(r, ind->cx + ox, ind->cy + oy, ind->rx, ind->ry);
+  if (ind->animated) {
+    float t = SDL_GetTicks() * 0.001f;
+    for (int i = 0; i < 7; i++) {
+      float a = t * layers[i].speed + layers[i].phase;
+      int ox = (int)(sinf(a) * ind->rx * layers[i].fx);
+      int oy = (int)(cosf(a * 0.7f) * ind->ry * layers[i].fy);
+      SDL_SetRenderDrawColor(r, base.r, base.g, base.b, layers[i].alpha);
+      draw_filled_ellipse(r, ind->cx + ox, ind->cy + oy, ind->rx, ind->ry);
+    }
+  } else {
+    /* inactive: a single static tint, no motion */
+    SDL_SetRenderDrawColor(r, base.r, base.g, base.b, 175);
+    draw_filled_ellipse(r, ind->cx, ind->cy, ind->rx, ind->ry);
   }
   SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_NONE);
 
@@ -112,6 +118,7 @@ static Indicator_t *indicator_init(const char *text, TTF_Font *font,
 
   ind->renderer = renderer;
   ind->bg_color = bg_color;
+  ind->animated = true;
 
   ind->text = text_widget_create(text, font, fg_color);
   if (!ind->text) {

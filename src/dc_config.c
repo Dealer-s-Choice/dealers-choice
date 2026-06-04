@@ -148,6 +148,19 @@ const ConfigEntry layout_config_entries[] = {
     LC("checkbox_pad",             "16",  checkbox_pad),
     LC("input_text_pad_x",          "8",  input_text_pad_x),
     LC("input_h_pad",              "16",  input_h_pad),
+    LC("timer_status_gap",         "50",  timer_status_gap),
+    LC("community_top_offset",     "60",  community_top_offset),
+    LC("discard_overlay_alpha",   "180",  discard_overlay_alpha),
+    LC("btn_hand_gap",             "20",  btn_hand_gap),
+    LC("dash_pad",                 "12",  dash_pad),
+    LC("dash_divider",             "20",  dash_divider),
+    LC("dash_row_div",              "8",  dash_row_div),
+    LC("dash_btn_div",              "4",  dash_btn_div),
+    LC("amount_btn_min_w",         "64",  amount_btn_min_w),
+    LC("slider_w",                "320",  slider_w),
+    LC("indicator_cell_pad",       "20",  indicator_cell_pad),
+    LC("dash_x_offset",           "220",  dash_x_offset),
+    LC("act_btn_gap",              "20",  act_btn_gap),
     {0}};
 
 #undef LC
