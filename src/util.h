@@ -67,6 +67,25 @@ void verbose_printf(const char *fmt, ...);
 
 void verbose_puts(const char *s);
 
+typedef enum {
+  DC_LOG_INFO,
+  DC_LOG_WARN,
+  DC_LOG_ERROR,
+} DCLogLevel_t;
+
+/* Timestamped logger: prints "YYYY-MM-DD HH:MM:SS [LEVEL] <msg>\n" to stderr.
+ * INFO and WARN are gated by --verbose; ERROR always prints. The message must
+ * NOT include a trailing newline (dc_log appends one). */
+#if defined(__GNUC__)
+void dc_log(DCLogLevel_t level, const char *fmt, ...) __attribute__((format(printf, 2, 3)));
+#else
+void dc_log(DCLogLevel_t level, const char *fmt, ...);
+#endif
+
+/* Redirect dc_log output to a file (appended, line-buffered). Used by
+ * --log-file, mainly so GUI clients with no console can capture diagnostics. */
+void dc_log_set_file(const char *path);
+
 void parse_signed(const char *s, long minv, long maxv, long *out);
 
 void parse_unsigned(const char *s, unsigned long maxv, unsigned long *out);

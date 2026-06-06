@@ -7,6 +7,9 @@
   + Configurable game-play action hotkeys via a press-to-bind Hotkeys screen
     (#102)
   + The seat that opens each betting round is marked in its nameplate (#264)
+  + Optional timestamped diagnostic logging (--log-file): server slow-send /
+    high-ping / slow-action warnings and client frame-stall / slow-audio
+    warnings, all gated by --verbose (#307)
   * regression fix: discard-phase timeout now reports 0 cards drawn (#265)
   * Replace SDL2_net with tcpme (thin POSIX/Winsock wrapper)
   * Fix OpenBSD build (#270)

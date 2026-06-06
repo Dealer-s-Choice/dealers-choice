@@ -28,10 +28,12 @@
 
 #include <errno.h>
 #include <limits.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <time.h>
 
 #ifdef _WIN32
 // clang-format off
@@ -191,6 +193,52 @@ void verbose_printf(const char *fmt, ...) {
 void verbose_puts(const char *s) {
   if (verbose && s)
     puts(s);
+}
+
+static FILE *dc_log_fp = NULL; /* NULL => stderr */
+
+static void dc_log_close(void) {
+  if (dc_log_fp) {
+    if (fclose(dc_log_fp) != 0)
+      fprintf(stderr, "dc_log: error closing log file: %s\n", strerror(errno));
+    dc_log_fp = NULL;
+  }
+}
+
+void dc_log_set_file(const char *path) {
+  FILE *f = fopen(path, "a");
+  if (!f) {
+    fprintf(stderr, "dc_log: cannot open log file %s: %s\n", path, strerror(errno));
+    return;
+  }
+  setvbuf(f, NULL, _IOLBF, 0); /* line-buffered so a crash still leaves the log */
+  dc_log_fp = f;
+  atexit(dc_log_close); /* flush + checked close at normal exit */
+}
+
+void dc_log(DCLogLevel_t level, const char *fmt, ...) {
+  if (level != DC_LOG_ERROR && !verbose)
+    return;
+
+  static const char *const tag[] = {"INFO", "WARN", "ERROR"};
+  FILE *out = dc_log_fp ? dc_log_fp : stderr;
+
+  time_t now = time(NULL);
+  struct tm tmv;
+#ifdef _WIN32
+  localtime_s(&tmv, &now);
+#else
+  localtime_r(&now, &tmv);
+#endif
+  char ts[20];
+  strftime(ts, sizeof ts, "%Y-%m-%d %H:%M:%S", &tmv);
+
+  fprintf(out, "%s [%s] ", ts, tag[level]);
+  va_list args;
+  va_start(args, fmt);
+  vfprintf(out, fmt, args);
+  va_end(args);
+  fputc('\n', out);
 }
 
 void parse_signed(const char *s, long minv, long maxv, long *out) {
