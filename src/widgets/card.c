@@ -574,9 +574,8 @@ static void card_widget_render(UIWidget_t *w) {
 static void card_widget_destroy(UIWidget_t *w) { free(w); }
 
 void card_widget_init(CardWidget_t *cw, TTF_Font *font) {
+  *cw = (CardWidget_t){0};
   cw->font = font;
-  cw->face_val = 0;
-  cw->suit = 0;
   cw->base.rect.w = g_layout_cfg.card_w;
   cw->base.rect.h = g_layout_cfg.card_h;
   cw->base.render = card_widget_render;
