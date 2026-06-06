@@ -238,6 +238,7 @@ ServerConfig_t init_game_state(GameState_t *game_state, Path_t *path, const CliA
   }
 
   game_state->dealer_id = 0;
+  game_state->round_opener_id = -1;
   game_state->at_menu = true;
   game_state->player_count = 0;
   game_state->raises_remaining = 0;
@@ -988,6 +989,7 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args, uint32_t i
   RoundResults results = {0};
 
   turn = *args->starting_turn;
+  args->game_state->round_opener_id = (int8_t)turn->id;
   uint32_t total_bets_plus_raises = initial_bet;
   uint32_t player_total_paid[MAX_PLAYERS] = {0};
   if (initial_paid_id >= 0 && initial_paid_id < MAX_PLAYERS)
@@ -1774,6 +1776,7 @@ static void play_game(ArgsBroadcastGameState_t *args, DH_Deck *deck) {
 
   args->game_state->winner_declared = false;
   args->game_state->prev_bet_amount = 0;
+  args->game_state->round_opener_id = -1;
   args->game_state->player_count = count_active_clients(args->slot_taken);
   verbose_printf("player count: %d\n", args->game_state->player_count);
   args->game_state->winner_declared = false;

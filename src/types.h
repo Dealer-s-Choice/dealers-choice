@@ -81,6 +81,7 @@ typedef struct {
 typedef struct {
   uint32_t pot;
   int8_t dealer_id;
+  int8_t round_opener_id; /* seat that opens the current betting round (-1 = none) */
   bool at_menu;
   uint8_t player_count;
   uint32_t raises_remaining;

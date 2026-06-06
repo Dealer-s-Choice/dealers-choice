@@ -1197,6 +1197,11 @@ static EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
       "You may only discard a maximum of 3 cards", font->fonts[FONT_BOLD], DC_DISCARD_TEXT);
   uint8_t last_max_allowed = 3;
 
+  /* Per-seat glyph marking who opens the current betting round; sits in the
+   * nameplate's left padding, just left of the nick. */
+  TextWidget_t *opener_tag =
+      text_widget_create("{}", font->fonts[FONT_BOLD], (SDL_Color){255, 140, 0, 255});
+
   static const SDL_Keycode bet_hotkeys[MAX_BET_AMOUNTS] = {
       SDLK_1, SDLK_2, SDLK_3, SDLK_4, SDLK_5, SDLK_6, SDLK_7, SDLK_8,
   };
@@ -1587,6 +1592,9 @@ static EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
     const int np_pad = g_layout_cfg.nameplate_pad;
     const int col_spacing_val = 20; // matches ui_table_begin default
     int total_max_w = max_col_w[0] + max_col_w[1] + max_col_w[2] + 2 * col_spacing_val;
+    /* Reserved zone on the left of every nameplate for the round-opener glyph,
+     * so it sits clear of the turn outline (which hugs the content). */
+    const int opener_gutter = 14;
     SDL_Rect turn_outline = {0};
     SDL_Rect nameplate_rects[MAX_PLAYERS] = {0};
     for (int8_t id = 0; id < MAX_PLAYERS; id++) {
@@ -1595,7 +1603,7 @@ static EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
       UITable_t player_table = {0};
       /* Local player's nameplate centers on the window; opponents anchor to
        * their (left-origin) card row. */
-      int np_origin_x = (id == my_id) ? g_layout.local_seat.x - total_max_w / 2
+      int np_origin_x = (id == my_id) ? g_layout.local_seat.x - total_max_w / 2 + opener_gutter / 2
                                       : seat_pos[id].x + g_layout_cfg.card_w / 2;
       ui_table_begin(&player_table, np_origin_x,
                      seat_pos[id].y + (int)(g_layout_cfg.card_h * 1.2), 3);
@@ -1607,8 +1615,8 @@ static EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
       ui_table_add(&player_table, 0, 2, &game_coins_tw[id]->base);
       ui_table_layout(&player_table);
       nameplate_rects[id] =
-          (SDL_Rect){player_table.x - np_pad, player_table.y - np_pad, total_max_w + np_pad * 2,
-                     player_table.row_height[0] + np_pad * 2};
+          (SDL_Rect){player_table.x - np_pad - opener_gutter, player_table.y - np_pad,
+                     total_max_w + np_pad * 2 + opener_gutter, player_table.row_height[0] + np_pad * 2};
       if (id == turn->id && !game_state->winner_declared) {
         const int pad = 4;
         turn_outline = (SDL_Rect){player_table.x - pad, player_table.y - pad, total_max_w + pad * 2,
@@ -1643,6 +1651,18 @@ static EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
     if (turn_outline.w > 0) {
       SDL_SetRenderDrawColor(sdl_context->renderer, 255, 215, 0, 255);
       draw_rect_border(sdl_context->renderer, turn_outline);
+    }
+
+    if (game_state->round_opener_id >= 0 && game_state->round_opener_id < MAX_PLAYERS &&
+        nameplate_rects[game_state->round_opener_id].w > 0) {
+      SDL_Rect np = nameplate_rects[game_state->round_opener_id];
+      /* Center the glyph in the gutter left of where the turn outline sits
+       * (the outline's left edge is at content.x - 4 = np.x + zone_w). */
+      int zone_w = np_pad + opener_gutter - 4;
+      int opener_x = np.x + (zone_w - opener_tag->base.rect.w) / 2;
+      int opener_y = np.y + (np.h - opener_tag->base.rect.h) / 2;
+      ui_widget_place(&opener_tag->base, opener_x, opener_y);
+      ui_widget_render(&opener_tag->base);
     }
 
     /* Game indicators: two equal cells stacked vertically in the bottom-right
@@ -2160,6 +2180,7 @@ static EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
   for (int i = 0; i < MAX_ACTIONS; i++)
     ui_widget_destroy(&action_bw[i]->base);
   ui_widget_destroy(&discard_hint_tw->base);
+  ui_widget_destroy(&opener_tag->base);
   step_scale_destroy(bet_scale);
   for (int i = 0; i < SIZEOF_STATUS_MSGS; i++)
     ui_widget_destroy(&status_tw[i]->base);
