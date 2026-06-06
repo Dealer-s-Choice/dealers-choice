@@ -1,4 +1,6 @@
-- (in-progress)
+2026-06-08
+
+- dealers-choice 0.0.14:
   + Game-play display overhaul: relative seating (local bottom-centre,
     opponents clockwise), a bottom dashboard, an anchor-based layout system,
     and SVG card suits
