@@ -919,7 +919,7 @@ static CliArgs_t parse_cli_args(int argc, char *argv[]) {
     OPT_DISABLE_TIMEOUT,
     OPT_AUTODEAL,
     OPT_AUTO_CONNECT,
-    OPT_CARD_TEST,
+    OPT_CARD_PREVIEW,
   };
 
   static const glopt_option_t options[] = {
@@ -937,7 +937,7 @@ static CliArgs_t parse_cli_args(int argc, char *argv[]) {
       {"disable-timeout", GLOPT_NO_ARG, OPT_DISABLE_TIMEOUT, 0},
       {"autodeal", GLOPT_NO_ARG, OPT_AUTODEAL, 0},
       {"auto-connect", GLOPT_NO_ARG, OPT_AUTO_CONNECT, 0},
-      {"card-test", GLOPT_NO_ARG, OPT_CARD_TEST, 0},
+      {"card-preview", GLOPT_NO_ARG, OPT_CARD_PREVIEW, 0},
       {NULL, 0, 0, 0}};
 
   glopt_parser_t parser;
@@ -997,8 +997,8 @@ static CliArgs_t parse_cli_args(int argc, char *argv[]) {
     case OPT_AUTO_CONNECT:
       cli_args.auto_connect = true;
       break;
-    case OPT_CARD_TEST:
-      cli_args.card_test = true;
+    case OPT_CARD_PREVIEW:
+      cli_args.card_preview = true;
       break;
     case '?':
     default:
@@ -1018,7 +1018,7 @@ static CliArgs_t parse_cli_args(int argc, char *argv[]) {
             "  --server-log-hands [path/to/file]\n"
             "  --disable-timeout          Server will not disconnect players who exceed the action "
             "timeout threshold\n"
-            "  --card-test                Open a window showing A and 10 of each suit; x/ESC to exit\n",
+            "  --card-preview             Open a window showing A and 10 of each suit; x/ESC to exit\n",
             stderr);
       exit(EXIT_FAILURE);
     }
@@ -1026,11 +1026,11 @@ static CliArgs_t parse_cli_args(int argc, char *argv[]) {
   return cli_args;
 }
 
-/* --card-test mode: open the SDL window, render the A and 10 of each
+/* --card-preview mode: open the SDL window, render the A and 10 of each
  * suit in a 2x4 grid on the green felt, and wait for x / ESC / window
  * close.  Lets you iterate on suit size, position, and font without
  * spinning up a server and a bot for every visual check. */
-static int run_card_test(SdlContext_t *sdl_context, Font_t *font, Path_t *path) {
+static int run_card_preview(SdlContext_t *sdl_context, Font_t *font, Path_t *path) {
   char felt_path[4096];
   snprintf(felt_path, sizeof(felt_path), "%s/images/100x100-green-felt-seamless-tile.png",
            path->data);
@@ -1214,8 +1214,8 @@ int main(int argc, char *argv[]) {
    * cache landed). */
   card_text_atlas_init(sdl_context.renderer, font.fonts[FONT_CARD], path.data);
 
-  if (cli_args.card_test) {
-    int rc = run_card_test(&sdl_context, &font, &path);
+  if (cli_args.card_preview) {
+    int rc = run_card_preview(&sdl_context, &font, &path);
     for (int i = 0; i < NUM_FONTS; ++i)
       TTF_CloseFont(font.fonts[i]);
     TTF_Quit();

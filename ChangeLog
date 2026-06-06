@@ -4,7 +4,7 @@
     slider, countdown timer and action buttons; an anchor-based layout system
     makes future layout changes cheaper; and card suits are rendered from
     bundled SVGs (data/images/suits/) sized larger than the face letter for
-    accessibility (--card-test opens an A+10 grid)
+    accessibility
   + Game-play action hotkeys are now configurable via a press-to-bind Hotkeys
     screen (Settings > Hotkeys), persisted in player.conf (#102)
   + The seat that opens each betting round is marked in its nameplate (#264)
