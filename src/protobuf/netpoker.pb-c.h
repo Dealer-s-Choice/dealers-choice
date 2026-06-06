@@ -88,10 +88,11 @@ struct  GameState
   protobuf_c_boolean winner_declared;
   size_t n_player;
   Player **player;
+  int32_t round_opener_id;
 };
 #define GAME_STATE__INIT \
  { PROTOBUF_C_MESSAGE_INIT (&game_state__descriptor) \
-, 0, 0, 0, 0, 0, 0, 0, 0,NULL }
+, 0, 0, 0, 0, 0, 0, 0, 0,NULL, 0 }
 
 
 struct  GameSettings

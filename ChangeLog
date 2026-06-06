@@ -7,6 +7,7 @@
     accessibility (--card-test opens an A+10 grid)
   + Game-play action hotkeys are now configurable via a press-to-bind Hotkeys
     screen (Settings > Hotkeys), persisted in player.conf (#102)
+  + The seat that opens each betting round is marked in its nameplate (#264)
   * regression fix: when a player times out during the discard phase the status
     message now correctly shows they drew 0 cards; the regression was introduced
     in 2fd55fb when explicit timeout handling was added to handle_draw() but the

@@ -30,6 +30,7 @@ message GameState {
   bool winner_declared = 7;
   reserved 8;
   repeated Player player = 9;
+  int32 round_opener_id = 10;
 }
 
 message GameSettings {
