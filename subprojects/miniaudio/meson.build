@@ -1,4 +1,4 @@
-project('miniaudio', 'c')
+project('miniaudio', 'c', version: '0.11.25')
 
 # Compile without parent project's POSIX feature-test flags so that
 # BSD-only types (u_long etc.) remain visible on FreeBSD.

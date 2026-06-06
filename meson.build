@@ -80,7 +80,13 @@ protobuf_dep = dependency('libprotobuf-c')
 
 conf = configuration_data()
 
-miniaudio_dep = subproject('miniaudio').get_variable('miniaudio_dep')
+miniaudio_dep = dependency(
+  'miniaudio',
+  version: '0.11.25',
+  required: false,
+  fallback: ['miniaudio', 'miniaudio_dep'],
+)
+#miniaudio_dep = subproject('miniaudio').get_variable('miniaudio_dep')
 
 shared_dep = [
   canfigger_dep,
