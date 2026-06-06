@@ -1,55 +1,29 @@
 - (in-progress)
-  + Game-play display overhaul: the local player is now seated bottom-centre
-    with opponents rotating clockwise; a bottom dashboard holds the bet-amount
-    slider, countdown timer and action buttons; an anchor-based layout system
-    makes future layout changes cheaper; and card suits are rendered from
-    bundled SVGs (data/images/suits/) sized larger than the face letter for
-    accessibility
-  + Game-play action hotkeys are now configurable via a press-to-bind Hotkeys
-    screen (Settings > Hotkeys), persisted in player.conf (#102)
+  + Game-play display overhaul: relative seating (local bottom-centre,
+    opponents clockwise), a bottom dashboard, an anchor-based layout system,
+    and SVG card suits
+  + Configurable game-play action hotkeys via a press-to-bind Hotkeys screen
+    (#102)
   + The seat that opens each betting round is marked in its nameplate (#264)
-  * regression fix: when a player times out during the discard phase the status
-    message now correctly shows they drew 0 cards; the regression was introduced
-    in 2fd55fb when explicit timeout handling was added to handle_draw() but the
-    status broadcast was not carried over (#265)
+  * regression fix: discard-phase timeout now reports 0 cards drawn (#265)
   * Replace SDL2_net with tcpme (thin POSIX/Winsock wrapper)
   * Fix OpenBSD build (#270)
   * Bump GAME_PROTOCOL_VERSION from 9 to 10
-  * server: silently skip MSG_PING_RESPONSE frames in recv_turn_player_msg and
-    handle_draw; the server only sends ping requests in the lobby, but on slow
-    or emulated hardware (e.g. s390x under QEMU) a ping response from the lobby
-    phase can still be buffered in the TCP socket when the game starts, causing
-    an "Unrecognised opcode" error and a spurious disconnection
-  * Move deckhandler and pokeval inline (no longer imported as meson subprojects)
-  * pokeval: fix compare_hands_wild tiebreaking for THREE_OF_A_KIND (and
-    FOUR_OF_A_KIND, FULL_HOUSE, FIVE_OF_A_KIND): the previous code compared raw
-    sorted face values, so a wild hand like J J 2 could lose to 7 7 7 when the
-    natural hand held higher kickers (K, Q) that sorted above the wild hand's
-    trip card; now uses rank-aware group-value comparison that correctly
-    identifies the effective triplet/quad/quint face regardless of which cards
-    are wild
-  * pokeval: fix compare_hands_wild tiebreaking for PAIR and TWO_PAIR; the
-    previous compare_high_cards fallback let a natural pair 5s with a K
-    kicker beat a natural pair 8s with a Q kicker
-  * pokeval: fix compare_hands_wild kicker comparison for THREE_OF_A_KIND
-    and FOUR_OF_A_KIND when both hands have the same trip/quad value (a
-    natural second ace was being counted as a higher kicker than a K)
-  * pokeval: fix compare_hands_wild tiebreaking for STRAIGHT /
-    STRAIGHT_FLUSH; a wild-aided K-high straight could tie a natural
-    Q-high one because wilds were compared as literal 2s
-  * pokeval: fix compare_hands_wild tiebreaking for FLUSH to substitute
-    wild = ACE_HIGH, matching try_wild_combos' rank evaluation
-  * pokeval: fix update_best_5card (hand5_omaha / hand5_from_hand7
-    candidate picker) to use rank-aware tiebreaks for PAIR and TWO_PAIR;
-    Omaha was underpicking two-pair J+7 with Q kicker vs two-pair 7+6
-    with K kicker
-  * pokeval: fix update_best_wild same-rank tiebreak to route through the
-    same wild-aware compare as cross-player winner selection; a wild-aided
-    K-high straight in 7-card stud could otherwise be rejected as the best
-    candidate in favour of an inferior natural Q-high straight
-  * bugfix: Window becomes unresponsive on systems where audio initialisation
-    blocks (e.g. PulseAudio socket absent); run ma_engine_init on a background
-    thread and fall back to silent (noDevice) mode on failure
+  * server: skip stray MSG_PING_RESPONSE frames buffered from the lobby,
+    fixing a spurious disconnect on slow/emulated hardware
+  * Move deckhandler and pokeval inline (no longer meson subprojects)
+  * rank-aware wild tiebreak for THREE/FOUR_OF_A_KIND, FULL_HOUSE,
+    FIVE_OF_A_KIND
+  * wild-aware tiebreak for PAIR and TWO_PAIR
+  * fix wild kicker comparison for THREE/FOUR_OF_A_KIND at equal trip/quad
+    value
+  * wild-aware tiebreak for STRAIGHT / STRAIGHT_FLUSH
+  * substitute wild = ACE_HIGH for FLUSH tiebreak
+  * rank-aware PAIR/TWO_PAIR tiebreak in update_best_5card (Omaha / 7-card
+    picker)
+  * route update_best_wild same-rank tiebreak through the wild-aware compare
+  * bugfix: run audio init on a background thread with silent fallback, so
+    a blocked audio backend can't freeze the window
 
 2026-04-24
 
