@@ -94,6 +94,15 @@ static bool rate_limit_check(const char *ip_str, uint32_t max_per_minute) {
 
 #define PING_THRESHOLD 1000
 
+/* Network-health diagnostics (#307), all gated behind --verbose via dc_log.
+ * Thresholds are tunable; they flag anomalies, not every message. */
+#define SLOW_SEND_WARN_MS 200  /* a send blocking this long => client not draining */
+#define PING_SPIKE_WARN_MS 500 /* lobby ping above this => flaky/parked link */
+/* Deliberately high: normal deliberation (and bots' 2-10s delays) routinely
+ * exceed a few seconds, so only flag waits long enough to suggest a real stall
+ * rather than thinking. (action_timeout defaults to 30s.) */
+#define RECV_WAIT_WARN_MS 15000 /* waited this long for a player's input */
+
 #define handle_round() handle_round_real(args, 0, -1)
 #define handle_round_bringin(amt, paid_id) handle_round_real(args, (amt), (paid_id))
 
@@ -403,10 +412,16 @@ static void broadcast_game_state(ArgsBroadcastGameState_t *args) {
     uint32_t size_net = SDL_SwapBE32((uint32_t)size);
 
     // fprintf(stderr, "sending to %d\n", i);
+    uint32_t send_start = SDL_GetTicks();
     if (send_all_tcp(args->clients[i], &size_net, sizeof(size_net)) != 0 ||
         send_all_tcp(args->clients[i], data, size) != 0) {
       fprintf(stderr, "Failed to send game state to client %d\n", i);
       handle_disconnections(args);
+    } else {
+      uint32_t send_ms = SDL_GetTicks() - send_start;
+      if (send_ms >= SLOW_SEND_WARN_MS)
+        dc_log(DC_LOG_WARN, "slow game-state send to client %d: %ums (client not draining its socket?)",
+               i, send_ms);
     }
     free(data);
   }
@@ -814,6 +829,13 @@ static ELoop_t handle_draw(ArgsBroadcastGameState_t *args, tcpme_socket_t sock, 
     break;
   }
 
+  if (!timed_out) {
+    uint32_t waited = SDL_GetTicks() - start;
+    if (waited >= RECV_WAIT_WARN_MS)
+      dc_log(DC_LOG_WARN, "waited %ums for player %d's draw (slow input or stalled link)", waited,
+             id);
+  }
+
   uint8_t count = buffer[2];
   if (count > MAX_DISCARDS)
     return LOOP_ERROR;
@@ -1123,6 +1145,13 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args, uint32_t i
           continue;
         }
       }
+    }
+
+    if (action.action != 0) {
+      uint32_t waited = SDL_GetTicks() - start;
+      if (waited >= RECV_WAIT_WARN_MS)
+        dc_log(DC_LOG_WARN, "waited %ums for player %d's action (slow input or stalled link)", waited,
+               turn->id);
     }
 
     char status_str[LEN_STATUS_STR] = {0};
@@ -2383,6 +2412,8 @@ int run_server(const CliArgs_t *cli_args, Path_t *path) {
             } else {
               now = SDL_GetTicks();
               ping_times[i] = now - resp->timestamp;
+              if (ping_times[i] >= PING_SPIKE_WARN_MS)
+                dc_log(DC_LOG_WARN, "high ping from client %d: %ums", i, ping_times[i]);
               ping_response__free_unpacked(resp, NULL);
             }
             break;

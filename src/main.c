@@ -920,6 +920,7 @@ static CliArgs_t parse_cli_args(int argc, char *argv[]) {
     OPT_AUTODEAL,
     OPT_AUTO_CONNECT,
     OPT_CARD_PREVIEW,
+    OPT_LOG_FILE,
   };
 
   static const glopt_option_t options[] = {
@@ -938,6 +939,7 @@ static CliArgs_t parse_cli_args(int argc, char *argv[]) {
       {"autodeal", GLOPT_NO_ARG, OPT_AUTODEAL, 0},
       {"auto-connect", GLOPT_NO_ARG, OPT_AUTO_CONNECT, 0},
       {"card-preview", GLOPT_NO_ARG, OPT_CARD_PREVIEW, 0},
+      {"log-file", GLOPT_REQUIRED_ARG, OPT_LOG_FILE, 0},
       {NULL, 0, 0, 0}};
 
   glopt_parser_t parser;
@@ -1000,6 +1002,9 @@ static CliArgs_t parse_cli_args(int argc, char *argv[]) {
     case OPT_CARD_PREVIEW:
       cli_args.card_preview = true;
       break;
+    case OPT_LOG_FILE:
+      dc_log_set_file(parser.optarg);
+      break;
     case '?':
     default:
       print_version();
@@ -1012,6 +1017,8 @@ static CliArgs_t parse_cli_args(int argc, char *argv[]) {
             "  --host [IP]\n"
             "  --port [port]\n"
             "  --disable-audio\n"
+            "  --log-file [path]          Write timestamped diagnostics to a file (useful for GUI "
+            "clients with no console)\n"
             "  --version\n"
             "\n"
             "Testing options:\n"

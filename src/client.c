@@ -74,6 +74,9 @@ static const uint8_t coin_px = 96;
 // What's the max this needs to be to support the unicode suit symbol?
 // SIZEOF_CARD_TEXT is defined in client.h
 
+#define FRAME_HITCH_WARN_MS 250 /* a frame gap >= this => UI stalled (#307) */
+#define AUDIO_SLOW_WARN_MS 500  /* audio engine init/uninit blocking >= this (#307) */
+
 #define MAX_POT_COINS 60
 #define MAX_COIN_IMAGES 16
 
@@ -1297,7 +1300,18 @@ static EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
   const int8_t my_id = game_settings->client_id;
   tcpme_socket_t sock = socket_context->sock;
 
+  /* Frame-hitch detection: the loop renders continuously, so a large gap
+   * between consecutive frame starts means the main thread stalled (a freeze).
+   * Catches network/audio/render blocks the server can't see. (#307) */
+  uint32_t dc_last_frame = SDL_GetTicks();
+
   while (running) {
+    uint32_t dc_frame_now = SDL_GetTicks();
+    uint32_t dc_frame_dt = dc_frame_now - dc_last_frame;
+    if (dc_frame_dt >= FRAME_HITCH_WARN_MS)
+      dc_log(DC_LOG_WARN, "frame stall: %ums (client UI was unresponsive)", dc_frame_dt);
+    dc_last_frame = dc_frame_now;
+
     POKEVAL_Hand_9 prev_hands[MAX_PLAYERS];
     for (int i = 0; i < MAX_PLAYERS; i++)
       prev_hands[i] = game_state->player[i].hand;
@@ -2223,7 +2237,11 @@ typedef struct {
 
 static int audio_init_thread_fn(void *data) {
   AudioInitAttempt_t *aa = data;
+  uint32_t t0 = SDL_GetTicks();
   aa->result = ma_engine_init(&aa->engineConfig, aa->engine);
+  uint32_t took = SDL_GetTicks() - t0;
+  if (took >= AUDIO_SLOW_WARN_MS)
+    dc_log(DC_LOG_WARN, "audio engine init took %ums (slow audio backend)", took);
   SDL_AtomicSet(&aa->done, 1);
   return 0;
 }
@@ -2235,7 +2253,11 @@ typedef struct {
 
 static int audio_uninit_thread_fn(void *data) {
   AudioUninitAttempt_t *au = data;
+  uint32_t t0 = SDL_GetTicks();
   ma_engine_uninit(au->engine);
+  uint32_t took = SDL_GetTicks() - t0;
+  if (took >= AUDIO_SLOW_WARN_MS)
+    dc_log(DC_LOG_WARN, "audio engine uninit took %ums (slow audio backend)", took);
   SDL_AtomicSet(&au->done, 1);
   return 0;
 }
