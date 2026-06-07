@@ -56,6 +56,7 @@
 #include "util.h"
 
 bool verbose = false;
+bool dc_debug = false;
 
 void get_data_dir(Path_t *path) {
   // TODO: Maybe we need a different name for this. It's also defined
@@ -217,10 +218,14 @@ void dc_log_set_file(const char *path) {
 }
 
 void dc_log(DCLogLevel_t level, const char *fmt, ...) {
-  if (level != DC_LOG_ERROR && !verbose)
+  if (level == DC_LOG_DEBUG) {
+    if (!dc_debug)
+      return;
+  } else if (level != DC_LOG_ERROR && !verbose) {
     return;
+  }
 
-  static const char *const tag[] = {"INFO", "WARN", "ERROR"};
+  static const char *const tag[] = {"DEBUG", "INFO", "WARN", "ERROR"};
   FILE *out = dc_log_fp ? dc_log_fp : stderr;
 
   time_t now = time(NULL);

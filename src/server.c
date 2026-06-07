@@ -620,10 +620,7 @@ static int send_opcode(tcpme_socket_t sock, const uint16_t opcode) {
   uint16_t opcode_be = SDL_SwapBE16(opcode);
   memcpy(&buffer[4], &opcode_be, sizeof(opcode_be));
 
-  int sent = send_all_tcp(sock, buffer, sizeof(buffer));
-  if (sent == 0)
-    verbose_puts("Sent opcode");
-  return sent;
+  return send_all_tcp(sock, buffer, sizeof(buffer));
 }
 
 static int send_ping_request(tcpme_socket_t sock) {
@@ -1040,7 +1037,7 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args, uint32_t i
       opcode = bringin_round_unopened ? MSG_COMPLETE_CHECK_FOLD : MSG_BET_CHECK_FOLD;
     if (send_opcode(args->clients[turn->id], opcode) != 0)
       fputs("Error sending action prompt", stderr);
-    verbose_printf("Sent opcode 0x%04X to player %d\n", opcode, turn->id);
+    dc_log(DC_LOG_DEBUG, "sent action-prompt opcode 0x%04X to player %d", opcode, turn->id);
 
     while (SDL_GetTicks() - start < wait_ms) {
       register_new_client(args);

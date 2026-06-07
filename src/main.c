@@ -915,6 +915,7 @@ static CliArgs_t parse_cli_args(int argc, char *argv[]) {
     OPT_PORT,
     OPT_VERSION,
     OPT_VERBOSE,
+    OPT_DEBUG,
     OPT_DISABLE_AUDIO,
     OPT_DISABLE_TIMEOUT,
     OPT_AUTODEAL,
@@ -934,6 +935,7 @@ static CliArgs_t parse_cli_args(int argc, char *argv[]) {
       {"port", GLOPT_REQUIRED_ARG, OPT_PORT, 0},
       {"version", GLOPT_NO_ARG, OPT_VERSION, 0},
       {"verbose", GLOPT_NO_ARG, OPT_VERBOSE, 0},
+      {"debug", GLOPT_NO_ARG, OPT_DEBUG, 0},
       {"disable-audio", GLOPT_NO_ARG, OPT_DISABLE_AUDIO, 0},
       {"disable-timeout", GLOPT_NO_ARG, OPT_DISABLE_TIMEOUT, 0},
       {"autodeal", GLOPT_NO_ARG, OPT_AUTODEAL, 0},
@@ -986,6 +988,10 @@ static CliArgs_t parse_cli_args(int argc, char *argv[]) {
     case OPT_VERBOSE:
       verbose = true;
       break;
+    case OPT_DEBUG:
+      verbose = true;
+      dc_debug = true;
+      break;
     case OPT_DISABLE_AUDIO:
       cli_args.disable_audio = true;
       break;
@@ -1010,6 +1016,7 @@ static CliArgs_t parse_cli_args(int argc, char *argv[]) {
       print_version();
       fputs("Usage:\n"
             "  --verbose\n"
+            "  --debug                    Verbose plus per-opcode trace (DC_LOG_DEBUG)\n"
             "  --server-log-game-results [path/to/file]\n"
             "  --server-conf [Path to alternate server config file]\n"
             "  --bind-address [IP]        Address for the server to bind to (default: all "
