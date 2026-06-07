@@ -43,6 +43,7 @@ jobs:
       shell: cpa.sh {0}
       run: |
         ${{ matrix.install }}
+        export DC_VERBOSE=1   # surface server network-health warnings in test logs
         CFLAGS="-Werror" meson setup _build
         meson compile -C _build
         meson test --no-stdsplit -v -C _build

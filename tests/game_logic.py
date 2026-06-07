@@ -34,8 +34,14 @@ def main():
     # A TCP probe connection is not used because the server would accept it as
     # a real client slot.  The test binary retries connections internally if
     # the server is not yet ready within this window.
+    server_cmd = [server_binary, "--server", "---test", "--port", str(port)]
+    # Opt-in network-health logging (slow-send / ping-spike / recv-wait), e.g.
+    # in CI, so an intermittent failure leaves diagnostics in the test log.
+    if os.environ.get("DC_VERBOSE"):
+        server_cmd.append("--verbose")
+
     server_proc = subprocess.Popen(
-        [server_binary, "--server", "---test", "--port", str(port)],
+        server_cmd,
         stdout=sys.stderr,
         stderr=sys.stderr
     )
