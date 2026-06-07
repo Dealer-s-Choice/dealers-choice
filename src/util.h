@@ -30,6 +30,7 @@
 #define __UTIL_H
 
 extern bool verbose;
+extern bool dc_debug; /* level-2 verbosity (--debug); gates DC_LOG_DEBUG */
 
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
 
@@ -68,14 +69,15 @@ void verbose_printf(const char *fmt, ...);
 void verbose_puts(const char *s);
 
 typedef enum {
+  DC_LOG_DEBUG,
   DC_LOG_INFO,
   DC_LOG_WARN,
   DC_LOG_ERROR,
 } DCLogLevel_t;
 
 /* Timestamped logger: prints "YYYY-MM-DD HH:MM:SS [LEVEL] <msg>\n" to stderr.
- * INFO and WARN are gated by --verbose; ERROR always prints. The message must
- * NOT include a trailing newline (dc_log appends one). */
+ * DEBUG is gated by --debug; INFO and WARN by --verbose; ERROR always prints.
+ * The message must NOT include a trailing newline (dc_log appends one). */
 #if defined(__GNUC__)
 void dc_log(DCLogLevel_t level, const char *fmt, ...) __attribute__((format(printf, 2, 3)));
 #else
