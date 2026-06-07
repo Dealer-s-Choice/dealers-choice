@@ -26,6 +26,8 @@
 
 #include "deckhandler.h"
 
+#define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
+
 /*
  * Mirror of EMenuOption_t from src/types.h.  Kept local so this binary
  * doesn't drag in the rest of the server headers (and so the JSON
@@ -152,12 +154,17 @@ static void deal_hand(DH_Deck *deck, const variant_t *v, int n_players,
     for (int p = 0; p < n_players; p++)
       cmp[p].hand.card[c] = DH_deal_top_card(deck);
 
-  /* Community cards (Texas/Omaha): deal once, copy to every player. */
+  /* Community cards (Texas/Omaha): deal once, copy to every player.
+   * Clamp to the array size so the writes are provably in-bounds (no variant
+   * exceeds 5 community cards, but this keeps it safe and analyzer-clean). */
   DH_Card community[5] = {0};
-  for (int c = 0; c < v->community_cards; c++)
+  int n_community = v->community_cards;
+  if (n_community > (int)ARRAY_SIZE(community))
+    n_community = (int)ARRAY_SIZE(community);
+  for (int c = 0; c < n_community; c++)
     community[c] = DH_deal_top_card(deck);
   for (int p = 0; p < n_players; p++)
-    for (int c = 0; c < v->community_cards; c++)
+    for (int c = 0; c < n_community; c++)
       cmp[p].hand.card[v->hole_cards + c] = community[c];
 
   /* Pad remaining slots with the null card so the JSON emitter and
