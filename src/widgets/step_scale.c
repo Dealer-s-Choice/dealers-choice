@@ -10,12 +10,15 @@ static SDL_Color wash(SDL_Color c) {
   return (SDL_Color){g, g, g, c.a};
 }
 
-/* Dark-green 3D track bar (same look as the dashboard dividers). */
+static const SDL_Color STEP_TRACK_ORANGE = {235, 140, 30, 255};
+
+/* 3D track bar: orange when active, washed gray otherwise. */
 static void draw_track_bar(SDL_Renderer *r, SDL_Rect bar, bool active) {
-  SDL_Color b = active ? DC_DASH_DIVIDER : wash(DC_DASH_DIVIDER);
+  SDL_Color b = active ? STEP_TRACK_ORANGE : wash(STEP_TRACK_ORANGE);
   SDL_SetRenderDrawColor(r, b.r, b.g, b.b, 255);
   SDL_RenderFillRect(r, &bar);
-  SDL_SetRenderDrawColor(r, (Uint8)(b.r + 40), (Uint8)(b.g + 55), (Uint8)(b.b + 40), 255);
+  SDL_SetRenderDrawColor(r, (Uint8)(b.r < 215 ? b.r + 40 : 255), (Uint8)(b.g < 200 ? b.g + 55 : 255),
+                         (Uint8)(b.b < 215 ? b.b + 40 : 255), 255);
   SDL_RenderDrawLine(r, bar.x, bar.y, bar.x + bar.w - 1, bar.y);
   SDL_SetRenderDrawColor(r, (Uint8)(b.r > 12 ? b.r - 12 : 0), (Uint8)(b.g > 35 ? b.g - 35 : 0),
                          (Uint8)(b.b > 18 ? b.b - 18 : 0), 255);
@@ -31,10 +34,10 @@ static void step_scale_render(UIWidget_t *w) {
   for (int i = 0; i < s->count; i++) {
     bool sel = s->active && (i == s->selected);
     SDL_Color nc = !s->active      ? (SDL_Color){90, 90, 90, 255}
-                   : sel           ? (SDL_Color){255, 215, 0, 255}
-                   : s->enabled[i] ? (SDL_Color){235, 235, 235, 255}
-                                   : (SDL_Color){110, 110, 110, 255};
-    int nw = sel ? 8 : 4;
+                   : sel           ? (SDL_Color){255, 190, 70, 255}
+                   : s->enabled[i] ? (SDL_Color){255, 190, 70, 255}
+                                   : (SDL_Color){60, 60, 60, 255};
+    int nw = sel ? 6 : 4;
     int nh = sel ? w->rect.h / 4 : w->rect.h / 6;
     SDL_SetRenderDrawColor(r, nc.r, nc.g, nc.b, 255);
     SDL_RenderFillRect(r, &(SDL_Rect){s->notch_x[i] - nw / 2, s->track_cy - nh / 2, nw, nh});
