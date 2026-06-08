@@ -1,0 +1,40 @@
+name: Alpine
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
+
+on:
+  push:
+    branches: [ trunk ]
+    paths: &shared_paths
+      - '**'
+      - '!**.md'
+      - '!docker/**'
+      - '**/alpine.yml'
+  pull_request:
+    branches: [ trunk ]
+    paths: *shared_paths
+
+env:
+  CFLAGS: '-Werror'
+
+jobs:
+  alpine:
+    name: alpine musl
+    runs-on: ubuntu-latest
+    container: alpine:3.20
+    steps:
+      - name: Install dependencies
+        run: |
+          apk add --no-cache \
+            build-base meson samurai pkgconf git gettext-dev python3 \
+            libsodium-dev protobuf-c-dev \
+            sdl2-dev sdl2_ttf-dev sdl2_image-dev
+      - uses: actions/checkout@v6
+      - name: Meson setup
+        run: meson setup _build
+      - name: Build
+        run: meson compile -C _build
+      - name: Test
+        run: meson test --no-stdsplit -v -C _build
