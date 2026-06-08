@@ -1688,9 +1688,10 @@ static EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
       ui_widget_render(&opener_tag->base);
     }
 
-    /* Game indicators: two equal cells stacked vertically in the bottom-right
-     * corner, center-justified, bordered + translucent-black like the dashboard.
-     * Cell width is static (longest game name) so the stack doesn't resize. */
+    /* Game indicators: the game-name cell, plus a Deuces Wild cell when wild
+     * is enabled, stacked vertically in the bottom-right corner; center-
+     * justified, bordered + translucent-black like the dashboard. Cell width
+     * is static (longest game name) so the stack doesn't resize. */
     {
       SDL_Renderer *r = sdl_context->renderer;
       int icp = g_layout_cfg.indicator_cell_pad;
@@ -1701,26 +1702,31 @@ static EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
       /* Sit just above the dashboard so the stack clears the hand / dashboard below. */
       int dash_h = g_layout_cfg.circle_timer_r * 2 + 2 * g_layout_cfg.dash_pad;
       int dash_top = g_layout.local_seat.y - g_layout_cfg.btn_hand_gap - dash_h;
-      int sy = dash_top - g_layout_cfg.margin - 2 * cell_h;
-      SDL_Rect cells[2] = {
-          {sx, sy, cell_w, cell_h},
-          {sx, sy + cell_h, cell_w, cell_h},
-      };
-      Indicator_t *inds[2] = {indicator_game_name, indicator_deuces_wild};
-      for (int k = 0; k < 2; k++) {
+      /* Deuces Wild only gets its own cell when it's enabled; for non-wild
+       * games it's omitted entirely (no grayed-out placeholder). The stack is
+       * bottom-anchored just above the dashboard so the game-name cell doesn't
+       * float with a gap when the wild cell is absent. */
+      int n_cells = client_state.deuces_wild ? 2 : 1;
+      int sy = dash_top - g_layout_cfg.margin - n_cells * cell_h;
+      SDL_Rect cells[2];
+      Indicator_t *inds[2];
+      cells[0] = (SDL_Rect){sx, sy, cell_w, cell_h};
+      inds[0] = indicator_game_name;
+      if (n_cells == 2) {
+        cells[1] = (SDL_Rect){sx, sy + cell_h, cell_w, cell_h};
+        inds[1] = indicator_deuces_wild;
+      }
+      for (int k = 0; k < n_cells; k++) {
         SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_BLEND);
         SDL_SetRenderDrawColor(r, DC_DASH_BG.r, DC_DASH_BG.g, DC_DASH_BG.b, DC_DASH_BG.a);
         SDL_RenderFillRect(r, &cells[k]);
         SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_NONE);
         draw_3d_border(r, cells[k], 10);
       }
-      for (int k = 0; k < 2; k++) {
-        if (!inds[k])
-          continue;
+      for (int k = 0; k < n_cells; k++) {
         if (inds[k] == indicator_deuces_wild) {
-          indicator_deuces_wild->bg_color =
-              client_state.deuces_wild ? DC_INDICATOR_WILD_BG : (SDL_Color){110, 110, 110, 255};
-          indicator_deuces_wild->animated = client_state.deuces_wild;
+          indicator_deuces_wild->bg_color = DC_INDICATOR_WILD_BG;
+          indicator_deuces_wild->animated = true;
         }
         layout_indicator(inds[k], cells[k].x + (cells[k].w - inds[k]->base.rect.w) / 2,
                          cells[k].y + (cells[k].h - inds[k]->base.rect.h) / 2);
