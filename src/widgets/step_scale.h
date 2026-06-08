@@ -51,6 +51,7 @@ typedef struct {
   int count;
   int selected;
   int track_cy; /* track centre-line y (set by layout) */
+  bool active;  /* false washes the colors out (not the player's money turn) */
 } StepScaleWidget_t;
 
 StepScaleWidget_t *step_scale_create(const uint32_t *values, const SDL_Keycode *hotkeys, int count,

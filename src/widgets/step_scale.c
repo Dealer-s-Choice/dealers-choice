@@ -4,9 +4,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+/* Desaturate a color toward its luma so an inactive scale reads as grayed. */
+static SDL_Color wash(SDL_Color c) {
+  Uint8 g = (Uint8)((c.r * 54 + c.g * 183 + c.b * 19) >> 8);
+  return (SDL_Color){g, g, g, c.a};
+}
+
 /* Dark-green 3D track bar (same look as the dashboard dividers). */
-static void draw_track_bar(SDL_Renderer *r, SDL_Rect bar) {
-  SDL_Color b = DC_DASH_DIVIDER;
+static void draw_track_bar(SDL_Renderer *r, SDL_Rect bar, bool active) {
+  SDL_Color b = active ? DC_DASH_DIVIDER : wash(DC_DASH_DIVIDER);
   SDL_SetRenderDrawColor(r, b.r, b.g, b.b, 255);
   SDL_RenderFillRect(r, &bar);
   SDL_SetRenderDrawColor(r, (Uint8)(b.r + 40), (Uint8)(b.g + 55), (Uint8)(b.b + 40), 255);
@@ -20,11 +26,12 @@ static void step_scale_render(UIWidget_t *w) {
   StepScaleWidget_t *s = (StepScaleWidget_t *)w;
   SDL_Renderer *r = s->renderer;
 
-  draw_track_bar(r, (SDL_Rect){w->rect.x, s->track_cy - 4, w->rect.w, 8});
+  draw_track_bar(r, (SDL_Rect){w->rect.x, s->track_cy - 4, w->rect.w, 8}, s->active);
 
   for (int i = 0; i < s->count; i++) {
-    bool sel = (i == s->selected);
-    SDL_Color nc = sel             ? (SDL_Color){255, 215, 0, 255}
+    bool sel = s->active && (i == s->selected);
+    SDL_Color nc = !s->active      ? (SDL_Color){90, 90, 90, 255}
+                   : sel           ? (SDL_Color){255, 215, 0, 255}
                    : s->enabled[i] ? (SDL_Color){235, 235, 235, 255}
                                    : (SDL_Color){110, 110, 110, 255};
     int nw = sel ? 8 : 4;
@@ -49,6 +56,7 @@ StepScaleWidget_t *step_scale_create(const uint32_t *values, const SDL_Keycode *
   s->renderer = g_sdl_context->renderer;
   s->count = count;
   s->selected = 0;
+  s->active = true;
   for (int i = 0; i < count; i++) {
     s->values[i] = values[i];
     s->hotkeys[i] = hotkeys[i];
@@ -98,6 +106,9 @@ void step_scale_layout(StepScaleWidget_t *s, SDL_Rect region) {
 }
 
 bool step_scale_handle(StepScaleWidget_t *s, const SDL_Event *e, SDL_Point mouse) {
+  if (!s->active)
+    return false;
+
   bool changed = false;
 
   /* If the current selection became disabled, advance to the next enabled notch. */

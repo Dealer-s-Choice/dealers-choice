@@ -1869,6 +1869,7 @@ static EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
       dash_act_cell = (SDL_Rect){act_cell_x + pad, dash_y + (dash_h - btn_h) / 2, act_inner, btn_h};
 
       /* ---- bet-amount step scale (left cell) ---- */
+      bet_scale->active = (*turn_id == my_id) && !client_state.do_discard_draw;
       step_scale_layout(
           bet_scale, (SDL_Rect){slider_cell_x + pad, dash_y + pad, slider_inner, dash_h - 2 * pad});
       ui_widget_render(&bet_scale->base);
