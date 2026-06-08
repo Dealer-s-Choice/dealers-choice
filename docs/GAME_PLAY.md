@@ -5,7 +5,7 @@
 When it is your turn, select the cards you would like to discard, then click
 the "Discard" button.
 
-[![Discarding](https://dealer-s-choice.github.io/screenshots/dealers-choice_discarding-2025-07-19.gif)](https://dealer-s-choice.github.io/screenshots/dealers-choice_discarding-2025-07-19.gif)
+[![Discarding](https://dealer-s-choice.github.io/screenshots/dealers-choice_discarding.gif)](https://dealer-s-choice.github.io/screenshots/dealers-choice_discarding.gif)
 
 If you want to keep all your cards, click the "Discard" button without
 selecting any cards.
