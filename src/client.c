@@ -988,7 +988,8 @@ static __attribute__((noinline)) void draw_filled_circle(SDL_Renderer *r, int cx
  * The brown wedge grows clockwise from 12 o'clock as time elapses.
  * A 10px 3D border ring (light on top-left, dark on bottom-right) frames it.
  */
-static void render_circle_timer(SDL_Renderer *renderer, SDL_Point center, float fill_ratio) {
+static void render_circle_timer(SDL_Renderer *renderer, SDL_Point center, float fill_ratio,
+                                bool my_turn) {
   const int cx = center.x;
   const int cy = center.y;
   const int outer_r = g_layout_cfg.circle_timer_r; /* 50 */
@@ -1033,7 +1034,7 @@ static void render_circle_timer(SDL_Renderer *renderer, SDL_Point center, float 
   /* --- pie wedge (elapsed time, clockwise from 12 o'clock) --------------- */
   float sweep = (1.0f - fill_ratio) * 2.0f * (float)M_PI;
   if (sweep > 0.001f) {
-    SDL_Color te = DC_TIMER_ELAPSED;
+    SDL_Color te = my_turn ? DC_TIMER_ELAPSED : (SDL_Color){128, 0, 0, 255};
     SDL_SetRenderDrawColor(renderer, te.r, te.g, te.b, te.a);
     for (int y = cy - inner_r; y <= cy + inner_r; y++) {
       int dy = y - cy;
@@ -2022,7 +2023,7 @@ static EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
       if (fill_ratio < 0.0f)
         fill_ratio = 0.0f;
 
-      render_circle_timer(sdl_context->renderer, dash_timer_center, fill_ratio);
+      render_circle_timer(sdl_context->renderer, dash_timer_center, fill_ratio, my_turn);
     }
 
     char buffer[128];

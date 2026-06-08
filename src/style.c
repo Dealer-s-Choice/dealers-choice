@@ -48,6 +48,6 @@ const SDL_Color DC_TEXT_ON_LIGHT = {  0,   0,   0, 255};
 const SDL_Color DC_TEXT_MUTED    = {200, 200, 200, 255};
 const SDL_Color DC_LINK_NORMAL   = {  0,   0,   0, 255};
 const SDL_Color DC_LINK_HOVER    = {  0,   0, 255, 255};
-const SDL_Color DC_TIMER_BG      = {  0, 125,   0, 255};
+const SDL_Color DC_TIMER_BG      = {  0,   0,   0, 255};
 const SDL_Color DC_TIMER_ELAPSED = {240, 204,  48, 255};
 // clang-format on
