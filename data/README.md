@@ -68,6 +68,7 @@ Coin sounds adapted from:
 ### Created by Dealer's Choice contributors
 
 * my_turn.wav
+* my_turn_last_chance.wav
 * server_join.wav
 
 [CC0 1.0 Universal](https://creativecommons.org/publicdomain/zero/1.0/)

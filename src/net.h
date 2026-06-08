@@ -113,6 +113,7 @@ typedef struct {
   uint32_t timer_start;
   uint32_t hourglass_rotate_start;
   bool end_game_timer_set;
+  bool last_chance_played;
   char server_status_str[LEN_STATUS_STR];
   bool play_coin_sound;
   bool bet_check_fold;

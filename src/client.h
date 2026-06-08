@@ -39,6 +39,7 @@
 typedef enum {
   SND_SERVER_JOIN,
   SND_MY_TURN,
+  SND_MY_TURN_LAST_CHANCE,
   SND_GAME_OVER,
   SND_NUM_SOUNDS,
 } ESndIdx_t;

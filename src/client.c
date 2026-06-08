@@ -1900,6 +1900,7 @@ static EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
           if (player_config->turn_notify)
             ma_sound_start_checked(&sound_context->sounds[SND_MY_TURN].sound);
         }
+        client_state.last_chance_played = false;
         client_state.turn_switch = false;
       }
     }
@@ -2022,6 +2023,13 @@ static EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
         fill_ratio = 1.0f;
       if (fill_ratio < 0.0f)
         fill_ratio = 0.0f;
+
+      if (my_turn && !game_state->winner_declared && !client_state.last_chance_played &&
+          fill_ratio <= 1.0f / 3.0f) {
+        if (player_config->turn_notify)
+          ma_sound_start_checked(&sound_context->sounds[SND_MY_TURN_LAST_CHANCE].sound);
+        client_state.last_chance_played = true;
+      }
 
       render_circle_timer(sdl_context->renderer, dash_timer_center, fill_ratio, my_turn);
     }
@@ -2580,6 +2588,7 @@ bool get_socket_context_and_run_client(PlayerConfig_t *player_config, const CliA
     ma_sound ma_tmp = {0};
     Sound_t sounds[] = {[SND_SERVER_JOIN] = {"server_join.wav", ma_tmp},
                         [SND_MY_TURN] = {"my_turn.wav", ma_tmp},
+                        [SND_MY_TURN_LAST_CHANCE] = {"my_turn_last_chance.wav", ma_tmp},
                         [SND_GAME_OVER] = {"game_over.wav", ma_tmp}};
 
     Sound_t coin_hit_sounds[] = {
