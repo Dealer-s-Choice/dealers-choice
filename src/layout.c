@@ -26,8 +26,8 @@
 
 */
 
-#include "globals.h"
 #include "layout.h"
+#include "globals.h"
 
 GameLayout_t g_layout;
 LayoutConfig_t g_layout_cfg;
@@ -88,9 +88,10 @@ void layout_compute(void) {
   g_layout.msg_panel.x = vp.x + c->msg_panel_x_offset;
   g_layout.msg_panel.y = g_center.y;
   g_layout.msg_panel.w = c->msg_panel_w;
-  g_layout.msg_panel.h = g_layout.status_line_h > 0
-      ? (g_layout.status_line_h + 2) * SIZEOF_STATUS_MSGS + c->msg_panel_pad_y * 2
-      : 0;
+  g_layout.msg_panel.h =
+      g_layout.status_line_h > 0
+          ? (g_layout.status_line_h + 2) * SIZEOF_STATUS_MSGS + c->msg_panel_pad_y * 2
+          : 0;
 
   g_layout.msg_panel_right = g_layout.msg_panel.x + g_layout.msg_panel.w;
 
@@ -102,26 +103,26 @@ void layout_compute(void) {
   g_layout.timer.y = g_layout.msg_panel.y - c->timer_status_gap - c->circle_timer_r;
 
   /* Menu screens (connect + settings) */
-  g_layout.menu.title_x            = g_center.x * 2 / 3;
-  g_layout.menu.title_y            = c->menu_title_y;
-  g_layout.menu.margin_x           = vp.x + c->menu_margin_x_offset;
-  g_layout.menu.connect_btn_y      = vp.y + c->menu_connect_btn_y_offset;
-  g_layout.menu.connect_host_y     = vp.y + c->menu_connect_host_y_offset;
-  g_layout.menu.quit_y             = vp.y + c->margin;
-  g_layout.menu.settings_x_right   = vp.x + c->menu_settings_x_right_offset;
-  g_layout.menu.settings_x_third   = vp.x + c->menu_settings_x_third_offset;
-  g_layout.menu.settings_row_y[0]  = vp.y + c->menu_settings_row_y_0;
-  g_layout.menu.settings_row_y[1]  = vp.y + c->menu_settings_row_y_1;
-  g_layout.menu.settings_row_y[2]  = vp.y + c->menu_settings_row_y_2;
-  g_layout.menu.settings_save_y    = vp.y + c->menu_settings_save_y_offset;
-  g_layout.menu.back_img_x         = vp.x + vp.w - c->back_btn_size - c->margin;
-  g_layout.menu.back_img_y         = vp.y + vp.h / 2;
-  g_layout.menu.links_center_x     = g_center.x + c->menu_links_center_x_offset;
+  g_layout.menu.title_x = g_center.x * 2 / 3;
+  g_layout.menu.title_y = c->menu_title_y;
+  g_layout.menu.margin_x = vp.x + c->menu_margin_x_offset;
+  g_layout.menu.connect_btn_y = vp.y + c->menu_connect_btn_y_offset;
+  g_layout.menu.connect_host_y = vp.y + c->menu_connect_host_y_offset;
+  g_layout.menu.quit_y = vp.y + c->margin;
+  g_layout.menu.settings_x_right = vp.x + c->menu_settings_x_right_offset;
+  g_layout.menu.settings_x_third = vp.x + c->menu_settings_x_third_offset;
+  g_layout.menu.settings_row_y[0] = vp.y + c->menu_settings_row_y_0;
+  g_layout.menu.settings_row_y[1] = vp.y + c->menu_settings_row_y_1;
+  g_layout.menu.settings_row_y[2] = vp.y + c->menu_settings_row_y_2;
+  g_layout.menu.settings_save_y = vp.y + c->menu_settings_save_y_offset;
+  g_layout.menu.back_img_x = vp.x + vp.w - c->back_btn_size - c->margin;
+  g_layout.menu.back_img_y = vp.y + vp.h / 2;
+  g_layout.menu.links_center_x = g_center.x + c->menu_links_center_x_offset;
 
   /* Lobby (game selection) screen */
   g_layout.lobby.waiting_y = vp.y + vp.h - c->lobby_waiting_from_bottom;
-  g_layout.lobby.kick_x    = vp.x + vp.w / c->lobby_kick_x_divisor;
-  g_layout.lobby.kick_y    = vp.y + vp.h * c->lobby_kick_y_pct / 100;
+  g_layout.lobby.kick_x = vp.x + vp.w / c->lobby_kick_x_divisor;
+  g_layout.lobby.kick_y = vp.y + vp.h * c->lobby_kick_y_pct / 100;
 }
 
 SDL_Rect rect_anchored(SDL_Point ref, int w, int h, Anchor_t a, int dx, int dy) {

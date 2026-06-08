@@ -156,8 +156,8 @@ void card_text_atlas_init(SDL_Renderer *renderer, TTF_Font *face_font, const cha
        * errno via strerror gives the human-friendly OS reason
        * ("No such file or directory", "Permission denied"); SDL's
        * own string is usually less specific. */
-      fprintf(stderr, "card_text_atlas_init: open %s failed: %s (SDL: %s)\n", path,
-              strerror(errno), SDL_GetError());
+      fprintf(stderr, "card_text_atlas_init: open %s failed: %s (SDL: %s)\n", path, strerror(errno),
+              SDL_GetError());
       continue;
     }
     SDL_Surface *surface = IMG_LoadSVG_RW(rw);

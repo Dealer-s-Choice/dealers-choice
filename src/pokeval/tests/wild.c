@@ -254,22 +254,22 @@ _MAIN_HEAD_
  * slots as a phantom pair and inflate both hands to Full House. */
 {
   POKEVAL_NeedComparing hands[2] = {
-    /* Hand 0: 7 7 7 K Q — three Sevens with high kickers */
-    {.id = 0,
-     .hand = {{{DH_CARD_SEVEN, DH_SUIT_HEARTS},
-               {DH_CARD_SEVEN, DH_SUIT_DIAMONDS},
-               {DH_CARD_SEVEN, DH_SUIT_SPADES},
-               {DH_CARD_KING, DH_SUIT_CLUBS},
-               {DH_CARD_QUEEN, DH_SUIT_CLUBS},
-               PAD_NULL_CARDS}}},
-    /* Hand 1: J J 2 3 4 — wild 2 fills the third Jack */
-    {.id = 1,
-     .hand = {{{DH_CARD_JACK, DH_SUIT_HEARTS},
-               {DH_CARD_JACK, DH_SUIT_DIAMONDS},
-               {DH_CARD_TWO, DH_SUIT_SPADES},
-               {DH_CARD_THREE, DH_SUIT_CLUBS},
-               {DH_CARD_FOUR, DH_SUIT_HEARTS},
-               PAD_NULL_CARDS}}},
+      /* Hand 0: 7 7 7 K Q — three Sevens with high kickers */
+      {.id = 0,
+       .hand = {{{DH_CARD_SEVEN, DH_SUIT_HEARTS},
+                 {DH_CARD_SEVEN, DH_SUIT_DIAMONDS},
+                 {DH_CARD_SEVEN, DH_SUIT_SPADES},
+                 {DH_CARD_KING, DH_SUIT_CLUBS},
+                 {DH_CARD_QUEEN, DH_SUIT_CLUBS},
+                 PAD_NULL_CARDS}}},
+      /* Hand 1: J J 2 3 4 — wild 2 fills the third Jack */
+      {.id = 1,
+       .hand = {{{DH_CARD_JACK, DH_SUIT_HEARTS},
+                 {DH_CARD_JACK, DH_SUIT_DIAMONDS},
+                 {DH_CARD_TWO, DH_SUIT_SPADES},
+                 {DH_CARD_THREE, DH_SUIT_CLUBS},
+                 {DH_CARD_FOUR, DH_SUIT_HEARTS},
+                 PAD_NULL_CARDS}}},
   };
   uint8_t n_wins = POKEVAL_compare_hands_wild(hands, 2, DH_CARD_TWO);
   fprintf(stderr, "wild trips compare (J J 2 3 4 vs 7 7 7 K Q): %d winner(s)\n", n_wins);
@@ -288,22 +288,22 @@ _MAIN_HEAD_
  */
 {
   POKEVAL_NeedComparing hands[2] = {
-    /* Hand 0: 5 5 K T 3 — pair of fives, K-T-3 kickers */
-    {.id = 0,
-     .hand = {{{DH_CARD_FIVE, DH_SUIT_HEARTS},
-               {DH_CARD_FIVE, DH_SUIT_CLUBS},
-               {DH_CARD_KING, DH_SUIT_HEARTS},
-               {DH_CARD_TEN, DH_SUIT_CLUBS},
-               {DH_CARD_THREE, DH_SUIT_HEARTS},
-               PAD_NULL_CARDS}}},
-    /* Hand 1: 8 8 Q J 6 — pair of eights, Q-J-6 kickers (wins) */
-    {.id = 1,
-     .hand = {{{DH_CARD_EIGHT, DH_SUIT_DIAMONDS},
-               {DH_CARD_EIGHT, DH_SUIT_SPADES},
-               {DH_CARD_QUEEN, DH_SUIT_HEARTS},
-               {DH_CARD_JACK, DH_SUIT_DIAMONDS},
-               {DH_CARD_SIX, DH_SUIT_HEARTS},
-               PAD_NULL_CARDS}}},
+      /* Hand 0: 5 5 K T 3 — pair of fives, K-T-3 kickers */
+      {.id = 0,
+       .hand = {{{DH_CARD_FIVE, DH_SUIT_HEARTS},
+                 {DH_CARD_FIVE, DH_SUIT_CLUBS},
+                 {DH_CARD_KING, DH_SUIT_HEARTS},
+                 {DH_CARD_TEN, DH_SUIT_CLUBS},
+                 {DH_CARD_THREE, DH_SUIT_HEARTS},
+                 PAD_NULL_CARDS}}},
+      /* Hand 1: 8 8 Q J 6 — pair of eights, Q-J-6 kickers (wins) */
+      {.id = 1,
+       .hand = {{{DH_CARD_EIGHT, DH_SUIT_DIAMONDS},
+                 {DH_CARD_EIGHT, DH_SUIT_SPADES},
+                 {DH_CARD_QUEEN, DH_SUIT_HEARTS},
+                 {DH_CARD_JACK, DH_SUIT_DIAMONDS},
+                 {DH_CARD_SIX, DH_SUIT_HEARTS},
+                 PAD_NULL_CARDS}}},
   };
   uint8_t n_wins = POKEVAL_compare_hands_wild(hands, 2, DH_CARD_TWO);
   fprintf(stderr, "wild pair compare (8 8 Q J 6 vs 5 5 K T 3): %d winner(s)\n", n_wins);
@@ -320,22 +320,22 @@ _MAIN_HEAD_
  */
 {
   POKEVAL_NeedComparing hands[2] = {
-    /* Hand 0: 8 8 K 7 4 — natural pair of eights, K-7-4 kickers */
-    {.id = 0,
-     .hand = {{{DH_CARD_EIGHT, DH_SUIT_DIAMONDS},
-               {DH_CARD_EIGHT, DH_SUIT_SPADES},
-               {DH_CARD_KING, DH_SUIT_HEARTS},
-               {DH_CARD_SEVEN, DH_SUIT_HEARTS},
-               {DH_CARD_FOUR, DH_SUIT_HEARTS},
-               PAD_NULL_CARDS}}},
-    /* Hand 1: Q J 6 5 2 — wild 2 fills the second queen (wins) */
-    {.id = 1,
-     .hand = {{{DH_CARD_QUEEN, DH_SUIT_HEARTS},
-               {DH_CARD_JACK, DH_SUIT_HEARTS},
-               {DH_CARD_SIX, DH_SUIT_HEARTS},
-               {DH_CARD_FIVE, DH_SUIT_HEARTS},
-               {DH_CARD_TWO, DH_SUIT_CLUBS},
-               PAD_NULL_CARDS}}},
+      /* Hand 0: 8 8 K 7 4 — natural pair of eights, K-7-4 kickers */
+      {.id = 0,
+       .hand = {{{DH_CARD_EIGHT, DH_SUIT_DIAMONDS},
+                 {DH_CARD_EIGHT, DH_SUIT_SPADES},
+                 {DH_CARD_KING, DH_SUIT_HEARTS},
+                 {DH_CARD_SEVEN, DH_SUIT_HEARTS},
+                 {DH_CARD_FOUR, DH_SUIT_HEARTS},
+                 PAD_NULL_CARDS}}},
+      /* Hand 1: Q J 6 5 2 — wild 2 fills the second queen (wins) */
+      {.id = 1,
+       .hand = {{{DH_CARD_QUEEN, DH_SUIT_HEARTS},
+                 {DH_CARD_JACK, DH_SUIT_HEARTS},
+                 {DH_CARD_SIX, DH_SUIT_HEARTS},
+                 {DH_CARD_FIVE, DH_SUIT_HEARTS},
+                 {DH_CARD_TWO, DH_SUIT_CLUBS},
+                 PAD_NULL_CARDS}}},
   };
   uint8_t n_wins = POKEVAL_compare_hands_wild(hands, 2, DH_CARD_TWO);
   fprintf(stderr, "wild pair compare (Q J 6 5 2w vs 8 8 K 7 4): %d winner(s)\n", n_wins);
@@ -357,22 +357,22 @@ _MAIN_HEAD_
  */
 {
   POKEVAL_NeedComparing hands[2] = {
-    /* Hand 0: A A Q 3 3 — two pair, aces-up with threes, Q kicker */
-    {.id = 0,
-     .hand = {{{DH_CARD_ACE, DH_SUIT_HEARTS},
-               {DH_CARD_ACE, DH_SUIT_DIAMONDS},
-               {DH_CARD_QUEEN, DH_SUIT_HEARTS},
-               {DH_CARD_THREE, DH_SUIT_HEARTS},
-               {DH_CARD_THREE, DH_SUIT_DIAMONDS},
-               PAD_NULL_CARDS}}},
-    /* Hand 1: A A Q 6 6 — two pair, aces-up with sixes, Q kicker (wins) */
-    {.id = 1,
-     .hand = {{{DH_CARD_ACE, DH_SUIT_SPADES},
-               {DH_CARD_ACE, DH_SUIT_CLUBS},
-               {DH_CARD_QUEEN, DH_SUIT_DIAMONDS},
-               {DH_CARD_SIX, DH_SUIT_HEARTS},
-               {DH_CARD_SIX, DH_SUIT_DIAMONDS},
-               PAD_NULL_CARDS}}},
+      /* Hand 0: A A Q 3 3 — two pair, aces-up with threes, Q kicker */
+      {.id = 0,
+       .hand = {{{DH_CARD_ACE, DH_SUIT_HEARTS},
+                 {DH_CARD_ACE, DH_SUIT_DIAMONDS},
+                 {DH_CARD_QUEEN, DH_SUIT_HEARTS},
+                 {DH_CARD_THREE, DH_SUIT_HEARTS},
+                 {DH_CARD_THREE, DH_SUIT_DIAMONDS},
+                 PAD_NULL_CARDS}}},
+      /* Hand 1: A A Q 6 6 — two pair, aces-up with sixes, Q kicker (wins) */
+      {.id = 1,
+       .hand = {{{DH_CARD_ACE, DH_SUIT_SPADES},
+                 {DH_CARD_ACE, DH_SUIT_CLUBS},
+                 {DH_CARD_QUEEN, DH_SUIT_DIAMONDS},
+                 {DH_CARD_SIX, DH_SUIT_HEARTS},
+                 {DH_CARD_SIX, DH_SUIT_DIAMONDS},
+                 PAD_NULL_CARDS}}},
   };
   uint8_t n_wins = POKEVAL_compare_hands_wild(hands, 2, DH_CARD_TWO);
   fprintf(stderr, "wild two-pair compare (AA66 vs AA33): %d winner(s)\n", n_wins);
@@ -392,28 +392,28 @@ _MAIN_HEAD_
  */
 {
   POKEVAL_NeedComparing hands[2] = {
-    /* P1: 2s Js 9d 8d Th 5h Qh — wild as K gives K-high straight (wins) */
-    {.id = 0,
-     .hand = {{{DH_CARD_TWO, DH_SUIT_SPADES},
-               {DH_CARD_JACK, DH_SUIT_SPADES},
-               {DH_CARD_NINE, DH_SUIT_DIAMONDS},
-               {DH_CARD_EIGHT, DH_SUIT_DIAMONDS},
-               {DH_CARD_TEN, DH_SUIT_HEARTS},
-               {DH_CARD_FIVE, DH_SUIT_HEARTS},
-               {DH_CARD_QUEEN, DH_SUIT_HEARTS},
-               {DH_CARD_NULL, 0},
-               {DH_CARD_NULL, 0}}}},
-    /* P2: 8h As Jh Tc 9c 7c Qs — natural Q-high straight 8-9-T-J-Q */
-    {.id = 1,
-     .hand = {{{DH_CARD_EIGHT, DH_SUIT_HEARTS},
-               {DH_CARD_ACE, DH_SUIT_SPADES},
-               {DH_CARD_JACK, DH_SUIT_HEARTS},
-               {DH_CARD_TEN, DH_SUIT_CLUBS},
-               {DH_CARD_NINE, DH_SUIT_CLUBS},
-               {DH_CARD_SEVEN, DH_SUIT_CLUBS},
-               {DH_CARD_QUEEN, DH_SUIT_SPADES},
-               {DH_CARD_NULL, 0},
-               {DH_CARD_NULL, 0}}}},
+      /* P1: 2s Js 9d 8d Th 5h Qh — wild as K gives K-high straight (wins) */
+      {.id = 0,
+       .hand = {{{DH_CARD_TWO, DH_SUIT_SPADES},
+                 {DH_CARD_JACK, DH_SUIT_SPADES},
+                 {DH_CARD_NINE, DH_SUIT_DIAMONDS},
+                 {DH_CARD_EIGHT, DH_SUIT_DIAMONDS},
+                 {DH_CARD_TEN, DH_SUIT_HEARTS},
+                 {DH_CARD_FIVE, DH_SUIT_HEARTS},
+                 {DH_CARD_QUEEN, DH_SUIT_HEARTS},
+                 {DH_CARD_NULL, 0},
+                 {DH_CARD_NULL, 0}}}},
+      /* P2: 8h As Jh Tc 9c 7c Qs — natural Q-high straight 8-9-T-J-Q */
+      {.id = 1,
+       .hand = {{{DH_CARD_EIGHT, DH_SUIT_HEARTS},
+                 {DH_CARD_ACE, DH_SUIT_SPADES},
+                 {DH_CARD_JACK, DH_SUIT_HEARTS},
+                 {DH_CARD_TEN, DH_SUIT_CLUBS},
+                 {DH_CARD_NINE, DH_SUIT_CLUBS},
+                 {DH_CARD_SEVEN, DH_SUIT_CLUBS},
+                 {DH_CARD_QUEEN, DH_SUIT_SPADES},
+                 {DH_CARD_NULL, 0},
+                 {DH_CARD_NULL, 0}}}},
   };
   uint8_t n_wins = POKEVAL_compare_hands_wild(hands, 2, DH_CARD_TWO);
   fprintf(stderr, "wild straight compare (K-high wild vs Q-high natural): %d winner(s)\n", n_wins);

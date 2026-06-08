@@ -82,8 +82,8 @@ void step_scale_layout(StepScaleWidget_t *s, SDL_Rect region) {
   int end_pad = seg_w / 4; /* gap before first / after last notch */
   int span = region.w - 2 * end_pad;
   for (int i = 0; i < s->count; i++) {
-    s->notch_x[i] = (s->count == 1) ? region.x + region.w / 2
-                                    : region.x + end_pad + span * i / (s->count - 1);
+    s->notch_x[i] =
+        (s->count == 1) ? region.x + region.w / 2 : region.x + end_pad + span * i / (s->count - 1);
     /* hit target = the whole segment, so a click on or near the notch registers */
     s->hit[i] = (SDL_Rect){region.x + i * seg_w, region.y, seg_w, region.h};
   }

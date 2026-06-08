@@ -83,8 +83,7 @@ static void test_higher_max_admits_more(void) {
   assert(!dc_rate_limit_check_at("192.168.1.1", 10, 11));
 }
 
-_MAIN_HEAD_
-(void)argc;
+_MAIN_HEAD_(void) argc;
 (void)argv;
 test_burst_then_reject();
 test_per_ip_counters_are_independent();

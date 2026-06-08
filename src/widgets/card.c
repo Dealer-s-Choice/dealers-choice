@@ -559,8 +559,8 @@ static void card_widget_render(UIWidget_t *w) {
     pair_x = w->rect.x + min_left_margin;
     gap = 0;
   }
-  SDL_Rect face_rect = {pair_x, w->rect.y + (g_layout_cfg.card_h - entry.face_h) / 2,
-                        entry.face_w, entry.face_h};
+  SDL_Rect face_rect = {pair_x, w->rect.y + (g_layout_cfg.card_h - entry.face_h) / 2, entry.face_w,
+                        entry.face_h};
   SDL_Rect suit_rect = {pair_x + entry.face_w + gap,
                         w->rect.y + (g_layout_cfg.card_h - suit_disp) / 2, suit_disp, suit_disp};
   SDL_RenderCopy(renderer, entry.face, NULL, &face_rect);

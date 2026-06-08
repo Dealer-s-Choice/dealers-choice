@@ -497,9 +497,9 @@ int main(int argc, char *argv[]) {
      * player joins, then `continue` past the deal trigger on every
      * subsequent iteration (recv returns RECV_NOTHING in the menu
      * lull), and the server's dealer_timeout would expire instead. */
-    bool game_select_due =
-        game_state.at_menu && game_state.dealer_id == my_id && !game_select_sent &&
-        game_select_after != 0 && SDL_GetTicks() >= game_select_after;
+    bool game_select_due = game_state.at_menu && game_state.dealer_id == my_id &&
+                           !game_select_sent && game_select_after != 0 &&
+                           SDL_GetTicks() >= game_select_after;
     if (status == RECV_NOTHING) {
       if ((!any_action || SDL_GetTicks() < action_after) && !game_select_due)
         continue;
@@ -646,8 +646,7 @@ int main(int argc, char *argv[]) {
     /* "We're drawing dead-ish" guard: an opponent's visible cards already
      * make a stronger hand than ours and we don't have a flush draw to
      * outrun it.  Don't bluff, don't call, just get out. */
-    bool outclassed_by_visible =
-        (opp_visible_strength > strength && draw_strength < 2);
+    bool outclassed_by_visible = (opp_visible_strength > strength && draw_strength < 2);
 
     /* Pot odds: what fraction of (pot + call) the call represents (pct).
      * A lower value means better pot odds and more reason to call. */
@@ -731,23 +730,33 @@ int main(int argc, char *argv[]) {
          * because every other unpaired hand beats us. */
         int eq;
         switch (strength) {
-        case 4: eq = 90; break;  /* 7-high or better — print money */
-        case 3: eq = 65; break;  /* 8/9-high */
-        case 2: eq = (active_opponents <= 1) ? 38 : 25; break;
-        case 1: eq = (active_opponents <= 1) ? 16 : 8; break;   /* paired */
-        default: eq = 4; break;  /* two pair or worse */
+        case 4:
+          eq = 90;
+          break; /* 7-high or better — print money */
+        case 3:
+          eq = 65;
+          break; /* 8/9-high */
+        case 2:
+          eq = (active_opponents <= 1) ? 38 : 25;
+          break;
+        case 1:
+          eq = (active_opponents <= 1) ? 16 : 8;
+          break; /* paired */
+        default:
+          eq = 4;
+          break; /* two pair or worse */
         }
         if (strength >= 3 && can_raise && (int)pcg32_boundedrand_r(&rng, 100) < 55) {
           verbose_printf("(lowball value raise, strength=%d)\n", strength);
           rc = send_player_action(&client_state, socket_ctx.sock, ACTION_RAISE, bet_amount);
           was_aggressor = true;
         } else if (pot_odds_pct < eq) {
-          verbose_printf("(lowball call, strength=%d pot_odds=%d%% eq=%d%%)\n",
-                         strength, pot_odds_pct, eq);
+          verbose_printf("(lowball call, strength=%d pot_odds=%d%% eq=%d%%)\n", strength,
+                         pot_odds_pct, eq);
           rc = send_player_action(&client_state, socket_ctx.sock, ACTION_CALL, 0);
         } else {
-          verbose_printf("(lowball fold, strength=%d pot_odds=%d%% eq=%d%%)\n",
-                         strength, pot_odds_pct, eq);
+          verbose_printf("(lowball fold, strength=%d pot_odds=%d%% eq=%d%%)\n", strength,
+                         pot_odds_pct, eq);
           rc = send_player_action(&client_state, socket_ctx.sock, ACTION_FOLD, 0);
           was_aggressor = false;
         }

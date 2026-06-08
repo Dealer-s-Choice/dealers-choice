@@ -966,7 +966,6 @@ uint8_t POKEVAL_compare_hands_omaha(POKEVAL_NeedComparing *need_comparing, uint8
   return compare_hands_5(need_comparing, count);
 }
 
-
 // Returns the face value of the highest N-of-a-kind group in a wild hand.
 // Checks for a natural group of exactly `group_size` first, then falls back
 // to the highest non-wild face whose natural count plus available wilds
@@ -979,11 +978,13 @@ static int get_group_value_wild(const POKEVAL_Hand_5 *hand, int32_t wild_face, i
   }
   int n_wild = 0;
   for (int i = 0; i < POKEVAL_HAND_SIZE; i++)
-    if (hand->card[i].face_val == wild_face) n_wild++;
+    if (hand->card[i].face_val == wild_face)
+      n_wild++;
   int best = -1;
   for (int i = 0; i < POKEVAL_HAND_SIZE; i++) {
     int fv = hand->card[i].face_val;
-    if (fv == wild_face) continue;
+    if (fv == wild_face)
+      continue;
     if (count_face(hand, fv) + n_wild >= group_size && fv > best)
       best = fv;
   }
@@ -1067,10 +1068,12 @@ static int compare_pair_tiebreak_wild(const POKEVAL_Hand_5 *a, const POKEVAL_Han
       // is 2, or count + remaining wilds reaches 2.
       int second = -1;
       for (int fv = DH_CARD_KING + 1; fv >= DH_CARD_ACE; fv--) {
-        if (fv == wild_face || fv == top) continue;
+        if (fv == wild_face || fv == top)
+          continue;
         // POKEVAL_ACE == DH_CARD_KING + 1 is the iteration start above;
         // skip values that aren't dealt as themselves.
-        if (fv == POKEVAL_ACE && fv != DH_CARD_ACE) continue;
+        if (fv == POKEVAL_ACE && fv != DH_CARD_ACE)
+          continue;
         int cnt = count_face(h, fv);
         int wilds_left = count_face(h, wild_face);
         if (cnt + wilds_left >= 2 && fv > second)
