@@ -43,7 +43,7 @@ static void step_scale_render(UIWidget_t *w) {
     SDL_RenderFillRect(r, &(SDL_Rect){s->notch_x[i] - nw / 2, s->track_cy - nh / 2, nw, nh});
   }
 
-  if (s->label)
+  if (s->label && s->active)
     ui_widget_render(&s->label->base);
 }
 
