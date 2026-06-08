@@ -15,7 +15,13 @@ test locally with simulated lag
   `meson wrap promote subprojects/deckhandler/subprojects/pcg`
   https://github.com/mesonbuild/meson/issues/12489
 
-- Pin the current git revision for the subprojects that use git
+- Pin the git subprojects so the bundled source is reproducible. The clean
+  way is a wrap-git with a pinned revision -- e.g. subprojects/canfigger.wrap
+  with [wrap-git] revision = vX.Y.Z (a tag/commit, NOT a branch or HEAD).
+  canfigger is currently a manual clone in subprojects/canfigger (gitignored),
+  so `meson dist --include-subprojects` bundles its WORKING TREE -- before
+  dist, make sure that clone is clean (no local edits) and checked out at the
+  release tag, or switch it to a pinned .wrap.
 
 - Ensure all CI workflows are passing on trunk
 - Checkout release branch
@@ -24,12 +30,14 @@ test locally with simulated lag
 - Update po and pot files:
     meson compile dealers-choice-pot
     ninja dealers-choice-update-po
-- Comment out in meson.build:
-    'b_sanitize=address,undefined',
-    'b_lundef=false'
-- Commit the above changes
+- Commit the above changes (ChangeLog + version)
 - meson setup _release
 - meson dist --include-subprojects (runs tests)
+- Strip dev-only dirs from the dist tarball and refresh its sha256sum:
+    cd _release && ../scripts/dist-strip-packaging.sh
+  (removes the entries in scripts/dist-strip-list.txt -- .gitignore,
+   .clang-format, .github, coverity, packaging -- and rewrites
+   meson-dist/<pkg>.tar.xz.sha256sum)
 
 - push to start testing
 
@@ -38,6 +46,7 @@ test locally with simulated lag
 
 - Update packaging; make sure they build (PKGBUILD, Slackbuild)
 - Amend the commit with any changes, push
+- Update the screenshots before posting the release
 - Draft new GitHub release, paste the ChangeLog entry as notes
 
     *Attach source tarball and sha256sum*
@@ -74,9 +83,6 @@ sbodl: downloads source URLs, optionally using the SBo source archive.
 
 # Post-release
 
-- Uncomment in meson.build:
-    'b_sanitize=address,undefined',
-    'b_lundef=false'
 - Bump version in meson.build to next -dev (e.g. 0.x.(y+1)-dev)
 - Add new "in progress" section to top of ChangeLog
 - Commit: "Begin development of 0.x.(y+1)"

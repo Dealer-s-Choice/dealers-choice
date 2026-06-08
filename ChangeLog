@@ -1,6 +1,7 @@
 2026-06-08
 
 - dealers-choice 0.0.14:
+  * Replace SDL2_net with tcpme (thin POSIX/Winsock wrapper)
   + Game-play display overhaul: relative seating (local bottom-centre,
     opponents clockwise), a bottom dashboard, an anchor-based layout system,
     and SVG card suits
@@ -11,9 +12,7 @@
     high-ping / slow-action warnings and client frame-stall / slow-audio
     warnings, all gated by --verbose (#307)
   * regression fix: discard-phase timeout now reports 0 cards drawn (#265)
-  * Replace SDL2_net with tcpme (thin POSIX/Winsock wrapper)
   * Fix OpenBSD build (#270)
-  * Bump GAME_PROTOCOL_VERSION from 9 to 10
   * server: skip stray MSG_PING_RESPONSE frames buffered from the lobby,
     fixing a spurious disconnect on slow/emulated hardware
   * Move deckhandler and pokeval inline (no longer meson subprojects)
@@ -29,6 +28,7 @@
   * route update_best_wild same-rank tiebreak through the wild-aware compare
   * bugfix: run audio init on a background thread with silent fallback, so
     a blocked audio backend can't freeze the window
+  * Bump GAME_PROTOCOL_VERSION from 9 to 10
 
 2026-04-24
 
