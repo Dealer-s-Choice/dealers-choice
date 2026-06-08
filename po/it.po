@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: dealers-choice\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-06-06 01:55-0500\n"
+"POT-Creation-Date: 2026-06-07 22:17-0500\n"
 "PO-Revision-Date: 2025-07-02 00:46-0500\n"
 "Last-Translator: Andy <andy@prometheus.localhost.localdomain>\n"
 "Language-Team: Italian <tp@lists.linux.it>\n"
@@ -17,76 +17,76 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: src/client.c:137 src/client.c:1238
+#: src/client.c:138 src/client.c:1255
 msgid "Deuces Wild"
 msgstr ""
 
-#: src/client.c:179
+#: src/client.c:180
 msgid "Players"
 msgstr ""
 
-#: src/client.c:183
+#: src/client.c:184
 msgid "Dealer"
 msgstr ""
 
-#: src/client.c:187
+#: src/client.c:188
 msgid "Ping"
 msgstr ""
 
-#: src/client.c:201
+#: src/client.c:202
 msgid "Waiting for more players..."
 msgstr ""
 
-#: src/client.c:207
+#: src/client.c:208
 msgid "Waiting for dealer to select game..."
 msgstr ""
 
-#: src/client.c:213 src/client.c:1221
+#: src/client.c:215 src/client.c:1235
 msgid "Kick"
 msgstr ""
 
-#: src/client.c:215 src/client.c:1223
+#: src/client.c:217 src/client.c:1237
 msgid "Ban"
 msgstr ""
 
 #. Show dealing screen immediately after click
-#: src/client.c:572
+#: src/client.c:577
 msgid "Dealing..."
 msgstr ""
 
-#: src/client.c:886
+#: src/client.c:893
 msgid "Check"
 msgstr "Check"
 
-#: src/client.c:886
+#: src/client.c:893
 msgid "Bet"
 msgstr "Punta"
 
-#: src/client.c:887
+#: src/client.c:893
 msgid "Fold"
 msgstr "Molla"
 
-#: src/client.c:887
+#: src/client.c:894
 msgid "Call"
 msgstr "Chiamata"
 
-#: src/client.c:888
+#: src/client.c:894
 msgid "Raise"
 msgstr "Rilancia"
 
-#: src/client.c:888
+#: src/client.c:894
 msgid "Complete"
 msgstr ""
 
-#: src/client.c:889
+#: src/client.c:895
 msgid "Discard"
 msgstr "Scarta"
 
-#: src/client.c:2260
+#: src/client.c:2295
 msgid "Cancel"
 msgstr ""
 
-#: src/client.c:2266 src/client.c:2282
+#: src/client.c:2301 src/client.c:2316
 #, c-format
 msgid "Attempting connection to: %s... (%d/%d)"
 msgstr ""
@@ -95,31 +95,31 @@ msgstr ""
 msgid "Connect"
 msgstr "Connetti"
 
-#: src/main.c:63 src/main.c:700
+#: src/main.c:63 src/main.c:708
 msgid "Settings"
 msgstr ""
 
-#: src/main.c:96 src/main.c:419 src/main.c:659
+#: src/main.c:98 src/main.c:424 src/main.c:666
 msgid "Save"
 msgstr ""
 
-#: src/main.c:102 src/main.c:669
+#: src/main.c:104 src/main.c:676
 msgid "Load Defaults"
 msgstr ""
 
-#: src/main.c:381 src/main.c:679
+#: src/main.c:386 src/main.c:687
 msgid "Hotkeys"
 msgstr ""
 
-#: src/main.c:386 src/main.c:487
+#: src/main.c:390 src/main.c:492
 msgid "Click an action, then press a key"
 msgstr ""
 
-#: src/main.c:451
+#: src/main.c:456
 msgid "That key is reserved - pick another"
 msgstr ""
 
-#: src/main.c:485
+#: src/main.c:490
 msgid "press a key..."
 msgstr ""
 
@@ -133,58 +133,58 @@ msgstr "Canale Discord (sul server Lazarus Project)"
 msgid "Website"
 msgstr ""
 
-#: src/server.c:847
+#: src/server.c:864
 #, fuzzy
 msgid "checked"
 msgstr "Check"
 
-#: src/server.c:862
+#: src/server.c:879
 msgid "folded"
 msgstr ""
 
-#: src/server.c:1055 src/server.c:1077
+#: src/server.c:1072 src/server.c:1094
 msgid "completed "
 msgstr ""
 
-#: src/server.c:1055
+#: src/server.c:1072
 msgid "bet "
 msgstr ""
 
-#: src/server.c:1070 src/server.c:1091
+#: src/server.c:1087 src/server.c:1108
 msgid "called"
 msgstr ""
 
-#: src/server.c:1095
+#: src/server.c:1112
 #, fuzzy
 msgid "raised "
 msgstr "Rilancia"
 
-#: src/server.c:1223
+#: src/server.c:1247
 #, c-format
 msgid "%s disconnected"
 msgstr ""
 
-#: src/server.c:1245
+#: src/server.c:1268
 #, c-format
 msgid "%s was kicked"
 msgstr ""
 
-#: src/server.c:1264
+#: src/server.c:1287
 #, c-format
 msgid "%s was banned"
 msgstr ""
 
-#: src/server.c:1502
+#: src/server.c:1525
 #, c-format
 msgid "%s brings in for %u"
 msgstr ""
 
-#: src/server.c:1695
+#: src/server.c:1718
 #, c-format
 msgid "%s ran out of cards"
 msgstr ""
 
-#: src/server.c:1793
+#: src/server.c:1816
 #, c-format
 msgid "Game: %s%s"
 msgstr ""
