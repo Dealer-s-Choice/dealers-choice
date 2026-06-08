@@ -19,3 +19,5 @@ out/**
 /docker/.env
 __pycache__/
 *.zst
+
+/packaging/aur

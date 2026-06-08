@@ -157,6 +157,7 @@ jobs:
           --no-sign
           --compression=xz
         platform: ${{ matrix.platform }}
+        codename: trixie
 
     - name: Checksum
       run: |
