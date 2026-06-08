@@ -2031,7 +2031,8 @@ static EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
         client_state.last_chance_played = true;
       }
 
-      render_circle_timer(sdl_context->renderer, dash_timer_center, fill_ratio, my_turn);
+      render_circle_timer(sdl_context->renderer, dash_timer_center, fill_ratio,
+                          my_turn && !game_state->winner_declared);
     }
 
     char buffer[128];
