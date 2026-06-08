@@ -98,6 +98,7 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, u
       button_widget_create_styled(_("Save"), &ROLE_PRIMARY, font->fonts, (SDL_Keycode)0);
   if (!button_save)
     goto err;
+  button_save->interactive = false;
   ui_register(&reg, &button_save->base);
 
   ButtonWidget_t *button_defaults =
@@ -182,7 +183,8 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, u
         } else if (SDL_PointInRect(&mouse_pos, &button_settings->base.rect)) {
           run_settings = true;
           running = false;
-        } else if (SDL_PointInRect(&mouse_pos, &button_save->base.rect)) {
+        } else if (button_save->interactive &&
+                   SDL_PointInRect(&mouse_pos, &button_save->base.rect)) {
           button_save->click.start_time = SDL_GetTicks();
           player_config_set_field(player_config, 1, input_widget_get_text(host_input));
           player_config_set_field(player_config, 2, input_widget_get_text(port_input));
@@ -273,6 +275,10 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, u
         }
       }
     }
+
+    button_save->interactive =
+        strcmp(input_widget_get_text(host_input), player_config->host) != 0 ||
+        (uint16_t)strtoul(input_widget_get_text(port_input), NULL, 10) != player_config->port;
 
     clear_screen(sdl_context->renderer);
     ui_widget_render(&button_connect->base);
@@ -425,6 +431,7 @@ static void menu_display_hotkeys(PlayerConfig_t *player_config, SdlContext_t *sd
   if (btn_save) {
     btn_save->base.rect.x = label_x;
     btn_save->base.rect.y = first_row_y + (int)n * row_h + 20;
+    btn_save->interactive = false;
     ui_register(&reg, &btn_save->base);
   }
 
@@ -473,7 +480,8 @@ static void menu_display_hotkeys(PlayerConfig_t *player_config, SdlContext_t *sd
         if (e.key.keysym.sym == SDLK_ESCAPE)
           running = false;
       } else if (e.type == SDL_MOUSEBUTTONDOWN && e.button.button == SDL_BUTTON_LEFT) {
-        if (btn_save && SDL_PointInRect(&mouse_pos, &btn_save->base.rect)) {
+        if (btn_save && btn_save->interactive &&
+            SDL_PointInRect(&mouse_pos, &btn_save->base.rect)) {
           btn_save->click.start_time = SDL_GetTicks();
           for (size_t r = 0; r < n; r++)
             player_config_set_field(player_config, idx[r], keyname[r]);
@@ -495,6 +503,17 @@ static void menu_display_hotkeys(PlayerConfig_t *player_config, SdlContext_t *sd
           }
         }
       }
+    }
+
+    if (btn_save) {
+      bool dirty = false;
+      for (size_t r = 0; r < n && !dirty; r++) {
+        const char *field =
+            (const char *)((const uint8_t *)player_config + player_config_entries[idx[r]].offset);
+        if (strcmp(keyname[r], field) != 0)
+          dirty = true;
+      }
+      btn_save->interactive = dirty;
     }
 
     clear_screen(sdl_context->renderer);
@@ -670,6 +689,7 @@ static void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *s
   }
   btn_save->base.rect.x = x_left;
   btn_save->base.rect.y = g_layout.menu.settings_save_y;
+  btn_save->interactive = false;
   ui_register(&reg, &btn_save->base);
 
   ButtonWidget_t *btn_defaults =
@@ -733,6 +753,7 @@ static void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *s
   SDL_StartTextInput();
   bool running = true;
   bool saved = false;
+  bool dirty = false;
 
   while (running) {
     SDL_Event e;
@@ -758,7 +779,7 @@ static void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *s
           SDL_Event quit = {.type = SDL_QUIT};
           SDL_PushEvent(&quit);
           running = false;
-        } else if (SDL_PointInRect(&mouse_pos, &btn_save->base.rect)) {
+        } else if (btn_save->interactive && SDL_PointInRect(&mouse_pos, &btn_save->base.rect)) {
           btn_save->click.start_time = SDL_GetTicks();
           for (size_t i = 0; i < player_config_entry_count; i++) {
             if (i == bool_idx)
@@ -862,6 +883,12 @@ static void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *s
       }
     }
 
+    dirty = turn_cb && turn_cb->checked != init_checked;
+    for (size_t i = 0; i < player_config_entry_count && !dirty; i++)
+      if (inputs[i] && strcmp(input_widget_get_text(inputs[i]), init_str[i]) != 0)
+        dirty = true;
+    btn_save->interactive = dirty;
+
     clear_screen(sdl_context->renderer);
 
     ui_widget_render(&tw_settings_title->base);
@@ -887,7 +914,7 @@ static void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *s
 
   SDL_StopTextInput();
 
-  if (saved) {
+  if (saved && dirty) {
     for (size_t i = 0; i < player_config_entry_count; i++) {
       if (i == bool_idx)
         player_config_set_field(player_config, i, turn_cb && turn_cb->checked ? "yes" : "no");
