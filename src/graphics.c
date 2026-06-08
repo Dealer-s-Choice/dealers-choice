@@ -83,7 +83,7 @@ void clear_screen(SDL_Renderer *renderer) {
   SDL_RenderClear(renderer);
 }
 
-bool confirm_quit(TTF_Font * const *fonts) {
+bool confirm_quit(TTF_Font *const *fonts) {
   if (!g_sdl_context || !fonts)
     return false;
 
@@ -91,8 +91,10 @@ bool confirm_quit(TTF_Font * const *fonts) {
 
   TextWidget_t *msg_tw =
       text_widget_create(_("Are you sure you want to quit?"), fonts[FONT_BOLD], DC_TEXT_ON_DARK);
-  ButtonWidget_t *btn_cancel = button_widget_create_styled(_("Cancel"), &ROLE_CANCEL, fonts, (SDL_Keycode)0);
-  ButtonWidget_t *btn_quit_w = button_widget_create_styled(_("Quit"), &ROLE_DANGER, fonts, (SDL_Keycode)0);
+  ButtonWidget_t *btn_cancel =
+      button_widget_create_styled(_("Cancel"), &ROLE_CANCEL, fonts, (SDL_Keycode)0);
+  ButtonWidget_t *btn_quit_w =
+      button_widget_create_styled(_("Quit"), &ROLE_DANGER, fonts, (SDL_Keycode)0);
 
   if (!msg_tw || !btn_cancel || !btn_quit_w) {
     if (msg_tw)

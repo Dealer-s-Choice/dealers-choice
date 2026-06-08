@@ -301,181 +301,184 @@ ERecvStatus_t recv_game_state(SocketContext_t *socket_context, GameState_t *game
    * they are processed and the next message is read without returning to the
    * caller, so callers never need to account for pings in their receive count. */
   for (;;) {
-  int result = tcpme_check_sockets(socket_context->set, 0);
-  if (result == -1) {
-    fputs(tcpme_get_error(), stderr);
-    return RECV_ERROR;
-  }
-  if (result == 0)
-    return RECV_NOTHING;
+    int result = tcpme_check_sockets(socket_context->set, 0);
+    if (result == -1) {
+      fputs(tcpme_get_error(), stderr);
+      return RECV_ERROR;
+    }
+    if (result == 0)
+      return RECV_NOTHING;
 
-  tcpme_socket_t sock = socket_context->sock;
-  if (!tcpme_socket_ready(socket_context->set, sock)) {
-    fprintf(stderr, "[recv_game_state] sock not ready\n");
-    return RECV_ERROR;
-  }
+    tcpme_socket_t sock = socket_context->sock;
+    if (!tcpme_socket_ready(socket_context->set, sock)) {
+      fprintf(stderr, "[recv_game_state] sock not ready\n");
+      return RECV_ERROR;
+    }
 
-  uint32_t size_net = 0;
-  int r_size = recv_all_tcp(sock, &size_net, sizeof(size_net));
-  if (r_size != (int)sizeof(size_net)) {
-    fprintf(stderr, "[recv_game_state] Disconnected while reading game state size (%d).\n", r_size);
-    return RECV_ERROR;
-  }
+    uint32_t size_net = 0;
+    int r_size = recv_all_tcp(sock, &size_net, sizeof(size_net));
+    if (r_size != (int)sizeof(size_net)) {
+      fprintf(stderr, "[recv_game_state] Disconnected while reading game state size (%d).\n",
+              r_size);
+      return RECV_ERROR;
+    }
 
-  uint32_t size = SDL_SwapBE32(size_net);
-  if (size == 0 || size > 65536) {
-    fprintf(stderr, "[recv_game_state] Invalid game state size: %u\n", size);
-    return RECV_ERROR;
-  }
+    uint32_t size = SDL_SwapBE32(size_net);
+    if (size == 0 || size > 65536) {
+      fprintf(stderr, "[recv_game_state] Invalid game state size: %u\n", size);
+      return RECV_ERROR;
+    }
 
-  uint8_t *buffer = malloc(size);
-  if (!buffer) {
-    fprintf(stderr, "[recv_game_state] Memory allocation failed\n");
-    return RECV_ERROR;
-  }
+    uint8_t *buffer = malloc(size);
+    if (!buffer) {
+      fprintf(stderr, "[recv_game_state] Memory allocation failed\n");
+      return RECV_ERROR;
+    }
 
-  int r_payload = recv_all_tcp(sock, buffer, size);
-  if (r_payload != (int)size) {
-    fprintf(stderr,
-            "[recv_game_state] Disconnected while reading game state payload (got %d, expected "
-            "%u). tcpme_get_error(): %s\n",
-            r_payload, size, tcpme_get_error());
-    free(buffer);
-    return RECV_ERROR;
-  }
+    int r_payload = recv_all_tcp(sock, buffer, size);
+    if (r_payload != (int)size) {
+      fprintf(stderr,
+              "[recv_game_state] Disconnected while reading game state payload (got %d, expected "
+              "%u). tcpme_get_error(): %s\n",
+              r_payload, size, tcpme_get_error());
+      free(buffer);
+      return RECV_ERROR;
+    }
 
-  uint16_t opcode_be;
-  memcpy(&opcode_be, buffer, sizeof(opcode_be));
-  uint16_t opcode = SDL_SwapBE16(opcode_be);
-  // fprintf(stderr, "opcode: %04X\n", opcode);
-  bool transparent = false;
-  switch (opcode) {
-  case MSG_TURN_ID:
-    client_state->turn_id = (int8_t)buffer[2];
-    client_state->turn_switch = true;
-    break;
-  case MSG_BET_CHECK_FOLD:
-    client_state->bet_check_fold = true;
-    break;
-  case MSG_CALL_RAISE_FOLD:
-    client_state->call_raise_fold = true;
-    break;
-  case MSG_CALL_COMPLETE_FOLD:
-    client_state->call_complete_fold = true;
-    break;
-  case MSG_COMPLETE_CHECK_FOLD:
-    client_state->complete_check_fold = true;
-    break;
-  case MSG_DRAW_PROMPT:
-    if (size != 2) {
-      fprintf(stderr, "[recv_game_state] Invalid size for MSG_DRAW_PROMPT: %u\n", size);
+    uint16_t opcode_be;
+    memcpy(&opcode_be, buffer, sizeof(opcode_be));
+    uint16_t opcode = SDL_SwapBE16(opcode_be);
+    // fprintf(stderr, "opcode: %04X\n", opcode);
+    bool transparent = false;
+    switch (opcode) {
+    case MSG_TURN_ID:
+      client_state->turn_id = (int8_t)buffer[2];
+      client_state->turn_switch = true;
       break;
-    }
-    client_state->do_discard_draw = true;
-    client_state->n_cards_selected = 0;
-    // printf("[recv_game_state] Received %u bytes, server wants discards...\n", size);
-    break;
-
-  case MSG_PING_REQUEST: {
-    PingRequest *req = ping_request__unpack(NULL, size - 2, buffer + 2);
-    if (!req) {
-      fprintf(stderr, "[PING] Failed to unpack PingRequest\n");
+    case MSG_BET_CHECK_FOLD:
+      client_state->bet_check_fold = true;
       break;
-    }
-
-    // Prepare PingResponse with same timestamp
-    PingResponse resp = PING_RESPONSE__INIT;
-    resp.timestamp = req->timestamp;
-
-    size_t len = ping_response__get_packed_size(&resp);
-    uint8_t buf[16]; // ample for one uint32 varint field
-    ping_response__pack(&resp, buf);
-
-    // Send back response to server
-    if (send_message(sock, MSG_PING_RESPONSE, buf, len) < 0) {
-      fprintf(stderr, "[PING] Failed to send PingResponse\n");
-    }
-
-    ping_request__free_unpacked(req, NULL);
-    transparent = true;
-  } break;
-
-  case MSG_PING_BROADCAST: {
-    PingBroadcast *pb = ping_broadcast__unpack(NULL, size - 2, buffer + 2);
-    if (!pb) {
-      fprintf(stderr, "[PING] Failed to unpack PingBroadcast\n");
+    case MSG_CALL_RAISE_FOLD:
+      client_state->call_raise_fold = true;
       break;
-    }
-
-    // Store ping times by player ID
-    for (size_t i = 0; i < pb->n_entries; i++) {
-      int player_id = pb->entries[i]->player_id;
-      if (player_id >= 0 && player_id < MAX_CLIENTS) {
-        client_state->ping_times[player_id] = pb->entries[i]->ping_ms;
-        // verbose_printf("[PING] Player %d: %u ms\n", player_id, pb->entries[i]->ping_ms);
+    case MSG_CALL_COMPLETE_FOLD:
+      client_state->call_complete_fold = true;
+      break;
+    case MSG_COMPLETE_CHECK_FOLD:
+      client_state->complete_check_fold = true;
+      break;
+    case MSG_DRAW_PROMPT:
+      if (size != 2) {
+        fprintf(stderr, "[recv_game_state] Invalid size for MSG_DRAW_PROMPT: %u\n", size);
+        break;
       }
-    }
-
-    ping_broadcast__free_unpacked(pb, NULL);
-    transparent = true;
-  } break;
-
-  case MSG_STATUS_MESSAGE: {
-    size_t msg_len = size - 2;
-    snprintf(client_state->server_status_str, sizeof(client_state->server_status_str), "%.*s",
-             (int)msg_len, (char *)&buffer[2]);
-    // fprintf(stderr, "[Status Message] %s\n", client_state->server_status_str);
-    if (strstr(client_state->server_status_str, "bet") ||
-        strstr(client_state->server_status_str, "call") ||
-        strstr(client_state->server_status_str, "raise"))
-      client_state->play_coin_sound = true;
-  } break;
-
-  case MSG_NEW_HAND: {
-    if (size < OPCODE_SIZE + 1) { // minimal valid payload: at least opcode + 1 byte of data
-      fputs("Invalid MSG_NEW_HAND payload (too short)\n", stderr);
+      client_state->do_discard_draw = true;
+      client_state->n_cards_selected = 0;
+      // printf("[recv_game_state] Received %u bytes, server wants discards...\n", size);
       break;
-    }
 
-    // Unpack protobuf starting after the opcode
-    Hand *pb_hand = hand__unpack(NULL, size - OPCODE_SIZE, buffer + OPCODE_SIZE);
-    if (!pb_hand) {
-      fputs("Failed to unpack Hand protobuf\n", stderr);
-      break;
-    }
+    case MSG_PING_REQUEST: {
+      PingRequest *req = ping_request__unpack(NULL, size - 2, buffer + 2);
+      if (!req) {
+        fprintf(stderr, "[PING] Failed to unpack PingRequest\n");
+        break;
+      }
 
-    if (pb_hand->n_card == 0 || pb_hand->n_card > MAX_HAND_SIZE) {
-      fprintf(stderr, "Invalid hand size: %zu\n", pb_hand->n_card);
+      // Prepare PingResponse with same timestamp
+      PingResponse resp = PING_RESPONSE__INIT;
+      resp.timestamp = req->timestamp;
+
+      size_t len = ping_response__get_packed_size(&resp);
+      uint8_t buf[16]; // ample for one uint32 varint field
+      ping_response__pack(&resp, buf);
+
+      // Send back response to server
+      if (send_message(sock, MSG_PING_RESPONSE, buf, len) < 0) {
+        fprintf(stderr, "[PING] Failed to send PingResponse\n");
+      }
+
+      ping_request__free_unpacked(req, NULL);
+      transparent = true;
+    } break;
+
+    case MSG_PING_BROADCAST: {
+      PingBroadcast *pb = ping_broadcast__unpack(NULL, size - 2, buffer + 2);
+      if (!pb) {
+        fprintf(stderr, "[PING] Failed to unpack PingBroadcast\n");
+        break;
+      }
+
+      // Store ping times by player ID
+      for (size_t i = 0; i < pb->n_entries; i++) {
+        int player_id = pb->entries[i]->player_id;
+        if (player_id >= 0 && player_id < MAX_CLIENTS) {
+          client_state->ping_times[player_id] = pb->entries[i]->ping_ms;
+          // verbose_printf("[PING] Player %d: %u ms\n", player_id, pb->entries[i]->ping_ms);
+        }
+      }
+
+      ping_broadcast__free_unpacked(pb, NULL);
+      transparent = true;
+    } break;
+
+    case MSG_STATUS_MESSAGE: {
+      size_t msg_len = size - 2;
+      snprintf(client_state->server_status_str, sizeof(client_state->server_status_str), "%.*s",
+               (int)msg_len, (char *)&buffer[2]);
+      // fprintf(stderr, "[Status Message] %s\n", client_state->server_status_str);
+      if (strstr(client_state->server_status_str, "bet") ||
+          strstr(client_state->server_status_str, "call") ||
+          strstr(client_state->server_status_str, "raise"))
+        client_state->play_coin_sound = true;
+    } break;
+
+    case MSG_NEW_HAND: {
+      if (size < OPCODE_SIZE + 1) { // minimal valid payload: at least opcode + 1 byte of data
+        fputs("Invalid MSG_NEW_HAND payload (too short)\n", stderr);
+        break;
+      }
+
+      // Unpack protobuf starting after the opcode
+      Hand *pb_hand = hand__unpack(NULL, size - OPCODE_SIZE, buffer + OPCODE_SIZE);
+      if (!pb_hand) {
+        fputs("Failed to unpack Hand protobuf\n", stderr);
+        break;
+      }
+
+      if (pb_hand->n_card == 0 || pb_hand->n_card > MAX_HAND_SIZE) {
+        fprintf(stderr, "Invalid hand size: %zu\n", pb_hand->n_card);
+        hand__free_unpacked(pb_hand, NULL);
+        break;
+      }
+
+      for (uint32_t i = 0; i < pb_hand->n_card; ++i) {
+        game_state->player[id].hand.card[i].face_val = pb_hand->card[i]->face_val;
+        game_state->player[id].hand.card[i].suit = pb_hand->card[i]->suit;
+      }
+
       hand__free_unpacked(pb_hand, NULL);
       break;
     }
-
-    for (uint32_t i = 0; i < pb_hand->n_card; ++i) {
-      game_state->player[id].hand.card[i].face_val = pb_hand->card[i]->face_val;
-      game_state->player[id].hand.card[i].suit = pb_hand->card[i]->suit;
+    case MSG_GAME_SELECT: {
+      GameSelectPayload_t payload = {0};
+      get_game_select_payload(buffer, size, id, &payload);
+      client_state->game_type = payload.game_type;
+      client_state->deuces_wild = payload.deuces_wild;
+      client_state->game_choice = find_game_choice_by_type(client_state->game_type);
+      break;
     }
 
-    hand__free_unpacked(pb_hand, NULL);
-    break;
-  }
-  case MSG_GAME_SELECT: {
-    GameSelectPayload_t payload = {0};
-    get_game_select_payload(buffer, size, id, &payload);
-    client_state->game_type = payload.game_type;
-    client_state->deuces_wild = payload.deuces_wild;
-    client_state->game_choice = find_game_choice_by_type(client_state->game_type);
-    break;
-  }
+    default:
+      if (!deserialize_game_state(buffer, size, game_state))
+        fprintf(stderr,
+                "[recv_game_state] unrecognized opcode 0x%04X (size=%u) could not be parsed as "
+                "GameState\n",
+                opcode, size);
+    }
 
-  default:
-    if (!deserialize_game_state(buffer, size, game_state))
-      fprintf(stderr, "[recv_game_state] unrecognized opcode 0x%04X (size=%u) could not be parsed as GameState\n",
-              opcode, size);
-  }
-
-  free(buffer);
-  if (!transparent)
-    return RECV_SUCCESS;
+    free(buffer);
+    if (!transparent)
+      return RECV_SUCCESS;
   } /* for (;;) */
 }
 

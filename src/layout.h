@@ -29,8 +29,8 @@
 #ifndef __LAYOUT_H
 #define __LAYOUT_H
 
-#include <SDL2/SDL.h>
 #include "types.h"
+#include <SDL2/SDL.h>
 
 /* Number of scrolling status message lines shown in the panel.
  * Must remain a compile-time constant (used as static array dimension). */
@@ -113,26 +113,26 @@ typedef struct {
   SDL_Point local_seat;              /* local player's hand: center x, row-top y (bottom-center) */
   SDL_Point timer;                   /* center of the circular countdown timer */
   SDL_Point table_center;            /* center of the table (pot coin landing point) */
-  int       pot_radius;              /* max pot-coin scatter radius (collision-bounded) */
-  SDL_Rect  msg_panel;               /* status message panel rect */
-  int       msg_panel_right;         /* x of right edge of msg_panel */
-  int       action_btn_x;            /* left margin for action / amount buttons */
-  int       status_line_h;           /* TTF line height of FONT_STATUS_MSG */
+  int pot_radius;                    /* max pot-coin scatter radius (collision-bounded) */
+  SDL_Rect msg_panel;                /* status message panel rect */
+  int msg_panel_right;               /* x of right edge of msg_panel */
+  int action_btn_x;                  /* left margin for action / amount buttons */
+  int status_line_h;                 /* TTF line height of FONT_STATUS_MSG */
 
   struct {
-    int title_x;              /* x of screen title widget (both screens) */
-    int title_y;              /* y of screen title widget (both screens) */
-    int margin_x;             /* left column x: connect inputs and settings x_left */
-    int connect_btn_y;        /* y of Connect / Settings nav buttons */
-    int connect_host_y;       /* y of host input field */
-    int quit_y;               /* y of top-right X quit button */
-    int settings_x_right;     /* right column x for settings grid */
-    int settings_x_third;     /* third column x: Hotkeys button */
-    int settings_row_y[3];    /* y of each settings row (label baseline) */
-    int settings_save_y;      /* y of Save / Load Defaults buttons */
-    int back_img_x;           /* x of settings back-arrow image */
-    int back_img_y;           /* y of settings back-arrow image */
-    int links_center_x;       /* horizontal center for link widgets */
+    int title_x;           /* x of screen title widget (both screens) */
+    int title_y;           /* y of screen title widget (both screens) */
+    int margin_x;          /* left column x: connect inputs and settings x_left */
+    int connect_btn_y;     /* y of Connect / Settings nav buttons */
+    int connect_host_y;    /* y of host input field */
+    int quit_y;            /* y of top-right X quit button */
+    int settings_x_right;  /* right column x for settings grid */
+    int settings_x_third;  /* third column x: Hotkeys button */
+    int settings_row_y[3]; /* y of each settings row (label baseline) */
+    int settings_save_y;   /* y of Save / Load Defaults buttons */
+    int back_img_x;        /* x of settings back-arrow image */
+    int back_img_y;        /* y of settings back-arrow image */
+    int links_center_x;    /* horizontal center for link widgets */
   } menu;
 
   struct {
@@ -156,9 +156,15 @@ void layout_compute(void);
 /* Which point of a w*h box is pinned to the reference point.
  * column = a % 3 (0 left, 1 center, 2 right); row = a / 3 (0 top, 1 mid, 2 bot). */
 typedef enum {
-  ANCHOR_TOP_LEFT,    ANCHOR_TOP_CENTER,    ANCHOR_TOP_RIGHT,
-  ANCHOR_MID_LEFT,    ANCHOR_CENTER,        ANCHOR_MID_RIGHT,
-  ANCHOR_BOTTOM_LEFT, ANCHOR_BOTTOM_CENTER, ANCHOR_BOTTOM_RIGHT,
+  ANCHOR_TOP_LEFT,
+  ANCHOR_TOP_CENTER,
+  ANCHOR_TOP_RIGHT,
+  ANCHOR_MID_LEFT,
+  ANCHOR_CENTER,
+  ANCHOR_MID_RIGHT,
+  ANCHOR_BOTTOM_LEFT,
+  ANCHOR_BOTTOM_CENTER,
+  ANCHOR_BOTTOM_RIGHT,
 } Anchor_t;
 
 /* Box of size w*h whose `a` anchor sits at ref, then shifted by (dx, dy). */

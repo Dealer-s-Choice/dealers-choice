@@ -86,26 +86,26 @@ static void test_get_card_suit(void) {
 }
 
 static void test_get_unicode_suit(void) {
-  assert(strcmp(DH_get_unicode_suit(DH_SUIT_HEARTS),   "♥") == 0);
+  assert(strcmp(DH_get_unicode_suit(DH_SUIT_HEARTS), "♥") == 0);
   assert(strcmp(DH_get_unicode_suit(DH_SUIT_DIAMONDS), "♦") == 0);
-  assert(strcmp(DH_get_unicode_suit(DH_SUIT_SPADES),   "♠") == 0);
-  assert(strcmp(DH_get_unicode_suit(DH_SUIT_CLUBS),    "♣") == 0);
-  assert(strcmp(DH_get_unicode_suit(DH_SUIT_MAX),      "?") == 0);
+  assert(strcmp(DH_get_unicode_suit(DH_SUIT_SPADES), "♠") == 0);
+  assert(strcmp(DH_get_unicode_suit(DH_SUIT_CLUBS), "♣") == 0);
+  assert(strcmp(DH_get_unicode_suit(DH_SUIT_MAX), "?") == 0);
 
   DH_Card c = {.face_val = DH_CARD_ACE, .suit = DH_SUIT_HEARTS};
   assert(strcmp(DH_get_card_unicode_suit(c), "♥") == 0);
 }
 
 static void test_get_card_face_str(void) {
-  assert(strcmp(DH_get_card_face_str(DH_CARD_ACE),      "A")  == 0);
-  assert(strcmp(DH_get_card_face_str(DH_CARD_TWO),      "2")  == 0);
-  assert(strcmp(DH_get_card_face_str(DH_CARD_TEN),      "10") == 0);
-  assert(strcmp(DH_get_card_face_str(DH_CARD_JACK),     "J")  == 0);
-  assert(strcmp(DH_get_card_face_str(DH_CARD_QUEEN),    "Q")  == 0);
-  assert(strcmp(DH_get_card_face_str(DH_CARD_KING),     "K")  == 0);
-  assert(strcmp(DH_get_card_face_str(DH_CARD_ACE_HIGH), "A")  == 0);
-  assert(strcmp(DH_get_card_face_str(0),                "?")  == 0);
-  assert(strcmp(DH_get_card_face_str(15),               "?")  == 0);
+  assert(strcmp(DH_get_card_face_str(DH_CARD_ACE), "A") == 0);
+  assert(strcmp(DH_get_card_face_str(DH_CARD_TWO), "2") == 0);
+  assert(strcmp(DH_get_card_face_str(DH_CARD_TEN), "10") == 0);
+  assert(strcmp(DH_get_card_face_str(DH_CARD_JACK), "J") == 0);
+  assert(strcmp(DH_get_card_face_str(DH_CARD_QUEEN), "Q") == 0);
+  assert(strcmp(DH_get_card_face_str(DH_CARD_KING), "K") == 0);
+  assert(strcmp(DH_get_card_face_str(DH_CARD_ACE_HIGH), "A") == 0);
+  assert(strcmp(DH_get_card_face_str(0), "?") == 0);
+  assert(strcmp(DH_get_card_face_str(15), "?") == 0);
 }
 
 static void test_deal_wrap(void) {
@@ -125,22 +125,22 @@ static void test_cut_deck(void) {
   /* cut at 26 (midpoint): bottom half becomes top */
   deck = DH_get_new_deck();
   DH_cut_deck(&deck, 26);
-  assert(deck.card[0].face_val  == DH_CARD_ACE  && deck.card[0].suit  == DH_SUIT_SPADES);
-  assert(deck.card[25].face_val == DH_CARD_KING  && deck.card[25].suit == DH_SUIT_CLUBS);
-  assert(deck.card[26].face_val == DH_CARD_ACE   && deck.card[26].suit == DH_SUIT_HEARTS);
-  assert(deck.card[51].face_val == DH_CARD_KING  && deck.card[51].suit == DH_SUIT_DIAMONDS);
+  assert(deck.card[0].face_val == DH_CARD_ACE && deck.card[0].suit == DH_SUIT_SPADES);
+  assert(deck.card[25].face_val == DH_CARD_KING && deck.card[25].suit == DH_SUIT_CLUBS);
+  assert(deck.card[26].face_val == DH_CARD_ACE && deck.card[26].suit == DH_SUIT_HEARTS);
+  assert(deck.card[51].face_val == DH_CARD_KING && deck.card[51].suit == DH_SUIT_DIAMONDS);
 
   /* cut at 1: all but the first card move to the top */
   deck = DH_get_new_deck();
   DH_cut_deck(&deck, 1);
-  assert(deck.card[0].face_val  == DH_CARD_TWO  && deck.card[0].suit  == DH_SUIT_HEARTS);
-  assert(deck.card[51].face_val == DH_CARD_ACE  && deck.card[51].suit == DH_SUIT_HEARTS);
+  assert(deck.card[0].face_val == DH_CARD_TWO && deck.card[0].suit == DH_SUIT_HEARTS);
+  assert(deck.card[51].face_val == DH_CARD_ACE && deck.card[51].suit == DH_SUIT_HEARTS);
 
   /* cut at 51: only the last card moves to the top */
   deck = DH_get_new_deck();
   DH_cut_deck(&deck, 51);
-  assert(deck.card[0].face_val == DH_CARD_KING  && deck.card[0].suit == DH_SUIT_CLUBS);
-  assert(deck.card[1].face_val == DH_CARD_ACE   && deck.card[1].suit == DH_SUIT_HEARTS);
+  assert(deck.card[0].face_val == DH_CARD_KING && deck.card[0].suit == DH_SUIT_CLUBS);
+  assert(deck.card[1].face_val == DH_CARD_ACE && deck.card[1].suit == DH_SUIT_HEARTS);
 
   /* boundary: cut at 0 is a no-op */
   deck = DH_get_new_deck();

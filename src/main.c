@@ -57,15 +57,16 @@ enum { RUN_CLIENT = 20, RUN_SETTINGS = 21 };
 
 static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, uint16_t *port,
                                 SdlContext_t *sdl_context, Font_t *font, LinkWidget_t **links) {
-  ButtonWidget_t *button_connect = button_widget_create_styled(
-      _("Connect"), &ROLE_PRIMARY, font->fonts, (SDL_Keycode)0);
-  ButtonWidget_t *button_settings = button_widget_create_styled(
-      _("Settings"), &ROLE_PRIMARY, font->fonts, (SDL_Keycode)0);
+  ButtonWidget_t *button_connect =
+      button_widget_create_styled(_("Connect"), &ROLE_PRIMARY, font->fonts, (SDL_Keycode)0);
+  ButtonWidget_t *button_settings =
+      button_widget_create_styled(_("Settings"), &ROLE_PRIMARY, font->fonts, (SDL_Keycode)0);
   UIRegistry_t reg = {0};
 
   button_connect->base.rect.x = g_layout.menu.margin_x;
   button_connect->base.rect.y = g_layout.menu.connect_btn_y;
-  button_settings->base.rect.x = g_layout.menu.margin_x + button_connect->base.rect.w + g_layout_cfg.connect_settings_btn_gap;
+  button_settings->base.rect.x =
+      g_layout.menu.margin_x + button_connect->base.rect.w + g_layout_cfg.connect_settings_btn_gap;
   button_settings->base.rect.y = g_layout.menu.connect_btn_y;
 
   int input_w;
@@ -89,17 +90,18 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, u
   if (!port_input)
     goto err;
   port_input->base.rect.x = g_layout.menu.margin_x;
-  port_input->base.rect.y = host_input->base.rect.y + host_input->base.rect.h + g_layout_cfg.input_field_v_gap;
+  port_input->base.rect.y =
+      host_input->base.rect.y + host_input->base.rect.h + g_layout_cfg.input_field_v_gap;
   ui_register(&reg, &port_input->base);
 
-  ButtonWidget_t *button_save = button_widget_create_styled(
-      _("Save"), &ROLE_PRIMARY, font->fonts, (SDL_Keycode)0);
+  ButtonWidget_t *button_save =
+      button_widget_create_styled(_("Save"), &ROLE_PRIMARY, font->fonts, (SDL_Keycode)0);
   if (!button_save)
     goto err;
   ui_register(&reg, &button_save->base);
 
-  ButtonWidget_t *button_defaults = button_widget_create_styled(
-      _("Load Defaults"), &ROLE_PRIMARY, font->fonts, (SDL_Keycode)0);
+  ButtonWidget_t *button_defaults =
+      button_widget_create_styled(_("Load Defaults"), &ROLE_PRIMARY, font->fonts, (SDL_Keycode)0);
   if (!button_defaults)
     goto err;
   ui_register(&reg, &button_defaults->base);
@@ -109,11 +111,12 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, u
     int span_bot = port_input->base.rect.y + port_input->base.rect.h;
     button_save->base.rect.y = (span_top + span_bot) / 2 - button_save->base.rect.h / 2;
   }
-  button_defaults->base.rect.x = button_save->base.rect.x + button_save->base.rect.w + g_layout_cfg.connect_save_btn_gap;
+  button_defaults->base.rect.x =
+      button_save->base.rect.x + button_save->base.rect.w + g_layout_cfg.connect_save_btn_gap;
   button_defaults->base.rect.y = button_save->base.rect.y;
 
-  ButtonWidget_t *btn_quit_connect = button_widget_create_styled(
-      "X", &ROLE_DANGER, font->fonts, (SDL_Keycode)0);
+  ButtonWidget_t *btn_quit_connect =
+      button_widget_create_styled("X", &ROLE_DANGER, font->fonts, (SDL_Keycode)0);
   if (btn_quit_connect) {
     btn_quit_connect->base.rect.x =
         g_viewport.x + g_viewport.w - btn_quit_connect->base.rect.w - g_layout_cfg.margin;
@@ -121,8 +124,9 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, u
     ui_register(&reg, &btn_quit_connect->base);
   }
 
-  SDL_Rect input_nick_pos = {g_layout.menu.margin_x,
-                             port_input->base.rect.y + port_input->base.rect.h + g_layout_cfg.input_field_v_gap, 0, 0};
+  SDL_Rect input_nick_pos = {
+      g_layout.menu.margin_x,
+      port_input->base.rect.y + port_input->base.rect.h + g_layout_cfg.input_field_v_gap, 0, 0};
 
   InputWidget_t *focused_inputs[2] = {host_input, port_input};
   int focused_slot = 0;
@@ -131,8 +135,8 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, u
 
   layout_links(links, LINK_DEFS_COUNT);
 
-  TextWidget_t *tw_title = text_widget_create(DEALERSCHOICE_FORMAL_NAME, font->fonts[FONT_TITLE],
-                                              DC_TEXT_ON_LIGHT);
+  TextWidget_t *tw_title =
+      text_widget_create(DEALERSCHOICE_FORMAL_NAME, font->fonts[FONT_TITLE], DC_TEXT_ON_LIGHT);
   if (tw_title)
     ui_widget_place(&tw_title->base, g_layout.menu.title_x, g_layout.menu.title_y);
 
@@ -141,7 +145,8 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, u
   TextWidget_t *tw_version =
       text_widget_create(version, font->fonts[FONT_VERSION], DC_TEXT_ON_DARK);
   if (tw_version)
-    ui_widget_place(&tw_version->base, g_layout.menu.title_x + g_layout_cfg.version_x_offset, g_layout.menu.title_y + g_layout_cfg.version_y_offset);
+    ui_widget_place(&tw_version->base, g_layout.menu.title_x + g_layout_cfg.version_x_offset,
+                    g_layout.menu.title_y + g_layout_cfg.version_y_offset);
 
   TextWidget_t *tw_nick =
       text_widget_create(player_config->nick, font->fonts[FONT_DEFAULT], DC_TEXT_ON_LIGHT);
@@ -366,10 +371,10 @@ static void menu_display_hotkeys(PlayerConfig_t *player_config, SdlContext_t *sd
   UIRegistry_t reg = {0};
 
   char *back_img_path = canfigger_path_join(path->data, "images/arrow_back.png");
-  ImageWidget_t *back_img =
-      back_img_path ? image_widget_create(back_img_path, g_layout_cfg.back_btn_size,
-                                          g_layout_cfg.back_btn_size)
-                    : NULL;
+  ImageWidget_t *back_img = back_img_path
+                                ? image_widget_create(back_img_path, g_layout_cfg.back_btn_size,
+                                                      g_layout_cfg.back_btn_size)
+                                : NULL;
   free(back_img_path);
   if (back_img) {
     back_img->base.rect.x = g_layout.menu.back_img_x;
@@ -382,8 +387,8 @@ static void menu_display_hotkeys(PlayerConfig_t *player_config, SdlContext_t *sd
   if (tw_title)
     ui_widget_place(&tw_title->base, g_layout.menu.title_x, g_layout.menu.title_y);
 
-  TextWidget_t *tw_hint = text_widget_create(
-      _("Click an action, then press a key"), font->fonts[FONT_DEFAULT], DC_TEXT_ON_LIGHT);
+  TextWidget_t *tw_hint = text_widget_create(_("Click an action, then press a key"),
+                                             font->fonts[FONT_DEFAULT], DC_TEXT_ON_LIGHT);
   if (tw_hint)
     ui_widget_place(&tw_hint->base, label_x, first_row_y - 50);
 
@@ -548,18 +553,20 @@ static void menu_display_hotkeys(PlayerConfig_t *player_config, SdlContext_t *sd
 static void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *sdl_context,
                                   Font_t *font, const Path_t *path) {
   /* Two-column layout for nick, language, volume, turn_notify (host/port on startup screen) */
-  const int x_left         = g_layout.menu.margin_x;
-  const int x_right        = g_layout.menu.settings_x_right;
-  const int *row_y         = g_layout.menu.settings_row_y;
+  const int x_left = g_layout.menu.margin_x;
+  const int x_right = g_layout.menu.settings_x_right;
+  const int *row_y = g_layout.menu.settings_row_y;
   const int input_y_offset = g_layout_cfg.settings_input_y_offset;
-  const int input_w        = g_layout_cfg.settings_input_w;
+  const int input_w = g_layout_cfg.settings_input_w;
 
   UIRegistry_t reg = {0};
 
   /* Back arrow image (top-left) */
   char *back_img_path = canfigger_path_join(path->data, "images/arrow_back.png");
-  ImageWidget_t *back_img =
-      back_img_path ? image_widget_create(back_img_path, g_layout_cfg.back_btn_size, g_layout_cfg.back_btn_size) : NULL;
+  ImageWidget_t *back_img = back_img_path
+                                ? image_widget_create(back_img_path, g_layout_cfg.back_btn_size,
+                                                      g_layout_cfg.back_btn_size)
+                                : NULL;
   free(back_img_path);
   if (back_img) {
     back_img->base.rect.x = g_layout.menu.back_img_x;
@@ -655,8 +662,8 @@ static void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *s
       text_input_indices[n_ti++] = i;
   int focused_slot = 0; /* index into text_input_indices */
 
-  ButtonWidget_t *btn_save = button_widget_create_styled(
-      _("Save"), &ROLE_PRIMARY, font->fonts, (SDL_Keycode)0);
+  ButtonWidget_t *btn_save =
+      button_widget_create_styled(_("Save"), &ROLE_PRIMARY, font->fonts, (SDL_Keycode)0);
   if (!btn_save) {
     ui_destroy_all(&reg);
     return;
@@ -665,13 +672,14 @@ static void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *s
   btn_save->base.rect.y = g_layout.menu.settings_save_y;
   ui_register(&reg, &btn_save->base);
 
-  ButtonWidget_t *btn_defaults = button_widget_create_styled(
-      _("Load Defaults"), &ROLE_PRIMARY, font->fonts, (SDL_Keycode)0);
+  ButtonWidget_t *btn_defaults =
+      button_widget_create_styled(_("Load Defaults"), &ROLE_PRIMARY, font->fonts, (SDL_Keycode)0);
   if (!btn_defaults) {
     ui_destroy_all(&reg);
     return;
   }
-  btn_defaults->base.rect.x = btn_save->base.rect.x + btn_save->base.rect.w + g_layout_cfg.settings_save_btn_gap;
+  btn_defaults->base.rect.x =
+      btn_save->base.rect.x + btn_save->base.rect.w + g_layout_cfg.settings_save_btn_gap;
   btn_defaults->base.rect.y = btn_save->base.rect.y;
   ui_register(&reg, &btn_defaults->base);
 
@@ -685,8 +693,8 @@ static void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *s
   btn_hotkeys->base.rect.y = row_y[0];
   ui_register(&reg, &btn_hotkeys->base);
 
-  ButtonWidget_t *btn_quit_settings = button_widget_create_styled(
-      "X", &ROLE_DANGER, font->fonts, (SDL_Keycode)0);
+  ButtonWidget_t *btn_quit_settings =
+      button_widget_create_styled("X", &ROLE_DANGER, font->fonts, (SDL_Keycode)0);
   if (btn_quit_settings) {
     btn_quit_settings->base.rect.x =
         g_viewport.x + g_viewport.w - btn_quit_settings->base.rect.w - g_layout_cfg.margin;
@@ -1032,7 +1040,8 @@ static CliArgs_t parse_cli_args(int argc, char *argv[]) {
             "  --server-log-hands [path/to/file]\n"
             "  --disable-timeout          Server will not disconnect players who exceed the action "
             "timeout threshold\n"
-            "  --card-preview             Open a window showing A and 10 of each suit; x/ESC to exit\n",
+            "  --card-preview             Open a window showing A and 10 of each suit; x/ESC to "
+            "exit\n",
             stderr);
       exit(EXIT_FAILURE);
     }
@@ -1054,9 +1063,9 @@ static int run_card_preview(SdlContext_t *sdl_context, Font_t *font, Path_t *pat
     int face;
     int suit;
   } TEST_CARDS[8] = {
-      {DH_CARD_ACE, DH_SUIT_SPADES}, {DH_CARD_ACE, DH_SUIT_HEARTS},
+      {DH_CARD_ACE, DH_SUIT_SPADES},   {DH_CARD_ACE, DH_SUIT_HEARTS},
       {DH_CARD_ACE, DH_SUIT_DIAMONDS}, {DH_CARD_ACE, DH_SUIT_CLUBS},
-      {DH_CARD_TEN, DH_SUIT_SPADES}, {DH_CARD_TEN, DH_SUIT_HEARTS},
+      {DH_CARD_TEN, DH_SUIT_SPADES},   {DH_CARD_TEN, DH_SUIT_HEARTS},
       {DH_CARD_TEN, DH_SUIT_DIAMONDS}, {DH_CARD_TEN, DH_SUIT_CLUBS},
   };
 

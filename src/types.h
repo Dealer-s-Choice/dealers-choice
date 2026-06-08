@@ -32,6 +32,7 @@
 #include <pokeval.h>
 
 #include "main.h"
+#include "tcpme/tcpme.h"
 
 #define MAX_PLAYERS 5
 #define MAX_CLIENTS 5

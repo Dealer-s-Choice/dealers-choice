@@ -106,8 +106,8 @@ void indicator_render(UIWidget_t *w) {
   ui_widget_render(&ind->text->base);
 }
 
-static Indicator_t *indicator_init(const char *text, TTF_Font *font,
-                                   SDL_Color bg_color, SDL_Color fg_color) {
+static Indicator_t *indicator_init(const char *text, TTF_Font *font, SDL_Color bg_color,
+                                   SDL_Color fg_color) {
   SDL_Renderer *renderer = g_sdl_context->renderer;
   if (!renderer || !text || !font)
     return NULL;
@@ -147,7 +147,7 @@ Indicator_t *create_indicator(const char *text, TTF_Font *font, EColorName_t bg_
   return indicator_init(text, font, get_color(bg_color), get_color(fg_color));
 }
 
-Indicator_t *create_indicator_colored(const char *text, TTF_Font *font,
-                                      SDL_Color bg_color, SDL_Color fg_color) {
+Indicator_t *create_indicator_colored(const char *text, TTF_Font *font, SDL_Color bg_color,
+                                      SDL_Color fg_color) {
   return indicator_init(text, font, bg_color, fg_color);
 }

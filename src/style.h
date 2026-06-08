@@ -34,9 +34,9 @@
 typedef struct {
   SDL_Color bg;
   SDL_Color fg;
-  int       font_idx;
-  int       w_pad;
-  int       h_pad;
+  int font_idx;
+  int w_pad;
+  int h_pad;
 } ButtonRole_t;
 
 extern const ButtonRole_t ROLE_PRIMARY;

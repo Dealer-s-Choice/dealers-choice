@@ -62,8 +62,6 @@
 
 static const uint8_t coin_px = 96;
 
-
-
 #define ma_sound_start_checked(pSound) ma_sound_start_wrap((pSound), __FILE__, __LINE__)
 
 // Build fails using gcc on Ubuntu 24.04 (and maybe others) without this
@@ -136,8 +134,8 @@ static EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_confi
   ButtonWidget_t *game_choice_button[MAX_CHOICES] = {0};
 
   // TRANSLATORS: Name of a poker variant. Usually left untranslated.
-  ButtonWidget_t *button_deuces_wild = button_widget_create_styled(
-      _("Deuces Wild"), &ROLE_ALT, font->fonts, (SDL_Keycode)0);
+  ButtonWidget_t *button_deuces_wild =
+      button_widget_create_styled(_("Deuces Wild"), &ROLE_ALT, font->fonts, (SDL_Keycode)0);
 
   bool dealing = true;
 
@@ -150,8 +148,8 @@ static EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_confi
   ui_register(&registry, &button_deuces_wild->base);
 
   for (int i = 0; i < MAX_CHOICES; i++) {
-    game_choice_button[i] = button_widget_create_styled(
-        game_choices[i].str, &ROLE_PRIMARY, font->fonts, (SDL_Keycode)0);
+    game_choice_button[i] = button_widget_create_styled(game_choices[i].str, &ROLE_PRIMARY,
+                                                        font->fonts, (SDL_Keycode)0);
     ui_register(&registry, &game_choice_button[i]->base);
   }
 
@@ -196,35 +194,37 @@ static EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_confi
       text_widget_create(version_str, font->fonts[FONT_VERSION], DC_TEXT_ON_DARK);
   if (tw_version_lobby) {
     ui_widget_place(&tw_version_lobby->base, g_viewport.x + g_layout_cfg.margin,
-                    g_viewport.y + g_viewport.h - tw_version_lobby->base.rect.h - g_layout_cfg.margin);
+                    g_viewport.y + g_viewport.h - tw_version_lobby->base.rect.h -
+                        g_layout_cfg.margin);
     ui_register(&registry, &tw_version_lobby->base);
   }
 
-  TextWidget_t *waiting_players_tw = text_widget_create(
-      _("Waiting for more players..."), font->fonts[FONT_DEFAULT], DC_TEXT_ON_DARK);
+  TextWidget_t *waiting_players_tw = text_widget_create(_("Waiting for more players..."),
+                                                        font->fonts[FONT_DEFAULT], DC_TEXT_ON_DARK);
   ui_register(&registry, &waiting_players_tw->base);
   waiting_players_tw->base.rect.x = g_center.x;
   waiting_players_tw->base.rect.y = g_layout.lobby.waiting_y;
 
-  TextWidget_t *waiting_dealer_tw = text_widget_create(
-      _("Waiting for dealer to select game..."), font->fonts[FONT_DEFAULT], DC_TEXT_ON_DARK);
+  TextWidget_t *waiting_dealer_tw = text_widget_create(_("Waiting for dealer to select game..."),
+                                                       font->fonts[FONT_DEFAULT], DC_TEXT_ON_DARK);
   ui_register(&registry, &waiting_dealer_tw->base);
   waiting_dealer_tw->base.rect.x = g_center.x;
   waiting_dealer_tw->base.rect.y = g_layout.lobby.waiting_y;
 
-  ButtonWidget_t *btn_kick = button_widget_create_styled(
-      _("Kick"), &ROLE_ALT, font->fonts, (SDL_Keycode)0);
-  ButtonWidget_t *btn_ban = button_widget_create_styled(
-      _("Ban"), &ROLE_ALT, font->fonts, (SDL_Keycode)0);
+  ButtonWidget_t *btn_kick =
+      button_widget_create_styled(_("Kick"), &ROLE_ALT, font->fonts, (SDL_Keycode)0);
+  ButtonWidget_t *btn_ban =
+      button_widget_create_styled(_("Ban"), &ROLE_ALT, font->fonts, (SDL_Keycode)0);
   btn_kick->base.rect.x = g_layout.lobby.kick_x;
   btn_kick->base.rect.y = g_layout.lobby.kick_y;
-  btn_ban->base.rect.x = btn_kick->base.rect.x + btn_kick->base.rect.w + g_layout_cfg.kick_ban_btn_gap;
+  btn_ban->base.rect.x =
+      btn_kick->base.rect.x + btn_kick->base.rect.w + g_layout_cfg.kick_ban_btn_gap;
   btn_ban->base.rect.y = g_layout.lobby.kick_y;
   ui_register(&registry, &btn_kick->base);
   ui_register(&registry, &btn_ban->base);
 
-  ButtonWidget_t *btn_quit_lobby = button_widget_create_styled(
-      "X", &ROLE_DANGER, font->fonts, (SDL_Keycode)0);
+  ButtonWidget_t *btn_quit_lobby =
+      button_widget_create_styled("X", &ROLE_DANGER, font->fonts, (SDL_Keycode)0);
   if (btn_quit_lobby) {
     btn_quit_lobby->base.rect.x =
         g_viewport.x + g_viewport.w - btn_quit_lobby->base.rect.w - g_layout_cfg.margin;
@@ -237,8 +237,10 @@ static EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_confi
   EGameSelResult_t result = GAME_SEL_SUCCESS;
 
   char *back_img_path = canfigger_path_join(path->data, "images/arrow_back.png");
-  ImageWidget_t *back_img =
-      back_img_path ? image_widget_create(back_img_path, g_layout_cfg.back_btn_size, g_layout_cfg.back_btn_size) : NULL;
+  ImageWidget_t *back_img = back_img_path
+                                ? image_widget_create(back_img_path, g_layout_cfg.back_btn_size,
+                                                      g_layout_cfg.back_btn_size)
+                                : NULL;
   free(back_img_path);
   if (back_img) {
     back_img->base.rect.x = g_layout.menu.back_img_x;
@@ -731,7 +733,8 @@ static void layout_board_cards(CardWidget_t card_context[MAX_PLAYERS][MAX_HAND_S
 
   for (int card_n = community_start; card_n < community_start + community_count; card_n++) {
     int slot = card_n - community_start;
-    SDL_Rect rect = {board_x + slot * (g_layout_cfg.card_w + g_layout_cfg.card_padding), board_y, g_layout_cfg.card_w, g_layout_cfg.card_h};
+    SDL_Rect rect = {board_x + slot * (g_layout_cfg.card_w + g_layout_cfg.card_padding), board_y,
+                     g_layout_cfg.card_w, g_layout_cfg.card_h};
     card_context[board_player_id][card_n].base.rect = rect;
 
     for (int i = 0; i < MAX_PLAYERS; i++) {
@@ -758,8 +761,9 @@ void layout_cards(CardWidget_t card_context[MAX_PLAYERS][MAX_HAND_SIZE], Player_
   do {
     for (int card_n = 0; card_n < MAX_HAND_SIZE; card_n++) {
       const int id = turn->id;
-      SDL_Rect rect = {player_pos[id].x + card_n * (g_layout_cfg.card_w + g_layout_cfg.card_padding), player_pos[id].y,
-                       g_layout_cfg.card_w, g_layout_cfg.card_h};
+      SDL_Rect rect = {player_pos[id].x +
+                           card_n * (g_layout_cfg.card_w + g_layout_cfg.card_padding),
+                       player_pos[id].y, g_layout_cfg.card_w, g_layout_cfg.card_h};
       card_context[id][card_n].base.rect = rect;
     }
     turn = get_next_connected_client(players_array, turn->id);
@@ -781,8 +785,8 @@ static SDL_Texture *load_coin_texture(SDL_Renderer *renderer, const char *base_p
 
 /* Reads {base_path}/images/coins/, loads up to max_count .png files as
  * textures into out[]. Returns the number loaded. Warns if capped. */
-static size_t load_coin_textures(SDL_Renderer *renderer, const char *base_path,
-                                 SDL_Texture **out, size_t max_count) {
+static size_t load_coin_textures(SDL_Renderer *renderer, const char *base_path, SDL_Texture **out,
+                                 size_t max_count) {
   const char *suffix = "/images/coins";
   char *dirpath = calloc_wrap(strlen(base_path) + strlen(suffix) + 1, 1);
   snprintf(dirpath, strlen(base_path) + strlen(suffix) + 1, "%s%s", base_path, suffix);
@@ -886,22 +890,29 @@ typedef struct {
 } ActionButtonAttrs;
 
 static const ActionButtonAttrs action_button_attrs[MAX_ACTIONS] = {
-    [CHECK] = {N_("Check")},     [BET] = {N_("Bet")},
-    [FOLD] = {N_("Fold")},       [CALL] = {N_("Call")},
-    [RAISE] = {N_("Raise")},     [COMPLETE] = {N_("Complete")},
+    [CHECK] = {N_("Check")},     [BET] = {N_("Bet")},     [FOLD] = {N_("Fold")},
+    [CALL] = {N_("Call")},       [RAISE] = {N_("Raise")}, [COMPLETE] = {N_("Complete")},
     [DISCARD] = {N_("Discard")},
 };
 
 static SDL_Keycode action_hotkey(int action) {
   switch (action) {
-  case CHECK:    return g_hotkey_cfg.check;
-  case BET:      return g_hotkey_cfg.bet;
-  case FOLD:     return g_hotkey_cfg.fold;
-  case CALL:     return g_hotkey_cfg.call;
-  case RAISE:    return g_hotkey_cfg.raise;
-  case COMPLETE: return g_hotkey_cfg.complete;
-  case DISCARD:  return g_hotkey_cfg.discard;
-  default:       return SDLK_UNKNOWN;
+  case CHECK:
+    return g_hotkey_cfg.check;
+  case BET:
+    return g_hotkey_cfg.bet;
+  case FOLD:
+    return g_hotkey_cfg.fold;
+  case CALL:
+    return g_hotkey_cfg.call;
+  case RAISE:
+    return g_hotkey_cfg.raise;
+  case COMPLETE:
+    return g_hotkey_cfg.complete;
+  case DISCARD:
+    return g_hotkey_cfg.discard;
+  default:
+    return SDLK_UNKNOWN;
   }
 }
 
@@ -943,8 +954,8 @@ static void draw_dash_divider(SDL_Renderer *r, SDL_Rect d) {
   SDL_SetRenderDrawColor(r, b.r, b.g, b.b, 255);
   SDL_RenderFillRect(r, &d);
   SDL_SetRenderDrawColor(r, (Uint8)(b.r + 40), (Uint8)(b.g + 55), (Uint8)(b.b + 40), 255);
-  SDL_RenderDrawLine(r, d.x, d.y, d.x + d.w - 1, d.y);           /* top    (light) */
-  SDL_RenderDrawLine(r, d.x, d.y, d.x, d.y + d.h - 1);           /* left   (light) */
+  SDL_RenderDrawLine(r, d.x, d.y, d.x + d.w - 1, d.y); /* top    (light) */
+  SDL_RenderDrawLine(r, d.x, d.y, d.x, d.y + d.h - 1); /* left   (light) */
   SDL_SetRenderDrawColor(r, (Uint8)(b.r > 12 ? b.r - 12 : 0), (Uint8)(b.g > 35 ? b.g - 35 : 0),
                          (Uint8)(b.b > 18 ? b.b - 18 : 0), 255);
   SDL_RenderDrawLine(r, d.x, d.y + d.h - 1, d.x + d.w - 1, d.y + d.h - 1); /* bottom (dark) */
@@ -1191,13 +1202,13 @@ static EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
 
   ButtonWidget_t *action_bw[MAX_ACTIONS];
   for (int i = 0; i < MAX_ACTIONS; i++) {
-    action_bw[i] = button_widget_create_styled(
-        action_button_attrs[i].text, &ROLE_PRIMARY, font->fonts, action_hotkey(i));
+    action_bw[i] = button_widget_create_styled(action_button_attrs[i].text, &ROLE_PRIMARY,
+                                               font->fonts, action_hotkey(i));
   }
   layout_action_buttons(action_bw);
 
-  TextWidget_t *discard_hint_tw = text_widget_create(
-      "You may only discard a maximum of 3 cards", font->fonts[FONT_BOLD], DC_DISCARD_TEXT);
+  TextWidget_t *discard_hint_tw = text_widget_create("You may only discard a maximum of 3 cards",
+                                                     font->fonts[FONT_BOLD], DC_DISCARD_TEXT);
   uint8_t last_max_allowed = 3;
 
   /* Per-seat glyph marking who opens the current betting round; sits in the
@@ -1220,26 +1231,28 @@ static EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
 
   UIRegistry_t registry = {0};
 
-  ButtonWidget_t *game_btn_kick = button_widget_create_styled(
-      _("Kick"), &ROLE_ALT, font->fonts, (SDL_Keycode)0);
-  ButtonWidget_t *game_btn_ban = button_widget_create_styled(
-      _("Ban"), &ROLE_ALT, font->fonts, (SDL_Keycode)0);
-  ButtonWidget_t *game_btn_quit = button_widget_create_styled(
-      "X", &ROLE_DANGER, font->fonts, (SDL_Keycode)0);
+  ButtonWidget_t *game_btn_kick =
+      button_widget_create_styled(_("Kick"), &ROLE_ALT, font->fonts, (SDL_Keycode)0);
+  ButtonWidget_t *game_btn_ban =
+      button_widget_create_styled(_("Ban"), &ROLE_ALT, font->fonts, (SDL_Keycode)0);
+  ButtonWidget_t *game_btn_quit =
+      button_widget_create_styled("X", &ROLE_DANGER, font->fonts, (SDL_Keycode)0);
   game_btn_kick->base.rect.x = g_viewport.w / 10;
   /* Position above the status message panel, which starts at g_center.y */
-  game_btn_kick->base.rect.y = g_center.y - game_btn_kick->base.rect.h - g_layout_cfg.game_kick_y_gap;
-  game_btn_ban->base.rect.x = game_btn_kick->base.rect.x + game_btn_kick->base.rect.w + g_layout_cfg.kick_ban_btn_gap;
+  game_btn_kick->base.rect.y =
+      g_center.y - game_btn_kick->base.rect.h - g_layout_cfg.game_kick_y_gap;
+  game_btn_ban->base.rect.x =
+      game_btn_kick->base.rect.x + game_btn_kick->base.rect.w + g_layout_cfg.kick_ban_btn_gap;
   game_btn_ban->base.rect.y = game_btn_kick->base.rect.y;
-  game_btn_quit->base.rect.x = g_viewport.x + g_viewport.w - game_btn_quit->base.rect.w - g_layout_cfg.margin;
+  game_btn_quit->base.rect.x =
+      g_viewport.x + g_viewport.w - game_btn_quit->base.rect.w - g_layout_cfg.margin;
   game_btn_quit->base.rect.y = g_viewport.y + g_layout_cfg.margin;
   ui_register(&registry, &game_btn_kick->base);
   ui_register(&registry, &game_btn_ban->base);
   ui_register(&registry, &game_btn_quit->base);
 
   Indicator_t *indicator_deuces_wild = create_indicator_colored(
-      _("Deuces Wild"), font->fonts[FONT_BOLD],
-      DC_INDICATOR_WILD_BG, DC_INDICATOR_WILD_FG);
+      _("Deuces Wild"), font->fonts[FONT_BOLD], DC_INDICATOR_WILD_BG, DC_INDICATOR_WILD_FG);
   ui_register(&registry, &indicator_deuces_wild->base);
   indicator_deuces_wild->base.enabled = false; /* drawn by the dashboard, not ui_render_all */
 
@@ -1260,7 +1273,6 @@ static EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
     static_gamename_w += 2 * th;
   }
 
-
   int running = 1;
   bool cards_created = false;
   bool winner_highlighted = false;
@@ -1278,8 +1290,7 @@ static EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
 
   TextWidget_t *open_seat_tw[MAX_PLAYERS] = {0};
   for (int i = 0; i < MAX_PLAYERS; i++)
-    open_seat_tw[i] =
-        text_widget_create("Open", font->fonts[FONT_DEFAULT], DC_TEXT_MUTED);
+    open_seat_tw[i] = text_widget_create("Open", font->fonts[FONT_DEFAULT], DC_TEXT_MUTED);
 
   CoinInPot_t coin_in_pot[MAX_POT_COINS] = {0};
 
@@ -1291,7 +1302,8 @@ static EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
     status_tw[i] = text_widget_create(" ", font->fonts[FONT_STATUS_MSG], DC_TEXT_ON_LIGHT);
     if (status_tw[i])
       ui_widget_place(&status_tw[i]->base, g_layout.msg_panel.x + g_layout_cfg.msg_panel_pad_x,
-                      g_layout.msg_panel.y + g_layout_cfg.msg_panel_pad_y + i * (g_layout.status_line_h + 2));
+                      g_layout.msg_panel.y + g_layout_cfg.msg_panel_pad_y +
+                          i * (g_layout.status_line_h + 2));
   }
 
   client_state.timer_start = SDL_GetTicks();
@@ -1391,8 +1403,7 @@ static EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
       game_nick_widgets[id]->highlight = (id == my_id);
       game_nick_widgets[id]->selectable = (game_state->player[my_id].is_admin && id != my_id);
       game_coin_widgets[id] = image_widget_from_texture(coin_tex_front, coin_px / 2, coin_px / 2);
-      game_coins_tw[id] =
-          text_widget_create(coins_str, font->fonts[FONT_BOLD], DC_TEXT_ON_DARK);
+      game_coins_tw[id] = text_widget_create(coins_str, font->fonts[FONT_BOLD], DC_TEXT_ON_DARK);
       ui_register(&registry, &game_nick_widgets[id]->base);
       ui_register(&registry, &game_coin_widgets[id]->base);
       ui_register(&registry, &game_coins_tw[id]->base);
@@ -1442,8 +1453,7 @@ static EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
       }
       if (n_local < 1)
         n_local = 2;
-      local_row_w =
-          n_local * g_layout_cfg.card_w + (n_local - 1) * g_layout_cfg.card_padding;
+      local_row_w = n_local * g_layout_cfg.card_w + (n_local - 1) * g_layout_cfg.card_padding;
       layout_seats_for(seat_pos, my_id, local_row_w);
     }
 
@@ -1502,7 +1512,6 @@ static EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
     game_btn_ban->base.hovered =
         game_btn_ban->interactive && SDL_PointInRect(&mouse_pos, &game_btn_ban->base.rect);
     game_btn_quit->base.hovered = SDL_PointInRect(&mouse_pos, &game_btn_quit->base.rect);
-
 
     bool new_coin = false;
 
@@ -1563,9 +1572,9 @@ static EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
     render_coin_animation(sdl_context->renderer, &coin_anim);
 
     if (!indicator_game_name && client_state.game_choice) {
-      indicator_game_name = create_indicator_colored(
-          client_state.game_choice->str, font->fonts[FONT_BOLD],
-          DC_INDICATOR_GAME_BG, DC_INDICATOR_GAME_FG);
+      indicator_game_name =
+          create_indicator_colored(client_state.game_choice->str, font->fonts[FONT_BOLD],
+                                   DC_INDICATOR_GAME_BG, DC_INDICATOR_GAME_FG);
       ui_register(&registry, &indicator_game_name->base);
       indicator_game_name->base.enabled = false; /* drawn by the dashboard */
     }
@@ -1619,8 +1628,8 @@ static EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
        * their (left-origin) card row. */
       int np_origin_x = (id == my_id) ? g_layout.local_seat.x - total_max_w / 2 + opener_gutter / 2
                                       : seat_pos[id].x + g_layout_cfg.card_w / 2;
-      ui_table_begin(&player_table, np_origin_x,
-                     seat_pos[id].y + (int)(g_layout_cfg.card_h * 1.2), 3);
+      ui_table_begin(&player_table, np_origin_x, seat_pos[id].y + (int)(g_layout_cfg.card_h * 1.2),
+                     3);
       for (int c = 0; c < 3; c++)
         player_table.col_width[c] = max_col_w[c];
       player_table.col_align[0] = 1; // left-align nick
@@ -1628,9 +1637,9 @@ static EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
       ui_table_add(&player_table, 0, 1, &game_coin_widgets[id]->base);
       ui_table_add(&player_table, 0, 2, &game_coins_tw[id]->base);
       ui_table_layout(&player_table);
-      nameplate_rects[id] =
-          (SDL_Rect){player_table.x - np_pad - opener_gutter, player_table.y - np_pad,
-                     total_max_w + np_pad * 2 + opener_gutter, player_table.row_height[0] + np_pad * 2};
+      nameplate_rects[id] = (SDL_Rect){
+          player_table.x - np_pad - opener_gutter, player_table.y - np_pad,
+          total_max_w + np_pad * 2 + opener_gutter, player_table.row_height[0] + np_pad * 2};
       if (id == turn->id && !game_state->winner_declared) {
         const int pad = 4;
         turn_outline = (SDL_Rect){player_table.x - pad, player_table.y - pad, total_max_w + pad * 2,
@@ -1726,8 +1735,9 @@ static EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
       float t = (float)row / (float)(g_layout.msg_panel.h - 1);
       uint8_t c = (uint8_t)(255.0f - t * 30.0f);
       SDL_SetRenderDrawColor(sdl_context->renderer, c, c, c, 255);
-      SDL_RenderFillRect(sdl_context->renderer,
-                         &(SDL_Rect){g_layout.msg_panel.x, g_layout.msg_panel.y + row, g_layout.msg_panel.w, 1});
+      SDL_RenderFillRect(
+          sdl_context->renderer,
+          &(SDL_Rect){g_layout.msg_panel.x, g_layout.msg_panel.y + row, g_layout.msg_panel.w, 1});
     }
 
     SDL_SetRenderDrawColor(sdl_context->renderer, 0, 0, 0, 255);
@@ -1774,7 +1784,9 @@ static EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
       if (!game_state->player[id].is_connected || game_state->player[id].in)
         continue;
       SDL_Rect card_area = {seat_pos[id].x, seat_pos[id].y,
-                            MAX_HAND_SIZE * (g_layout_cfg.card_w + g_layout_cfg.card_padding) - g_layout_cfg.card_padding, g_layout_cfg.card_h};
+                            MAX_HAND_SIZE * (g_layout_cfg.card_w + g_layout_cfg.card_padding) -
+                                g_layout_cfg.card_padding,
+                            g_layout_cfg.card_h};
       SDL_RenderFillRect(sdl_context->renderer, &card_area);
       if (nameplate_rects[id].w > 0)
         SDL_RenderFillRect(sdl_context->renderer, &nameplate_rects[id]);
@@ -1812,9 +1824,12 @@ static EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
       int s2 = action_bw[CALL]->base.rect.w + action_bw[RAISE]->base.rect.w + wf;
       int s3 = action_bw[CALL]->base.rect.w + action_bw[COMPLETE]->base.rect.w + wf;
       int s4 = action_bw[COMPLETE]->base.rect.w + action_bw[CHECK]->base.rect.w + wf;
-      if (s2 > max_set) max_set = s2;
-      if (s3 > max_set) max_set = s3;
-      if (s4 > max_set) max_set = s4;
+      if (s2 > max_set)
+        max_set = s2;
+      if (s3 > max_set)
+        max_set = s3;
+      if (s4 > max_set)
+        max_set = s4;
       int act_inner = max_set + 2 * cfg->act_btn_gap;
 
       int slider_cell_w = slider_inner + 2 * pad;
@@ -1841,16 +1856,15 @@ static EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
 
       draw_dash_divider(
           r, (SDL_Rect){timer_cell_x - cfg->dash_divider, dash_y, cfg->dash_divider, dash_h});
-      draw_dash_divider(
-          r, (SDL_Rect){timer_cell_x + timer_cell_w, dash_y, cfg->dash_divider, dash_h});
+      draw_dash_divider(r,
+                        (SDL_Rect){timer_cell_x + timer_cell_w, dash_y, cfg->dash_divider, dash_h});
 
       dash_timer_center = (SDL_Point){timer_cell_x + timer_cell_w / 2, dash_y + dash_h / 2};
-      dash_act_cell =
-          (SDL_Rect){act_cell_x + pad, dash_y + (dash_h - btn_h) / 2, act_inner, btn_h};
+      dash_act_cell = (SDL_Rect){act_cell_x + pad, dash_y + (dash_h - btn_h) / 2, act_inner, btn_h};
 
       /* ---- bet-amount step scale (left cell) ---- */
-      step_scale_layout(bet_scale, (SDL_Rect){slider_cell_x + pad, dash_y + pad, slider_inner,
-                                              dash_h - 2 * pad});
+      step_scale_layout(
+          bet_scale, (SDL_Rect){slider_cell_x + pad, dash_y + pad, slider_inner, dash_h - 2 * pad});
       ui_widget_render(&bet_scale->base);
     }
 
@@ -2278,8 +2292,7 @@ bool get_socket_context_and_run_client(PlayerConfig_t *player_config, const CliA
   ButtonWidget_t *btn_cancel = NULL;
   TextWidget_t *status_tw = NULL;
   if (sdl_context && font) {
-    btn_cancel = button_widget_create_styled(
-        _("Cancel"), &ROLE_PRIMARY, font->fonts, SDLK_ESCAPE);
+    btn_cancel = button_widget_create_styled(_("Cancel"), &ROLE_PRIMARY, font->fonts, SDLK_ESCAPE);
     if (btn_cancel) {
       btn_cancel->base.rect.x = g_center.x - btn_cancel->base.rect.w / 2;
       btn_cancel->base.rect.y = g_center.y + 60;
@@ -2287,8 +2300,7 @@ bool get_socket_context_and_run_client(PlayerConfig_t *player_config, const CliA
     char initial_status[256] = {0};
     snprintf(initial_status, sizeof(initial_status), _("Attempting connection to: %s... (%d/%d)"),
              host_str, 1, player_config->connect_attempts);
-    status_tw =
-        text_widget_create(initial_status, font->fonts[FONT_DEFAULT], DC_TEXT_ON_DARK);
+    status_tw = text_widget_create(initial_status, font->fonts[FONT_DEFAULT], DC_TEXT_ON_DARK);
     if (status_tw) {
       status_tw->base.rect.x = 10;
       status_tw->base.rect.y = g_center.y;
@@ -2607,8 +2619,8 @@ bool get_socket_context_and_run_client(PlayerConfig_t *player_config, const CliA
       n_coin_sounds_init++;
     }
 
-    n_coin_images = load_coin_textures(sdl_context->renderer, path->data, coin_textures,
-                                       MAX_COIN_IMAGES);
+    n_coin_images =
+        load_coin_textures(sdl_context->renderer, path->data, coin_textures, MAX_COIN_IMAGES);
 
     {
       bool running = true;
@@ -2628,10 +2640,9 @@ bool get_socket_context_and_run_client(PlayerConfig_t *player_config, const CliA
           break;
         }
 
-        EGameLogicResult_t result =
-            handle_game_logic(player_config, &socket_context, &game_settings, &game_state,
-                              sdl_context, font, path, &sound_context, coin_textures,
-                              n_coin_images);
+        EGameLogicResult_t result = handle_game_logic(
+            player_config, &socket_context, &game_settings, &game_state, sdl_context, font, path,
+            &sound_context, coin_textures, n_coin_images);
         if (result == GAME_LOGIC_DISCONNECTED)
           went_back = true;
         running = (result == GAME_LOGIC_AT_MENU);

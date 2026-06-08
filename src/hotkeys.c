@@ -42,11 +42,11 @@ static SDL_Keycode resolve(const char *name, const char *label) {
 }
 
 void init_hotkeys(const PlayerConfig_t *cfg) {
-  g_hotkey_cfg.check    = resolve(cfg->hotkey_check,    "hotkey_check");
-  g_hotkey_cfg.bet      = resolve(cfg->hotkey_bet,      "hotkey_bet");
-  g_hotkey_cfg.fold     = resolve(cfg->hotkey_fold,     "hotkey_fold");
-  g_hotkey_cfg.call     = resolve(cfg->hotkey_call,     "hotkey_call");
-  g_hotkey_cfg.raise    = resolve(cfg->hotkey_raise,    "hotkey_raise");
+  g_hotkey_cfg.check = resolve(cfg->hotkey_check, "hotkey_check");
+  g_hotkey_cfg.bet = resolve(cfg->hotkey_bet, "hotkey_bet");
+  g_hotkey_cfg.fold = resolve(cfg->hotkey_fold, "hotkey_fold");
+  g_hotkey_cfg.call = resolve(cfg->hotkey_call, "hotkey_call");
+  g_hotkey_cfg.raise = resolve(cfg->hotkey_raise, "hotkey_raise");
   g_hotkey_cfg.complete = resolve(cfg->hotkey_complete, "hotkey_complete");
-  g_hotkey_cfg.discard  = resolve(cfg->hotkey_discard,  "hotkey_discard");
+  g_hotkey_cfg.discard = resolve(cfg->hotkey_discard, "hotkey_discard");
 }

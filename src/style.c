@@ -26,8 +26,8 @@
 
 */
 
-#include "graphics.h"
 #include "style.h"
+#include "graphics.h"
 
 // clang-format off
 const ButtonRole_t ROLE_PRIMARY = { {  0,   0,   0, 255}, {255, 255,   0, 255}, FONT_BOLD, 20, 10 };

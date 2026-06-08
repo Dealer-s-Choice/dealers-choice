@@ -83,9 +83,7 @@ bool dc_rate_limit_check_at(const char *ip_str, uint32_t max_per_minute, uint32_
 
 /* Clear the in-process rate-limit state.  For tests only; production never
  * needs this because each server invocation starts with empty state. */
-void dc_rate_limit_reset(void) {
-  conn_attempts_count = 0;
-}
+void dc_rate_limit_reset(void) { conn_attempts_count = 0; }
 
 static bool rate_limit_check(const char *ip_str, uint32_t max_per_minute) {
   return dc_rate_limit_check_at(ip_str, max_per_minute, SDL_GetTicks());
@@ -175,9 +173,8 @@ static void log_hands_json(const ArgsBroadcastGameState_t *args, const POKEVAL_N
     }
     fputc(']', fp);
     if (cmp[i].won) {
-      short rank = args->deuces_wild
-                       ? POKEVAL_evaluate_hand_wild(cmp[i].hand_5, DH_CARD_TWO)
-                       : POKEVAL_evaluate_hand(cmp[i].hand_5);
+      short rank = args->deuces_wild ? POKEVAL_evaluate_hand_wild(cmp[i].hand_5, DH_CARD_TWO)
+                                     : POKEVAL_evaluate_hand(cmp[i].hand_5);
       fprintf(fp, ",\"rank\":\"%s\",\"rank_id\":%d,\"best5\":[", POKEVAL_rank[rank], rank);
       for (int c = 0; c < 5; c++) {
         DH_Card card = cmp[i].hand_5.card[c];
@@ -420,8 +417,9 @@ static void broadcast_game_state(ArgsBroadcastGameState_t *args) {
     } else {
       uint32_t send_ms = SDL_GetTicks() - send_start;
       if (send_ms >= SLOW_SEND_WARN_MS)
-        dc_log(DC_LOG_WARN, "slow game-state send to client %d: %ums (client not draining its socket?)",
-               i, send_ms);
+        dc_log(DC_LOG_WARN,
+               "slow game-state send to client %d: %ums (client not draining its socket?)", i,
+               send_ms);
     }
     free(data);
   }
@@ -1147,8 +1145,8 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args, uint32_t i
     if (action.action != 0) {
       uint32_t waited = SDL_GetTicks() - start;
       if (waited >= RECV_WAIT_WARN_MS)
-        dc_log(DC_LOG_WARN, "waited %ums for player %d's action (slow input or stalled link)", waited,
-               turn->id);
+        dc_log(DC_LOG_WARN, "waited %ums for player %d's action (slow input or stalled link)",
+               waited, turn->id);
     }
 
     char status_str[LEN_STATUS_STR] = {0};
@@ -1254,8 +1252,7 @@ static void remove_disconnected_player(ArgsBroadcastGameState_t *args, const int
      * lives on play_game's (returned) stack frame.  Without this guard
      * we'd dereference dead stack memory (caught by ASan as
      * stack-use-after-return). */
-    if (args->starting_turn && *args->starting_turn &&
-        args->game_state->player_count > 1)
+    if (args->starting_turn && *args->starting_turn && args->game_state->player_count > 1)
       if ((*args->starting_turn)->id == id)
         *args->starting_turn = get_next_player(args->game_state->player, id);
   }

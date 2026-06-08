@@ -34,6 +34,6 @@ typedef struct {
 } ButtonWidget_t;
 
 ButtonWidget_t *button_widget_create_styled(const char *text, const ButtonRole_t *role,
-                                            TTF_Font * const *fonts, SDL_Keycode hotkey);
+                                            TTF_Font *const *fonts, SDL_Keycode hotkey);
 
 #endif
