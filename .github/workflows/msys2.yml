@@ -11,6 +11,8 @@ on:
         required: false
         type: string
   push:
+    tags:
+      - 'v*'
     branches: [ trunk ]
     paths: &shared_paths
     - '**'
@@ -87,7 +89,7 @@ jobs:
       run: |
         if [[ -z "${VERSION}" ]]; then
           if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
-            VERSION="${GITHUB_REF#refs/tags/}"
+            VERSION="${GITHUB_REF#refs/tags/v}"
           else
             VERSION="snapshot"
           fi
