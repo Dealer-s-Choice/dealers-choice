@@ -2,7 +2,6 @@
  * test_cut_strings.c
  *
  * This file is part of the deckhandler library
- * <https://github.com/theimpossibleastronaut/deckhandler>
  *
  * Copyright 2025 Andy Alt
  *
@@ -108,15 +107,14 @@ static void test_get_card_face_str(void) {
   assert(strcmp(DH_get_card_face_str(15), "?") == 0);
 }
 
-static void test_deal_wrap(void) {
+static void test_deal_exhaustion(void) {
   DH_Deck deck = DH_get_new_deck();
   for (int i = 0; i < DH_CARDS_IN_DECK; i++)
-    DH_deal_top_card(&deck);
+    assert(!DH_is_card_null(DH_deal_top_card(&deck)));
 
-  /* top_card == 52 here; next deal must wrap back to position 0 */
-  DH_Card c = DH_deal_top_card(&deck);
-  assert(c.face_val == DH_CARD_ACE);
-  assert(c.suit == DH_SUIT_HEARTS);
+  /* Draw pile empty and no muck: deal must report exhaustion, NOT silently
+   * wrap and re-deal a card already in play. */
+  assert(DH_is_card_null(DH_deal_top_card(&deck)));
 }
 
 static void test_cut_deck(void) {
@@ -175,7 +173,7 @@ int main(void) {
   test_get_card_suit();
   test_get_unicode_suit();
   test_get_card_face_str();
-  test_deal_wrap();
+  test_deal_exhaustion();
   test_cut_deck();
   test_pcg_srand_auto();
 

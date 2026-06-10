@@ -1,7 +1,6 @@
 /*
  * deckhandler.c
  * Library to handle a deck of cards
- * <https://github.com/theimpossibleastronaut/deckhandler>
  *
 
  MIT License
@@ -70,6 +69,8 @@ void DH_pcg_srand_auto(void) {
 
 static void DH_init_deck(DH_Deck *deck) {
   deck->top_card = 0;
+  deck->n_discard = 0;
+  deck->discard_shuffled = 0;
 
   int card = 0;
   int8_t suit = 0;
@@ -95,13 +96,39 @@ DH_Deck DH_get_new_deck(void) {
   return deck;
 }
 
+void DH_discard_card(DH_Deck *deck, DH_Card card) {
+  if (deck->n_discard < DH_CARDS_IN_DECK)
+    deck->discard[deck->n_discard++] = card;
+}
+
+int DH_cards_remaining(const DH_Deck *deck) {
+  return (DH_CARDS_IN_DECK - deck->top_card) + deck->n_discard;
+}
+
 DH_Card DH_deal_top_card(DH_Deck *deck) {
-  if (deck->top_card == DH_CARDS_IN_DECK) {
-    deck->top_card = 0;
-    puts("deckhandler: deck wrapped");
+  /* Normal deal straight off the deck. */
+  if (deck->top_card < DH_CARDS_IN_DECK)
+    return deck->card[deck->top_card++];
+
+  /* Deck dealt out: deal from the muck. The muck is a FIFO queue at the front
+   * of discard[]; we shuffle the leading run once the deck is exhausted and
+   * deal off the front, compacting as we go so storage stays bounded (a card
+   * can pass through the muck more than once in multi-draw games). If dealing
+   * catches up to cards mucked *after* that shuffle, those stragglers are
+   * shuffled before they're dealt -- so a card is never dealt in a predictable
+   * order, while the common case shuffles exactly once. card[] is left
+   * untouched (still all 52), so the next hand's DH_shuffle_deck collects
+   * everything back with no re-init. */
+  if (deck->n_discard == 0)
+    return DH_card_null;
+  if (deck->discard_shuffled == 0) {
+    DH_shuffle_partial(deck->discard, deck->n_discard);
+    deck->discard_shuffled = deck->n_discard;
   }
-  DH_Card card = deck->card[deck->top_card];
-  deck->top_card++;
+  DH_Card card = deck->discard[0];
+  memmove(deck->discard, deck->discard + 1, (size_t)(deck->n_discard - 1) * sizeof(DH_Card));
+  deck->n_discard--;
+  deck->discard_shuffled--;
   return card;
 }
 
@@ -111,12 +138,24 @@ static void swap(DH_Deck *deck_dh, int i, int j) {
   deck_dh->card[j] = tmp;
 }
 
+void DH_shuffle_partial(DH_Card *cards, int n) {
+  for (int i = n - 1; i > 0; --i) {
+    int j = pcg32_boundedrand_r(&rng, i + 1);
+    DH_Card tmp = cards[i];
+    cards[i] = cards[j];
+    cards[j] = tmp;
+  }
+}
+
 void DH_shuffle_deck(DH_Deck *deck) {
   for (int i = DH_CARDS_IN_DECK - 1; i > 0; --i) {
     int j = pcg32_boundedrand_r(&rng, i + 1);
     swap(deck, i, j);
   }
   deck->top_card = 0;
+  /* A full shuffle collects the muck back into the deck. */
+  deck->n_discard = 0;
+  deck->discard_shuffled = 0;
 }
 
 void DH_cut_deck(DH_Deck *deck, const int cut_point) {

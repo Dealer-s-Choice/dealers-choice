@@ -841,6 +841,7 @@ static ELoop_t handle_draw(ArgsBroadcastGameState_t *args, tcpme_socket_t sock, 
   // printf("Player wants to discard %u cards: ", req.discard_count);
   for (int i = 0; i < req.discard_count; ++i) {
     // printf("%u ", req.discard_indices[i]);
+    DH_discard_card(deck, args->real_hand[id].card[req.discard_indices[i]]);
     args->real_hand[id].card[req.discard_indices[i]] = DH_deal_top_card(deck);
     // puts("");
   }
