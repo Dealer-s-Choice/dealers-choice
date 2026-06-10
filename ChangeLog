@@ -1,4 +1,6 @@
 - (in-progress)
+  * deckhandler: shuffle and recycle the discard pile when the deck runs out
+    mid-draw, fixing duplicate cards dealt in multi-player draw games
 
 2026-06-08
 

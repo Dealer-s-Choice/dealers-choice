@@ -75,8 +75,11 @@ bool DH_is_card_null(DH_Card a);
  * @brief Represents a full deck of 52 playing cards.
  */
 typedef struct {
-  DH_Card card[DH_CARDS_IN_DECK]; ///< Array of all cards in the deck
-  int top_card;
+  DH_Card card[DH_CARDS_IN_DECK];    ///< The deck: always holds all 52 cards; dealing only advances top_card
+  DH_Card discard[DH_CARDS_IN_DECK]; ///< Muck: copies of discarded cards, dealt once the deck is exhausted
+  int top_card;                      ///< Next card to deal from the deck
+  int n_discard;                     ///< Live cards in the muck (front of discard[]); recycled FIFO
+  int discard_shuffled;              ///< How many leading muck cards are already shuffled into order
 } DH_Deck;
 
 /**
@@ -107,17 +110,54 @@ DH_Deck DH_get_new_deck(void);
 /**
  * @brief Deal the top card from the deck.
  *
- * Deals the card currently at the top of the deck and advances the deck position.
- * If all cards have been dealt (`top_card == DH_CARDS_IN_DECK`), the deck wraps and begins from the
- * top again, resetting `top_card` to 0 and printing a warning message.
+ * Deals the next card from the deck and advances the deck position. When the
+ * deck is dealt out, the discard pile (see DH_discard_card) is shuffled and
+ * dealt from. If the deck is exhausted and the muck is empty, `DH_card_null`
+ * is returned (it never silently re-deals a card already in play).
  *
  * @param deck Pointer to the deck from which to deal a card.
- * @return The card at the current top position of the deck.
+ * @return The dealt card, or `DH_card_null` if no cards remain.
  */
 DH_Card DH_deal_top_card(DH_Deck *deck);
 
 /**
- * @brief Shuffle a deck of cards using the PCG random number generator.
+ * @brief Place a card onto the deck's discard pile (muck).
+ *
+ * Discarded cards are recycled into a fresh draw pile, shuffled, once the draw
+ * pile is exhausted. The caller owns the policy of what to discard (e.g. cards
+ * a player replaced on a draw); the deck never moves cards to the muck on its
+ * own.
+ *
+ * @param deck Pointer to the deck.
+ * @param card The card to discard.
+ */
+void DH_discard_card(DH_Deck *deck, DH_Card card);
+
+/**
+ * @brief Number of cards still dealable: the draw pile plus the discard pile.
+ *
+ * @param deck Pointer to the deck.
+ * @return Dealable card count.
+ */
+int DH_cards_remaining(const DH_Deck *deck);
+
+/**
+ * @brief Fisher-Yates shuffle of the first `n` cards of an array.
+ *
+ * Used to shuffle a recycled discard pile; kept separate from DH_shuffle_deck
+ * so the full-deck shuffle's seeded output is never disturbed.
+ *
+ * @param cards Pointer to the card array.
+ * @param n     Number of leading cards to shuffle.
+ */
+void DH_shuffle_partial(DH_Card *cards, int n);
+
+/**
+ * @brief Shuffle the full deck using the PCG random number generator.
+ *
+ * Shuffles all 52 cards and resets the deal position. Any cards in the discard
+ * pile (muck) are collected back into the deck, so calling this at the start of
+ * each hand restores a complete, freshly shuffled deck without re-initializing.
  *
  * @param deck_dh Pointer to the deck to shuffle.
  */

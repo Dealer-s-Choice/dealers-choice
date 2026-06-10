@@ -2,7 +2,6 @@
  * test_01.c
  *
  * This file is part of the deckhandler library
- * <https://github.com/theimpossibleastronaut/deckhandler>
  *
  * Copyright 2019-2021 Andy Alt <andy400-dev@yahoo.com>
  *
