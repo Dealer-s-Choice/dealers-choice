@@ -27,8 +27,10 @@ jobs:
             version: '15.0'
             install: sudo pkg install -y git gettext libsodium meson ninja pkgconf protobuf-c python3 sdl2 sdl2_image sdl2_ttf
           - os: openbsd
-            version: '7.8'
-            install: sudo pkg_add git gettext libsodium meson ninja pkgconf protobuf-c python3 sdl2 sdl2-image sdl2-ttf
+            version: '7.9'
+            install: |
+              echo https://cdn.openbsd.org/pub/OpenBSD | sudo tee /etc/installurl
+              sudo pkg_add git gettext libsodium meson ninja pkgconf protobuf-c python3 sdl2 sdl2-image sdl2-ttf
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v6
@@ -39,12 +41,21 @@ jobs:
         operating_system: ${{ matrix.os }}
         version: ${{ matrix.version }}
 
-    - name: Test
+    - name: Install dependencies
+      shell: cpa.sh {0}
+      run: ${{ matrix.install }}
+
+    - name: Meson setup
+      shell: cpa.sh {0}
+      run: CFLAGS="-Werror" meson setup _build
+
+    - name: Compile
+      shell: cpa.sh {0}
+      run: meson compile -C _build
+
+    - name: Test and install
       shell: cpa.sh {0}
       run: |
-        ${{ matrix.install }}
-        export DC_VERBOSE=1   # surface server network-health warnings in test logs
-        CFLAGS="-Werror" meson setup _build
-        meson compile -C _build
-        meson test --no-stdsplit -v -C _build
+        # DC_VERBOSE surfaces server network-health warnings in the test logs.
+        DC_VERBOSE=1 meson test --no-stdsplit -v -C _build
         meson install --destdir=install_test -C _build
