@@ -2,6 +2,7 @@ cases = [
   'test',
   'bringin',
   'compare_hands',
+  'lowball',
   'nothing',
   'omaha',
   'pair',
