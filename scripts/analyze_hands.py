@@ -118,10 +118,12 @@ def _eval5_high(faces: list[int], suits: list[int]) -> tuple:
 def _eval5_lowball(faces: list[int]) -> tuple:
     """California A-5 lowball ranking — straights and flushes don't count.
 
-    Matches pokeval's actual algorithm: rank first by max duplicate count
-    (so any unpaired hand beats any paired hand, any pair-or-two-pair beats
-    any trips-or-full-house, etc.), then read cards high-to-low and the
-    hand with the lowest first-differing card wins.  Aces play low.
+    Matches pokeval's compare_lowball_5: classify by the two largest
+    duplicate counts — (4,1) quads, (3,2) full house, (3,1) trips,
+    (2,2) two pair, (2,1) one pair, (1,1) no pair, lower class wins —
+    then compare grouped card values (count desc, value desc, the inverse
+    of the high-hand ranking within a class), lowest first-differing value
+    wins.  Aces play low.
 
     Lower-is-better is converted to higher-is-better by negating each
     numeric component, so the caller can keep the 'bigger tuple wins'
@@ -131,10 +133,14 @@ def _eval5_lowball(faces: list[int]) -> tuple:
     counts: dict[int, int] = {}
     for v in vals:
         counts[v] = counts.get(v, 0) + 1
-    max_dup = max(counts.values())
-    high_down = tuple(sorted(vals, reverse=True))
-    # (max_dup_neg, high_card_neg, next_neg, ...) — bigger tuple wins.
-    return (-max_dup, *(-x for x in high_down))
+    dups = sorted(counts.values(), reverse=True)
+    max_dup = dups[0]
+    second_dup = dups[1] if len(dups) > 1 else 0
+    key = []
+    for v, c in sorted(counts.items(), key=lambda kv: (-kv[1], -kv[0])):
+        key.extend([v] * c)
+    # (max_neg, second_neg, grouped_vals_neg...) — bigger tuple wins.
+    return (-max_dup, -second_dup, *(-x for x in key))
 
 
 def best5(cards: list[dict], lowball: bool, wild_face: int | None) -> tuple:

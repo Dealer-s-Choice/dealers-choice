@@ -581,10 +581,23 @@ void POKEVAL_sort_hand_lowball(POKEVAL_Hand_5 *hand) {
   }
 }
 
+// Flatten a hand into ace-to-five compare order: card groups sorted by count
+// descending, then value descending (ace = 1), each value repeated count
+// times. Comparing two keys element-wise with lower-wins is the inverse of
+// the high-hand ranking within a class — e.g. for one pair, the pair value
+// decides before the kickers.
+static void lowball_key(const int counts[15], int key[5]) {
+  int k = 0;
+  for (int c = 4; c >= 1; --c)
+    for (int v = 14; v >= 1; --v)
+      if (counts[v] == c)
+        for (int i = 0; i < c; ++i)
+          key[k++] = v;
+}
+
 static int compare_lowball_5(const POKEVAL_Hand_5 *a, const POKEVAL_Hand_5 *b) {
   // assumes both hands are sorted low → high with Ace = 1
 
-  // 1) classify by duplicates
   int a_counts[15] = {0};
   int b_counts[15] = {0};
 
@@ -593,24 +606,37 @@ static int compare_lowball_5(const POKEVAL_Hand_5 *a, const POKEVAL_Hand_5 *b) {
     b_counts[b->card[i].face_val]++;
   }
 
-  int a_max = 0, b_max = 0;
+  // 1) classify by the two largest duplicate counts, worst to best:
+  //    (4,1) quads, (3,2) full house, (3,1) trips, (2,2) two pair,
+  //    (2,1) one pair, (1,1) no pair — lexicographically lower is better
+  int a_max = 0, a_2nd = 0, b_max = 0, b_2nd = 0;
   for (int v = 1; v <= 14; ++v) {
-    if (a_counts[v] > a_max)
+    if (a_counts[v] >= a_max) {
+      a_2nd = a_max;
       a_max = a_counts[v];
-    if (b_counts[v] > b_max)
+    } else if (a_counts[v] > a_2nd) {
+      a_2nd = a_counts[v];
+    }
+    if (b_counts[v] >= b_max) {
+      b_2nd = b_max;
       b_max = b_counts[v];
+    } else if (b_counts[v] > b_2nd) {
+      b_2nd = b_counts[v];
+    }
   }
 
-  // lower duplicate count is better
   if (a_max != b_max)
     return (a_max < b_max) ? -1 : 1;
+  if (a_2nd != b_2nd)
+    return (a_2nd < b_2nd) ? -1 : 1;
 
-  // 2) same class → compare card-by-card (low wins)
-  for (int i = 4; i >= 0; --i) {
-    int av = a->card[i].face_val;
-    int bv = b->card[i].face_val;
-    if (av != bv)
-      return (av < bv) ? -1 : 1;
+  // 2) same class → compare grouped values (low wins)
+  int a_key[5], b_key[5];
+  lowball_key(a_counts, a_key);
+  lowball_key(b_counts, b_key);
+  for (int i = 0; i < 5; ++i) {
+    if (a_key[i] != b_key[i])
+      return (a_key[i] < b_key[i]) ? -1 : 1;
   }
 
   return 0; // tie

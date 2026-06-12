@@ -106,14 +106,22 @@ def test_lowball_returns_max_dup_first():
     assert rank[0] == -1, f"unpaired hands have max_dup=1: {rank}"
 
 
-def test_lowball_paired_hands_high_down():
-    # pair-of-7s (7,7,6,4,3) beats pair-of-6s (Q,J,T,6,6) in A-5 because
-    # both have max_dup=2 and the high-down compare runs 7 vs Q first.
+def test_lowball_pair_value_decides_before_kickers():
+    # pair-of-6s (Q,J,T,6,6) beats pair-of-7s (7,7,6,4,3) in A-5: same class,
+    # so the lower pair wins regardless of kickers.
     pair_7s = ah.best5([C(7, 0), C(7, 1), C(6, 2), C(4, 3), C(3, 0)],
                        lowball=True, wild_face=None)
     pair_6s = ah.best5([C(11, 0), C(6, 1), C(12, 2), C(10, 3), C(6, 0)],
                        lowball=True, wild_face=None)
-    assert_gt(pair_7s, pair_6s, "pair-7s (low kickers) beats pair-6s (Q-high kickers) in A-5")
+    assert_gt(pair_6s, pair_7s, "pair-6s beats pair-7s in A-5 regardless of kickers")
+
+
+def test_lowball_two_pair_loses_to_one_pair():
+    one_pair = ah.best5([C(13, 0), C(13, 1), C(4, 2), C(5, 3), C(6, 0)],
+                        lowball=True, wild_face=None)
+    two_pair = ah.best5([C(1, 0), C(1, 1), C(3, 2), C(3, 3), C(5, 0)],
+                        lowball=True, wild_face=None)
+    assert_gt(one_pair, two_pair, "any one-pair hand beats any two-pair hand in A-5")
 
 
 def test_lowball_wheel_beats_six_high():
