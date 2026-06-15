@@ -75,11 +75,13 @@ bool DH_is_card_null(DH_Card a);
  * @brief Represents a full deck of 52 playing cards.
  */
 typedef struct {
-  DH_Card card[DH_CARDS_IN_DECK];    ///< The deck: always holds all 52 cards; dealing only advances top_card
-  DH_Card discard[DH_CARDS_IN_DECK]; ///< Muck: copies of discarded cards, dealt once the deck is exhausted
+  DH_Card card[DH_CARDS_IN_DECK];    ///< The deck: always holds all 52 cards; dealing only advances
+                                     ///< top_card
+  DH_Card discard[DH_CARDS_IN_DECK]; ///< Muck: copies of discarded cards, dealt once the deck is
+                                     ///< exhausted
   int top_card;                      ///< Next card to deal from the deck
   int n_discard;                     ///< Live cards in the muck (front of discard[]); recycled FIFO
-  int discard_shuffled;              ///< How many leading muck cards are already shuffled into order
+  int discard_shuffled; ///< How many leading muck cards are already shuffled into order
 } DH_Deck;
 
 /**

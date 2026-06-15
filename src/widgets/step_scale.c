@@ -17,8 +17,9 @@ static void draw_track_bar(SDL_Renderer *r, SDL_Rect bar, bool active) {
   SDL_Color b = active ? STEP_TRACK_ORANGE : wash(STEP_TRACK_ORANGE);
   SDL_SetRenderDrawColor(r, b.r, b.g, b.b, 255);
   SDL_RenderFillRect(r, &bar);
-  SDL_SetRenderDrawColor(r, (Uint8)(b.r < 215 ? b.r + 40 : 255), (Uint8)(b.g < 200 ? b.g + 55 : 255),
-                         (Uint8)(b.b < 215 ? b.b + 40 : 255), 255);
+  SDL_SetRenderDrawColor(r, (Uint8)(b.r < 215 ? b.r + 40 : 255),
+                         (Uint8)(b.g < 200 ? b.g + 55 : 255), (Uint8)(b.b < 215 ? b.b + 40 : 255),
+                         255);
   SDL_RenderDrawLine(r, bar.x, bar.y, bar.x + bar.w - 1, bar.y);
   SDL_SetRenderDrawColor(r, (Uint8)(b.r > 12 ? b.r - 12 : 0), (Uint8)(b.g > 35 ? b.g - 35 : 0),
                          (Uint8)(b.b > 18 ? b.b - 18 : 0), 255);

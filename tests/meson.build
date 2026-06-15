@@ -97,9 +97,11 @@ pokeval_fuzz_check = files(
 test(
   'test_pokeval_fuzz',
   pokeval_fuzz_check,
-  env: environment(base_env + {
-    'MESON_SOURCE_ROOT': meson.project_source_root(),
-  }),
+  env: environment(
+    base_env + {
+      'MESON_SOURCE_ROOT': meson.project_source_root(),
+    },
+  ),
   timeout: 180,
   depends: [pokeval_fuzz_exe],
 )
@@ -107,10 +109,12 @@ test(
 add_test_setup(
   'One_pass',
   #exe_wrapper: [join_paths(meson.current_source_dir(), '5_card_showdown.sh')],
-  env: environment(base_env + {
-    'DC_NPASSES': '1',
-    # Suppress third-party libdbus/systemd lock-order inversions under TSan
-    # (no-op for non-TSan binaries). See #282 and tsan_suppressions.txt.
-    'TSAN_OPTIONS': 'suppressions=' + meson.current_source_dir() / 'tsan_suppressions.txt',
-  }),
+  env: environment(
+    base_env + {
+      'DC_NPASSES': '1',
+      # Suppress third-party libdbus/systemd lock-order inversions under TSan
+      # (no-op for non-TSan binaries). See #282 and tsan_suppressions.txt.
+      'TSAN_OPTIONS': 'suppressions=' + meson.current_source_dir() / 'tsan_suppressions.txt',
+    },
+  ),
 )

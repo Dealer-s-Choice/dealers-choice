@@ -16,9 +16,7 @@
 #include <assert.h>
 #include <stdio.h>
 
-static bool card_eq(DH_Card a, DH_Card b) {
-  return a.face_val == b.face_val && a.suit == b.suit;
-}
+static bool card_eq(DH_Card a, DH_Card b) { return a.face_val == b.face_val && a.suit == b.suit; }
 
 int main(void) {
   DH_pcg_srand(1, 1);
