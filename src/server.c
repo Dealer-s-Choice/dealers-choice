@@ -33,6 +33,7 @@
 #include "dc_config.h"
 #include "game.h"
 #include "globals.h"
+#include "lan_discovery.h"
 #include "server.h"
 #include "util.h"
 
@@ -2251,6 +2252,20 @@ int run_server(const CliArgs_t *cli_args, Path_t *path) {
   printf("Server listening on ");
   print_socket_addr(server);
 
+  /* LAN discovery: answer broadcast queries so clients on the same network can
+   * find this game without a registry server. Optional — if the discovery port
+   * can't be opened (e.g. already in use) advertising is simply disabled and
+   * the game still runs. */
+  tcpme_socket_t discovery_sock = lan_discovery_open_responder();
+  tcpme_set_t *discovery_set = NULL;
+  if (tcpme_socket_valid(discovery_sock)) {
+    discovery_set = tcpme_alloc_set(1);
+    if (discovery_set)
+      tcpme_add_socket(discovery_set, discovery_sock);
+  } else {
+    fprintf(stderr, "LAN discovery disabled: %s\n", tcpme_get_error());
+  }
+
   tcpme_socket_t clients[MAX_CLIENTS];
   for (int i = 0; i < MAX_CLIENTS; i++)
     clients[i] = TCPME_INVALID_SOCKET;
@@ -2295,6 +2310,19 @@ int run_server(const CliArgs_t *cli_args, Path_t *path) {
   int session_ban_count = 0;
 
   while (!game_started) {
+    /* Answer any pending LAN discovery query (non-blocking), so the game is
+     * findable even while the lobby is still empty. */
+    if (discovery_set && tcpme_check_sockets(discovery_set, 0) > 0 &&
+        tcpme_socket_ready(discovery_set, discovery_sock)) {
+      LanGameInfo_t info = {0};
+      info.tcp_port = port;
+      info.player_count = count_active_clients(slot_taken);
+      info.max_players = MAX_CLIENTS;
+      info.password_protected = (config.password[0] != '\0');
+      info.in_progress = false;
+      lan_discovery_answer(discovery_sock, &info);
+    }
+
     ArgsBroadcastGameState_t args_broadcast_game_state = {
         .clients = clients,
         .socket_set = socket_set,
@@ -2533,6 +2561,11 @@ int run_server(const CliArgs_t *cli_args, Path_t *path) {
       tcpme_close(clients[i]);
     }
   }
+
+  if (discovery_set)
+    tcpme_free_set(discovery_set);
+  if (tcpme_socket_valid(discovery_sock))
+    tcpme_close(discovery_sock);
 
   tcpme_close(server);
   tcpme_free_set(socket_set);

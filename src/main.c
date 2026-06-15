@@ -40,6 +40,7 @@
 #include "globals.h"
 #include "graphics.h"
 #include "hotkeys.h"
+#include "lan_discovery.h"
 #include "links.h"
 #include "main.h"
 #include "server.h"
@@ -54,6 +55,68 @@
 #include <sodium.h>
 
 enum { RUN_CLIENT = 20, RUN_SETTINGS = 21 };
+
+/* Maximum LAN-discovered games shown on the connect screen. */
+enum { LAN_MAX_SHOWN = 6 };
+
+/* Build the row label for a discovered game: the server name if it has one,
+ * otherwise its IP, followed by seat count and flags. */
+static void lan_row_label(const LanGameInfo_t *g, char *buf, size_t n) {
+  const char *who = (g->name[0] != '\0') ? g->name : g->ip;
+  snprintf(buf, n, "%s  %u/%u%s%s", who, (unsigned)g->player_count, (unsigned)g->max_players,
+           g->password_protected ? " [PW]" : "", g->in_progress ? " [playing]" : "");
+}
+
+/* FNV-1a over the displayed fields, so the row buttons are rebuilt only when
+ * the visible list actually changes. */
+static unsigned long lan_list_sig(const LanGameInfo_t *list, int count) {
+  unsigned long h = 1469598103934665603UL;
+  char buf[96];
+  for (int i = 0; i < count; i++) {
+    int m = snprintf(buf, sizeof(buf), "%s:%u:%u:%u:%d:%d|", list[i].ip, (unsigned)list[i].tcp_port,
+                     (unsigned)list[i].player_count, (unsigned)list[i].max_players,
+                     list[i].password_protected, list[i].in_progress);
+    for (int j = 0; j < m && j < (int)sizeof(buf); j++) {
+      h ^= (unsigned char)buf[j];
+      h *= 1099511628211UL;
+    }
+  }
+  return h;
+}
+
+/* Insert g, or refresh an existing entry matched by ip+port. Returns the new
+ * count (unchanged if the list is full). */
+static int lan_upsert(LanGameInfo_t *list, uint32_t *seen, int count, int max,
+                      const LanGameInfo_t *g, uint32_t now) {
+  for (int i = 0; i < count; i++) {
+    if (list[i].tcp_port == g->tcp_port && strcmp(list[i].ip, g->ip) == 0) {
+      list[i] = *g;
+      seen[i] = now;
+      return count;
+    }
+  }
+  if (count < max) {
+    list[count] = *g;
+    seen[count] = now;
+    return count + 1;
+  }
+  return count;
+}
+
+/* Drop entries not seen within ttl ms; returns the compacted count. */
+static int lan_expire(LanGameInfo_t *list, uint32_t *seen, int count, uint32_t now, uint32_t ttl) {
+  int w = 0;
+  for (int i = 0; i < count; i++) {
+    if (now - seen[i] <= ttl) {
+      if (w != i) {
+        list[w] = list[i];
+        seen[w] = seen[i];
+      }
+      w++;
+    }
+  }
+  return w;
+}
 
 static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, uint16_t *port,
                                 SdlContext_t *sdl_context, Font_t *font, LinkWidget_t **links) {
@@ -157,6 +220,26 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, u
   bool run_client = false;
   bool run_settings = false;
   bool running = true;
+
+  /* LAN discovery: passively look for games on the network and show them as
+   * clickable rows below the nick. Clicking a row connects to it immediately.
+   * Optional — if the socket can't be opened, the screen just works manually. */
+  tcpme_socket_t disc_sock = lan_discovery_open_client();
+  tcpme_set_t *disc_set = NULL;
+  if (tcpme_socket_valid(disc_sock)) {
+    disc_set = tcpme_alloc_set(1);
+    if (disc_set)
+      tcpme_add_socket(disc_set, disc_sock);
+    lan_discovery_query(disc_sock);
+  }
+  uint32_t last_query = SDL_GetTicks();
+  LanGameInfo_t found[LAN_MAX_SHOWN];
+  uint32_t found_seen[LAN_MAX_SHOWN];
+  int found_count = 0;
+  ButtonWidget_t *host_btn[LAN_MAX_SHOWN] = {0};
+  int host_btn_count = 0;
+  unsigned long shown_sig = 0;
+
   while (running) {
     SDL_Event e;
     while (SDL_PollEvent(&e)) {
@@ -169,6 +252,9 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, u
         btn_quit_connect->base.hovered = SDL_PointInRect(&mouse_pos, &btn_quit_connect->base.rect);
       for (size_t i = 0; i < LINK_DEFS_COUNT; i++)
         links[i]->base.hovered = SDL_PointInRect(&mouse_pos, &links[i]->base.rect);
+      for (int i = 0; i < host_btn_count; i++)
+        if (host_btn[i])
+          host_btn[i]->base.hovered = SDL_PointInRect(&mouse_pos, &host_btn[i]->base.rect);
       if (e.type == SDL_QUIT) {
         running = false;
       } else if (e.type == SDL_MOUSEBUTTONDOWN) {
@@ -201,6 +287,18 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, u
           focused_inputs[focused_slot]->focused = false;
           focused_slot = 1;
           focused_inputs[focused_slot]->focused = true;
+        } else {
+          for (int i = 0; i < host_btn_count; i++) {
+            if (host_btn[i] && SDL_PointInRect(&mouse_pos, &host_btn[i]->base.rect)) {
+              input_widget_set_text(host_input, found[i].ip);
+              char pbuf[8];
+              snprintf(pbuf, sizeof(pbuf), "%u", (unsigned)found[i].tcp_port);
+              input_widget_set_text(port_input, pbuf);
+              run_client = true;
+              running = false;
+              break;
+            }
+          }
         }
         for (size_t i = 0; i < LINK_DEFS_COUNT; i++) {
           if (links[i]->base.hovered && e.button.button == SDL_BUTTON_LEFT)
@@ -276,6 +374,45 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, u
       }
     }
 
+    /* --- LAN discovery: re-query, drain replies, expire, rebuild rows --- */
+    if (disc_set) {
+      uint32_t now = SDL_GetTicks();
+      if (now - last_query >= 2000) {
+        lan_discovery_query(disc_sock);
+        last_query = now;
+      }
+      int drain = 0;
+      while (drain++ < 32 && tcpme_check_sockets(disc_set, 0) > 0 &&
+             tcpme_socket_ready(disc_set, disc_sock)) {
+        LanGameInfo_t g;
+        if (lan_discovery_read_response(disc_sock, &g))
+          found_count = lan_upsert(found, found_seen, found_count, LAN_MAX_SHOWN, &g, now);
+      }
+      found_count = lan_expire(found, found_seen, found_count, now, 6000);
+
+      unsigned long sig = lan_list_sig(found, found_count);
+      if (sig != shown_sig) {
+        for (int i = 0; i < host_btn_count; i++)
+          if (host_btn[i])
+            ui_widget_destroy(&host_btn[i]->base);
+        host_btn_count = 0;
+        int row_y =
+            input_nick_pos.y + TTF_FontHeight(font->fonts[FONT_DEFAULT]) + g_layout_cfg.input_field_v_gap;
+        for (int i = 0; i < found_count; i++) {
+          char label[96];
+          lan_row_label(&found[i], label, sizeof(label));
+          host_btn[i] = button_widget_create_styled(label, &ROLE_PRIMARY, font->fonts, (SDL_Keycode)0);
+          if (!host_btn[i])
+            continue;
+          host_btn[i]->base.rect.x = g_layout.menu.margin_x;
+          host_btn[i]->base.rect.y = row_y;
+          row_y += host_btn[i]->base.rect.h + g_layout_cfg.input_field_v_gap;
+          host_btn_count = i + 1;
+        }
+        shown_sig = sig;
+      }
+    }
+
     button_save->interactive =
         strcmp(input_widget_get_text(host_input), player_config->host) != 0 ||
         (uint16_t)strtoul(input_widget_get_text(port_input), NULL, 10) != player_config->port;
@@ -284,6 +421,10 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, u
     ui_widget_render(&button_connect->base);
     ui_widget_render(&button_settings->base);
     ui_render_all(&reg);
+
+    for (int i = 0; i < host_btn_count; i++)
+      if (host_btn[i])
+        ui_widget_render(&host_btn[i]->base);
 
     ui_widget_render(&tw_nick->base);
     ui_widget_render(&tw_title->base);
@@ -316,6 +457,14 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, u
   ui_widget_destroy(&button_connect->base);
   ui_widget_destroy(&button_settings->base);
   ui_destroy_all(&reg);
+
+  for (int i = 0; i < host_btn_count; i++)
+    if (host_btn[i])
+      ui_widget_destroy(&host_btn[i]->base);
+  if (disc_set)
+    tcpme_free_set(disc_set);
+  if (tcpme_socket_valid(disc_sock))
+    tcpme_close(disc_sock);
 
   if (run_client)
     return RUN_CLIENT;

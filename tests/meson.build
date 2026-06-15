@@ -24,6 +24,16 @@ foreach name : unit_tests
   test('test_' + name, exe, env: environment(base_env))
 endforeach
 
+# Standalone (own main, no 00_test.c): LAN discovery round trip. Uses loopback,
+# so it is deterministic and does not need a port from base_port.
+lan_discovery_exe = executable(
+  'test_lan_discovery',
+  'lan_discovery_test.c',
+  dependencies: game_dep,
+  override_options: ['b_lto=false'],
+)
+test('test_lan_discovery', lan_discovery_exe, env: environment(base_env))
+
 # All tests that bind a TCP socket get a unique port derived from base_port so
 # they can run in parallel without colliding.  Add new entries to game_logic
 # below and they will receive the next port automatically.
