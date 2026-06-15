@@ -2,6 +2,7 @@
   * deckhandler: shuffle and recycle the discard pile when the deck runs out
     mid-draw, fixing duplicate cards dealt in multi-player draw games
   * pokeval: fix California lowball tie-breaks
+  * regression fix: joining a hand in progress no longer crashes the client
 
 2026-06-08
 

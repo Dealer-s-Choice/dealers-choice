@@ -1693,7 +1693,10 @@ static EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
      * is enabled, stacked vertically in the bottom-right corner; center-
      * justified, bordered + translucent-black like the dashboard. Cell width
      * is static (longest game name) so the stack doesn't resize. */
-    {
+    /* indicator_game_name is NULL until a MSG_GAME_SELECT sets game_choice; a
+     * player who joins mid-hand hasn't received one yet, so skip the stack
+     * until then (otherwise inds[0] is dereferenced NULL). */
+    if (indicator_game_name) {
       SDL_Renderer *r = sdl_context->renderer;
       int icp = g_layout_cfg.indicator_cell_pad;
       int dw = indicator_deuces_wild->base.rect.w;
