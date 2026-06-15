@@ -15,13 +15,15 @@ test locally with simulated lag
   `meson wrap promote subprojects/deckhandler/subprojects/pcg`
   https://github.com/mesonbuild/meson/issues/12489
 
-- Pin the git subprojects so the bundled source is reproducible. The clean
-  way is a wrap-git with a pinned revision -- e.g. subprojects/canfigger.wrap
-  with [wrap-git] revision = vX.Y.Z (a tag/commit, NOT a branch or HEAD).
-  canfigger is currently a manual clone in subprojects/canfigger (gitignored),
-  so `meson dist --include-subprojects` bundles its WORKING TREE -- before
-  dist, make sure that clone is clean (no local edits) and checked out at the
-  release tag, or switch it to a pinned .wrap.
+- Pin the git subprojects so the bundled source is reproducible: each
+  subprojects/<name>.wrap must use [wrap-git] with revision = vX.Y.Z (a
+  tag/commit, NOT a branch or HEAD). The pinned .wrap is the contract.
+  In the dev tree, subprojects/canfigger is a manual clone (gitignored) that
+  can sit ahead of the pin or carry local edits, and
+  `meson dist --include-subprojects` would bundle that WORKING TREE. Building
+  the dist from a fresh clone (see below) avoids this entirely: a clean clone
+  has no manual subproject checkout, so meson re-fetches each subproject at its
+  pinned .wrap revision.
 
 - Ensure all CI workflows are passing on trunk
 - Checkout release branch
@@ -31,17 +33,25 @@ test locally with simulated lag
     meson compile dealers-choice-pot
     ninja dealers-choice-update-po
 - Commit the above changes (ChangeLog + version)
-- meson setup _release
+- Build the dist from a fresh, clean clone -- NOT the dev tree -- so the
+  tarball matches the committed state and the pinned subprojects:
+    git clone <repo> ~/src/DealersChoice/dist
+  Use the local path (git clone /home/.../dealers_choice ...) to include
+  commits not yet pushed; a GitHub URL works only once trunk is pushed. The
+  clone is pristine (tracked files only) with no manual canfigger checkout, so
+  the bundled subprojects come from the pinned .wraps.
+    cd ~/src/DealersChoice/dist/dealers_choice
+- meson setup _build-release
 - meson dist --include-subprojects (runs tests)
 - Strip dev-only dirs from the dist tarball and refresh its sha256sum:
-    cd _release && ../scripts/dist-strip-packaging.sh
+    cd _build-release && ../scripts/dist-strip-packaging.sh
   (removes the entries in scripts/dist-strip-list.txt -- .gitignore,
    .clang-format, .github, coverity, packaging -- and rewrites
    meson-dist/<pkg>.tar.xz.sha256sum)
 
 - push to start testing
 
-- mv ~/src/DealersChoice/dealers_choice/_release/meson-dist/dealers-choice-0.0.*.tar.xz* \
+- mv ~/src/DealersChoice/dist/dealers_choice/_build-release/meson-dist/dealers-choice-0.0.*.tar.xz* \
       ~/src/DealersChoice/
 
 - Update packaging; make sure they build (PKGBUILD, Slackbuild)
@@ -60,12 +70,8 @@ test locally with simulated lag
 
 ## Slackbuild
 
-Use slackware-full:latest, OTHERWISE
-
-Create the queue for newer version of meson
-
-sqg -p python3-meson-opt
-sbopkg -i python3-meson-opt
+Use slackware-full:latest. Stock Slackware now ships meson >= 1.11, so the
+python3-meson-opt SBo package is no longer needed.
 
 ## Check
 sbo-maintainer-tools (sbolint and sbopkglint for SBo maintainers)
