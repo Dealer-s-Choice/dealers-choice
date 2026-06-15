@@ -1,7 +1,7 @@
 project(
   'dealers-choice',
   ['c'],
-  version: '0.0.15',
+  version: '0.0.16',
   meson_version: '>= 0.61.0',
   default_options: [
     'warning_level=3',
