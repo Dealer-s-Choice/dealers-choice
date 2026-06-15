@@ -122,6 +122,35 @@ bool tcpme_get_local_addr(tcpme_socket_t sock, char *buf, size_t buflen);
 // buf must be at least TCPME_ADDRSTRLEN bytes. Returns false on failure.
 bool tcpme_get_peer_ip(tcpme_socket_t sock, char *buf, size_t buflen);
 
+// --- UDP (IPv4 datagram, e.g. for LAN broadcast discovery) ------------------
+//
+// These are IPv4-only: limited broadcast (255.255.255.255) is an IPv4 concept.
+// They provide datagram mechanism only; the caller owns the port and payload.
+
+// Open an IPv4 UDP socket, bound so it can receive immediately. bind_port=0
+// binds to a kernel-assigned ephemeral port (read it back with
+// tcpme_get_local_addr); a non-zero bind_port binds to INADDR_ANY:port so the
+// socket receives datagrams (including broadcasts) sent to that port. If
+// broadcast is true, SO_BROADCAST is enabled so the socket may send to a
+// broadcast address. Returns TCPME_INVALID_SOCKET on failure.
+tcpme_socket_t tcpme_udp_open(uint16_t bind_port, bool broadcast);
+
+// Send len bytes to the IPv4 limited-broadcast address (255.255.255.255) on the
+// given port. The socket must have been opened with broadcast=true.
+// Returns bytes sent, or -1 on error.
+int tcpme_udp_broadcast(tcpme_socket_t sock, uint16_t port, const void *buf, int len);
+
+// Send len bytes to a specific IPv4 address and port (e.g. to unicast a reply
+// back to a sender). Returns bytes sent, or -1 on error.
+int tcpme_udp_sendto(tcpme_socket_t sock, const char *ip, uint16_t port, const void *buf, int len);
+
+// Receive a datagram into buf (up to len bytes). When non-NULL, out_ip receives
+// the sender's numeric IPv4 address (out_iplen must be >= TCPME_ADDRSTRLEN) and
+// out_port receives the sender's port. Returns bytes received, or -1 on error.
+// Pair with tcpme_check_sockets() for non-blocking readiness polling.
+int tcpme_udp_recvfrom(tcpme_socket_t sock, void *buf, int len, char *out_ip, size_t out_iplen,
+                       uint16_t *out_port);
+
 // Allocate a socket set for select-based readiness polling.
 // capacity is the maximum number of sockets the set will hold.
 // Returns NULL on allocation failure.

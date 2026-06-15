@@ -21,6 +21,7 @@
 // clang-format on
 #define close_socket(s) closesocket(s)
 #else
+#include <arpa/inet.h>
 #include <errno.h>
 #include <netdb.h>
 #include <netinet/in.h>
@@ -365,6 +366,96 @@ bool tcpme_get_peer_ip(tcpme_socket_t sock, char *buf, size_t buflen) {
     return false;
   }
   return format_sockaddr((const struct sockaddr *)&sa, salen, false, buf, buflen);
+}
+
+// --- UDP (IPv4 datagram) ----------------------------------------------------
+
+tcpme_socket_t tcpme_udp_open(uint16_t bind_port, bool broadcast) {
+  tcpme_socket_t sock = socket(AF_INET, SOCK_DGRAM, 0);
+  if (sock == TCPME_INVALID_SOCKET) {
+    set_error_sys("udp: socket() failed");
+    return TCPME_INVALID_SOCKET;
+  }
+
+  int one = 1;
+  setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (const char *)&one, sizeof(one));
+
+  if (broadcast &&
+      setsockopt(sock, SOL_SOCKET, SO_BROADCAST, (const char *)&one, sizeof(one)) != 0) {
+    set_error_sys("udp: enable SO_BROADCAST failed");
+    close_socket(sock);
+    return TCPME_INVALID_SOCKET;
+  }
+
+  // Always bind so the socket is immediately able to receive. bind_port=0
+  // lets the kernel assign an ephemeral port (read it back with
+  // tcpme_get_local_addr if needed).
+  struct sockaddr_in addr;
+  memset(&addr, 0, sizeof(addr));
+  addr.sin_family = AF_INET;
+  addr.sin_addr.s_addr = htonl(INADDR_ANY);
+  addr.sin_port = htons(bind_port);
+  if (bind(sock, (struct sockaddr *)&addr, sizeof(addr)) != 0) {
+    set_error_sys("udp: bind() failed");
+    close_socket(sock);
+    return TCPME_INVALID_SOCKET;
+  }
+
+  return sock;
+}
+
+int tcpme_udp_broadcast(tcpme_socket_t sock, uint16_t port, const void *buf, int len) {
+  struct sockaddr_in addr;
+  memset(&addr, 0, sizeof(addr));
+  addr.sin_family = AF_INET;
+  addr.sin_addr.s_addr = htonl(INADDR_BROADCAST);
+  addr.sin_port = htons(port);
+  int n = (int)sendto(sock, (const char *)buf, (size_t)len, 0, (struct sockaddr *)&addr,
+                      sizeof(addr));
+  if (n < 0)
+    set_error_sys("udp: broadcast sendto() failed");
+  return n;
+}
+
+int tcpme_udp_sendto(tcpme_socket_t sock, const char *ip, uint16_t port, const void *buf, int len) {
+  struct sockaddr_in addr;
+  memset(&addr, 0, sizeof(addr));
+  addr.sin_family = AF_INET;
+  addr.sin_port = htons(port);
+  if (inet_pton(AF_INET, ip, &addr.sin_addr) != 1) {
+    set_error("udp: invalid IPv4 address");
+    return -1;
+  }
+  int n = (int)sendto(sock, (const char *)buf, (size_t)len, 0, (struct sockaddr *)&addr,
+                      sizeof(addr));
+  if (n < 0)
+    set_error_sys("udp: sendto() failed");
+  return n;
+}
+
+int tcpme_udp_recvfrom(tcpme_socket_t sock, void *buf, int len, char *out_ip, size_t out_iplen,
+                       uint16_t *out_port) {
+  struct sockaddr_in src;
+  socklen_t srclen = sizeof(src);
+  int n;
+#ifndef _WIN32
+  do {
+    n = (int)recvfrom(sock, (char *)buf, (size_t)len, 0, (struct sockaddr *)&src, &srclen);
+  } while (n < 0 && errno == EINTR);
+#else
+  n = (int)recvfrom(sock, (char *)buf, len, 0, (struct sockaddr *)&src, &srclen);
+#endif
+  if (n < 0) {
+    set_error_sys("udp: recvfrom() failed");
+    return -1;
+  }
+  if (out_ip && out_iplen > 0) {
+    if (!inet_ntop(AF_INET, &src.sin_addr, out_ip, (socklen_t)out_iplen))
+      out_ip[0] = '\0';
+  }
+  if (out_port)
+    *out_port = ntohs(src.sin_port);
+  return n;
 }
 
 // --- Socket set -------------------------------------------------------------
