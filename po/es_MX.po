@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: dealers-choice\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-06-07 22:17-0500\n"
+"POT-Creation-Date: 2026-06-15 00:56-0500\n"
 "PO-Revision-Date: 2025-07-02 00:18-0500\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -17,7 +17,7 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: src/client.c:138 src/client.c:1255
+#: src/client.c:138 src/client.c:1256
 msgid "Deuces Wild"
 msgstr ""
 
@@ -41,11 +41,11 @@ msgstr ""
 msgid "Waiting for dealer to select game..."
 msgstr ""
 
-#: src/client.c:215 src/client.c:1235
+#: src/client.c:215 src/client.c:1236
 msgid "Kick"
 msgstr ""
 
-#: src/client.c:217 src/client.c:1237
+#: src/client.c:217 src/client.c:1238
 msgid "Ban"
 msgstr ""
 
@@ -82,11 +82,11 @@ msgstr ""
 msgid "Discard"
 msgstr "Descartar"
 
-#: src/client.c:2295
+#: src/client.c:2316
 msgid "Cancel"
 msgstr ""
 
-#: src/client.c:2301 src/client.c:2316
+#: src/client.c:2322 src/client.c:2337
 #, c-format
 msgid "Attempting connection to: %s... (%d/%d)"
 msgstr ""
@@ -95,31 +95,31 @@ msgstr ""
 msgid "Connect"
 msgstr "Conectarse"
 
-#: src/main.c:63 src/main.c:708
+#: src/main.c:63 src/main.c:728
 msgid "Settings"
 msgstr ""
 
-#: src/main.c:98 src/main.c:424 src/main.c:666
+#: src/main.c:98 src/main.c:430 src/main.c:685
 msgid "Save"
 msgstr ""
 
-#: src/main.c:104 src/main.c:676
+#: src/main.c:105 src/main.c:696
 msgid "Load Defaults"
 msgstr ""
 
-#: src/main.c:386 src/main.c:687
+#: src/main.c:392 src/main.c:707
 msgid "Hotkeys"
 msgstr ""
 
-#: src/main.c:390 src/main.c:492
+#: src/main.c:396 src/main.c:500
 msgid "Click an action, then press a key"
 msgstr ""
 
-#: src/main.c:456
+#: src/main.c:463
 msgid "That key is reserved - pick another"
 msgstr ""
 
-#: src/main.c:490
+#: src/main.c:498
 msgid "press a key..."
 msgstr ""
 
@@ -133,58 +133,58 @@ msgstr " Canal de Discord (en el servidor del proyecto Lazarus) "
 msgid "Website"
 msgstr ""
 
-#: src/server.c:864
+#: src/server.c:865
 #, fuzzy
 msgid "checked"
 msgstr "Pasar"
 
-#: src/server.c:879
+#: src/server.c:880
 msgid "folded"
 msgstr ""
 
-#: src/server.c:1072 src/server.c:1094
+#: src/server.c:1073 src/server.c:1095
 msgid "completed "
 msgstr ""
 
-#: src/server.c:1072
+#: src/server.c:1073
 msgid "bet "
 msgstr ""
 
-#: src/server.c:1087 src/server.c:1108
+#: src/server.c:1088 src/server.c:1109
 msgid "called"
 msgstr ""
 
-#: src/server.c:1112
+#: src/server.c:1113
 #, fuzzy
 msgid "raised "
 msgstr "Subir la apuesta"
 
-#: src/server.c:1247
+#: src/server.c:1248
 #, c-format
 msgid "%s disconnected"
 msgstr ""
 
-#: src/server.c:1268
+#: src/server.c:1269
 #, c-format
 msgid "%s was kicked"
 msgstr ""
 
-#: src/server.c:1287
+#: src/server.c:1288
 #, c-format
 msgid "%s was banned"
 msgstr ""
 
-#: src/server.c:1525
+#: src/server.c:1526
 #, c-format
 msgid "%s brings in for %u"
 msgstr ""
 
-#: src/server.c:1718
+#: src/server.c:1719
 #, c-format
 msgid "%s ran out of cards"
 msgstr ""
 
-#: src/server.c:1816
+#: src/server.c:1817
 #, c-format
 msgid "Game: %s%s"
 msgstr ""
