@@ -61,10 +61,9 @@ test locally with simulated lag
 
     *Attach source tarball and sha256sum*
 
-- Trigger workflow dispatch on Windows workflow, use tag for target and enter
-  version (without 'v')
-
-- Same trigger for Debian package, from the Linux workflow
+- The Windows, Debian, and AppImage builds run automatically on the release
+  tag (like the AppImage) and attach to the release -- no manual
+  workflow_dispatch needed. Confirm they finished and the artifacts attached.
 
 - Close milestone (https://github.com/Dealer-s-Choice/dealers_choice/milestones)
 
