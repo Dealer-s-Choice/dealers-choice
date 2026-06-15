@@ -29,17 +29,6 @@ file for details.
 * [Discussions](https://github.com/Dealer-s-Choice/dealers_choice/discussions)
 * [Bug Reporting](https://github.com/Dealer-s-Choice/dealers_choice/issues)
 
-## Current state
-
-The game is in alpha so you may encounter bugs.
-
-*Dealer's Choice* builds on Windows in an MSYS2 environment. [Release
-versions](https://github.com/Dealer-s-Choice/dealers-choice/releases/latest) are
-available as of v0.0.10. There is a development snapshot installer available
-on [the snapshots
-page](https://github.com/Dealer-s-Choice/dealers-choice/releases/tag/snapshot).
-
-
 ### Games available
 
 * [5-card single and double draw](https://en.wikipedia.org/wiki/Draw_poker)
