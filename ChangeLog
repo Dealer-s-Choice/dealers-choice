@@ -1,4 +1,6 @@
-- (in-progress)
+2026-06-15
+
+- dealers-choice 0.0.15:
   * deckhandler: shuffle and recycle the discard pile when the deck runs out
     mid-draw, fixing duplicate cards dealt in multi-player draw games
   * pokeval: fix California lowball tie-breaks
