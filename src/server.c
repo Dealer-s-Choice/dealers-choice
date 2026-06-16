@@ -477,7 +477,7 @@ static void broadcast_status_message(const ArgsBroadcastGameState_t *args, const
   do {
     pl_idx = recipient->id;
     tcpme_socket_t sock = args->clients[pl_idx];
-    if (!sock)
+    if (!tcpme_socket_valid(sock))
       continue;
 
     if (send_status_message(sock, msg) < 0) {
@@ -500,7 +500,7 @@ static void broadcast_game_type(const ArgsBroadcastGameState_t *args) {
   do {
     pl_idx = recipient->id;
     tcpme_socket_t sock = args->clients[pl_idx];
-    if (!sock)
+    if (!tcpme_socket_valid(sock))
       continue;
 
     if (send_game_select(sock, args->game_type, args->deuces_wild) < 0) {
@@ -531,9 +531,6 @@ void broadcast_turn_id(const ArgsBroadcastGameState_t *args) {
       continue;
 
     tcpme_socket_t sock = args->clients[i];
-    if (!sock)
-      continue;
-
     if (send_turn_id(sock, args->turn_id) < 0) {
       fprintf(stderr, "[broadcast_turn_id] Failed to send to client %d\n", i);
     }
