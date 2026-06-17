@@ -217,6 +217,15 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, u
   if (tw_nick)
     ui_widget_place(&tw_nick->base, input_nick_pos.x, input_nick_pos.y);
 
+  /* Heading above the discovered-server rows; only drawn when at least one
+   * server is found. */
+  int lan_heading_y =
+      input_nick_pos.y + TTF_FontHeight(font->fonts[FONT_DEFAULT]) + g_layout_cfg.input_field_v_gap;
+  TextWidget_t *tw_lan_heading =
+      text_widget_create(_("Servers on LAN"), font->fonts[FONT_DEFAULT_BOLD], DC_TEXT_ON_DARK);
+  if (tw_lan_heading)
+    ui_widget_place(&tw_lan_heading->base, g_layout.menu.margin_x, lan_heading_y);
+
   bool run_client = false;
   bool run_settings = false;
   bool running = true;
@@ -396,8 +405,8 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, u
           if (host_btn[i])
             ui_widget_destroy(&host_btn[i]->base);
         host_btn_count = 0;
-        int row_y =
-            input_nick_pos.y + TTF_FontHeight(font->fonts[FONT_DEFAULT]) + g_layout_cfg.input_field_v_gap;
+        int row_y = lan_heading_y +
+                    (tw_lan_heading ? tw_lan_heading->base.rect.h + g_layout_cfg.input_field_v_gap : 0);
         for (int i = 0; i < found_count; i++) {
           char label[96];
           lan_row_label(&found[i], label, sizeof(label));
@@ -421,6 +430,9 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, u
     ui_widget_render(&button_connect->base);
     ui_widget_render(&button_settings->base);
     ui_render_all(&reg);
+
+    if (host_btn_count > 0 && tw_lan_heading)
+      ui_widget_render(&tw_lan_heading->base);
 
     for (int i = 0; i < host_btn_count; i++)
       if (host_btn[i])
@@ -454,6 +466,8 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, u
     ui_widget_destroy(&tw_version->base);
   if (tw_nick)
     ui_widget_destroy(&tw_nick->base);
+  if (tw_lan_heading)
+    ui_widget_destroy(&tw_lan_heading->base);
   ui_widget_destroy(&button_connect->base);
   ui_widget_destroy(&button_settings->base);
   ui_destroy_all(&reg);
