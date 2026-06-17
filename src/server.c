@@ -104,9 +104,6 @@ static bool rate_limit_check(const char *ip_str, uint32_t max_per_minute) {
  * rather than thinking. (action_timeout defaults to 30s.) */
 #define RECV_WAIT_WARN_MS 15000 /* waited this long for a player's input */
 
-#define handle_round() handle_round_real(args, 0, -1)
-#define handle_round_bringin(amt, paid_id) handle_round_real(args, (amt), (paid_id))
-
 typedef struct {
   uint8_t n_winners;
   int id[MAX_PLAYERS];
@@ -1389,7 +1386,8 @@ static int8_t get_next_dealer(int8_t current, const bool *slot_taken) {
   return -1; // No valid dealer
 }
 
-void game_five_card_draw(GAME_ARGS) {
+void game_five_card_draw(ArgsBroadcastGameState_t *args, Player_t *players_array, DH_Deck *deck,
+ const GameChoice_t *choice) {
   server_handle_ante(args->game_state, args->config->ante);
 
   Player_t *turn = *args->starting_turn;
@@ -1403,7 +1401,7 @@ void game_five_card_draw(GAME_ARGS) {
   RoundResults results = {0};
 
   for (int i = 0; i < choice->n_betting_rounds; i++) {
-    results = handle_round();
+    results = handle_round_real(args, 0, -1);
     if (results.n_winners > 0 || i == choice->n_draws)
       break;
 
@@ -1506,7 +1504,8 @@ static Player_t *stud_find_best_upcard_player(const ArgsBroadcastGameState_t *ar
   return best_player;
 }
 
-void game_stud(GAME_ARGS) {
+void game_stud(ArgsBroadcastGameState_t *args, Player_t *players_array, DH_Deck *deck,
+ const GameChoice_t *choice) {
   Player_t *turn;
   server_handle_ante(args->game_state, args->config->ante);
 
@@ -1535,9 +1534,9 @@ void game_stud(GAME_ARGS) {
         // Action starts with the player to the left of the bring-in player.
         *args->starting_turn = get_next_player(players_array, bringin->id);
         broadcast_game_state(args);
-        results = handle_round_bringin(args->config->bringin_amount, bringin->id);
+        results = handle_round_real(args, args->config->bringin_amount, bringin->id);
       } else {
-        results = handle_round();
+        results = handle_round_real(args, 0, -1);
       }
       first_round = false;
     } else {
@@ -1545,7 +1544,7 @@ void game_stud(GAME_ARGS) {
       Player_t *best = stud_find_best_upcard_player(args, players_array, choice, i);
       if (best)
         *args->starting_turn = best;
-      results = handle_round();
+      results = handle_round_real(args, 0, -1);
     }
 
     if (results.n_winners > 0 || i == choice->hand_size)
@@ -1585,14 +1584,15 @@ static void deal_community_cards(ArgsBroadcastGameState_t *args, Player_t *playe
   }
 }
 
-void game_texas_holdem(GAME_ARGS) {
+void game_texas_holdem(ArgsBroadcastGameState_t *args, Player_t *players_array, DH_Deck *deck,
+ const GameChoice_t *choice) {
   (void)choice;
   server_handle_ante(args->game_state, args->config->ante);
 
   RoundResults results = {0};
 
   /* Pre-flop betting (2 hole cards already dealt by play_game) */
-  results = handle_round();
+  results = handle_round_real(args, 0, -1);
   if (results.n_winners > 0)
     goto done;
 
@@ -1602,7 +1602,7 @@ void game_texas_holdem(GAME_ARGS) {
   for (size_t s = 0; s < ARRAY_SIZE(street_start); s++) {
     deal_community_cards(args, players_array, deck, street_start[s], street_count[s]);
     broadcast_game_state(args);
-    results = handle_round();
+    results = handle_round_real(args, 0, -1);
     if (results.n_winners > 0)
       goto done;
   }
@@ -1611,14 +1611,15 @@ done:
   determine_winner(args, &results);
 }
 
-void game_omaha(GAME_ARGS) {
+void game_omaha(ArgsBroadcastGameState_t *args, Player_t *players_array, DH_Deck *deck,
+ const GameChoice_t *choice) {
   (void)choice;
   server_handle_ante(args->game_state, args->config->ante);
 
   RoundResults results = {0};
 
   /* Pre-flop betting (4 hole cards already dealt by play_game) */
-  results = handle_round();
+  results = handle_round_real(args, 0, -1);
   if (results.n_winners > 0)
     goto done;
 
@@ -1628,7 +1629,7 @@ void game_omaha(GAME_ARGS) {
   for (size_t s = 0; s < ARRAY_SIZE(street_start); s++) {
     deal_community_cards(args, players_array, deck, street_start[s], street_count[s]);
     broadcast_game_state(args);
-    results = handle_round();
+    results = handle_round_real(args, 0, -1);
     if (results.n_winners > 0)
       goto done;
   }
@@ -1637,7 +1638,8 @@ done:
   determine_winner(args, &results);
 }
 
-void game_seven_card_no_peek(GAME_ARGS) {
+void game_seven_card_no_peek(ArgsBroadcastGameState_t *args, Player_t *players_array, DH_Deck *deck,
+ const GameChoice_t *choice) {
   (void)deck;
   (void)choice;
   server_handle_ante(args->game_state, args->config->ante);
@@ -1653,7 +1655,7 @@ void game_seven_card_no_peek(GAME_ARGS) {
 
   uint64_t best_score = POKEVAL_score_visible_cards(&args->real_hand[first->id].card[0], 1);
 
-  results = handle_round();
+  results = handle_round_real(args, 0, -1);
   if (results.n_winners > 0) {
     determine_winner(args, &results);
     return;
@@ -1701,7 +1703,7 @@ void game_seven_card_no_peek(GAME_ARGS) {
     if (beat) {
       current_best = next_turn;
       *args->starting_turn = current_best;
-      results = handle_round();
+      results = handle_round_real(args, 0, -1);
       if (results.n_winners > 0)
         break;
       next_turn = get_next_player(players_array, current_best->id);

@@ -33,23 +33,25 @@
 #include "net.h"
 #include "types.h"
 
-#define GAME_ARGS                                                                                  \
-  ArgsBroadcastGameState_t *args, Player_t *players_array, DH_Deck *deck, const GameChoice_t *choice
-
 ServerConfig_t init_game_state(GameState_t *game_state, Path_t *path, const CliArgs_t *cli_args);
 
 void deal_cards_to_players(GameState_t *game_state, DH_Deck *deck, const uint8_t game_type,
                            POKEVAL_Hand_9 *real_hand);
 
-void game_five_card_draw(GAME_ARGS);
+void game_five_card_draw(ArgsBroadcastGameState_t *args, Player_t *players_array, DH_Deck *deck,
+                         const GameChoice_t *choice);
 
-void game_stud(GAME_ARGS);
+void game_stud(ArgsBroadcastGameState_t *args, Player_t *players_array, DH_Deck *deck,
+               const GameChoice_t *choice);
 
-void game_texas_holdem(GAME_ARGS);
+void game_texas_holdem(ArgsBroadcastGameState_t *args, Player_t *players_array, DH_Deck *deck,
+                       const GameChoice_t *choice);
 
-void game_omaha(GAME_ARGS);
+void game_omaha(ArgsBroadcastGameState_t *args, Player_t *players_array, DH_Deck *deck,
+                const GameChoice_t *choice);
 
-void game_seven_card_no_peek(GAME_ARGS);
+void game_seven_card_no_peek(ArgsBroadcastGameState_t *args, Player_t *players_array, DH_Deck *deck,
+                             const GameChoice_t *choice);
 
 int run_server(const CliArgs_t *cli_args, Path_t *path);
 
