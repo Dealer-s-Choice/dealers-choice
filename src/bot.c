@@ -32,7 +32,6 @@
 
 #include <pokeval.h>
 
-#include "client.h"
 #include "dc_time.h"
 #include "game.h"
 #include "getlongopt.h"

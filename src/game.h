@@ -87,4 +87,6 @@ Player_t *get_next_connected_client_(Player_t *players_array, int cur, const cha
 
 void pcg_srand_auto(void);
 
+extern const GameChoice_t game_choices[];
+
 #endif

@@ -29,8 +29,11 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "client.h"
+#include <deckhandler.h>
+#include <pokeval.h>
+
 #include "debug.h"
+#include "net.h"
 
 DebugPrintCards_t debug_print_cards(POKEVAL_Hand_9 *hand) {
   DebugPrintCards_t str = {0};

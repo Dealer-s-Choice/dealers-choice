@@ -90,7 +90,6 @@ miniaudio_dep = dependency(
 
 shared_dep = [
   canfigger_dep,
-  miniaudio_dep,
   win_deps,
 ]
 
@@ -103,7 +102,6 @@ shared_dep += sodium_dep
 
 dep_names = [
   'libprotobuf-c',
-  'SDL2',
 ]
 
 # SDL2_ttf and SDL2_image are only used by the client (rendering); the bot
@@ -136,6 +134,10 @@ foreach pair : client_only_deps_versioned
   client_only_deps += dependency(pair[0], version: pair[1])
 endforeach
 
+# GUI-only dependencies: SDL and audio. The headless core library (libdc_core)
+# links none of these; only the GUI binary does.
+gui_deps = client_only_deps + [dependency('SDL2'), miniaudio_dep]
+
 shared_inc = [include_directories(['src', 'src/protobuf'])]
 
 subdir('po')
@@ -167,29 +169,32 @@ subdir('src')
 
 configure_file(output: 'config.h', configuration: conf)
 
+# Headless core: game rules, protocol/serialization, server engine. No SDL,
+# no audio. Linked by the GUI binary, the bot, and (later) a headless server.
+libdc_core = static_library(
+  'dc_core',
+  common_src,
+  dependencies: shared_dep,
+  include_directories: shared_inc,
+)
+
+dc_core_dep = declare_dependency(
+  link_with: libdc_core,
+  dependencies: shared_dep,
+  include_directories: [shared_inc, include_directories('.')],
+)
+
+# GUI library: rendering, widgets, menus. Adds SDL + audio on top of the core.
 _lib = static_library(
   'game',
-  [shared_src, widgets_src],
-  dependencies: shared_dep + client_only_deps,
+  [gui_src, widgets_src],
+  dependencies: [dc_core_dep] + gui_deps,
   include_directories: shared_inc,
 )
 
 game_dep = declare_dependency(
   link_with: _lib,
-  dependencies: shared_dep + client_only_deps,
-  include_directories: [shared_inc, include_directories('.')],
-)
-
-_bot_lib = static_library(
-  'game_bot',
-  bot_src,
-  dependencies: shared_dep,
-  include_directories: shared_inc,
-)
-
-bot_dep = declare_dependency(
-  link_with: _bot_lib,
-  dependencies: shared_dep,
+  dependencies: [dc_core_dep] + gui_deps,
   include_directories: [shared_inc, include_directories('.')],
 )
 
@@ -212,7 +217,7 @@ exe_target = executable(
 executable(
   meson.project_name() + '-bot',
   ['src/bot.c'],
-  dependencies: bot_dep,
+  dependencies: dc_core_dep,
   install: true,
 )
 

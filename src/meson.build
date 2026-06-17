@@ -42,9 +42,6 @@ gui_src = files(
   'ui_widget.c',
 )
 
-shared_src = common_src + gui_src
-bot_src = common_src
-
 subdir('deckhandler')
 shared_dep += deckhandler_dep
 subdir('pokeval')
