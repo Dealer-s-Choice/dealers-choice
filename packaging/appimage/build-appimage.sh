@@ -24,7 +24,7 @@ if [[ "$SOURCE_ROOT" != /* ]]; then
 fi
 # Verify that you're in the source root
 echo $SOURCE_ROOT
-test -f "$SOURCE_ROOT/src/main.c"
+test -f "$SOURCE_ROOT/meson.build"
 
 # Define and create application directory if it doesn't exist
 # This is the directory where your project will be installed to
