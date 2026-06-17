@@ -81,15 +81,20 @@ bool lan_discovery_query(tcpme_socket_t sock) {
   q[LAN_MAGIC_LEN] = LAN_MSG_QUERY;
   q[LAN_MAGIC_LEN + 1] = LAN_DISC_VERSION;
 
-  bool sent = tcpme_udp_broadcast(sock, LAN_DISCOVERY_PORT, q, (int)sizeof(q)) == (int)sizeof(q);
+  bool sent_bcast =
+      tcpme_udp_broadcast(sock, LAN_DISCOVERY_PORT, q, (int)sizeof(q)) == (int)sizeof(q);
 
   /* Also query loopback directly: limited broadcast (255.255.255.255) is not
    * reliably looped back to a responder on the same host, so without this a
    * server and client on one machine (the common test setup) wouldn't find
-   * each other. Best-effort — success of the LAN broadcast is what we report. */
-  tcpme_udp_sendto(sock, "127.0.0.1", LAN_DISCOVERY_PORT, q, (int)sizeof(q));
+   * each other. */
+  bool sent_loop =
+      tcpme_udp_sendto(sock, "127.0.0.1", LAN_DISCOVERY_PORT, q, (int)sizeof(q)) == (int)sizeof(q);
 
-  return sent;
+  /* Report success if either query went out. Some hosts have no
+   * broadcast-capable route (restricted CI runners, loopback-only setups),
+   * where loopback discovery still works and must not count as a failure. */
+  return sent_bcast || sent_loop;
 }
 
 bool lan_discovery_read_response(tcpme_socket_t sock, LanGameInfo_t *out) {
