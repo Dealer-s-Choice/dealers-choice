@@ -69,8 +69,8 @@ static void lan_row_label(const LanGameInfo_t *g, char *buf, size_t n) {
 
 /* FNV-1a over the displayed fields, so the row buttons are rebuilt only when
  * the visible list actually changes. */
-static unsigned long lan_list_sig(const LanGameInfo_t *list, int count) {
-  unsigned long h = 1469598103934665603UL;
+static uint64_t lan_list_sig(const LanGameInfo_t *list, int count) {
+  uint64_t h = 1469598103934665603ULL;
   char buf[96];
   for (int i = 0; i < count; i++) {
     int m = snprintf(buf, sizeof(buf), "%s:%u:%u:%u:%d:%d|", list[i].ip, (unsigned)list[i].tcp_port,
@@ -78,7 +78,7 @@ static unsigned long lan_list_sig(const LanGameInfo_t *list, int count) {
                      list[i].password_protected, list[i].in_progress);
     for (int j = 0; j < m && j < (int)sizeof(buf); j++) {
       h ^= (unsigned char)buf[j];
-      h *= 1099511628211UL;
+      h *= 1099511628211ULL;
     }
   }
   return h;
@@ -238,7 +238,7 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, u
   int found_count = 0;
   ButtonWidget_t *host_btn[LAN_MAX_SHOWN] = {0};
   int host_btn_count = 0;
-  unsigned long shown_sig = 0;
+  uint64_t shown_sig = 0;
 
   while (running) {
     SDL_Event e;
@@ -390,7 +390,7 @@ static int menu_display_connect(PlayerConfig_t *player_config, char *host_str, u
       }
       found_count = lan_expire(found, found_seen, found_count, now, 6000);
 
-      unsigned long sig = lan_list_sig(found, found_count);
+      uint64_t sig = lan_list_sig(found, found_count);
       if (sig != shown_sig) {
         for (int i = 0; i < host_btn_count; i++)
           if (host_btn[i])
