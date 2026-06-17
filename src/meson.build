@@ -18,6 +18,7 @@ endif
 # Sources shared by the GUI client and the bot.
 common_src = files(
   'dc_config.c',
+  'dc_time.c',
   'debug.c',
   'game.c',
   'globals.c',

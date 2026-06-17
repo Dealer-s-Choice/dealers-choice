@@ -34,8 +34,7 @@
 #include <unistd.h>
 #endif
 
-#include <SDL2/SDL.h> /* SDL_SwapBE*; replaced by portable helpers in a later step */
-
+#include "dc_endian.h"
 #include "game.h"
 
 // If changing game type (e.g. 0x04), or adding a new game,
@@ -169,16 +168,14 @@ int send_game_select(tcpme_socket_t sock, uint8_t game_type, bool deuces_wild) {
   GameSelectPayload_t payload = {game_type, deuces_wild ? 1 : 0};
 
   const uint32_t payload_size = OPCODE_SIZE + sizeof(payload);
-  const uint32_t total_size_be = SDL_SwapBE32(payload_size);
 
   uint8_t buffer[LENGTH_PREFIX_SIZE + OPCODE_SIZE + sizeof(GameSelectPayload_t)];
 
-  // Write length prefix
-  memcpy(buffer, &total_size_be, LENGTH_PREFIX_SIZE);
+  // Write length prefix (portable big-endian)
+  dc_put_be32(buffer, payload_size);
 
   // Write opcode (portable big-endian)
-  uint16_t opcode_be = SDL_SwapBE16(MSG_GAME_SELECT);
-  memcpy(buffer + LENGTH_PREFIX_SIZE, &opcode_be, sizeof(opcode_be));
+  dc_put_be16(buffer + LENGTH_PREFIX_SIZE, MSG_GAME_SELECT);
 
   // Write payload
   memcpy(buffer + LENGTH_PREFIX_SIZE + OPCODE_SIZE, &payload, sizeof(payload));

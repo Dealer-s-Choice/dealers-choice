@@ -30,9 +30,9 @@
 #include <string.h>
 #include <time.h>
 
-#include <SDL2/SDL.h> /* SDL_SwapBE*/SDL_GetTicks; replaced by portable helpers in a later step */
-
 #include "dc_config.h"
+#include "dc_endian.h"
+#include "dc_time.h"
 #include "game.h"
 #include "globals.h"
 #include "lan_discovery.h"
@@ -55,7 +55,7 @@ static int conn_attempts_count = 0;
 
 /* Same logic as rate_limit_check() below but with `now_ms` injected so the
  * unit test (tests/rate_limit.c) can advance time without sleeping.  Production
- * code calls rate_limit_check() which passes SDL_GetTicks(). */
+ * code calls rate_limit_check() which passes dc_get_ticks(). */
 bool dc_rate_limit_check_at(const char *ip_str, uint32_t max_per_minute, uint32_t now_ms) {
   uint32_t now = now_ms;
   int j = 0;
@@ -89,7 +89,7 @@ bool dc_rate_limit_check_at(const char *ip_str, uint32_t max_per_minute, uint32_
 void dc_rate_limit_reset(void) { conn_attempts_count = 0; }
 
 static bool rate_limit_check(const char *ip_str, uint32_t max_per_minute) {
-  return dc_rate_limit_check_at(ip_str, max_per_minute, SDL_GetTicks());
+  return dc_rate_limit_check_at(ip_str, max_per_minute, dc_get_ticks());
 }
 #define MAX_WILDS 4
 
@@ -288,7 +288,8 @@ static int send_new_hand(tcpme_socket_t sock, const POKEVAL_Hand_9 *hand, uint8_
 
   size_t packed_size = hand__get_packed_size(&pb_hand);
   uint32_t payload_size = OPCODE_SIZE + (uint32_t)packed_size;
-  uint32_t total_size = SDL_SwapBE32(payload_size);
+  uint32_t total_size;
+  dc_put_be32((uint8_t *)&total_size, payload_size);
 
   uint8_t *buffer = malloc(LENGTH_PREFIX_SIZE + payload_size);
   memcpy(buffer, &total_size, LENGTH_PREFIX_SIZE);
@@ -409,16 +410,17 @@ static void broadcast_game_state(ArgsBroadcastGameState_t *args) {
     if (substitute_own_hand)
       memcpy(&args->game_state->player[i].hand, &hand_tmp, sizeof(POKEVAL_Hand_9));
 
-    uint32_t size_net = SDL_SwapBE32((uint32_t)size);
+    uint32_t size_net;
+    dc_put_be32((uint8_t *)&size_net, (uint32_t)size);
 
     // fprintf(stderr, "sending to %d\n", i);
-    uint32_t send_start = SDL_GetTicks();
+    uint32_t send_start = dc_get_ticks();
     if (send_all_tcp(args->clients[i], &size_net, sizeof(size_net)) != 0 ||
         send_all_tcp(args->clients[i], data, size) != 0) {
       fprintf(stderr, "Failed to send game state to client %d\n", i);
       handle_disconnections(args);
     } else {
-      uint32_t send_ms = SDL_GetTicks() - send_start;
+      uint32_t send_ms = dc_get_ticks() - send_start;
       if (send_ms >= SLOW_SEND_WARN_MS)
         dc_log(DC_LOG_WARN,
                "slow game-state send to client %d: %ums (client not draining its socket?)", i,
@@ -439,7 +441,8 @@ static void send_game_settings(ArgsBroadcastGameState_t *args, tcpme_socket_t so
   if (!data)
     return;
 
-  uint32_t size_net = SDL_SwapBE32((uint32_t)size);
+  uint32_t size_net;
+  dc_put_be32((uint8_t *)&size_net, (uint32_t)size);
 
   // fprintf(stderr, "sending to %d\n", i);
   if (send_all_tcp(sock, &size_net, sizeof(size_net)) != 0 || send_all_tcp(sock, data, size) != 0) {
@@ -454,12 +457,13 @@ int send_status_message(tcpme_socket_t sock, const char *msg) {
   if (msg_len > LEN_STATUS_STR)
     msg_len = LEN_STATUS_STR;
 
-  uint32_t size = SDL_SwapBE32(2 + (uint32_t)msg_len); // payload: 2-byte opcode + N-byte msg
   uint8_t buffer[4 + 2 + LEN_STATUS_STR]; // max: 4 bytes (size) + 2 (opcode) + 100 (msg)
 
-  memcpy(buffer, &size, sizeof(size));
+  // payload: 2-byte opcode + N-byte msg
+  dc_put_be32(buffer, 2 + (uint32_t)msg_len);
 
-  uint16_t opcode_be = SDL_SwapBE16(MSG_STATUS_MESSAGE);
+  uint16_t opcode_be;
+  dc_put_be16((uint8_t *)&opcode_be, MSG_STATUS_MESSAGE);
   memcpy(&buffer[4], &opcode_be, sizeof(opcode_be));
 
   memcpy(&buffer[6], msg, msg_len);
@@ -517,10 +521,11 @@ static void broadcast_game_type(const ArgsBroadcastGameState_t *args) {
 static int send_turn_id(tcpme_socket_t sock, const int8_t turn_id) {
   uint8_t buffer[7];
 
-  uint32_t size = SDL_SwapBE32(3); // payload = 2-byte opcode + 1-byte turn_id
-  memcpy(buffer, &size, sizeof(size));
+  // payload = 2-byte opcode + 1-byte turn_id
+  dc_put_be32(buffer, 3);
 
-  uint16_t opcode_be = SDL_SwapBE16(MSG_TURN_ID);
+  uint16_t opcode_be;
+  dc_put_be16((uint8_t *)&opcode_be, MSG_TURN_ID);
   memcpy(&buffer[4], &opcode_be, sizeof(opcode_be));
 
   buffer[6] = (uint8_t)turn_id;
@@ -568,7 +573,7 @@ static ETurnMsg_t recv_turn_player_msg(tcpme_socket_t sock, PlayerActionMsg_t *o
     if (recv_all_tcp(sock, &size_net, sizeof(size_net)) <= 0)
       return TURN_MSG_DISCONNECT;
 
-    uint32_t size = SDL_SwapBE32(size_net);
+    uint32_t size = dc_get_be32((const uint8_t *)&size_net);
     if (size < 2 || size > 16) {
       fprintf(stderr, "[recv_turn_player_msg] Invalid message size: %u\n", size);
       return TURN_MSG_DISCONNECT;
@@ -580,7 +585,7 @@ static ETurnMsg_t recv_turn_player_msg(tcpme_socket_t sock, PlayerActionMsg_t *o
 
     uint16_t opcode_be;
     memcpy(&opcode_be, buf, sizeof(opcode_be));
-    uint16_t opcode = SDL_SwapBE16(opcode_be);
+    uint16_t opcode = dc_get_be16((const uint8_t *)&opcode_be);
 
     if (opcode == MSG_PING_RESPONSE)
       continue;
@@ -612,10 +617,10 @@ static ETurnMsg_t recv_turn_player_msg(tcpme_socket_t sock, PlayerActionMsg_t *o
 static int send_opcode(tcpme_socket_t sock, const uint16_t opcode) {
   uint8_t buffer[6];
 
-  uint32_t size = SDL_SwapBE32(2);
-  memcpy(buffer, &size, sizeof(size));
+  dc_put_be32(buffer, 2);
 
-  uint16_t opcode_be = SDL_SwapBE16(opcode);
+  uint16_t opcode_be;
+  dc_put_be16((uint8_t *)&opcode_be, opcode);
   memcpy(&buffer[4], &opcode_be, sizeof(opcode_be));
 
   return send_all_tcp(sock, buffer, sizeof(buffer));
@@ -623,7 +628,7 @@ static int send_opcode(tcpme_socket_t sock, const uint16_t opcode) {
 
 static int send_ping_request(tcpme_socket_t sock) {
   PingRequest req = PING_REQUEST__INIT;
-  req.timestamp = SDL_GetTicks(); // current server tick
+  req.timestamp = dc_get_ticks(); // current server tick
 
   size_t len = ping_request__get_packed_size(&req);
   uint8_t buf[16]; // ample for one uint32 varint field
@@ -751,11 +756,11 @@ static ELoop_t handle_draw(ArgsBroadcastGameState_t *args, tcpme_socket_t sock, 
   bool timed_out = false;
 
   uint32_t wait_ms = args->game_settings->action_timeout_ms;
-  uint32_t start = SDL_GetTicks();
+  uint32_t start = dc_get_ticks();
   for (;;) {
     uint32_t msg_size = 0;
 
-    while (SDL_GetTicks() - start < wait_ms) {
+    while (dc_get_ticks() - start < wait_ms) {
       register_new_client(args);
       int num_ready = tcpme_check_sockets(args->socket_set, 10);
       if (num_ready == -1) {
@@ -766,7 +771,7 @@ static ELoop_t handle_draw(ArgsBroadcastGameState_t *args, tcpme_socket_t sock, 
         if (tcpme_socket_ready(args->socket_set, sock)) {
           uint32_t size_net = 0;
           if (recv_all_tcp(sock, &size_net, sizeof(size_net)) > 0) {
-            msg_size = SDL_SwapBE32(size_net);
+            msg_size = dc_get_be32((const uint8_t *)&size_net);
             break;
           } else {
             remove_disconnected_player(args, id);
@@ -810,7 +815,7 @@ static ELoop_t handle_draw(ArgsBroadcastGameState_t *args, tcpme_socket_t sock, 
 
     uint16_t opcode_be;
     memcpy(&opcode_be, buffer, sizeof(opcode_be));
-    uint16_t opcode = SDL_SwapBE16(opcode_be);
+    uint16_t opcode = dc_get_be16((const uint8_t *)&opcode_be);
 
     if (opcode == MSG_PING_RESPONSE)
       continue;
@@ -825,7 +830,7 @@ static ELoop_t handle_draw(ArgsBroadcastGameState_t *args, tcpme_socket_t sock, 
   }
 
   if (!timed_out) {
-    uint32_t waited = SDL_GetTicks() - start;
+    uint32_t waited = dc_get_ticks() - start;
     if (waited >= RECV_WAIT_WARN_MS)
       dc_log(DC_LOG_WARN, "waited %ums for player %d's draw (slow input or stalled link)", waited,
              id);
@@ -1020,7 +1025,7 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args, uint32_t i
     broadcast_game_state(args);
 
     uint32_t wait_ms = args->game_settings->action_timeout_ms;
-    uint32_t start = SDL_GetTicks();
+    uint32_t start = dc_get_ticks();
     PlayerActionMsg_t action = {0};
 
     uint32_t owed = (player_total_paid[turn->id] < total_bets_plus_raises)
@@ -1038,7 +1043,7 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args, uint32_t i
       fputs("Error sending action prompt", stderr);
     dc_log(DC_LOG_DEBUG, "sent action-prompt opcode 0x%04X to player %d", opcode, turn->id);
 
-    while (SDL_GetTicks() - start < wait_ms) {
+    while (dc_get_ticks() - start < wait_ms) {
       register_new_client(args);
       // fprintf(stderr, "Waiting for action from %d\n", args->turn_id);
       int n_ready = tcpme_check_sockets(args->socket_set, 100); // wait up to 100ms
@@ -1144,7 +1149,7 @@ static RoundResults handle_round_real(ArgsBroadcastGameState_t *args, uint32_t i
     }
 
     if (action.action != 0) {
-      uint32_t waited = SDL_GetTicks() - start;
+      uint32_t waited = dc_get_ticks() - start;
       if (waited >= RECV_WAIT_WARN_MS)
         dc_log(DC_LOG_WARN, "waited %ums for player %d's action (slow input or stalled link)",
                waited, turn->id);
@@ -1308,7 +1313,7 @@ static bool handle_disconnections(ArgsBroadcastGameState_t *args) {
       continue;
     }
 
-    uint32_t msg_len = SDL_SwapBE32(len_be);
+    uint32_t msg_len = dc_get_be32((const uint8_t *)&len_be);
     if (msg_len < OPCODE_SIZE || msg_len > 256) {
       remove_disconnected_player(args, i);
       someone_disconnected = true;
@@ -1322,7 +1327,7 @@ static bool handle_disconnections(ArgsBroadcastGameState_t *args) {
       someone_disconnected = true;
       continue;
     }
-    uint16_t opcode = SDL_SwapBE16(opcode_be);
+    uint16_t opcode = dc_get_be16((const uint8_t *)&opcode_be);
 
     uint32_t payload_len = msg_len - OPCODE_SIZE;
     uint8_t payload[32] = {0};
@@ -1928,10 +1933,10 @@ static EReturnCode_t init_game(ArgsBroadcastGameState_t *args, DH_Deck *deck) {
 
   broadcast_game_state(args);
 
-  Uint32 wait_ms = args->game_settings->end_of_game_timeout_ms;
-  // Uint32 wait_ms = 2000;
-  Uint32 start = SDL_GetTicks();
-  while (SDL_GetTicks() - start < wait_ms) {
+  uint32_t wait_ms = args->game_settings->end_of_game_timeout_ms;
+  // uint32_t wait_ms = 2000;
+  uint32_t start = dc_get_ticks();
+  while (dc_get_ticks() - start < wait_ms) {
     register_new_client(args);
     tcpme_check_sockets(args->socket_set, 10);
     handle_disconnections(args);
@@ -1969,7 +1974,7 @@ static int recv_and_validate_protocol_header(tcpme_socket_t sock, uint8_t *flags
     return -1;
   }
 
-  uint32_t version = SDL_SwapBE16(hdr.version);
+  uint32_t version = dc_get_be16((const uint8_t *)&hdr.version);
   if (version != GAME_PROTOCOL_VERSION) {
     fprintf(stderr, "Unsupported protocol version: %u\n", version);
     uint8_t nack = 1;
@@ -2194,7 +2199,7 @@ static ELoop_t register_new_client(ArgsBroadcastGameState_t *args) {
         }
 
         // Step 2: Now convert
-        uint16_t len = SDL_SwapBE16(net_len);
+        uint16_t len = dc_get_be16((const uint8_t *)&net_len);
 
         // Step 3: Validate length
         if (len == 0) {
@@ -2242,13 +2247,8 @@ int run_server(const CliArgs_t *cli_args, Path_t *path) {
   GameSettings_t game_settings = init_game_settings(&config, cli_args);
   game_state.pot = 0;
 
-  if (SDL_Init(0) == -1) {
-    fprintf(stderr, "SDL init failed: %s\n", SDL_GetError());
-    return 1;
-  }
   if (tcpme_init() != 0) {
     fprintf(stderr, "tcpme init failed: %s\n", tcpme_get_error());
-    SDL_Quit();
     return 1;
   }
 
@@ -2266,7 +2266,6 @@ int run_server(const CliArgs_t *cli_args, Path_t *path) {
   if (!tcpme_socket_valid(server)) {
     fprintf(stderr, "tcpme_listen: %s\n", tcpme_get_error());
     tcpme_quit();
-    SDL_Quit();
     return 1;
   }
 
@@ -2295,7 +2294,6 @@ int run_server(const CliArgs_t *cli_args, Path_t *path) {
     fprintf(stderr, "Failed to allocate socket set: %s\n", tcpme_get_error());
     tcpme_close(server);
     tcpme_quit();
-    SDL_Quit();
     return 1;
   }
 
@@ -2323,7 +2321,7 @@ int run_server(const CliArgs_t *cli_args, Path_t *path) {
   uint32_t dealer_timeout_start = 0;
   uint32_t autodeal_start = 0;
 
-  uint32_t last_ping_time = SDL_GetTicks();
+  uint32_t last_ping_time = dc_get_ticks();
   uint32_t ping_times[MAX_CLIENTS] = {0};
 
   /* Ban list lives outside the loop so bans persist across game rounds. */
@@ -2375,12 +2373,12 @@ int run_server(const CliArgs_t *cli_args, Path_t *path) {
 
     active_clients = count_active_clients(slot_taken);
     if (active_clients == 0) {
-      SDL_Delay(10);
+      dc_sleep_ms(10);
       continue;
     }
 
     if (active_clients > 0) {
-      uint32_t now = SDL_GetTicks();
+      uint32_t now = dc_get_ticks();
       bool should_broadcast = false;
       if (now - last_ping_time >= 5000) {
         for (int i = 0; i < MAX_CLIENTS; i++) {
@@ -2412,7 +2410,7 @@ int run_server(const CliArgs_t *cli_args, Path_t *path) {
             continue;
           }
 
-          uint32_t size = SDL_SwapBE32(size_net);
+          uint32_t size = dc_get_be32((const uint8_t *)&size_net);
           if (size == 0 || size > 65536) {
             fprintf(stderr, "[NET] Invalid message size from client %d: %u\n", i, size);
             continue;
@@ -2438,14 +2436,14 @@ int run_server(const CliArgs_t *cli_args, Path_t *path) {
           // Use this instead (also used in net.c).
           uint16_t opcode_be;
           memcpy(&opcode_be, buffer, sizeof(opcode_be));
-          uint16_t opcode = SDL_SwapBE16(opcode_be);
+          uint16_t opcode = dc_get_be16((const uint8_t *)&opcode_be);
           switch (opcode) {
           case MSG_PING_RESPONSE: {
             PingResponse *resp = ping_response__unpack(NULL, size - 2, buffer + 2);
             if (!resp) {
               fprintf(stderr, "[PING] Failed to unpack PingResponse from client %d\n", i);
             } else {
-              now = SDL_GetTicks();
+              now = dc_get_ticks();
               ping_times[i] = now - resp->timestamp;
               if (ping_times[i] >= PING_SPIKE_WARN_MS)
                 dc_log(DC_LOG_WARN, "high ping from client %d: %ums", i, ping_times[i]);
@@ -2539,8 +2537,8 @@ int run_server(const CliArgs_t *cli_args, Path_t *path) {
 
     if (active_clients > 1) {
       if (dealer_timeout_start == 0) {
-        dealer_timeout_start = SDL_GetTicks();
-      } else if (SDL_GetTicks() - dealer_timeout_start >= config.dealer_timeout_ms) {
+        dealer_timeout_start = dc_get_ticks();
+      } else if (dc_get_ticks() - dealer_timeout_start >= config.dealer_timeout_ms) {
         *dealer_id = get_next_dealer(*dealer_id, slot_taken);
         dealer_timeout_start = 0;
         broadcast_game_state(&args_broadcast_game_state);
@@ -2551,8 +2549,8 @@ int run_server(const CliArgs_t *cli_args, Path_t *path) {
     if (cli_args->autodeal) {
       if (active_clients > 1) {
         if (autodeal_start == 0)
-          autodeal_start = SDL_GetTicks();
-        else if (SDL_GetTicks() - autodeal_start >= 6000) {
+          autodeal_start = dc_get_ticks();
+        else if (dc_get_ticks() - autodeal_start >= 6000) {
           printf("Auto-dealing: no game selected after 6 seconds\n");
           args_broadcast_game_state.game_type =
               game_choices[pcg32_boundedrand_r(&rng, MAX_CHOICES)].game_type;
@@ -2585,7 +2583,6 @@ int run_server(const CliArgs_t *cli_args, Path_t *path) {
   tcpme_close(server);
   tcpme_free_set(socket_set);
   tcpme_quit();
-  SDL_Quit();
 
   return 0;
 }
