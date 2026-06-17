@@ -36,6 +36,8 @@ extern bool dc_debug; /* level-2 verbosity (--debug); gates DC_LOG_DEBUG */
 
 #ifdef _MSC_VER
 #define strcasecmp _stricmp
+#else
+#include <strings.h> /* strcasecmp */
 #endif
 
 typedef struct {
