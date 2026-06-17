@@ -138,7 +138,11 @@ endforeach
 # links none of these; only the GUI binary does.
 gui_deps = client_only_deps + [dependency('SDL2'), miniaudio_dep]
 
-shared_inc = [include_directories(['src', 'src/protobuf'])]
+shared_inc = [
+  include_directories(
+    ['src', 'src/protobuf', 'src/net', 'src/game', 'src/server', 'src/ui'],
+  ),
+]
 
 subdir('po')
 
@@ -198,7 +202,7 @@ game_dep = declare_dependency(
   include_directories: [shared_inc, include_directories('.')],
 )
 
-exe_sources = ['src/main.c']
+exe_sources = ['src/ui/main.c']
 if platform_is_windows
   windows = import('windows')
   exe_sources += windows.compile_resources(

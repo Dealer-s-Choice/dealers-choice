@@ -1,5 +1,5 @@
 #include "input.h"
-#include "../graphics.h"
+#include "graphics.h"
 #include "globals_gui.h"
 #include <stdlib.h>
 

@@ -15,32 +15,27 @@ if get_option('gen_protobuf')
   )
 endif
 
-# Sources shared by the GUI client and the bot.
-common_src = files(
+# Core sources kept at src/ root (each area subdir defines its own *_src below).
+core_root_src = files(
   'dc_config.c',
   'dc_time.c',
   'debug.c',
-  'game.c',
   'globals.c',
-  'lan_discovery.c',
-  'net.c',
   'protobuf/netpoker.pb-c.c',
-  'server.c',
   'util.c',
 )
 
+subdir('net')
+subdir('game')
+subdir('server')
+subdir('ui')
+
+# Sources shared by the GUI client and the bot (the headless core).
+common_src = core_root_src + net_src + game_src + server_src
+
 # GUI-only sources: everything that pulls in SDL2_ttf or SDL2_image, kept out
 # of the bot so its binary stays free of those libraries.
-gui_src = files(
-  'client.c',
-  'globals_gui.c',
-  'graphics.c',
-  'hotkeys.c',
-  'layout.c',
-  'links.c',
-  'style.c',
-  'ui_widget.c',
-)
+gui_src = ui_src
 
 subdir('deckhandler')
 shared_dep += deckhandler_dep

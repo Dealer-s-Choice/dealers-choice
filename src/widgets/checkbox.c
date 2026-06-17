@@ -1,5 +1,5 @@
 #include "checkbox.h"
-#include "../graphics.h"
+#include "graphics.h"
 #include "globals_gui.h"
 
 static void checkbox_widget_render(UIWidget_t *w) {
