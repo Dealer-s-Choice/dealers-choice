@@ -202,7 +202,7 @@ game_dep = declare_dependency(
   include_directories: [shared_inc, include_directories('.')],
 )
 
-exe_sources = ['src/ui/main.c']
+exe_sources = ['src/main.c']
 if platform_is_windows
   windows = import('windows')
   exe_sources += windows.compile_resources(
