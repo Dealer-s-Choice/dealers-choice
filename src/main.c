@@ -63,8 +63,11 @@ enum { LAN_MAX_SHOWN = 6 };
  * otherwise its IP, followed by seat count and flags. */
 static void lan_row_label(const LanGameInfo_t *g, char *buf, size_t n) {
   const char *who = (g->name[0] != '\0') ? g->name : g->ip;
-  snprintf(buf, n, "%s  %u/%u%s%s", who, (unsigned)g->player_count, (unsigned)g->max_players,
-           g->password_protected ? " [PW]" : "", g->in_progress ? " [playing]" : "");
+  /* No password marker: the server password grants admin/bot privileges, it
+   * does NOT gate joining, so showing it here would mislead a player picking a
+   * server. */
+  snprintf(buf, n, "%s  %u/%u%s", who, (unsigned)g->player_count, (unsigned)g->max_players,
+           g->in_progress ? " [playing]" : "");
 }
 
 /* FNV-1a over the displayed fields, so the row buttons are rebuilt only when
