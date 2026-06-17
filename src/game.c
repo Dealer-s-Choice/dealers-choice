@@ -34,6 +34,8 @@
 #include <unistd.h>
 #endif
 
+#include <SDL2/SDL.h> /* SDL_SwapBE*; replaced by portable helpers in a later step */
+
 #include "game.h"
 
 // If changing game type (e.g. 0x04), or adding a new game,

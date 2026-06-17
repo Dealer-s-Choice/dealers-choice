@@ -1,5 +1,5 @@
 #include "button.h"
-#include "globals.h"
+#include "globals_gui.h"
 
 static float clicked_progress(const Clicked_t *c) {
   if (!c || c->start_time == 0)

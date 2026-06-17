@@ -27,7 +27,7 @@
 */
 
 #include "layout.h"
-#include "globals.h"
+#include "globals_gui.h"
 
 GameLayout_t g_layout;
 LayoutConfig_t g_layout_cfg;

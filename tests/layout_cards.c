@@ -7,6 +7,7 @@
 // causing an infinite loop that froze the client window.
 
 #include "00_test.h"
+#include "globals_gui.h" /* g_layout_cfg and other GUI layout globals */
 
 _MAIN_HEAD_
 

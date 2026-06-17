@@ -52,7 +52,6 @@
 
 #include "config.h"
 #include "dc_config.h"
-#include "graphics.h"
 #include "util.h"
 
 bool verbose = false;

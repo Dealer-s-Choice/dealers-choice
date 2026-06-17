@@ -32,6 +32,7 @@ common_src = files(
 # of the bot so its binary stays free of those libraries.
 gui_src = files(
   'client.c',
+  'globals_gui.c',
   'graphics.c',
   'hotkeys.c',
   'layout.c',

@@ -1,6 +1,6 @@
 #include "links.h"
 #include "config.h"
-#include "globals.h"
+#include "globals_gui.h"
 #include "translate.h"
 #include "util.h"
 

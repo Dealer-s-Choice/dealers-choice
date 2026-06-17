@@ -1,7 +1,7 @@
 #include <math.h>
 
 #include "dealer.h"
-#include "globals.h"
+#include "globals_gui.h"
 
 static void draw_filled_circle(SDL_Renderer *r, int cx, int cy, int radius) {
   for (int y = -radius; y <= radius; y++) {

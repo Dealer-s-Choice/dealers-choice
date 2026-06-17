@@ -26,6 +26,8 @@
 
 */
 
+#include <SDL2/SDL.h> /* SDL_SwapBE*; replaced by portable helpers in a later step */
+
 #include "net.h"
 #include "game.h"
 #include "util.h"

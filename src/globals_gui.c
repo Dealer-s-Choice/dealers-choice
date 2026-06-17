@@ -1,5 +1,5 @@
 /*
- globals.c
+ globals_gui.c
  https://github.com/Dealer-s-Choice/dealers_choice
 
  MIT License
@@ -26,6 +26,12 @@
 
 */
 
-#include "globals.h"
+/* GUI-only globals, kept out of the SDL-free core (globals.c). */
 
-pcg32_random_t rng;
+#include "graphics.h"
+#include "layout.h"
+
+SdlContext_t *g_sdl_context;
+
+SDL_Rect g_viewport = {0};
+SDL_Point g_center = {0};

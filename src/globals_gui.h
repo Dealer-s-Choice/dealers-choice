@@ -1,5 +1,5 @@
 /*
- globals.c
+ globals_gui.h
  https://github.com/Dealer-s-Choice/dealers_choice
 
  MIT License
@@ -26,6 +26,17 @@
 
 */
 
+/* GUI convenience umbrella: the SDL-free core globals plus the GUI headers
+ * (graphics/layout/style) that GUI translation units commonly need. Core
+ * (headless) code includes the SDL-free "globals.h" directly instead. */
+
+#ifndef __GLOBALS_GUI_H
+#define __GLOBALS_GUI_H
+
 #include "globals.h"
 
-pcg32_random_t rng;
+#include "graphics.h"
+#include "layout.h"
+#include "style.h"
+
+#endif

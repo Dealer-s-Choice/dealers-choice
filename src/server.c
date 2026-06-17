@@ -30,6 +30,8 @@
 #include <string.h>
 #include <time.h>
 
+#include <SDL2/SDL.h> /* SDL_SwapBE*/SDL_GetTicks; replaced by portable helpers in a later step */
+
 #include "dc_config.h"
 #include "game.h"
 #include "globals.h"

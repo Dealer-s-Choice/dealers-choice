@@ -43,7 +43,7 @@
 
 #include "client.h"
 #include "game.h"
-#include "globals.h"
+#include "globals_gui.h"
 #include "graphics.h"
 #include "hotkeys.h"
 #include "widgets/button.h"

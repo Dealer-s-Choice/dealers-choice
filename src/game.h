@@ -39,7 +39,6 @@
 
 #include "config.h"
 #include "globals.h"
-#include "graphics.h"
 #include "net.h"
 #include "server.h"
 #include "translate.h"

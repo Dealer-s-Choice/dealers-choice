@@ -1,6 +1,6 @@
 #include "checkbox.h"
 #include "../graphics.h"
-#include "globals.h"
+#include "globals_gui.h"
 
 static void checkbox_widget_render(UIWidget_t *w) {
   CheckboxWidget_t *cb = (CheckboxWidget_t *)w;

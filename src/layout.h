@@ -144,6 +144,11 @@ typedef struct {
 
 extern GameLayout_t g_layout;
 
+/* GUI viewport state: the logical render rect and its center. Set during
+ * renderer init and on fullscreen/resize; read by the layout calculations. */
+extern SDL_Rect g_viewport;
+extern SDL_Point g_center;
+
 /* Call once after fonts are open and g_viewport is set. */
 void layout_init(int status_font_line_h);
 

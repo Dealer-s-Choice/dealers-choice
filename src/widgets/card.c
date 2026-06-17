@@ -33,7 +33,7 @@
 #include "card.h"
 #include "card_text_atlas.h"
 #include "deckhandler.h"
-#include "globals.h"
+#include "globals_gui.h"
 #include "graphics.h"
 #include "util.h"
 
