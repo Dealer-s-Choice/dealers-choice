@@ -33,6 +33,7 @@
 #include "dc_config.h"
 #include "game.h"
 #include "globals.h"
+#include "lan_discovery.h"
 #include "server.h"
 #include "util.h"
 
@@ -2044,7 +2045,26 @@ static int verify_client_password(tcpme_socket_t sock, const char *stored_passwo
   return -1;
 }
 
+/* Answer one pending LAN discovery query, if any (non-blocking). Called from
+ * the lobby (in_progress=false) and between actions during a hand
+ * (in_progress=true) so the game stays findable throughout. */
+static void service_lan_discovery(ArgsBroadcastGameState_t *args, bool in_progress) {
+  if (!args->lan_discovery_set)
+    return;
+  if (tcpme_check_sockets(args->lan_discovery_set, 0) > 0 &&
+      tcpme_socket_ready(args->lan_discovery_set, args->lan_discovery_sock)) {
+    LanGameInfo_t info = {0};
+    info.tcp_port = args->lan_port;
+    info.player_count = count_active_clients(args->slot_taken);
+    info.max_players = MAX_CLIENTS;
+    info.password_protected = (args->config->password[0] != '\0');
+    info.in_progress = in_progress;
+    lan_discovery_answer(args->lan_discovery_sock, &info);
+  }
+}
+
 static ELoop_t register_new_client(ArgsBroadcastGameState_t *args) {
+  service_lan_discovery(args, true);
   // checks for and accepts incoming connections
   tcpme_socket_t new_client = tcpme_accept(*args->server_sock);
   if (tcpme_socket_valid(new_client)) {
@@ -2251,6 +2271,20 @@ int run_server(const CliArgs_t *cli_args, Path_t *path) {
   printf("Server listening on ");
   print_socket_addr(server);
 
+  /* LAN discovery: answer broadcast queries so clients on the same network can
+   * find this game without a registry server. Optional — if the discovery port
+   * can't be opened (e.g. already in use) advertising is simply disabled and
+   * the game still runs. */
+  tcpme_socket_t discovery_sock = lan_discovery_open_responder();
+  tcpme_set_t *discovery_set = NULL;
+  if (tcpme_socket_valid(discovery_sock)) {
+    discovery_set = tcpme_alloc_set(1);
+    if (discovery_set)
+      tcpme_add_socket(discovery_set, discovery_sock);
+  } else {
+    fprintf(stderr, "LAN discovery disabled: %s\n", tcpme_get_error());
+  }
+
   tcpme_socket_t clients[MAX_CLIENTS];
   for (int i = 0; i < MAX_CLIENTS; i++)
     clients[i] = TCPME_INVALID_SOCKET;
@@ -2308,8 +2342,15 @@ int run_server(const CliArgs_t *cli_args, Path_t *path) {
         .starting_turn = NULL,
         .turn_id = 0,
         .ban_count = session_ban_count,
+        .lan_discovery_sock = discovery_sock,
+        .lan_discovery_set = discovery_set,
+        .lan_port = port,
     };
     memcpy(args_broadcast_game_state.ban_list, session_ban_list, sizeof(session_ban_list));
+
+    /* Answer any pending LAN discovery query (non-blocking), so the game is
+     * findable even while the lobby is still empty. */
+    service_lan_discovery(&args_broadcast_game_state, false);
 
     uint8_t active_clients = count_active_clients(slot_taken);
     int8_t *dealer_id = &game_state.dealer_id;
@@ -2533,6 +2574,11 @@ int run_server(const CliArgs_t *cli_args, Path_t *path) {
       tcpme_close(clients[i]);
     }
   }
+
+  if (discovery_set)
+    tcpme_free_set(discovery_set);
+  if (tcpme_socket_valid(discovery_sock))
+    tcpme_close(discovery_sock);
 
   tcpme_close(server);
   tcpme_free_set(socket_set);
