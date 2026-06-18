@@ -1,5 +1,5 @@
 server_src = files(
-  'games.c',
   'round.c',
+  'variants.c',
   'server.c',
 )

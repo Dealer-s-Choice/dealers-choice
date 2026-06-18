@@ -27,7 +27,7 @@
 */
 
 /* The per-hand betting engine, the draw phase, and the showdown.  Split out of
- * server.c; the cross-file helpers it shares with server.c and games.c are
+ * server.c; the cross-file helpers it shares with server.c and variants.c are
  * declared in server_internal.h. */
 
 #include <stdio.h>

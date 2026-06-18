@@ -63,7 +63,7 @@ void broadcast_game_type(const ArgsBroadcastGameState_t *args);
 
 uint8_t count_active_clients(const bool *slot_taken);
 
-/* Betting engine + showdown (server.c), called by the game variants (games.c). */
+/* Betting engine + showdown (server.c), called by the game variants (variants.c). */
 void server_handle_ante(GameState_t *game_state, const uint32_t amount);
 void handle_sort_hand(POKEVAL_Hand_9 *real_hand, const bool is_lowball, const bool deuces_wild);
 ELoop_t handle_draw(ArgsBroadcastGameState_t *args, tcpme_socket_t sock, const int8_t id,
@@ -74,7 +74,7 @@ void award_last_player_in_game(ArgsBroadcastGameState_t *args, Player_t *turn,
 RoundResults handle_round_real(ArgsBroadcastGameState_t *args, uint32_t initial_bet,
                                int8_t initial_paid_id);
 
-/* Game flow (games.c), called by run_server/init_game (server.c). */
+/* Game flow (variants.c), called by run_server/init_game (server.c). */
 void play_game(ArgsBroadcastGameState_t *args, DH_Deck *deck);
 
 /* Messaging and client-management helpers that live in server.c but are also
