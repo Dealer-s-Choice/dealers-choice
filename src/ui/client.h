@@ -26,6 +26,9 @@
 
 */
 
+#ifndef __CLIENT_H
+#define __CLIENT_H
+
 #include <deckhandler.h>
 #include <miniaudio/miniaudio.h>
 
@@ -68,3 +71,5 @@ void do_sdl_cleanup(SdlContext_t *sdl_context);
 
 void layout_cards(CardWidget_t card_context[MAX_PLAYERS][MAX_HAND_SIZE], Player_t *players_array,
                   const SDL_Point *player_pos);
+
+#endif
