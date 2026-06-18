@@ -1,10 +1,10 @@
 /*
- main.h
+ cli.h
  https://github.com/Dealer-s-Choice/dealers_choice
 
  MIT License
 
- Copyright (c) 2025 Andy Alt
+ Copyright (c) 2026 Andy Alt
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -26,23 +26,15 @@
 
 */
 
-#ifndef _MAIN_H
-#define _MAIN_H
+/* Shared command-line parsing, used by both the GUI binary (main.c) and the
+ * headless server binary (server/server_main.c) so the option surface stays a
+ * single source of truth.  SDL-free; lives in libdc_core. */
 
-#include <stdbool.h>
-#include <stdint.h>
+#ifndef __CLI_H
+#define __CLI_H
 
-typedef struct {
-  const char *host, *server_conf, *bind_address;
-  uint16_t port;
-  const char *server_log_game_results_file;
-  const char *server_log_hands_file;
-  bool run_server_flag;
-  bool disable_audio;
-  bool disable_timeout;
-  bool autodeal;
-  bool auto_connect;
-  bool card_preview;
-} CliArgs_t;
+#include "main.h"
+
+CliArgs_t parse_cli_args(int argc, char *argv[]);
 
 #endif

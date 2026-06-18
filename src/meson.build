@@ -17,6 +17,7 @@ endif
 
 # Core sources kept at src/ root (each area subdir defines its own *_src below).
 core_root_src = files(
+  'cli.c',
   'dc_config.c',
   'dc_time.c',
   'debug.c',

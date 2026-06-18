@@ -225,6 +225,15 @@ executable(
   install: true,
 )
 
+# Headless server: same engine the GUI runs via --server, but links only
+# libdc_core (no SDL/audio).  Closes #310/#34.
+executable(
+  meson.project_name() + '-server',
+  ['src/server/server_main.c'],
+  dependencies: dc_core_dep,
+  install: true,
+)
+
 install_subdir(
   'data',
   install_dir: join_paths(get_option('datadir'), meson.project_name()),
