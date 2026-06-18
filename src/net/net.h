@@ -32,7 +32,7 @@
 #include "tcpme/tcpme.h"
 
 #include "globals.h"
-#include "netpoker.pb-c.h"
+#include "dc_protocol.pb-c.h"
 #include "types.h"
 
 #define NONCE_SIZE 32

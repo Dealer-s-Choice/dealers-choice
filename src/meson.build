@@ -10,7 +10,7 @@ if get_option('gen_protobuf')
       '--plugin=protoc-gen-c=' + protoc_gen_c.full_path(),
       '--c_out=' + meson.current_source_dir() / 'protobuf',
       '--proto_path=' + meson.current_source_dir(),
-      meson.current_source_dir() / 'netpoker.proto',
+      meson.current_source_dir() / 'dc_protocol.proto',
     ],
   )
 endif
@@ -21,7 +21,7 @@ core_root_src = files(
   'dc_time.c',
   'debug.c',
   'globals.c',
-  'protobuf/netpoker.pb-c.c',
+  'protobuf/dc_protocol.pb-c.c',
   'util.c',
 )
 
