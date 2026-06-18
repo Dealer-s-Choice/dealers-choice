@@ -54,6 +54,23 @@ typedef enum {
   GAME_LOGIC_DISCONNECTED = 2,
 } EGameLogicResult_t;
 
+/* Result of the lobby / game-selection screen (game_select.c). */
+typedef enum {
+  GAME_SEL_ERROR = 0,
+  GAME_SEL_SUCCESS = 1,
+  GAME_SEL_BACK = 2,
+  GAME_SEL_QUIT = 3,
+} EGameSelResult_t;
+
+/* The pre-game lobby / game-selection screen (game_select.c), driven by
+ * client.c's connection loop. */
+EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_config,
+                                       SocketContext_t *socket_context, const int8_t my_id,
+                                       GameState_t *game_state, ClientState_t *client_state,
+                                       SdlContext_t *sdl_context, Font_t *font,
+                                       const SoundContext_t *sound_context, LinkWidget_t **links,
+                                       const Path_t *path);
+
 /* Lazy coin/texture loader; lives in client.c (setup-time resource loading) but
  * is also called by the gameplay loop to fetch the felt-tile texture. */
 SDL_Texture *load_coin_texture(SDL_Renderer *renderer, const char *base_path, const char *coin);
