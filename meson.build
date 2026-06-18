@@ -225,8 +225,8 @@ executable(
   install: true,
 )
 
-# Headless server: same engine the GUI runs via --server, but links only
-# libdc_core (no SDL/audio).  Closes #310/#34.
+# Headless server: the same server engine, linking only libdc_core (no
+# SDL/audio).  Closes #310/#34.
 executable(
   meson.project_name() + '-server',
   ['src/server/server_main.c'],
