@@ -31,7 +31,6 @@
 #include <time.h>
 
 #include "dc_config.h"
-#include "dc_endian.h"
 #include "dc_time.h"
 #include "game.h"
 #include "globals.h"
@@ -279,7 +278,7 @@ static int send_new_hand(tcpme_socket_t sock, const POKEVAL_Hand_9 *hand, uint8_
   size_t packed_size = hand__get_packed_size(&pb_hand);
   uint32_t payload_size = OPCODE_SIZE + (uint32_t)packed_size;
   uint32_t total_size;
-  dc_put_be32((uint8_t *)&total_size, payload_size);
+  tcpme_put_be32((uint8_t *)&total_size, payload_size);
 
   uint8_t *buffer = malloc(LENGTH_PREFIX_SIZE + payload_size);
   memcpy(buffer, &total_size, LENGTH_PREFIX_SIZE);
@@ -401,7 +400,7 @@ void broadcast_game_state(ArgsBroadcastGameState_t *args) {
       memcpy(&args->game_state->player[i].hand, &hand_tmp, sizeof(POKEVAL_Hand_9));
 
     uint32_t size_net;
-    dc_put_be32((uint8_t *)&size_net, (uint32_t)size);
+    tcpme_put_be32((uint8_t *)&size_net, (uint32_t)size);
 
     // fprintf(stderr, "sending to %d\n", i);
     uint32_t send_start = dc_get_ticks();
@@ -432,7 +431,7 @@ static void send_game_settings(ArgsBroadcastGameState_t *args, tcpme_socket_t so
     return;
 
   uint32_t size_net;
-  dc_put_be32((uint8_t *)&size_net, (uint32_t)size);
+  tcpme_put_be32((uint8_t *)&size_net, (uint32_t)size);
 
   // fprintf(stderr, "sending to %d\n", i);
   if (send_all_tcp(sock, &size_net, sizeof(size_net)) != 0 || send_all_tcp(sock, data, size) != 0) {
@@ -450,10 +449,10 @@ int send_status_message(tcpme_socket_t sock, const char *msg) {
   uint8_t buffer[4 + 2 + LEN_STATUS_STR]; // max: 4 bytes (size) + 2 (opcode) + 100 (msg)
 
   // payload: 2-byte opcode + N-byte msg
-  dc_put_be32(buffer, 2 + (uint32_t)msg_len);
+  tcpme_put_be32(buffer, 2 + (uint32_t)msg_len);
 
   uint16_t opcode_be;
-  dc_put_be16((uint8_t *)&opcode_be, MSG_STATUS_MESSAGE);
+  tcpme_put_be16((uint8_t *)&opcode_be, MSG_STATUS_MESSAGE);
   memcpy(&buffer[4], &opcode_be, sizeof(opcode_be));
 
   memcpy(&buffer[6], msg, msg_len);
@@ -512,10 +511,10 @@ static int send_turn_id(tcpme_socket_t sock, const int8_t turn_id) {
   uint8_t buffer[7];
 
   // payload = 2-byte opcode + 1-byte turn_id
-  dc_put_be32(buffer, 3);
+  tcpme_put_be32(buffer, 3);
 
   uint16_t opcode_be;
-  dc_put_be16((uint8_t *)&opcode_be, MSG_TURN_ID);
+  tcpme_put_be16((uint8_t *)&opcode_be, MSG_TURN_ID);
   memcpy(&buffer[4], &opcode_be, sizeof(opcode_be));
 
   buffer[6] = (uint8_t)turn_id;
@@ -563,7 +562,7 @@ static ETurnMsg_t recv_turn_player_msg(tcpme_socket_t sock, PlayerActionMsg_t *o
     if (recv_all_tcp(sock, &size_net, sizeof(size_net)) <= 0)
       return TURN_MSG_DISCONNECT;
 
-    uint32_t size = dc_get_be32((const uint8_t *)&size_net);
+    uint32_t size = tcpme_get_be32((const uint8_t *)&size_net);
     if (size < 2 || size > 16) {
       fprintf(stderr, "[recv_turn_player_msg] Invalid message size: %u\n", size);
       return TURN_MSG_DISCONNECT;
@@ -575,7 +574,7 @@ static ETurnMsg_t recv_turn_player_msg(tcpme_socket_t sock, PlayerActionMsg_t *o
 
     uint16_t opcode_be;
     memcpy(&opcode_be, buf, sizeof(opcode_be));
-    uint16_t opcode = dc_get_be16((const uint8_t *)&opcode_be);
+    uint16_t opcode = tcpme_get_be16((const uint8_t *)&opcode_be);
 
     if (opcode == MSG_PING_RESPONSE)
       continue;
@@ -607,10 +606,10 @@ static ETurnMsg_t recv_turn_player_msg(tcpme_socket_t sock, PlayerActionMsg_t *o
 static int send_opcode(tcpme_socket_t sock, const uint16_t opcode) {
   uint8_t buffer[6];
 
-  dc_put_be32(buffer, 2);
+  tcpme_put_be32(buffer, 2);
 
   uint16_t opcode_be;
-  dc_put_be16((uint8_t *)&opcode_be, opcode);
+  tcpme_put_be16((uint8_t *)&opcode_be, opcode);
   memcpy(&buffer[4], &opcode_be, sizeof(opcode_be));
 
   return send_all_tcp(sock, buffer, sizeof(buffer));
@@ -761,7 +760,7 @@ ELoop_t handle_draw(ArgsBroadcastGameState_t *args, tcpme_socket_t sock, const i
         if (tcpme_socket_ready(args->socket_set, sock)) {
           uint32_t size_net = 0;
           if (recv_all_tcp(sock, &size_net, sizeof(size_net)) > 0) {
-            msg_size = dc_get_be32((const uint8_t *)&size_net);
+            msg_size = tcpme_get_be32((const uint8_t *)&size_net);
             break;
           } else {
             remove_disconnected_player(args, id);
@@ -805,7 +804,7 @@ ELoop_t handle_draw(ArgsBroadcastGameState_t *args, tcpme_socket_t sock, const i
 
     uint16_t opcode_be;
     memcpy(&opcode_be, buffer, sizeof(opcode_be));
-    uint16_t opcode = dc_get_be16((const uint8_t *)&opcode_be);
+    uint16_t opcode = tcpme_get_be16((const uint8_t *)&opcode_be);
 
     if (opcode == MSG_PING_RESPONSE)
       continue;
@@ -1303,7 +1302,7 @@ static bool handle_disconnections(ArgsBroadcastGameState_t *args) {
       continue;
     }
 
-    uint32_t msg_len = dc_get_be32((const uint8_t *)&len_be);
+    uint32_t msg_len = tcpme_get_be32((const uint8_t *)&len_be);
     if (msg_len < OPCODE_SIZE || msg_len > 256) {
       remove_disconnected_player(args, i);
       someone_disconnected = true;
@@ -1317,7 +1316,7 @@ static bool handle_disconnections(ArgsBroadcastGameState_t *args) {
       someone_disconnected = true;
       continue;
     }
-    uint16_t opcode = dc_get_be16((const uint8_t *)&opcode_be);
+    uint16_t opcode = tcpme_get_be16((const uint8_t *)&opcode_be);
 
     uint32_t payload_len = msg_len - OPCODE_SIZE;
     uint8_t payload[32] = {0};
@@ -1511,7 +1510,7 @@ static int recv_and_validate_protocol_header(tcpme_socket_t sock, uint8_t *flags
     return -1;
   }
 
-  uint32_t version = dc_get_be16((const uint8_t *)&hdr.version);
+  uint32_t version = tcpme_get_be16((const uint8_t *)&hdr.version);
   if (version != GAME_PROTOCOL_VERSION) {
     fprintf(stderr, "Unsupported protocol version: %u\n", version);
     uint8_t nack = 1;
@@ -1736,7 +1735,7 @@ static ELoop_t register_new_client(ArgsBroadcastGameState_t *args) {
         }
 
         // Step 2: Now convert
-        uint16_t len = dc_get_be16((const uint8_t *)&net_len);
+        uint16_t len = tcpme_get_be16((const uint8_t *)&net_len);
 
         // Step 3: Validate length
         if (len == 0) {
@@ -1947,7 +1946,7 @@ int run_server(const CliArgs_t *cli_args, Path_t *path) {
             continue;
           }
 
-          uint32_t size = dc_get_be32((const uint8_t *)&size_net);
+          uint32_t size = tcpme_get_be32((const uint8_t *)&size_net);
           if (size == 0 || size > 65536) {
             fprintf(stderr, "[NET] Invalid message size from client %d: %u\n", i, size);
             continue;
@@ -1973,7 +1972,7 @@ int run_server(const CliArgs_t *cli_args, Path_t *path) {
           // Use this instead (also used in net.c).
           uint16_t opcode_be;
           memcpy(&opcode_be, buffer, sizeof(opcode_be));
-          uint16_t opcode = dc_get_be16((const uint8_t *)&opcode_be);
+          uint16_t opcode = tcpme_get_be16((const uint8_t *)&opcode_be);
           switch (opcode) {
           case MSG_PING_RESPONSE: {
             PingResponse *resp = ping_response__unpack(NULL, size - 2, buffer + 2);

@@ -26,7 +26,6 @@
 
 */
 
-#include "dc_endian.h"
 #include "net.h"
 #include "game.h"
 #include "util.h"
@@ -324,7 +323,7 @@ ERecvStatus_t recv_game_state(SocketContext_t *socket_context, GameState_t *game
       return RECV_ERROR;
     }
 
-    uint32_t size = dc_get_be32((const uint8_t *)&size_net);
+    uint32_t size = tcpme_get_be32((const uint8_t *)&size_net);
     if (size == 0 || size > 65536) {
       fprintf(stderr, "[recv_game_state] Invalid game state size: %u\n", size);
       return RECV_ERROR;
@@ -346,7 +345,7 @@ ERecvStatus_t recv_game_state(SocketContext_t *socket_context, GameState_t *game
       return RECV_ERROR;
     }
 
-    uint16_t opcode = dc_get_be16(buffer);
+    uint16_t opcode = tcpme_get_be16(buffer);
     // fprintf(stderr, "opcode: %04X\n", opcode);
     bool transparent = false;
     switch (opcode) {
@@ -507,7 +506,7 @@ ERecvStatus_t recv_game_settings(tcpme_socket_t client_socket, tcpme_set_t *sock
     return RECV_ERROR;
   }
 
-  uint32_t size = dc_get_be32((const uint8_t *)&size_net);
+  uint32_t size = tcpme_get_be32((const uint8_t *)&size_net);
   if (size == 0 || size > 65536) {
     fprintf(stderr, "[recv_game_settings] Invalid game settings size: %u\n", size);
     return RECV_ERROR;
@@ -543,9 +542,9 @@ int send_message(tcpme_socket_t sock, uint16_t opcode, const uint8_t *payload, s
   if (payload_len > UINT32_MAX - 2)
     return -1;
   uint32_t total_size;
-  dc_put_be32((uint8_t *)&total_size, (uint32_t)(2 + payload_len));
+  tcpme_put_be32((uint8_t *)&total_size, (uint32_t)(2 + payload_len));
   uint16_t opcode_be;
-  dc_put_be16((uint8_t *)&opcode_be, opcode);
+  tcpme_put_be16((uint8_t *)&opcode_be, opcode);
 
   if (send_all_tcp(sock, &total_size, sizeof(total_size)) < 0)
     return -1;
@@ -565,7 +564,7 @@ int send_protocol_header(tcpme_socket_t sock, uint8_t flags) {
   verbose_puts("Exchanging protocol information...");
   GameProtocolHeader_t hdr = {0};
   snprintf(hdr.magic, sizeof(hdr.magic), "%s", GAME_PROTOCOL_MAGIC);
-  dc_put_be16((uint8_t *)&hdr.version, GAME_PROTOCOL_VERSION);
+  tcpme_put_be16((uint8_t *)&hdr.version, GAME_PROTOCOL_VERSION);
   hdr.flags = flags;
 
   if (send_all_tcp(sock, &hdr, sizeof(hdr)) != 0)
@@ -637,7 +636,7 @@ bool bot_connect(const char *host_str, uint16_t port, const char *nick, const ch
   {
     uint16_t len = (uint16_t)strlen(nick);
     uint16_t net_len;
-    dc_put_be16((uint8_t *)&net_len, len);
+    tcpme_put_be16((uint8_t *)&net_len, len);
     if (send_all_tcp(sock, &net_len, sizeof(net_len)) != 0 || send_all_tcp(sock, nick, len) != 0) {
       fprintf(stderr, "Failed to send nick\n");
       goto fail;

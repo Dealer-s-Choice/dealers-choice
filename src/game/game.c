@@ -34,7 +34,6 @@
 #include <unistd.h>
 #endif
 
-#include "dc_endian.h"
 #include "game.h"
 
 // If changing game type (e.g. 0x04), or adding a new game,
@@ -172,10 +171,10 @@ int send_game_select(tcpme_socket_t sock, uint8_t game_type, bool deuces_wild) {
   uint8_t buffer[LENGTH_PREFIX_SIZE + OPCODE_SIZE + sizeof(GameSelectPayload_t)];
 
   // Write length prefix (portable big-endian)
-  dc_put_be32(buffer, payload_size);
+  tcpme_put_be32(buffer, payload_size);
 
   // Write opcode (portable big-endian)
-  dc_put_be16(buffer + LENGTH_PREFIX_SIZE, MSG_GAME_SELECT);
+  tcpme_put_be16(buffer + LENGTH_PREFIX_SIZE, MSG_GAME_SELECT);
 
   // Write payload
   memcpy(buffer + LENGTH_PREFIX_SIZE + OPCODE_SIZE, &payload, sizeof(payload));
