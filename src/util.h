@@ -41,6 +41,15 @@ extern bool dc_test_mode; /* deterministic test mode; set from the DC_TEST env v
 #include <strings.h> /* strcasecmp */
 #endif
 
+/* Portable "do not inline this function" hint.  MSVC has no __attribute__. */
+#if defined(_MSC_VER)
+#define DC_NOINLINE __declspec(noinline)
+#elif defined(__GNUC__) || defined(__clang__)
+#define DC_NOINLINE __attribute__((noinline))
+#else
+#define DC_NOINLINE
+#endif
+
 typedef struct {
   char data[2048];
   char config[2048];

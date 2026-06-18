@@ -373,8 +373,7 @@ static void draw_dash_divider(SDL_Renderer *r, SDL_Rect d) {
   SDL_RenderDrawLine(r, d.x + d.w - 1, d.y, d.x + d.w - 1, d.y + d.h - 1); /* right  (dark) */
 }
 
-static __attribute__((noinline)) void draw_filled_circle(SDL_Renderer *r, int cx, int cy,
-                                                         int radius) {
+static DC_NOINLINE void draw_filled_circle(SDL_Renderer *r, int cx, int cy, int radius) {
   if (radius <= 0)
     return;
 
