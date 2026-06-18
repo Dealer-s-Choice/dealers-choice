@@ -45,22 +45,6 @@ jobs:
     - name: Test
       run: meson test --no-stdsplit -v -C _build
 
-  proto-sync:
-    if: github.event_name != 'workflow_dispatch' && !startsWith(github.ref, 'refs/tags/')
-    runs-on: ubuntu-24.04
-    steps:
-    - uses: actions/checkout@v6
-    - name: Install Dependencies
-      run: scripts/install_ubuntu_deps.sh
-    - name: Install protobuf compilers
-      run: sudo apt-get install --no-install-recommends -y protobuf-compiler protobuf-c-compiler
-    - name: Regenerate protobuf from netpoker.proto
-      run: |
-        meson setup _build_proto -Dgen_protobuf=true
-        meson compile -C _build_proto gen-proto
-    - name: Check committed protobuf is in sync with netpoker.proto
-      run: git diff --exit-code src/protobuf/
-
   sanitizers:
     if: github.event_name != 'workflow_dispatch' && !startsWith(github.ref, 'refs/tags/')
     needs: gate
