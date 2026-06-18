@@ -35,6 +35,11 @@
 
 #include "main.h"
 
+/* GUI client option parser. `--server` is a deprecation stub that prints a
+ * pointer to the dealers-choice-server binary and exits. */
 CliArgs_t parse_cli_args(int argc, char *argv[]);
+
+/* Headless-server option parser (server-only options; no `--server`). */
+CliArgs_t parse_server_args(int argc, char *argv[]);
 
 #endif

@@ -14,7 +14,7 @@
 dc_locate_binaries() {
   REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[1]}")/.." && pwd)"
   BUILD_DIR="$REPO_ROOT/_build_dealers_choice"
-  SERVER="$BUILD_DIR/dealers-choice"
+  SERVER="$BUILD_DIR/dealers-choice-server"
   BOT="$BUILD_DIR/dealers-choice-bot"
   if [[ ! -x "$SERVER" || ! -x "$BOT" ]]; then
     echo "error: build first ('meson compile -C _build_dealers_choice')" >&2

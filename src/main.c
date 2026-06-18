@@ -44,7 +44,6 @@
 #include "links.h"
 #include "main.h"
 #include "menus.h"
-#include "server.h"
 #include "util.h"
 #include "widgets/button.h"
 #include "widgets/card.h"
@@ -181,15 +180,6 @@ int main(int argc, char *argv[]) {
 
   const CliArgs_t cli_args = parse_cli_args(argc, argv);
 
-  if (cli_args.run_server_flag) {
-    if (sodium_init() < 0) {
-      fprintf(stderr, "libsodium init failed\n");
-      exit(1);
-    }
-    pcg_srand_auto();
-    return run_server(&cli_args, &path);
-  }
-
   if (SDL_Init(SDL_INIT_VIDEO) == -1) {
     fprintf(stderr, "SDL init failed: %s\n", SDL_GetError());
     return 1;
@@ -290,7 +280,7 @@ int main(int argc, char *argv[]) {
   while (loop_to_connect) {
     loop_to_connect = false;
     int connect_result;
-    if (cli_args.auto_connect && !cli_args.run_server_flag && first_connect) {
+    if (cli_args.auto_connect && first_connect) {
       connect_result = RUN_CLIENT;
     } else {
       do {

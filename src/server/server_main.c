@@ -60,7 +60,7 @@ int main(int argc, char *argv[]) {
   Path_t path = {0};
   get_data_dir(&path);
 
-  const CliArgs_t cli_args = parse_cli_args(argc, argv);
+  const CliArgs_t cli_args = parse_server_args(argc, argv);
 
   if (sodium_init() < 0) {
     fprintf(stderr, "libsodium init failed\n");
