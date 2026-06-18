@@ -46,12 +46,14 @@ typedef struct {
 } RoundResults;
 
 /* Loop-control result returned by the server's request handlers. */
+typedef enum { LOOP_BREAK, LOOP_CONTINUE, LOOP_OK, LOOP_ERROR } ELoop_t;
+
+/* Classification of a message read from the turn player's socket. */
 typedef enum {
-  LOOP_BREAK,
-  LOOP_CONTINUE,
-  LOOP_OK,
-  LOOP_ERROR
-} ELoop_t;
+  TURN_MSG_ACTION,   /* MSG_PLAYER_ACTION — game action from the turn player */
+  TURN_MSG_KICK_BAN, /* MSG_KICK_PLAYER / MSG_BAN_PLAYER from an admin who happens to be on turn */
+  TURN_MSG_DISCONNECT, /* connection closed or unrecognised data */
+} ETurnMsg_t;
 
 /* Outbound messaging (broadcast.c lives in server.c for now). */
 void broadcast_game_state(ArgsBroadcastGameState_t *args);
@@ -67,11 +69,28 @@ void handle_sort_hand(POKEVAL_Hand_9 *real_hand, const bool is_lowball, const bo
 ELoop_t handle_draw(ArgsBroadcastGameState_t *args, tcpme_socket_t sock, const int8_t id,
                     DH_Deck *deck);
 void determine_winner(ArgsBroadcastGameState_t *args, RoundResults *results);
-void award_last_player_in_game(ArgsBroadcastGameState_t *args, Player_t *turn, RoundResults *results);
+void award_last_player_in_game(ArgsBroadcastGameState_t *args, Player_t *turn,
+                               RoundResults *results);
 RoundResults handle_round_real(ArgsBroadcastGameState_t *args, uint32_t initial_bet,
                                int8_t initial_paid_id);
 
 /* Game flow (games.c), called by run_server/init_game (server.c). */
 void play_game(ArgsBroadcastGameState_t *args, DH_Deck *deck);
+
+/* Messaging and client-management helpers that live in server.c but are also
+ * called from the betting/showdown engine (round.c). */
+int send_opcode(tcpme_socket_t sock, const uint16_t opcode);
+int send_new_hand(tcpme_socket_t sock, const POKEVAL_Hand_9 *hand, uint8_t hand_size);
+ETurnMsg_t recv_turn_player_msg(tcpme_socket_t sock, PlayerActionMsg_t *out_action,
+                                uint16_t *out_kb_opcode, int8_t *out_target_id);
+void log_hands_json(const ArgsBroadcastGameState_t *args, const POKEVAL_NeedComparing *cmp,
+                    uint8_t pl_count, uint32_t pot, bool by_fold);
+void log_hands_fold_json(const ArgsBroadcastGameState_t *args, const Player_t *winner,
+                         uint32_t pot);
+void remove_disconnected_player(ArgsBroadcastGameState_t *args, const int8_t id);
+void kick_player(ArgsBroadcastGameState_t *args, int8_t id);
+void ban_player(ArgsBroadcastGameState_t *args, int8_t id);
+bool handle_disconnections(ArgsBroadcastGameState_t *args);
+ELoop_t register_new_client(ArgsBroadcastGameState_t *args);
 
 #endif
