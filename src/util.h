@@ -30,7 +30,8 @@
 #define __UTIL_H
 
 extern bool verbose;
-extern bool dc_debug; /* level-2 verbosity (--debug); gates DC_LOG_DEBUG */
+extern bool dc_debug;     /* level-2 verbosity (--debug); gates DC_LOG_DEBUG */
+extern bool dc_test_mode; /* deterministic test mode; set from the DC_TEST env var */
 
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
 

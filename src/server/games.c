@@ -40,7 +40,7 @@
 #include "util.h"
 
 void game_five_card_draw(ArgsBroadcastGameState_t *args, Player_t *players_array, DH_Deck *deck,
- const GameChoice_t *choice) {
+                         const GameChoice_t *choice) {
   server_handle_ante(args->game_state, args->config->ante);
 
   Player_t *turn = *args->starting_turn;
@@ -158,7 +158,7 @@ static Player_t *stud_find_best_upcard_player(const ArgsBroadcastGameState_t *ar
 }
 
 void game_stud(ArgsBroadcastGameState_t *args, Player_t *players_array, DH_Deck *deck,
- const GameChoice_t *choice) {
+               const GameChoice_t *choice) {
   Player_t *turn;
   server_handle_ante(args->game_state, args->config->ante);
 
@@ -238,7 +238,7 @@ static void deal_community_cards(ArgsBroadcastGameState_t *args, Player_t *playe
 }
 
 void game_texas_holdem(ArgsBroadcastGameState_t *args, Player_t *players_array, DH_Deck *deck,
- const GameChoice_t *choice) {
+                       const GameChoice_t *choice) {
   (void)choice;
   server_handle_ante(args->game_state, args->config->ante);
 
@@ -265,7 +265,7 @@ done:
 }
 
 void game_omaha(ArgsBroadcastGameState_t *args, Player_t *players_array, DH_Deck *deck,
- const GameChoice_t *choice) {
+                const GameChoice_t *choice) {
   (void)choice;
   server_handle_ante(args->game_state, args->config->ante);
 
@@ -292,7 +292,7 @@ done:
 }
 
 void game_seven_card_no_peek(ArgsBroadcastGameState_t *args, Player_t *players_array, DH_Deck *deck,
- const GameChoice_t *choice) {
+                             const GameChoice_t *choice) {
   (void)deck;
   (void)choice;
   server_handle_ante(args->game_state, args->config->ante);
@@ -391,7 +391,7 @@ void game_seven_card_no_peek(ArgsBroadcastGameState_t *args, Player_t *players_a
 
 void play_game(ArgsBroadcastGameState_t *args, DH_Deck *deck) {
   DH_shuffle_deck(deck);
-  if (!args->cli_args->test_mode) {
+  if (!dc_test_mode) {
     int cut_point = 16 + pcg32_boundedrand_r(&rng, 21);
     DH_cut_deck(deck, cut_point);
   }
@@ -400,7 +400,7 @@ void play_game(ArgsBroadcastGameState_t *args, DH_Deck *deck) {
   memset(args->real_hand, 0, sizeof(args->real_hand));
   deal_cards_to_players(args->game_state, deck, args->game_type, args->real_hand);
 
-  if (args->cli_args->test_mode) {
+  if (dc_test_mode) {
     static int test_case = 0;
     test_case++;
     if (test_case == 1) {

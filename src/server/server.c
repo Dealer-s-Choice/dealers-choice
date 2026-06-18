@@ -245,10 +245,10 @@ ServerConfig_t init_game_state(GameState_t *game_state, Path_t *path, const CliA
   return config;
 }
 
-GameSettings_t init_game_settings(const ServerConfig_t *config, const CliArgs_t *cli_args) {
+GameSettings_t init_game_settings(const ServerConfig_t *config) {
   GameSettings_t game_settings = {
       .action_timeout_ms = config->action_timeout_ms,
-      .end_of_game_timeout_ms = (cli_args->test_mode) ? 500 : config->end_of_game_timeout_ms,
+      .end_of_game_timeout_ms = (dc_test_mode) ? 500 : config->end_of_game_timeout_ms,
       .bet_amount_count = config->bet_amount_count,
   };
   memcpy(game_settings.bet_amounts, config->bet_amounts,
@@ -702,8 +702,7 @@ static void server_handle_raise(GameState_t *game_state, uint32_t *total_paid,
   game_state->raises_remaining--;
 }
 
-void handle_sort_hand(POKEVAL_Hand_9 *real_hand, const bool is_lowball,
-                             const bool deuces_wild) {
+void handle_sort_hand(POKEVAL_Hand_9 *real_hand, const bool is_lowball, const bool deuces_wild) {
   /* When deuces are wild, select the best 5-card hand using the wild-aware
    * evaluator so that a 2 is never dropped in favour of a higher non-wild
    * kicker when picking from a 6- or 7-card stud hand. */
@@ -733,7 +732,7 @@ void handle_sort_hand(POKEVAL_Hand_9 *real_hand, const bool is_lowball,
 }
 
 ELoop_t handle_draw(ArgsBroadcastGameState_t *args, tcpme_socket_t sock, const int8_t id,
-                           DH_Deck *deck) {
+                    DH_Deck *deck) {
   verbose_puts("sending draw prompt");
   if (send_opcode(sock, MSG_DRAW_PROMPT) != 0) {
     fputs("Failed to send draw prompt\n", stderr);
@@ -959,7 +958,7 @@ void determine_winner(ArgsBroadcastGameState_t *args, RoundResults *results) {
 }
 
 void award_last_player_in_game(ArgsBroadcastGameState_t *args, Player_t *turn,
-                                      RoundResults *results) {
+                               RoundResults *results) {
   if (!turn->is_connected || !turn->in) {
     // fprintf(stderr, "turn->id: %d | %d\n", turn->id, __LINE__);
     turn = get_next_player(args->game_state->player, 0);
@@ -992,7 +991,7 @@ void award_last_player_in_game(ArgsBroadcastGameState_t *args, Player_t *turn,
 }
 
 RoundResults handle_round_real(ArgsBroadcastGameState_t *args, uint32_t initial_bet,
-                                      int8_t initial_paid_id) {
+                               int8_t initial_paid_id) {
   args->game_state->raises_remaining = args->config->max_raises;
   args->game_state->prev_bet_amount = initial_bet;
 
@@ -1378,7 +1377,6 @@ static int8_t get_next_dealer(int8_t current, const bool *slot_taken) {
   return -1; // No valid dealer
 }
 
-
 static size_t utf8_char_len(const char *s) {
   unsigned char c = (unsigned char)*s;
   if (c < 0x80)
@@ -1688,7 +1686,7 @@ static ELoop_t register_new_client(ArgsBroadcastGameState_t *args) {
         return LOOP_CONTINUE;
       }
 
-      if (!args->cli_args->test_mode) {
+      if (!dc_test_mode) {
         Player_t *player = &(args->game_state->player)[slot];
 
         bool is_bot = (proto_flags & PROTO_FLAG_BOT) != 0;
@@ -1780,7 +1778,7 @@ static ELoop_t register_new_client(ArgsBroadcastGameState_t *args) {
 int run_server(const CliArgs_t *cli_args, Path_t *path) {
   GameState_t game_state = {0};
   ServerConfig_t config = init_game_state(&game_state, path, cli_args);
-  GameSettings_t game_settings = init_game_settings(&config, cli_args);
+  GameSettings_t game_settings = init_game_settings(&config);
   game_state.pot = 0;
 
   if (tcpme_init() != 0) {
@@ -1835,7 +1833,7 @@ int run_server(const CliArgs_t *cli_args, Path_t *path) {
 
   DH_Deck deck = DH_get_new_deck();
 
-  if (!cli_args->test_mode)
+  if (!dc_test_mode)
     DH_pcg_srand_auto();
   else
     DH_pcg_srand(1, 1);
@@ -2007,7 +2005,7 @@ int run_server(const CliArgs_t *cli_args, Path_t *path) {
                              payload.deuces_wild);
 
               break_loop = true;
-              if (!cli_args->test_mode) {
+              if (!dc_test_mode) {
                 int ping_discards;
                 while ((ping_discards = tcpme_check_sockets(socket_set, PING_THRESHOLD)) != 0) {
                   if (ping_discards == -1) {

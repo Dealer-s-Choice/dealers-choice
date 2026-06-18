@@ -64,8 +64,7 @@ typedef struct {
 bool get_socket_context_and_run_client(PlayerConfig_t *player_config, const CliArgs_t *cli_args,
                                        const char *host_str, const uint16_t port,
                                        SdlContext_t *sdl_context, Font_t *font, Path_t *path,
-                                       const bool test_mode, LinkWidget_t **links,
-                                       SocketContext_t *out_socket_context);
+                                       LinkWidget_t **links, SocketContext_t *out_socket_context);
 
 void do_sdl_cleanup(SdlContext_t *sdl_context);
 

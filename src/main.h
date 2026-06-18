@@ -34,7 +34,7 @@ typedef struct {
   uint16_t port;
   const char *server_log_game_results_file;
   const char *server_log_hands_file;
-  bool test_mode, run_server_flag;
+  bool run_server_flag;
   bool disable_audio;
   bool disable_timeout;
   bool autodeal;

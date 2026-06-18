@@ -67,7 +67,6 @@ static CliArgs_t parse_cli_args(int argc, char *argv[]) {
     OPT_SERVER_LOG_GAME_RESULTS,
     OPT_SERVER_LOG_HANDS,
     OPT_SERVER_CONF,
-    OPT_TEST,
     OPT_BIND,
     OPT_HOST,
     OPT_PORT,
@@ -87,7 +86,6 @@ static CliArgs_t parse_cli_args(int argc, char *argv[]) {
       {"server-log-game-results", GLOPT_REQUIRED_ARG, OPT_SERVER_LOG_GAME_RESULTS, 0},
       {"server-log-hands", GLOPT_REQUIRED_ARG, OPT_SERVER_LOG_HANDS, 0},
       {"server-conf", GLOPT_REQUIRED_ARG, OPT_SERVER_CONF, 0},
-      {"-test", GLOPT_NO_ARG, OPT_TEST, 0},
       {"bind-address", GLOPT_REQUIRED_ARG, OPT_BIND, 0},
       {"host", GLOPT_REQUIRED_ARG, OPT_HOST, 0},
       {"port", GLOPT_REQUIRED_ARG, OPT_PORT, 0},
@@ -106,6 +104,11 @@ static CliArgs_t parse_cli_args(int argc, char *argv[]) {
   glopt_init(&parser, options);
   CliArgs_t cli_args = {0};
 
+  /* Deterministic test mode (fixed deck, short timeouts) is enabled via the
+   * DC_TEST environment variable, not a user-facing flag. */
+  const char *dc_test_env = getenv("DC_TEST");
+  dc_test_mode = (dc_test_env && strcmp(dc_test_env, "1") == 0);
+
   int opt;
   while ((opt = glopt_next(&parser, argc, argv)) != -1) {
     switch (opt) {
@@ -123,9 +126,6 @@ static CliArgs_t parse_cli_args(int argc, char *argv[]) {
     case OPT_SERVER_CONF:
       cli_args.server_conf = parser.optarg;
       cli_args.run_server_flag = true;
-      break;
-    case OPT_TEST:
-      cli_args.test_mode = true;
       break;
     case OPT_BIND:
       cli_args.bind_address = parser.optarg;
@@ -446,9 +446,8 @@ int main(int argc, char *argv[]) {
     }
 
     if (connect_result == RUN_CLIENT) {
-      bool went_back =
-          get_socket_context_and_run_client(&player_config, &cli_args, host_str, port, &sdl_context,
-                                            &font, &path, cli_args.test_mode, links, NULL);
+      bool went_back = get_socket_context_and_run_client(&player_config, &cli_args, host_str, port,
+                                                         &sdl_context, &font, &path, links, NULL);
       if (went_back) {
         SDL_Event peek;
         SDL_PumpEvents();

@@ -2300,8 +2300,7 @@ static int audio_uninit_thread_fn(void *data) {
 bool get_socket_context_and_run_client(PlayerConfig_t *player_config, const CliArgs_t *cli_args,
                                        const char *host_str, const uint16_t port,
                                        SdlContext_t *sdl_context, Font_t *font, Path_t *path,
-                                       const bool test_mode, LinkWidget_t **links,
-                                       SocketContext_t *out_socket_context) {
+                                       LinkWidget_t **links, SocketContext_t *out_socket_context) {
   SocketContext_t socket_context = {0};
 
   // tcpme_connect blocks for the OS TCP timeout on unreachable hosts.
@@ -2474,7 +2473,7 @@ bool get_socket_context_and_run_client(PlayerConfig_t *player_config, const CliA
   if (send_protocol_header(sock, 0) != 0)
     goto cleanup;
 
-  if (!test_mode) {
+  if (!dc_test_mode) {
     const char *env_pw = getenv("DC_PASSWORD");
     const char *password = env_pw ? env_pw : player_config->password;
     if (authenticate_with_server(sock, password) < 0)

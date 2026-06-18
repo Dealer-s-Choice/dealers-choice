@@ -65,7 +65,7 @@ extern int n_passes;
   PlayerConfig_t player_config = get_player_config();                                              \
   CliArgs_t cli_args = {0};                                                                        \
                                                                                                    \
-  const bool test_mode = true;                                                                     \
+  dc_test_mode = true;                                                                             \
   SocketContext_t socket_context[N_PLAYERS] = {0};                                                 \
                                                                                                    \
   Path_t path = {0};                                                                               \
@@ -84,7 +84,7 @@ extern int n_passes;
                                                                                                    \
   for (int i = 0; i < N_PLAYERS; i++) {                                                            \
     get_socket_context_and_run_client(&player_config, &cli_args, "127.0.0.1", test_port, NULL,     \
-                                      NULL, &path, test_mode, NULL, &socket_context[i]);           \
+                                      NULL, &path, NULL, &socket_context[i]);                      \
     assert(tcpme_socket_valid(socket_context[i].sock));                                            \
     recv_game_settings(socket_context[i].sock, socket_context[i].set, &game_settings[i]);          \
     SDL_Delay(n_ms);                                                                               \
