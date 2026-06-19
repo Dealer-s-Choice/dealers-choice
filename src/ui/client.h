@@ -1,5 +1,5 @@
 /*
- server.h
+ client.h
  https://github.com/Dealer-s-Choice/dealers_choice
 
  MIT License
@@ -26,38 +26,49 @@
 
 */
 
-#ifndef __SERVER_H
-#define __SERVER_H
+#ifndef __CLIENT_H
+#define __CLIENT_H
+
+#include <deckhandler.h>
+#include <miniaudio/miniaudio.h>
 
 #include "dc_config.h"
+#include "graphics.h"
+#include "links.h"
 #include "net.h"
 #include "types.h"
+#include "widgets/card.h"
 
-#define GAME_ARGS                                                                                  \
-  ArgsBroadcastGameState_t *args, Player_t *players_array, DH_Deck *deck, const GameChoice_t *choice
+typedef enum {
+  SND_SERVER_JOIN,
+  SND_MY_TURN,
+  SND_MY_TURN_LAST_CHANCE,
+  SND_GAME_OVER,
+  SND_NUM_SOUNDS,
+} ESndIdx_t;
 
-ServerConfig_t init_game_state(GameState_t *game_state, Path_t *path, const CliArgs_t *cli_args);
+typedef struct {
+  const char *filename;
+  ma_sound sound;
+} Sound_t;
 
-void deal_cards_to_players(GameState_t *game_state, DH_Deck *deck, const uint8_t game_type,
-                           POKEVAL_Hand_9 *real_hand);
+typedef struct {
+  ma_result result;
+  ma_engine engine;
+  ma_engine_config engineConfig;
+  Sound_t *sounds;
+  Sound_t *coin_hit_sounds;
+  uint32_t coin_array_size;
+} SoundContext_t;
 
-void game_five_card_draw(GAME_ARGS);
+bool get_socket_context_and_run_client(PlayerConfig_t *player_config, const CliArgs_t *cli_args,
+                                       const char *host_str, const uint16_t port,
+                                       SdlContext_t *sdl_context, Font_t *font, Path_t *path,
+                                       LinkWidget_t **links, SocketContext_t *out_socket_context);
 
-void game_stud(GAME_ARGS);
+void do_sdl_cleanup(SdlContext_t *sdl_context);
 
-void game_texas_holdem(GAME_ARGS);
-
-void game_omaha(GAME_ARGS);
-
-void game_seven_card_no_peek(GAME_ARGS);
-
-int run_server(const CliArgs_t *cli_args, Path_t *path);
-
-/* Connection rate-limit helpers, exposed for tests.  Production code uses
- * the internal rate_limit_check() wrapper which feeds SDL_GetTicks() into
- * dc_rate_limit_check_at(); the test (tests/rate_limit.c) injects its own
- * clock to exercise window expiry without sleeping. */
-bool dc_rate_limit_check_at(const char *ip_str, uint32_t max_per_minute, uint32_t now_ms);
-void dc_rate_limit_reset(void);
+void layout_cards(CardWidget_t card_context[MAX_PLAYERS][MAX_HAND_SIZE], Player_t *players_array,
+                  const SDL_Point *player_pos);
 
 #endif

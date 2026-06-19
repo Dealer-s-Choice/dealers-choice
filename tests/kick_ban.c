@@ -64,6 +64,8 @@ int main(int argc, char *argv[]) {
   Path_t path = {0};
   LinkWidget_t **links = NULL;
 
+  dc_test_mode = true; /* deterministic mode; also grants admin to all clients */
+
   uint16_t test_port = 22777;
   {
     const char *p = getenv("DC_PORT");
@@ -77,8 +79,7 @@ int main(int argc, char *argv[]) {
   /* Connect N_PLAYERS (3) clients.  In test mode, all clients receive admin. */
   for (int i = 0; i < N_PLAYERS; i++) {
     get_socket_context_and_run_client(&player_config, &cli_args, "127.0.0.1", test_port, NULL, NULL,
-                                      &path,
-                                      /*test_mode=*/true, links, &socket_context[i]);
+                                      &path, links, &socket_context[i]);
     assert(tcpme_socket_valid(socket_context[i].sock));
     recv_game_settings(socket_context[i].sock, socket_context[i].set, &game_settings[i]);
     SDL_Delay(n_ms);

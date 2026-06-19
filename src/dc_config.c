@@ -32,7 +32,7 @@
 #include <string.h>
 
 #include "dc_config.h"
-#include "layout.h"
+#include "layout_config.h"
 #include "util.h"
 
 const ConfigEntry player_config_entries[] = {

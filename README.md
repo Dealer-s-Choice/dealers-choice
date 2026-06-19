@@ -52,9 +52,10 @@ A headless rules-based bot (`dealers-choice-bot`) is available. See
 
 ## Server
 
-The server uses port 22777 by default. To run it:
+The server is a separate program (`dealers-choice-server`). It uses port
+22777 by default. To run it:
 
-    ./dealers-choice --server
+    ./dealers-choice-server
 
 There is not a native option to run the server as a daemon. If you wish to
 daemonize the server, you can use the [docker-compose
@@ -84,9 +85,9 @@ Dealer's Choice is a lightweight 2D application and runs on modest hardware.
 | Audio     | Optional — any audio output device |
 | Display   | 1280 × 720 minimum, 1920 × 1080 recommended |
 
-The server (`--server` mode) has no graphics, audio, or display
-requirements and can run on any architecture where SDL2 is available,
-including headless systems.
+The server (`dealers-choice-server`) has no graphics, audio, or display
+requirements. It does not use SDL2, so it can run on any system, including
+headless servers.
 
 ## Player Config
 

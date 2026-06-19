@@ -1,10 +1,10 @@
 /*
- debug.c
+ server_main.c
  https://github.com/Dealer-s-Choice/dealers_choice
 
  MIT License
 
- Copyright (c) 2025 Andy Alt
+ Copyright (c) 2026 Andy Alt
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -26,35 +26,47 @@
 
 */
 
+/* Entry point for the headless dealers-choice-server binary.  It links only
+ * libdc_core (no SDL/audio) and is the same server engine the GUI binary runs
+ * via --server.  (run_server() handles tcpme_init internally.) */
+
 #include <stdio.h>
-#include <string.h>
+#include <stdlib.h>
 
-#include <deckhandler.h>
-#include <pokeval.h>
+#ifdef ENABLE_NLS
+#include <libintl.h>
+#include <locale.h>
+#endif
 
-#include "debug.h"
-#include "net.h"
+#include <sodium.h>
 
-DebugPrintCards_t debug_print_cards(POKEVAL_Hand_9 *hand) {
-  DebugPrintCards_t str = {0};
-  char *ptr = str.str;
-  for (int i = 0; i < MAX_HAND_SIZE; i++) {
-    if (DH_is_card_back(hand->card[i])) {
-      fprintf(stderr, "-BACK-");
-      continue;
-    }
-    if (DH_is_card_null(hand->card[i])) {
-      fprintf(stderr, "-BACK-");
-      continue;
-    }
-    char result[20];
-    snprintf(result, sizeof result, "%s%s", DH_get_card_face(hand->card[i]),
-             DH_get_card_unicode_suit(hand->card[i]));
-    fprintf(stderr, "%s", result);
-    size_t len = strlen(str.str);
-    snprintf(ptr, sizeof str.str - len, "%s", result);
-    ptr += strlen(result);
+#include "cli.h"
+#include "config.h"
+#include "game.h"
+#include "server.h"
+#include "util.h"
+
+int main(int argc, char *argv[]) {
+#ifdef ENABLE_NLS
+  char *locale_dir = getenv("DEALERSCHOICE_LOCALEDIR");
+  if (!locale_dir)
+    locale_dir = DEALERSCHOICE_LOCALEDIR;
+
+  setlocale(LC_ALL, "");
+  bindtextdomain(DEALERSCHOICE_NAME, locale_dir);
+  textdomain(DEALERSCHOICE_NAME);
+#endif
+
+  Path_t path = {0};
+  get_data_dir(&path);
+
+  const CliArgs_t cli_args = parse_server_args(argc, argv);
+
+  if (sodium_init() < 0) {
+    fprintf(stderr, "libsodium init failed\n");
+    return 1;
   }
-  fputc('\n', stderr);
-  return str;
+  pcg_srand_auto();
+
+  return run_server(&cli_args, &path);
 }

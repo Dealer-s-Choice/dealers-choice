@@ -32,13 +32,7 @@
 #include <deckhandler.h>
 
 #include "config.h"
-#include "graphics.h"
-#include "layout.h"
-#include "style.h"
 
 extern pcg32_random_t rng;
-
-extern SDL_Rect g_viewport;
-extern SDL_Point g_center;
 
 #endif

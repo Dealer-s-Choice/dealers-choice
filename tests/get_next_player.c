@@ -8,8 +8,6 @@ get_data_dir(&path);
 GameState_t game_state;
 
 CliArgs_t cli_args = {0};
-// test_mode isn't needed here; it isn't used or required for all tests
-cli_args.test_mode = false;
 init_game_state(&game_state, &path, &cli_args);
 
 for (int i = 0; i < 3; i++) {

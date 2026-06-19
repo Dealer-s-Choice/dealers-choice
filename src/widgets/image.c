@@ -1,5 +1,5 @@
 #include "image.h"
-#include "globals.h"
+#include "globals_gui.h"
 
 static void image_widget_render(UIWidget_t *w) {
   ImageWidget_t *iw = (ImageWidget_t *)w;

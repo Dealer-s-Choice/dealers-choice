@@ -30,12 +30,24 @@
 #define __UTIL_H
 
 extern bool verbose;
-extern bool dc_debug; /* level-2 verbosity (--debug); gates DC_LOG_DEBUG */
+extern bool dc_debug;     /* level-2 verbosity (--debug); gates DC_LOG_DEBUG */
+extern bool dc_test_mode; /* deterministic test mode; set from the DC_TEST env var */
 
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
 
 #ifdef _MSC_VER
 #define strcasecmp _stricmp
+#else
+#include <strings.h> /* strcasecmp */
+#endif
+
+/* Portable "do not inline this function" hint.  MSVC has no __attribute__. */
+#if defined(_MSC_VER)
+#define DC_NOINLINE __declspec(noinline)
+#elif defined(__GNUC__) || defined(__clang__)
+#define DC_NOINLINE __attribute__((noinline))
+#else
+#define DC_NOINLINE
 #endif
 
 typedef struct {

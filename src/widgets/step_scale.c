@@ -1,5 +1,5 @@
 #include "step_scale.h"
-#include "globals.h"
+#include "globals_gui.h"
 #include "style.h"
 #include <stdio.h>
 #include <stdlib.h>

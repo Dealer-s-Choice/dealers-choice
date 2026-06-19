@@ -52,11 +52,11 @@
 
 #include "config.h"
 #include "dc_config.h"
-#include "graphics.h"
 #include "util.h"
 
 bool verbose = false;
 bool dc_debug = false;
+bool dc_test_mode = false;
 
 void get_data_dir(Path_t *path) {
   // TODO: Maybe we need a different name for this. It's also defined

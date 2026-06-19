@@ -1,6 +1,7 @@
 - (in-progress)
   + LAN game discovery: the connect screen now lists DC servers running on
     your local network; click one to join
+  + The server is now a separate program, dealers-choice-server.
 
 2026-06-15
 

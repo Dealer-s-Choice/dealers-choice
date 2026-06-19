@@ -1,6 +1,6 @@
 #include "input.h"
-#include "../graphics.h"
-#include "globals.h"
+#include "graphics.h"
+#include "globals_gui.h"
 #include <stdlib.h>
 
 #define CURSOR_BLINK_MS 500

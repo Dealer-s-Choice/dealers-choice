@@ -1,10 +1,10 @@
 /*
- debug.c
+ menus.h
  https://github.com/Dealer-s-Choice/dealers_choice
 
  MIT License
 
- Copyright (c) 2025 Andy Alt
+ Copyright (c) 2026 Andy Alt
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -26,35 +26,24 @@
 
 */
 
-#include <stdio.h>
-#include <string.h>
+/* The pre-game menu screens (connect / settings), driven by main(). */
 
-#include <deckhandler.h>
-#include <pokeval.h>
+#ifndef __MENUS_H
+#define __MENUS_H
 
-#include "debug.h"
-#include "net.h"
+#include "client.h"
+#include "util.h"
 
-DebugPrintCards_t debug_print_cards(POKEVAL_Hand_9 *hand) {
-  DebugPrintCards_t str = {0};
-  char *ptr = str.str;
-  for (int i = 0; i < MAX_HAND_SIZE; i++) {
-    if (DH_is_card_back(hand->card[i])) {
-      fprintf(stderr, "-BACK-");
-      continue;
-    }
-    if (DH_is_card_null(hand->card[i])) {
-      fprintf(stderr, "-BACK-");
-      continue;
-    }
-    char result[20];
-    snprintf(result, sizeof result, "%s%s", DH_get_card_face(hand->card[i]),
-             DH_get_card_unicode_suit(hand->card[i]));
-    fprintf(stderr, "%s", result);
-    size_t len = strlen(str.str);
-    snprintf(ptr, sizeof str.str - len, "%s", result);
-    ptr += strlen(result);
-  }
-  fputc('\n', stderr);
-  return str;
-}
+/* Return codes from the connect screen telling main() what to do next. */
+enum {
+  RUN_CLIENT = 20,
+  RUN_SETTINGS = 21,
+};
+
+int menu_display_connect(PlayerConfig_t *player_config, char *host_str, uint16_t *port,
+                         SdlContext_t *sdl_context, Font_t *font, LinkWidget_t **links);
+
+void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *sdl_context, Font_t *font,
+                           const Path_t *path);
+
+#endif

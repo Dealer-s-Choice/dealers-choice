@@ -1,5 +1,5 @@
 #include "nick.h"
-#include "globals.h"
+#include "globals_gui.h"
 
 static void nick_widget_render(UIWidget_t *w) {
   NickWidget_t *nw = (NickWidget_t *)w;

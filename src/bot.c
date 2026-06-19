@@ -30,11 +30,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <SDL.h>
-
 #include <pokeval.h>
 
-#include "client.h"
+#include "dc_time.h"
 #include "game.h"
 #include "getlongopt.h"
 #include "globals.h"
@@ -421,13 +419,8 @@ int main(int argc, char *argv[]) {
 
   pcg_srand_auto();
 
-  if (SDL_Init(0) == -1) {
-    fprintf(stderr, "SDL init failed: %s\n", SDL_GetError());
-    return 1;
-  }
   if (tcpme_init() != 0) {
     fprintf(stderr, "tcpme_init failed: %s\n", tcpme_get_error());
-    SDL_Quit();
     return 1;
   }
 
@@ -436,7 +429,6 @@ int main(int argc, char *argv[]) {
   if (!bot_connect(host, port, nick, password ? password : "", &socket_ctx)) {
     fprintf(stderr, "Failed to connect to %s:%d\n", host, port);
     tcpme_quit();
-    SDL_Quit();
     return 1;
   }
 
@@ -454,7 +446,6 @@ int main(int argc, char *argv[]) {
       fprintf(stderr, "Failed to receive game settings\n");
       socket_cleanup(&socket_ctx);
       tcpme_quit();
-      SDL_Quit();
       return 1;
     }
   }
@@ -465,13 +456,13 @@ int main(int argc, char *argv[]) {
   GameState_t game_state = {0};
   ClientState_t client_state = {0};
   bool game_select_sent = false;
-  Uint32 game_select_after = 0; /* SDL tick time after which we may deal */
-  Uint32 action_after = 0;      /* SDL tick time after which we may act */
+  uint32_t game_select_after = 0; /* SDL tick time after which we may deal */
+  uint32_t action_after = 0;      /* SDL tick time after which we may act */
   bool was_aggressor = false;   /* true if we bet/raised this hand (for c-bet logic) */
   bool checked_strong = false;  /* true if we checked a strong hand to set up a check-raise */
 
   while (true) {
-    SDL_Delay(BOT_POLL_MS);
+    dc_sleep_ms(BOT_POLL_MS);
 
     ERecvStatus_t status = recv_game_state(&socket_ctx, &game_state, &client_state, my_id);
     if (status == RECV_ERROR) {
@@ -486,8 +477,8 @@ int main(int argc, char *argv[]) {
     if (!any_action)
       action_after = 0;
     else if (action_after == 0) {
-      Uint32 delay_ms = 2000 + pcg32_boundedrand_r(&rng, 4001); /* 2000–6000 ms */
-      action_after = SDL_GetTicks() + delay_ms;
+      uint32_t delay_ms = 2000 + pcg32_boundedrand_r(&rng, 4001); /* 2000–6000 ms */
+      action_after = dc_get_ticks() + delay_ms;
     }
 
     /* Nothing received and no action timer has fired: nothing to do —
@@ -499,9 +490,9 @@ int main(int argc, char *argv[]) {
      * lull), and the server's dealer_timeout would expire instead. */
     bool game_select_due = game_state.at_menu && game_state.dealer_id == my_id &&
                            !game_select_sent && game_select_after != 0 &&
-                           SDL_GetTicks() >= game_select_after;
+                           dc_get_ticks() >= game_select_after;
     if (status == RECV_NOTHING) {
-      if ((!any_action || SDL_GetTicks() < action_after) && !game_select_due)
+      if ((!any_action || dc_get_ticks() < action_after) && !game_select_due)
         continue;
     }
 
@@ -516,8 +507,8 @@ int main(int argc, char *argv[]) {
             n_connected++;
         }
         if (game_select_after == 0 && n_connected >= 2) {
-          Uint32 delay_ms = 4000 + pcg32_boundedrand_r(&rng, 6001); /* 4000–10000 ms */
-          game_select_after = SDL_GetTicks() + delay_ms;
+          uint32_t delay_ms = 4000 + pcg32_boundedrand_r(&rng, 6001); /* 4000–10000 ms */
+          game_select_after = dc_get_ticks() + delay_ms;
         }
       } else {
         game_select_sent = false;
@@ -530,7 +521,7 @@ int main(int argc, char *argv[]) {
     /* Game selection: send once we are the dealer, there are >= 2 players,
        and the random delay has elapsed. */
     if (game_state.at_menu && game_state.dealer_id == my_id && !game_select_sent &&
-        game_select_after != 0 && SDL_GetTicks() >= game_select_after) {
+        game_select_after != 0 && dc_get_ticks() >= game_select_after) {
       int pick = (int)pcg32_boundedrand_r(&rng, MAX_CHOICES);
       const GameChoice_t *choice = &game_choices[pick];
       bool deuces_wild = choice->deuces_wild_compatible && (pcg32_boundedrand_r(&rng, 2) == 0);
@@ -542,7 +533,7 @@ int main(int argc, char *argv[]) {
     }
 
     /* ---- Betting / discard actions — only after delay has elapsed ---- */
-    if (!any_action || SDL_GetTicks() < action_after)
+    if (!any_action || dc_get_ticks() < action_after)
       continue;
     action_after = 0;
 
@@ -979,6 +970,5 @@ int main(int argc, char *argv[]) {
 
   socket_cleanup(&socket_ctx);
   tcpme_quit();
-  SDL_Quit();
   return 0;
 }

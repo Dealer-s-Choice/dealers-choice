@@ -39,7 +39,6 @@
 
 #include "config.h"
 #include "globals.h"
-#include "graphics.h"
 #include "net.h"
 #include "server.h"
 #include "translate.h"
@@ -57,7 +56,6 @@ typedef enum {
   ACTION_FOLD = 0x05
 } EPlayerAction_t;
 
-#define MSG_PLAYER_ACTION 0x0002
 #define SIZE_MESSAGE_GAME_SELECT 4
 
 typedef struct {
@@ -87,5 +85,7 @@ Player_t *get_next_connected_client_(Player_t *players_array, int cur, const cha
                                      const int line);
 
 void pcg_srand_auto(void);
+
+extern const GameChoice_t game_choices[];
 
 #endif

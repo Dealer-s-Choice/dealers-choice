@@ -28,9 +28,4 @@
 
 #include "globals.h"
 
-SdlContext_t *g_sdl_context;
-
 pcg32_random_t rng;
-
-SDL_Rect g_viewport = {0};
-SDL_Point g_center = {0};

@@ -1,10 +1,10 @@
 /*
- debug.c
+ dc_time.c
  https://github.com/Dealer-s-Choice/dealers_choice
 
  MIT License
 
- Copyright (c) 2025 Andy Alt
+ Copyright (c) 2026 Andy Alt
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -26,35 +26,29 @@
 
 */
 
-#include <stdio.h>
-#include <string.h>
+#include "dc_time.h"
 
-#include <deckhandler.h>
-#include <pokeval.h>
+#ifdef _WIN32
+#include <windows.h>
 
-#include "debug.h"
-#include "net.h"
-
-DebugPrintCards_t debug_print_cards(POKEVAL_Hand_9 *hand) {
-  DebugPrintCards_t str = {0};
-  char *ptr = str.str;
-  for (int i = 0; i < MAX_HAND_SIZE; i++) {
-    if (DH_is_card_back(hand->card[i])) {
-      fprintf(stderr, "-BACK-");
-      continue;
-    }
-    if (DH_is_card_null(hand->card[i])) {
-      fprintf(stderr, "-BACK-");
-      continue;
-    }
-    char result[20];
-    snprintf(result, sizeof result, "%s%s", DH_get_card_face(hand->card[i]),
-             DH_get_card_unicode_suit(hand->card[i]));
-    fprintf(stderr, "%s", result);
-    size_t len = strlen(str.str);
-    snprintf(ptr, sizeof str.str - len, "%s", result);
-    ptr += strlen(result);
-  }
-  fputc('\n', stderr);
-  return str;
+uint32_t dc_get_ticks(void) {
+  return (uint32_t)GetTickCount64();
 }
+
+void dc_sleep_ms(uint32_t ms) {
+  Sleep(ms);
+}
+#else
+#include <time.h>
+
+uint32_t dc_get_ticks(void) {
+  struct timespec ts;
+  clock_gettime(CLOCK_MONOTONIC, &ts);
+  return (uint32_t)((uint64_t)ts.tv_sec * 1000u + (uint64_t)ts.tv_nsec / 1000000u);
+}
+
+void dc_sleep_ms(uint32_t ms) {
+  struct timespec req = {(time_t)(ms / 1000u), (long)(ms % 1000u) * 1000000L};
+  nanosleep(&req, NULL);
+}
+#endif

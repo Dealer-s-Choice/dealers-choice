@@ -1,10 +1,10 @@
 /*
- debug.c
+ cli.h
  https://github.com/Dealer-s-Choice/dealers_choice
 
  MIT License
 
- Copyright (c) 2025 Andy Alt
+ Copyright (c) 2026 Andy Alt
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -26,35 +26,20 @@
 
 */
 
-#include <stdio.h>
-#include <string.h>
+/* Shared command-line parsing, used by both the GUI binary (main.c) and the
+ * headless server binary (server/server_main.c) so the option surface stays a
+ * single source of truth.  SDL-free; lives in libdc_core. */
 
-#include <deckhandler.h>
-#include <pokeval.h>
+#ifndef __CLI_H
+#define __CLI_H
 
-#include "debug.h"
-#include "net.h"
+#include "main.h"
 
-DebugPrintCards_t debug_print_cards(POKEVAL_Hand_9 *hand) {
-  DebugPrintCards_t str = {0};
-  char *ptr = str.str;
-  for (int i = 0; i < MAX_HAND_SIZE; i++) {
-    if (DH_is_card_back(hand->card[i])) {
-      fprintf(stderr, "-BACK-");
-      continue;
-    }
-    if (DH_is_card_null(hand->card[i])) {
-      fprintf(stderr, "-BACK-");
-      continue;
-    }
-    char result[20];
-    snprintf(result, sizeof result, "%s%s", DH_get_card_face(hand->card[i]),
-             DH_get_card_unicode_suit(hand->card[i]));
-    fprintf(stderr, "%s", result);
-    size_t len = strlen(str.str);
-    snprintf(ptr, sizeof str.str - len, "%s", result);
-    ptr += strlen(result);
-  }
-  fputc('\n', stderr);
-  return str;
-}
+/* GUI client option parser. `--server` is a deprecation stub that prints a
+ * pointer to the dealers-choice-server binary and exits. */
+CliArgs_t parse_cli_args(int argc, char *argv[]);
+
+/* Headless-server option parser (server-only options; no `--server`). */
+CliArgs_t parse_server_args(int argc, char *argv[]);
+
+#endif

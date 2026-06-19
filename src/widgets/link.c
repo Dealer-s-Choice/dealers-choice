@@ -1,5 +1,5 @@
 #include "link.h"
-#include "globals.h"
+#include "globals_gui.h"
 #include "graphics.h"
 
 static void link_widget_render(UIWidget_t *w) {

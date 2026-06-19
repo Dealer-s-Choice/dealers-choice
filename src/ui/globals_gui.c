@@ -1,10 +1,10 @@
 /*
- debug.c
+ globals_gui.c
  https://github.com/Dealer-s-Choice/dealers_choice
 
  MIT License
 
- Copyright (c) 2025 Andy Alt
+ Copyright (c) 2026 Andy Alt
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -26,35 +26,12 @@
 
 */
 
-#include <stdio.h>
-#include <string.h>
+/* GUI-only globals, kept out of the SDL-free core (globals.c). */
 
-#include <deckhandler.h>
-#include <pokeval.h>
+#include "graphics.h"
+#include "layout.h"
 
-#include "debug.h"
-#include "net.h"
+SdlContext_t *g_sdl_context;
 
-DebugPrintCards_t debug_print_cards(POKEVAL_Hand_9 *hand) {
-  DebugPrintCards_t str = {0};
-  char *ptr = str.str;
-  for (int i = 0; i < MAX_HAND_SIZE; i++) {
-    if (DH_is_card_back(hand->card[i])) {
-      fprintf(stderr, "-BACK-");
-      continue;
-    }
-    if (DH_is_card_null(hand->card[i])) {
-      fprintf(stderr, "-BACK-");
-      continue;
-    }
-    char result[20];
-    snprintf(result, sizeof result, "%s%s", DH_get_card_face(hand->card[i]),
-             DH_get_card_unicode_suit(hand->card[i]));
-    fprintf(stderr, "%s", result);
-    size_t len = strlen(str.str);
-    snprintf(ptr, sizeof str.str - len, "%s", result);
-    ptr += strlen(result);
-  }
-  fputc('\n', stderr);
-  return str;
-}
+SDL_Rect g_viewport = {0};
+SDL_Point g_center = {0};

@@ -209,7 +209,7 @@ fail on that test.  The other tests are unaffected.
 
 Kill the leftover process:
 
-    pkill -f "dealers-choice.*--server"
+    pkill -f dealers-choice-server
 
 Or look it up first:
 

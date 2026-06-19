@@ -4,7 +4,7 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile
-    command: sh -c 'exec dealers-choice --server $DC_EXTRA_ARGS'
+    command: sh -c 'exec dealers-choice-server $DC_EXTRA_ARGS'
     environment:
       - DC_EXTRA_ARGS=${DC_EXTRA_ARGS}
       - DC_CONFIG_DIR=${DC_CONFIG_DIR}

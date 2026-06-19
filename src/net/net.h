@@ -32,7 +32,7 @@
 #include "tcpme/tcpme.h"
 
 #include "globals.h"
-#include "netpoker.pb-c.h"
+#include "dc_protocol.pb-c.h"
 #include "types.h"
 
 #define NONCE_SIZE 32
@@ -71,24 +71,28 @@ __attribute__((packed)) GameProtocolHeader_t;
 #define OPCODE_SIZE sizeof(uint16_t)
 #define LENGTH_PREFIX_SIZE sizeof(uint32_t)
 
-#define MSG_GAME_SELECT 0x0001   // Player_t chooses a game variant
-#define MSG_PLAYER_ACTION 0x0002 // Player_t bets, folds, etc.
-#define MSG_PING_BROADCAST 0x0003
-#define MSG_PING_REQUEST 0x0004
-#define MSG_PING_RESPONSE 0x0005
-#define MSG_DEAL_CARDS 0x0006   // Cards sent to player
-#define MSG_DRAW_REQUEST 0x0007 // Player_t discards cards for draw
-#define MSG_DRAW_PROMPT 0x0009
-#define MSG_STATUS_MESSAGE 0x000A
-#define MSG_NEW_HAND 0x000B
-#define MSG_BET_CHECK_FOLD 0x000C
-#define MSG_CALL_RAISE_FOLD 0x000D
-#define MSG_TURN_ID 0x000E
-#define MSG_KICK_PLAYER 0x000F // Admin kicks a player
-#define MSG_BAN_PLAYER 0x0010  // Admin bans a player by IP
-// Bring-in round opcodes: Complete = raise to the full small bet (not a full raise).
-#define MSG_CALL_COMPLETE_FOLD 0x0011  // Other players: call bring-in, complete, or fold
-#define MSG_COMPLETE_CHECK_FOLD 0x0012 // Bring-in player's second turn: complete or check
+/* Wire opcodes. Values are frozen (part of GAME_PROTOCOL_VERSION) — never
+ * change them; only append new ones. */
+typedef enum {
+  MSG_GAME_SELECT = 0x0001,   // Player_t chooses a game variant
+  MSG_PLAYER_ACTION = 0x0002, // Player_t bets, folds, etc.
+  MSG_PING_BROADCAST = 0x0003,
+  MSG_PING_REQUEST = 0x0004,
+  MSG_PING_RESPONSE = 0x0005,
+  MSG_DEAL_CARDS = 0x0006,   // Cards sent to player
+  MSG_DRAW_REQUEST = 0x0007, // Player_t discards cards for draw
+  MSG_DRAW_PROMPT = 0x0009,
+  MSG_STATUS_MESSAGE = 0x000A,
+  MSG_NEW_HAND = 0x000B,
+  MSG_BET_CHECK_FOLD = 0x000C,
+  MSG_CALL_RAISE_FOLD = 0x000D,
+  MSG_TURN_ID = 0x000E,
+  MSG_KICK_PLAYER = 0x000F, // Admin kicks a player
+  MSG_BAN_PLAYER = 0x0010,  // Admin bans a player by IP
+  // Bring-in round opcodes: Complete = raise to the full small bet (not a full raise).
+  MSG_CALL_COMPLETE_FOLD = 0x0011,  // Other players: call bring-in, complete, or fold
+  MSG_COMPLETE_CHECK_FOLD = 0x0012, // Bring-in player's second turn: complete or check
+} EMsgOpcode_t;
 
 #define DEFAULT_PORT "22777"
 

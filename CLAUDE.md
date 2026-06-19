@@ -44,7 +44,7 @@ CC=clang CFLAGS="-fno-sanitize-recover=all" meson setup _build_asan \
 so memory errors and UB surface during real play, and any recurrence of a
 crash yields a full ASan/UBSan report instead of a bare SIGABRT. Run the
 server/bot with `ASAN_OPTIONS`/`UBSAN_OPTIONS=halt_on_error=1:abort_on_error=1:print_stacktrace=1`.
-Also **line-buffer the verbose log** (`stdbuf -oL -eL ./dealers-choice --server
+Also **line-buffer the verbose log** (`stdbuf -oL -eL ./dealers-choice-server
 --verbose > log 2>&1`) — stdio block-buffers to a file, so without this the
 server's verbose output lags and you can't watch the game flow in real time.
 For a fully-automated repro run **two bots** (they auto-deal/play) instead of a
@@ -81,47 +81,61 @@ script. The gotchas below are why it does each of those things.
   the password requirement.)
 - **`gen_protobuf` is a manual target:** `-Dgen_protobuf=true` only adds a
   `gen-proto` run-target; it does not regenerate on `.proto` change. After
-  editing `netpoker.proto`, run `meson compile -C _build_… gen-proto`
+  editing `dc_protocol.proto`, run `meson compile -C _build_… gen-proto`
   before the normal compile.
 
 ## Architecture
 
-**Client-server** networked game, both in the same binary. `main.c` starts as a menu; the player either hosts (becomes server) or connects (becomes client). The server runs in a background thread; the client renders with SDL2.
+**Client-server** networked game, split across three binaries that talk over
+TCP: the GUI client (`dealers-choice`), a headless server
+(`dealers-choice-server`), and a headless bot (`dealers-choice-bot`). The GUI is
+a **client only** — it no longer hosts a server (the old `--server` mode is a
+deprecation stub; see "headless server binary name" below). Sources live under
+`src/{game,net,server,ui}/` by area, with the SDL-free logic in `libdc_core`.
 
 ### Static library chain
 
-Meson builds three local static libs in order:
+Meson builds the local libs bottom-up:
 
 1. **tcpme_lib** (`src/tcpme/`) — cross-platform TCP socket abstraction (POSIX + Winsock). Exposed as `tcpme_dep` and merged into `shared_dep`. Note: tcpme was written almost entirely by an LLM, which is a potential concern for correctness and security.
    - **Keep tcpme generic and DC-agnostic.** It is meant to be a standalone, reusable library (SDL_net-style), so it provides *mechanism* only; DC provides *policy*. Do not put DC-specific values, constants, comments, or assumptions in `src/tcpme/`. Example: socket I/O timeouts — tcpme exposes `tcpme_set_timeout(sock, ms)` (the generic primitive); DC owns the value (`SOCKET_IO_TIMEOUT_MS` in `net.h`) and applies it after connect/accept. When a fix needs a tunable or a project-specific decision, expose a knob in tcpme and set it from DC, don't hardcode it in the library.
-2. **`_lib` ("game")** — `shared_src` + `widgets_src`; everything the GUI client needs (SDL2, SDL2_ttf, SDL2_image).
-3. **`_bot_lib` ("game_bot")** — compiled from `bot_src`, a strict subset of `shared_src` that excludes files pulling in SDL2_ttf/SDL2_image. Depends on `_lib` so Ninja skips it if `_lib` fails.
+2. **`libdc_core`** (`dc_core_dep`) — the **SDL-free** core: game rules, protocol/serialization, and the server engine (`common_src` = `src/{game,net,server}` + core root files). No SDL, ttf, image, or audio. Linked by all three binaries.
+3. **`_lib` ("game")** (`game_dep`) — the GUI library: rendering, widgets, menus (`gui_src` = `src/ui/` + `widgets_src`), adding SDL2/ttf/image + miniaudio on top of `dc_core_dep`.
 
-**Why the split:** the bot binary must not link SDL2_ttf or SDL2_image (namcap/lintian flag unused libs). When adding source files, decide whether they belong in `shared_src` (both binaries) or are client-only.
+Binaries: `dealers-choice` = `main.c` + `game_dep`; `dealers-choice-bot` = `bot.c` + `dc_core_dep`; `dealers-choice-server` = `src/server/server_main.c` + `dc_core_dep`.
+
+**Why the split:** the bot and server binaries must link **no SDL at all**, so anything pulling in SDL/ttf/image/audio belongs in `src/ui/` (the GUI lib), never in `libdc_core`. When adding a source file, decide: shared game/protocol/server logic → an area dir under `src/{game,net,server}`; GUI-only → `src/ui/` (`ui_src`) or `src/widgets/`.
 
 ### Key source files
 
 | File | Role |
 |---|---|
-| `src/main.c` | Entry point, SDL init, top-level menu |
-| `src/client.c` | GUI client: SDL2 rendering loop, UI widgets |
-| `src/server.c` | Game server: protocol dispatch, game state machine |
-| `src/net.c` | Protobuf-c serialization/deserialization, magic-byte framing |
-| `src/game.c` | Poker variant definitions (9 variants supported) |
-| `src/bot.c` | Headless bot, no SDL2_ttf/SDL2_image dependency |
+| `src/main.c` | GUI entry point: SDL init, top-level menu, connection loop |
+| `src/cli.c` | Shared CLI parsing — `parse_cli_args` (client) + `parse_server_args` (server) |
+| `src/ui/client.c` | GUI client: connection lifecycle, audio threads, SDL setup/teardown |
+| `src/ui/game_logic.c` | Gameplay-screen render + input loop (`handle_game_logic`) |
+| `src/ui/game_select.c` | Pre-game lobby / game-selection screen |
+| `src/ui/menus.c` | Connect / settings / hotkeys menu screens |
+| `src/server/server.c` | Server run loop, lobby, client management, messaging |
+| `src/server/round.c` | Betting / draw / showdown engine |
+| `src/server/variants.c` | Poker variants + per-hand play orchestration (`play_game`) |
+| `src/server/server_main.c` | Headless `dealers-choice-server` entry point |
+| `src/net/net.c` | Protobuf-c serialization/deserialization, magic-byte framing |
+| `src/game/game.c` | Poker variant definitions + shared game model |
+| `src/bot.c` | Headless bot (links `libdc_core` only) |
 | `src/dc_config.c` | canfigger-based config file handling |
 | `src/types.h` | Canonical type definitions (`Player_t`, `GameState_t`, `EPlayerAction_t`, etc.) |
 
 ### Networking
 
 - Protocol: custom binary framing ("DCPROTO" magic + version + flags) wrapping protobuf-c messages.
-- Version constant: `GAME_PROTOCOL_VERSION` in `src/net.h`. **Never increment it** — Andy bumps it exactly once per release.
+- Version constant: `GAME_PROTOCOL_VERSION` in `src/net/net.h`. **Andy owns this bump — never change it yourself.** He bumps it whenever the wire protocol changes (a new game/opcode, a new field in the protobuf schema, framing changes), not on a fixed per-release schedule; expect it to change less often as the protocol stabilizes.
 - Default port: 22777.
 - Auth: libsodium-based password hashing.
 
 ### Audio
 
-miniaudio is used for sound effects. Both `ma_engine_init` and `ma_engine_uninit` can block for several seconds when a sound server (e.g. PulseAudio) is slow or a USB audio device is involved. Both run on background SDL threads (`audio_init_thread_fn` / `audio_uninit_thread_fn` in `src/client.c`) while the main thread pumps events to keep the window responsive. Do not move either call back to the main thread.
+miniaudio is used for sound effects. Both `ma_engine_init` and `ma_engine_uninit` can block for several seconds when a sound server (e.g. PulseAudio) is slow or a USB audio device is involved. Both run on background SDL threads (`audio_init_thread_fn` / `audio_uninit_thread_fn` in `src/ui/client.c`) while the main thread pumps events to keep the window responsive. Do not move either call back to the main thread.
 
 #### Audio device-change handling — in-progress work
 
@@ -139,7 +153,7 @@ Two possible root causes have been identified — they may both be in play:
 
 2. **`module-stream-restore` sink routing** — ruled out. `restore_device=false` is confirmed active (`pactl list modules short | grep stream-restore` shows `restore_device=false`). The config is in `~/.config/pulse/default.pa` and is being picked up. This is no longer a suspect.
 
-**Current state of the restart code in `src/client.c`:** There is substantial `audio_restart_thread_fn` / `maybe_restart_audio` / `g_audio_missed_notification` machinery that attempts a full engine+sounds uninit/reinit when PA sends `rerouted` or `stopped` notifications. This code is unreliable against active `module-stream-restore` (PA moves the new stream again immediately after reinit) and has introduced its own bugs (cleanup hang when `ma_engine_init` blocks in the restart thread). Consider stripping this back to the freeze-fix-only state once the root cause is better understood.
+**Current state of the restart code in `src/ui/client.c`:** There is substantial `audio_restart_thread_fn` / `maybe_restart_audio` / `g_audio_missed_notification` machinery that attempts a full engine+sounds uninit/reinit when PA sends `rerouted` or `stopped` notifications. This code is unreliable against active `module-stream-restore` (PA moves the new stream again immediately after reinit) and has introduced its own bugs (cleanup hang when `ma_engine_init` blocks in the restart thread). Consider stripping this back to the freeze-fix-only state once the root cause is better understood.
 
 ### Subprojects
 
@@ -157,11 +171,11 @@ Widget colors and font choices are configured in the `[styles]` section of `layo
 
 | File | Role |
 |---|---|
-| `src/style.h` | `StyleConfig_t` typedef, `extern StyleConfig_t g_style_cfg`, `get_style_config()` declaration |
-| `src/style.c` | `get_style_config()` implementation, `parse_color()`, `parse_font()`, offset-table dispatch |
+| `src/ui/style.h` | `StyleConfig_t` typedef, `extern StyleConfig_t g_style_cfg`, `get_style_config()` declaration |
+| `src/ui/style.c` | `get_style_config()` implementation, `parse_color()`, `parse_font()`, offset-table dispatch |
 | `data/layout.conf` `[styles]` | Per-role color/font values read at startup |
 
-`style.h` is included via `globals.h`, so it is available everywhere `globals.h` is included. Files outside that chain (e.g. `graphics.c`, `widgets/ping.c`) include `style.h` directly.
+`style.h` is included via `globals_gui.h` (the GUI umbrella header), so it is available everywhere `globals_gui.h` is included. (`globals.h` itself is SDL-free since the renovation and no longer pulls in `style.h`.) Files outside that chain (e.g. `graphics.c`, `widgets/ping.c`) include `style.h` directly.
 
 ### `StyleConfig_t` fields
 
@@ -215,8 +229,9 @@ The parser uses a static `style_fields[]` table (key, `FieldType_t`, `offsetof`,
 
 ## UI / SDL2 menus
 
-SDL2 is a rendering/input layer, not a widget toolkit, so every screen in
-`main.c` is a hand-rolled `while (running) { poll events; render; }` loop.
+SDL2 is a rendering/input layer, not a widget toolkit, so every screen (in
+`src/ui/menus.c`, `game_select.c`, `game_logic.c`; `main.c` drives the
+top-level loop) is a hand-rolled `while (running) { poll events; render; }` loop.
 The `ui_widget`/`UIRegistry` abstraction (auto render/destroy) and
 `button_widget_create_styled` soften it, but each menu still repeats a lot of
 boilerplate. Two refactors worth doing once there are ~4–5 of these screens

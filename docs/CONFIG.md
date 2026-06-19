@@ -23,7 +23,7 @@ password.
 The `DC_PASSWORD` environment variable takes precedence over `server.conf`:
 
 ```
-DC_PASSWORD=mysecretpassword ./dealers-choice --server
+DC_PASSWORD=mysecretpassword ./dealers-choice-server
 ```
 
 Clients can also also use either method for setting their password.
