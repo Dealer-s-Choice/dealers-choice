@@ -1,18 +1,42 @@
 services:
   dealers-choice-server:
-    image: ghcr.io/dealer-s-choice/dealers_choice:latest
+    image: ${DC_IMAGE:-ghcr.io/dealer-s-choice/dealers_choice:latest}
     build:
       context: ..
       dockerfile: docker/Dockerfile
-    command: sh -c 'exec dealers-choice-server $DC_EXTRA_ARGS'
+    command: sh -c 'exec dealers-choice-server $$DC_EXTRA_ARGS'
     environment:
-      - DC_EXTRA_ARGS=${DC_EXTRA_ARGS}
-      - DC_CONFIG_DIR=${DC_CONFIG_DIR}
-      - DC_DATA_DIR=${DC_DATA_DIR}
+      # Only vars the server reads. DC_CONFIG_DIR/DC_OUTPUT_DIR are NOT read by
+      # the server; they only feed the volume bind sources below. Point the
+      # server at the mounts via DC_EXTRA_ARGS, e.g.
+      #   --conf /dc_config/server.conf --log-game-results /dc_output/results.md
+      - DC_EXTRA_ARGS=${DC_EXTRA_ARGS:-}
       - DC_PASSWORD=${DC_PASSWORD}
     volumes:
       - "${DC_CONFIG_DIR}:/dc_config"
-      - "${DC_DATA_DIR}:/dc_data"
+      - "${DC_OUTPUT_DIR}:/dc_output"
     ports:
-      - "22777:22777"
+      - "${DC_PORT:-22777}:22777"
+    restart: no
+
+  # Optional bot(s) — not started by default.
+  #   docker compose --profile bot up
+  #   docker compose --profile bot up --scale dealers-choice-bot=3
+  # By default connects to the server service on the compose network; override
+  # DC_BOT_HOST/DC_BOT_PORT to point at an external server.
+  dealers-choice-bot:
+    image: ${DC_IMAGE:-ghcr.io/dealer-s-choice/dealers_choice:latest}
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    command: sh -c 'exec dealers-choice-bot --host "$$DC_BOT_HOST" --port "$$DC_BOT_PORT" $$DC_BOT_ARGS'
+    environment:
+      - DC_BOT_HOST=${DC_BOT_HOST:-dealers-choice-server}
+      - DC_BOT_PORT=${DC_BOT_PORT:-22777}
+      - DC_BOT_ARGS=${DC_BOT_ARGS:-}
+      - DC_PASSWORD=${DC_PASSWORD}
+    depends_on:
+      - dealers-choice-server
+    profiles:
+      - bot
     restart: no

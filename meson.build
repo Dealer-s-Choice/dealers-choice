@@ -247,6 +247,15 @@ install_data(
 
 install_subdir('docs', install_dir: get_option('docdir'))
 
+# Optional systemd unit for the headless dealers-choice-server. Left commented
+# out on purpose: server hosting is still experimental and lightly tested (see
+# docker/README.md). Uncomment to ship it once that changes. The unit directory
+# can also be detected via dependency('systemd').get_variable('systemdsystemunitdir').
+#install_data(
+#  'packaging/systemd/dealers-choice-server.service',
+#  install_dir: join_paths(get_option('prefix'), 'lib', 'systemd', 'system'),
+#)
+
 # licensedir was added as a core directory option in 1.1.0
 # https://mesonbuild.com/Release-notes-for-1-1-0.html#a-new-core-directory-option-licensedir-is-available
 

@@ -1,0 +1,40 @@
+[Unit]
+Description=Dealer's Choice poker server
+Documentation=https://github.com/Dealer-s-Choice/dealers-choice
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+
+# Run as an unprivileged system user. Create it once, e.g.:
+#   sudo useradd --system --no-create-home --shell /usr/sbin/nologin dealers-choice
+User=dealers-choice
+Group=dealers-choice
+
+# DC_PASSWORD (required) and an optional DC_EXTRA_ARGS line live here.
+# Keep this file private (chmod 600). Example contents:
+#   DC_PASSWORD=change-me
+#   DC_EXTRA_ARGS=--conf /etc/dealers-choice/server.conf --log-game-results /var/lib/dealers-choice/game_results.md
+EnvironmentFile=/etc/dealers-choice/server.env
+
+# Adjust the path if you installed to a different prefix (e.g. /usr/local/bin).
+ExecStart=/usr/bin/dealers-choice-server $DC_EXTRA_ARGS
+
+Restart=on-failure
+RestartSec=2
+
+# Creates and owns a writable /var/lib/dealers-choice for log/result files.
+StateDirectory=dealers-choice
+
+# Hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ProtectControlGroups=true
+ProtectKernelTunables=true
+RestrictAddressFamilies=AF_INET AF_INET6
+
+[Install]
+WantedBy=multi-user.target

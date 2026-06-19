@@ -1,13 +1,101 @@
-To start a *Dealer's Choice* server using docker, in this directory, enter:
+# Running a Dealer's Choice server
 
-    docker-compose up -d
+> **Warning: server hosting is experimental.**
+> The dedicated server has had only limited testing. Things may break, and the
+> network protocol is not final. For now, only run a public or shared server if
+> you are adventurous and do not mind problems. The game client is the main,
+> well-tested program; the server is new.
 
-To stop the server:
+There are two ways to run the server: with Docker Compose, or directly as a
+systemd service.
 
-    docker-compose down
+## Docker Compose
 
-See the [docker compose documentation](https://docs.docker.com/compose/) for
-extra options when using compose.
+You need Docker and the Compose plugin.
 
-Useful environmental variables can be found in
-[env.example](https://github.com/Dealer-s-Choice/dealers_choice/blob/trunk/docker/env.example).
+1. Copy the example settings file and edit it:
+
+       cp env.example .env
+
+   At a minimum, set `DC_PASSWORD`. The server needs a password before any
+   client (or bot) can join.
+
+2. Start the server in this directory:
+
+       docker compose up -d
+
+3. Stop the server:
+
+       docker compose down
+
+### Settings (`.env`)
+
+All settings are optional except `DC_PASSWORD`. See `env.example`.
+
+| Variable | Meaning | Default |
+|---|---|---|
+| `DC_PASSWORD` | Password clients must use to join. **Required.** | (none) |
+| `DC_PORT` | Host port the server is published on. | `22777` |
+| `DC_IMAGE` | Container image to run. | `ghcr.io/dealer-s-choice/dealers_choice:latest` |
+| `DC_CONFIG_DIR` | Host folder mounted read-only at `/dc_config` (put `server.conf` here). | (none) |
+| `DC_OUTPUT_DIR` | Host folder mounted at `/dc_output` for log/result files the server writes. | (none) |
+| `DC_EXTRA_ARGS` | Extra command-line options for the server. | (none) |
+
+The server does not read `DC_CONFIG_DIR` or `DC_OUTPUT_DIR` itself. They only
+set where the host folders are mounted. To make the server use them, point its
+options at the mounted paths through `DC_EXTRA_ARGS`, for example:
+
+    DC_EXTRA_ARGS=--conf /dc_config/server.conf --log-game-results /dc_output/game_results.md
+
+`DC_IMAGE` defaults to the `:latest` tag, which follows the development version
+(the current git trunk), not a stable release. To pin a released version, set a
+version tag (replace `vX.Y.Z` with a real version from the releases page):
+
+    DC_IMAGE=ghcr.io/dealer-s-choice/dealers_choice:vX.Y.Z
+
+### Bots (optional)
+
+The Compose file can also run one or more bots. Bots are not started by
+default. To start the server together with bots:
+
+    docker compose --profile bot up -d
+
+To run several bots at once:
+
+    docker compose --profile bot up -d --scale dealers-choice-bot=3
+
+By default the bots connect to the server in the same Compose project. To point
+them at a different server, set `DC_BOT_HOST` and `DC_BOT_PORT`.
+
+## systemd (without Docker)
+
+If you installed Dealer's Choice on a Linux system, you can run the server as a
+systemd service. An example unit file is in
+[`packaging/systemd/dealers-choice-server.service`](../packaging/systemd/dealers-choice-server.service).
+
+1. Copy the unit file:
+
+       sudo cp packaging/systemd/dealers-choice-server.service /etc/systemd/system/
+
+2. Create the settings folder, then create the file
+   `/etc/dealers-choice/server.env` with this content:
+
+       DC_PASSWORD=your-password-here
+       DC_EXTRA_ARGS=--conf /etc/dealers-choice/server.conf --log-game-results /var/lib/dealers-choice/game_results.md
+
+   `DC_EXTRA_ARGS` is optional. If you do not need a `server.conf`, leave that
+   line out and just set `DC_PASSWORD`. Keep the file private:
+
+       sudo install -d /etc/dealers-choice
+       sudo chmod 600 /etc/dealers-choice/server.env
+
+3. (Optional) Put a `server.conf` at `/etc/dealers-choice/server.conf` if you
+   referenced it in `DC_EXTRA_ARGS` above.
+
+4. Enable and start it:
+
+       sudo systemctl daemon-reload
+       sudo systemctl enable --now dealers-choice-server
+
+The service writes game results under `/var/lib/dealers-choice/`. Read its log
+with `journalctl -u dealers-choice-server`.
