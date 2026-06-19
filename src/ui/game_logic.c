@@ -1588,31 +1588,37 @@ EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
       mouse_pos.y = (int)rly;
     }
 
+    /* Draw variants let you select discards even before your turn, so when the
+     * discard prompt arrives you can just hit Discard (#22). The card .selected
+     * flags are the source of truth; n_cards_selected is recomputed from them
+     * after the poll. */
+    bool can_select_discards = client_state.game_choice && client_state.game_choice->n_draws > 0 &&
+                               game_state->player[my_id].in && !game_state->winner_declared;
+
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
-      for (int card_n = 0; card_n < MAX_HAND_SIZE; card_n++) {
-        DH_Card *card = &turn->hand.card[card_n];
-        if (!DH_is_card_null(*card)) {
-          card_context[my_id][card_n].base.hovered =
-              SDL_PointInRect(&mouse_pos, &card_context[my_id][card_n].base.rect);
-          if (card_context[my_id][card_n].base.hovered && event.type == SDL_MOUSEBUTTONDOWN &&
-              client_state.do_discard_draw) {
-            // select or deselect when clicked
-            bool *selected = &card_context[my_id][card_n].base.selected;
-            *selected = !(*selected);
-
-            // Update counter
-            if (*selected) {
-              client_state.n_cards_selected++;
-            } else {
-              client_state.n_cards_selected--;
-            }
-            // printf("n_selected: %d\n", client_state.n_cards_selected);
-          }
-          // If the mouse is at the location, there's no need to iterate through the rest
-          // of the cards.
-          if (card_context[my_id][card_n].base.hovered)
+      if (can_select_discards && event.type == SDL_MOUSEBUTTONDOWN) {
+        for (int card_n = 0; card_n < MAX_HAND_SIZE; card_n++) {
+          if (DH_is_card_null(game_state->player[my_id].hand.card[card_n]))
+            continue;
+          if (SDL_PointInRect(&mouse_pos, &card_context[my_id][card_n].base.rect)) {
+            card_context[my_id][card_n].base.selected =
+                !card_context[my_id][card_n].base.selected;
             break;
+          }
+        }
+      }
+
+      /* Digit keys 1-5 toggle discard selection — but only when not choosing a
+       * bet amount (the step scale uses 1-8 for that) (#22). */
+      if (event.type == SDL_KEYDOWN && can_select_discards && !bet_scale->active) {
+        SDL_Keycode kc = event.key.keysym.sym;
+        if (kc >= SDLK_1 && kc <= SDLK_5) {
+          int card_n = (int)(kc - SDLK_1);
+          if (card_n < MAX_HAND_SIZE &&
+              !DH_is_card_null(game_state->player[my_id].hand.card[card_n]))
+            card_context[my_id][card_n].base.selected =
+                !card_context[my_id][card_n].base.selected;
         }
       }
       for (int i = 0; i < MAX_ACTIONS; i++) {
@@ -1759,6 +1765,14 @@ EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
         }
       }
     } // End Poll event
+
+    /* n_cards_selected derives from the card flags (single source of truth), so
+     * pre-selections survive the draw prompt's counter reset and a hand rebuild
+     * clears it automatically (#22). */
+    client_state.n_cards_selected = 0;
+    for (int k = 0; k < MAX_HAND_SIZE; k++)
+      if (card_context[my_id][k].base.selected)
+        client_state.n_cards_selected++;
   }
   SDL_DestroyTexture(felt_tex);
   SDL_DestroyTexture(vignette_tex);

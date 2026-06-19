@@ -513,13 +513,6 @@ static void card_widget_render(UIWidget_t *w) {
     }
   }
 
-  // Highlight hovered card for the local player (draw after card background)
-  if (w->hovered && cw->my_card) {
-    SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
-    SDL_SetRenderDrawColor(renderer, 255, 255, 128, 96); // translucent yellow
-    SDL_RenderFillRect(renderer, &w->rect);
-    SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);
-  }
 
   if (w->selected)
     mark_selected(renderer, &w->rect);
