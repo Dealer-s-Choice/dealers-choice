@@ -166,21 +166,7 @@ const GameChoice_t *find_game_choice_by_type(const uint8_t type) {
 int send_game_select(tcpme_socket_t sock, uint8_t game_type, bool deuces_wild) {
   GameSelectPayload_t payload = {game_type, deuces_wild ? 1 : 0};
 
-  const uint32_t payload_size = OPCODE_SIZE + sizeof(payload);
-
-  uint8_t buffer[LENGTH_PREFIX_SIZE + OPCODE_SIZE + sizeof(GameSelectPayload_t)];
-
-  // Write length prefix (portable big-endian)
-  tcpme_put_be32(buffer, payload_size);
-
-  // Write opcode (portable big-endian)
-  tcpme_put_be16(buffer + LENGTH_PREFIX_SIZE, MSG_GAME_SELECT);
-
-  // Write payload
-  memcpy(buffer + LENGTH_PREFIX_SIZE + OPCODE_SIZE, &payload, sizeof(payload));
-
-  // Send all
-  int result = send_all_tcp(sock, buffer, sizeof(buffer));
+  int result = send_message(sock, MSG_GAME_SELECT, (const uint8_t *)&payload, sizeof(payload));
 
   const GameChoice_t *choice = find_game_choice_by_type(game_type);
   if (result == 0) {
