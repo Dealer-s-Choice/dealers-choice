@@ -35,7 +35,7 @@ jobs:
     env:
       CC: gcc
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
       with:
         fetch-depth: 0
     - name: Install Dependencies
@@ -76,7 +76,7 @@ jobs:
           - name: tsan
             sanitize: thread
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Install Dependencies
       run: scripts/install_ubuntu_deps.sh
     - name: Meson setup
@@ -114,7 +114,7 @@ jobs:
     env:
       CC: ${{ matrix.cc }}
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Install Dependencies
       if: ${{ matrix.container == null }}
       run: scripts/install_ubuntu_deps.sh
@@ -151,7 +151,7 @@ jobs:
             runs-on: ubuntu-24.04-arm
 
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
 
     - name: Set version
       run: |
