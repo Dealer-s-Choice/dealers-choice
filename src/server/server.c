@@ -449,19 +449,7 @@ int send_status_message(tcpme_socket_t sock, const char *msg) {
   if (msg_len > LEN_STATUS_STR)
     msg_len = LEN_STATUS_STR;
 
-  uint8_t buffer[4 + 2 + LEN_STATUS_STR]; // max: 4 bytes (size) + 2 (opcode) + 100 (msg)
-
-  // payload: 2-byte opcode + N-byte msg
-  tcpme_put_be32(buffer, 2 + (uint32_t)msg_len);
-
-  uint16_t opcode_be;
-  tcpme_put_be16((uint8_t *)&opcode_be, MSG_STATUS_MESSAGE);
-  memcpy(&buffer[4], &opcode_be, sizeof(opcode_be));
-
-  memcpy(&buffer[6], msg, msg_len);
-
-  // Send total (size prefix + payload)
-  return send_all_tcp(sock, buffer, 6 + msg_len);
+  return send_message(sock, MSG_STATUS_MESSAGE, (const uint8_t *)msg, msg_len);
 }
 
 void broadcast_status_message(const ArgsBroadcastGameState_t *args, const char *msg) {
@@ -511,18 +499,8 @@ void broadcast_game_type(const ArgsBroadcastGameState_t *args) {
 }
 
 static int send_turn_id(tcpme_socket_t sock, const int8_t turn_id) {
-  uint8_t buffer[7];
-
-  // payload = 2-byte opcode + 1-byte turn_id
-  tcpme_put_be32(buffer, 3);
-
-  uint16_t opcode_be;
-  tcpme_put_be16((uint8_t *)&opcode_be, MSG_TURN_ID);
-  memcpy(&buffer[4], &opcode_be, sizeof(opcode_be));
-
-  buffer[6] = (uint8_t)turn_id;
-
-  return send_all_tcp(sock, buffer, sizeof(buffer));
+  uint8_t payload = (uint8_t)turn_id;
+  return send_message(sock, MSG_TURN_ID, &payload, sizeof(payload));
 }
 
 void broadcast_turn_id(const ArgsBroadcastGameState_t *args) {
@@ -601,15 +579,7 @@ ETurnMsg_t recv_turn_player_msg(tcpme_socket_t sock, PlayerActionMsg_t *out_acti
 }
 
 int send_opcode(tcpme_socket_t sock, const uint16_t opcode) {
-  uint8_t buffer[6];
-
-  tcpme_put_be32(buffer, 2);
-
-  uint16_t opcode_be;
-  tcpme_put_be16((uint8_t *)&opcode_be, opcode);
-  memcpy(&buffer[4], &opcode_be, sizeof(opcode_be));
-
-  return send_all_tcp(sock, buffer, sizeof(buffer));
+  return send_message(sock, opcode, NULL, 0);
 }
 
 static int send_ping_request(tcpme_socket_t sock) {
