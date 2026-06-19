@@ -331,6 +331,28 @@ static int action_button_for_verb(int verb) {
   }
 }
 
+/* Best 5-card rank name for the local player's current hand, or NULL if fewer
+ * than 5 cards are dealt yet. Drives the CTRL-H rank readout (#61). */
+static const char *local_hand_rank_name(const POKEVAL_Hand_9 *hand, bool deuces_wild) {
+  size_t n = 0;
+  while (n < 9 && !DH_is_card_null(hand->card[n]))
+    n++;
+  if (n < POKEVAL_HAND_SIZE)
+    return NULL;
+
+  short r;
+  if (deuces_wild) {
+    POKEVAL_Hand_5 best = POKEVAL_hand5_from_hand7_wild(hand, DH_CARD_TWO);
+    r = POKEVAL_evaluate_hand_wild(best, DH_CARD_TWO);
+  } else {
+    POKEVAL_Hand_5 best = POKEVAL_hand5_from_hand7(hand);
+    r = POKEVAL_evaluate_hand(best);
+  }
+  if (r < 0 || r >= NUM_HAND_RANKS)
+    return NULL;
+  return POKEVAL_rank[r];
+}
+
 static SDL_Keycode action_hotkey(int action) {
   switch (action) {
   case CHECK:
@@ -635,6 +657,7 @@ EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
   char status_msgs[SIZEOF_STATUS_MSGS][LEN_STATUS_STR] = {0};
   char last_status_str[LEN_STATUS_STR] = {0};
   TextWidget_t *status_tw[SIZEOF_STATUS_MSGS] = {0};
+  TextWidget_t *hand_rank_tw = text_widget_create(" ", font->fonts[FONT_BOLD], DC_TEXT_ON_DARK);
 
   ButtonWidget_t *action_bw[MAX_ACTIONS];
   for (int i = 0; i < MAX_ACTIONS; i++) {
@@ -712,6 +735,7 @@ EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
   int running = 1;
   bool cards_created = false;
   bool winner_highlighted = false;
+  bool show_hand_rank = false; /* toggled by CTRL-H (#61) */
 
   Player_t *players_array = game_state->player;
   Player_t *turn = NULL;
@@ -1522,6 +1546,21 @@ EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
     snprintf(buffer, sizeof(buffer), "%" PRIu32, game_state->pot);
     render_text_pot(buffer, g_layout.table_center, font);
 
+    /* CTRL-H: show the best rank of your own hand, lower-right corner (#61). */
+    if (show_hand_rank && hand_rank_tw) {
+      const char *rank = local_hand_rank_name(&game_state->player[my_id].hand,
+                                              client_state.deuces_wild);
+      if (rank) {
+        text_widget_set_text(hand_rank_tw, _(rank));
+        ui_widget_place(&hand_rank_tw->base,
+                        g_viewport.x + g_viewport.w - hand_rank_tw->base.rect.w -
+                            g_layout_cfg.margin,
+                        g_viewport.y + g_viewport.h - hand_rank_tw->base.rect.h -
+                            g_layout_cfg.margin);
+        ui_widget_render(&hand_rank_tw->base);
+      }
+    }
+
     SDL_RenderPresent(sdl_context->renderer);
     SDL_Delay(16);
 
@@ -1625,6 +1664,11 @@ EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
           toggle_fullscreen(sdl_context);
           break;
 
+        case SDLK_h:
+          if (event.key.keysym.mod & KMOD_CTRL)
+            show_hand_rank = !show_hand_rank;
+          break;
+
         default:
           break;
         }
@@ -1713,6 +1757,8 @@ EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
   step_scale_destroy(bet_scale);
   for (int i = 0; i < SIZEOF_STATUS_MSGS; i++)
     ui_widget_destroy(&status_tw[i]->base);
+  if (hand_rank_tw)
+    ui_widget_destroy(&hand_rank_tw->base);
   ui_destroy_all(&registry);
   if (running)
     return GAME_LOGIC_AT_MENU;
