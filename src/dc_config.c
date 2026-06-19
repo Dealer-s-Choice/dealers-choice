@@ -32,8 +32,21 @@
 #include <string.h>
 
 #include "dc_config.h"
+#include "dc_windows.h"
 #include "layout_config.h"
 #include "util.h"
+
+/* Atomically replace dst with src. POSIX rename() does this directly; on
+ * Windows rename() fails if dst exists, so use MoveFileExA with replace. */
+static int replace_file(const char *src, const char *dst) {
+#ifdef _WIN32
+  if (!MoveFileExA(src, dst, MOVEFILE_REPLACE_EXISTING))
+    return -1;
+  return 0;
+#else
+  return rename(src, dst);
+#endif
+}
 
 const ConfigEntry player_config_entries[] = {
     {"nick", CFG_TYPE_STRING, "New Player", offsetof(PlayerConfig_t, nick),
@@ -261,9 +274,19 @@ void save_player_config(const PlayerConfig_t *config) {
     return;
   }
 
-  FILE *fp = fopen(cfg_pathname, "w");
+  size_t tmp_len = strlen(cfg_pathname) + sizeof(".tmp");
+  char *tmp_pathname = malloc(tmp_len);
+  if (!tmp_pathname) {
+    perror("malloc");
+    free(cfg_pathname);
+    return;
+  }
+  snprintf(tmp_pathname, tmp_len, "%s.tmp", cfg_pathname);
+
+  FILE *fp = fopen(tmp_pathname, "w");
   if (!fp) {
     perror("fopen");
+    free(tmp_pathname);
     free(cfg_pathname);
     return;
   }
@@ -273,7 +296,20 @@ void save_player_config(const PlayerConfig_t *config) {
     config_field_to_string(config, &player_config_entries[i], val_str, sizeof(val_str));
     fprintf(fp, "%s = %s\n", player_config_entries[i].key, val_str);
   }
-  fclose(fp);
+
+  bool write_ok = (ferror(fp) == 0);
+  if (fclose(fp) != 0)
+    write_ok = false;
+
+  if (!write_ok) {
+    perror("writing player.conf");
+    remove(tmp_pathname);
+  } else if (replace_file(tmp_pathname, cfg_pathname) != 0) {
+    perror("rename player.conf");
+    remove(tmp_pathname);
+  }
+
+  free(tmp_pathname);
   free(cfg_pathname);
 }
 
