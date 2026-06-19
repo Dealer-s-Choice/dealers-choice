@@ -83,6 +83,7 @@ int send_opcode(tcpme_socket_t sock, const uint16_t opcode);
 int send_new_hand(tcpme_socket_t sock, const POKEVAL_Hand_9 *hand, uint8_t hand_size);
 ETurnMsg_t recv_turn_player_msg(tcpme_socket_t sock, PlayerActionMsg_t *out_action,
                                 uint16_t *out_kb_opcode, int8_t *out_target_id);
+void maybe_log_day_header(const char *path);
 void log_hands_json(const ArgsBroadcastGameState_t *args, const POKEVAL_NeedComparing *cmp,
                     uint8_t pl_count, uint32_t pot, bool by_fold);
 void log_hands_fold_json(const ArgsBroadcastGameState_t *args, const Player_t *winner,

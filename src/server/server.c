@@ -104,6 +104,28 @@ static void print_socket_addr(tcpme_socket_t sock) {
     printf("%s\n", buf);
 }
 
+/* Write a "## YYYY-MM-DD" day header to the game-results log when the local
+ * date has changed since the last header (and once at the first call), so a
+ * server that runs past midnight groups entries under the right day. */
+void maybe_log_day_header(const char *path) {
+  if (!path)
+    return;
+  static int last_ymd = 0;
+  time_t t = time(NULL);
+  struct tm tm = *localtime(&t);
+  int ymd = (tm.tm_year + 1900) * 10000 + (tm.tm_mon + 1) * 100 + tm.tm_mday;
+  if (ymd == last_ymd)
+    return;
+  FILE *fp = fopen(path, "a");
+  if (!fp) {
+    perror("fopen");
+    return;
+  }
+  fprintf(fp, "## %04d-%02d-%02d\n\n", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday);
+  fclose(fp);
+  last_ymd = ymd;
+}
+
 /* Machine-readable showdown log: one JSON object per line. Cards are emitted
  * with numeric face_val (1=Ace low, 11=J, 12=Q, 13=K) and numeric suit, so an
  * external analyzer can independently re-rank the hands and confirm the
@@ -1271,17 +1293,7 @@ int run_server(const CliArgs_t *cli_args, Path_t *path) {
   else
     DH_pcg_srand(1, 1);
 
-  if (cli_args->server_log_game_results_file) {
-    FILE *fp = fopen(cli_args->server_log_game_results_file, "a");
-    if (!fp)
-      perror("fopen");
-    else {
-      time_t t = time(NULL);
-      struct tm tm = *localtime(&t);
-      fprintf(fp, "## %04d-%02d-%02d\n\n", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday);
-      fclose(fp);
-    }
-  }
+  maybe_log_day_header(cli_args->server_log_game_results_file);
 
   int game_started = 0;
   bool slot_taken[MAX_CLIENTS] = {false};
