@@ -25,6 +25,10 @@ typedef struct PingResponse PingResponse;
 typedef struct PingEntry PingEntry;
 typedef struct PingBroadcast PingBroadcast;
 typedef struct ActionAnnounce ActionAnnounce;
+typedef struct ServerAnnounce ServerAnnounce;
+typedef struct ServerEntry ServerEntry;
+typedef struct ServerListRequest ServerListRequest;
+typedef struct ServerList ServerList;
 
 
 /* --- enums --- */
@@ -174,6 +178,79 @@ struct  ActionAnnounce
 #define ACTION_ANNOUNCE__INIT \
  { PROTOBUF_C_MESSAGE_INIT (&action_announce__descriptor) \
 , 0, 0, 0 }
+
+
+/*
+ * A game server announces (and heartbeats) itself to a registry. The server's
+ * IP is taken from the announce connection's source address by the registry,
+ * never trusted from the payload.
+ */
+struct  ServerAnnounce
+{
+  ProtobufCMessage base;
+  /*
+   * REGISTRY_PROTOCOL_VERSION
+   */
+  uint32_t registry_version;
+  /*
+   * advertised server name (sanitized by registry)
+   */
+  char *name;
+  /*
+   * the game port the server listens on
+   */
+  uint32_t tcp_port;
+  uint32_t player_count;
+  uint32_t max_players;
+  protobuf_c_boolean password_protected;
+  protobuf_c_boolean in_progress;
+};
+#define SERVER_ANNOUNCE__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&server_announce__descriptor) \
+, 0, (char *)protobuf_c_empty_string, 0, 0, 0, 0, 0 }
+
+
+/*
+ * One verified server in the registry's list.
+ */
+struct  ServerEntry
+{
+  ProtobufCMessage base;
+  char *ip;
+  uint32_t tcp_port;
+  char *name;
+  uint32_t player_count;
+  uint32_t max_players;
+  protobuf_c_boolean password_protected;
+  protobuf_c_boolean in_progress;
+};
+#define SERVER_ENTRY__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&server_entry__descriptor) \
+, (char *)protobuf_c_empty_string, 0, (char *)protobuf_c_empty_string, 0, 0, 0, 0 }
+
+
+/*
+ * A client asks the registry for the current list.
+ */
+struct  ServerListRequest
+{
+  ProtobufCMessage base;
+  uint32_t registry_version;
+};
+#define SERVER_LIST_REQUEST__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&server_list_request__descriptor) \
+, 0 }
+
+
+struct  ServerList
+{
+  ProtobufCMessage base;
+  size_t n_servers;
+  ServerEntry **servers;
+};
+#define SERVER_LIST__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&server_list__descriptor) \
+, 0,NULL }
 
 
 /* Card methods */
@@ -366,6 +443,82 @@ ActionAnnounce *
 void   action_announce__free_unpacked
                      (ActionAnnounce *message,
                       ProtobufCAllocator *allocator);
+/* ServerAnnounce methods */
+void   server_announce__init
+                     (ServerAnnounce         *message);
+size_t server_announce__get_packed_size
+                     (const ServerAnnounce   *message);
+size_t server_announce__pack
+                     (const ServerAnnounce   *message,
+                      uint8_t             *out);
+size_t server_announce__pack_to_buffer
+                     (const ServerAnnounce   *message,
+                      ProtobufCBuffer     *buffer);
+ServerAnnounce *
+       server_announce__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   server_announce__free_unpacked
+                     (ServerAnnounce *message,
+                      ProtobufCAllocator *allocator);
+/* ServerEntry methods */
+void   server_entry__init
+                     (ServerEntry         *message);
+size_t server_entry__get_packed_size
+                     (const ServerEntry   *message);
+size_t server_entry__pack
+                     (const ServerEntry   *message,
+                      uint8_t             *out);
+size_t server_entry__pack_to_buffer
+                     (const ServerEntry   *message,
+                      ProtobufCBuffer     *buffer);
+ServerEntry *
+       server_entry__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   server_entry__free_unpacked
+                     (ServerEntry *message,
+                      ProtobufCAllocator *allocator);
+/* ServerListRequest methods */
+void   server_list_request__init
+                     (ServerListRequest         *message);
+size_t server_list_request__get_packed_size
+                     (const ServerListRequest   *message);
+size_t server_list_request__pack
+                     (const ServerListRequest   *message,
+                      uint8_t             *out);
+size_t server_list_request__pack_to_buffer
+                     (const ServerListRequest   *message,
+                      ProtobufCBuffer     *buffer);
+ServerListRequest *
+       server_list_request__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   server_list_request__free_unpacked
+                     (ServerListRequest *message,
+                      ProtobufCAllocator *allocator);
+/* ServerList methods */
+void   server_list__init
+                     (ServerList         *message);
+size_t server_list__get_packed_size
+                     (const ServerList   *message);
+size_t server_list__pack
+                     (const ServerList   *message,
+                      uint8_t             *out);
+size_t server_list__pack_to_buffer
+                     (const ServerList   *message,
+                      ProtobufCBuffer     *buffer);
+ServerList *
+       server_list__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   server_list__free_unpacked
+                     (ServerList *message,
+                      ProtobufCAllocator *allocator);
 /* --- per-message closures --- */
 
 typedef void (*Card_Closure)
@@ -398,6 +551,18 @@ typedef void (*PingBroadcast_Closure)
 typedef void (*ActionAnnounce_Closure)
                  (const ActionAnnounce *message,
                   void *closure_data);
+typedef void (*ServerAnnounce_Closure)
+                 (const ServerAnnounce *message,
+                  void *closure_data);
+typedef void (*ServerEntry_Closure)
+                 (const ServerEntry *message,
+                  void *closure_data);
+typedef void (*ServerListRequest_Closure)
+                 (const ServerListRequest *message,
+                  void *closure_data);
+typedef void (*ServerList_Closure)
+                 (const ServerList *message,
+                  void *closure_data);
 
 /* --- services --- */
 
@@ -415,6 +580,10 @@ extern const ProtobufCMessageDescriptor ping_response__descriptor;
 extern const ProtobufCMessageDescriptor ping_entry__descriptor;
 extern const ProtobufCMessageDescriptor ping_broadcast__descriptor;
 extern const ProtobufCMessageDescriptor action_announce__descriptor;
+extern const ProtobufCMessageDescriptor server_announce__descriptor;
+extern const ProtobufCMessageDescriptor server_entry__descriptor;
+extern const ProtobufCMessageDescriptor server_list_request__descriptor;
+extern const ProtobufCMessageDescriptor server_list__descriptor;
 
 PROTOBUF_C__END_DECLS
 

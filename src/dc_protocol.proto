@@ -69,3 +69,38 @@ message ActionAnnounce {
   int32 verb = 2;     // EActionAnnounce_t
   uint32 amount = 3;  // bet/raise/complete size, or cards drawn; 0 if unused
 }
+
+// --- Server registry (directory server) ---
+
+// A game server announces (and heartbeats) itself to a registry. The server's
+// IP is taken from the announce connection's source address by the registry,
+// never trusted from the payload.
+message ServerAnnounce {
+  uint32 registry_version = 1; // REGISTRY_PROTOCOL_VERSION
+  string name = 2;             // advertised server name (sanitized by registry)
+  uint32 tcp_port = 3;         // the game port the server listens on
+  uint32 player_count = 4;
+  uint32 max_players = 5;
+  bool password_protected = 6;
+  bool in_progress = 7;
+}
+
+// One verified server in the registry's list.
+message ServerEntry {
+  string ip = 1;
+  uint32 tcp_port = 2;
+  string name = 3;
+  uint32 player_count = 4;
+  uint32 max_players = 5;
+  bool password_protected = 6;
+  bool in_progress = 7;
+}
+
+// A client asks the registry for the current list.
+message ServerListRequest {
+  uint32 registry_version = 1;
+}
+
+message ServerList {
+  repeated ServerEntry servers = 1;
+}
