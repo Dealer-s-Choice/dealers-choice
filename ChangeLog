@@ -12,6 +12,8 @@
     a game already in progress (#329)
   + Player action messages (checked, bet, folded, etc.) are now translatable by
     the client instead of being fixed in the server's language (#74)
+  * Action timeouts now accumulate across hands, so a player who keeps timing
+    out is disconnected even when the timeouts span different hands (#31)
 
 2026-06-15
 

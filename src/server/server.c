@@ -1299,6 +1299,11 @@ int run_server(const CliArgs_t *cli_args, Path_t *path) {
   char session_ban_list[64][TCPME_ADDRSTRLEN] = {{0}};
   int session_ban_count = 0;
 
+  /* Action-timeout counts live outside the loop so they accumulate across
+   * hands: a player who keeps timing out in different hands still reaches the
+   * disconnect threshold. A real action resets that player's count to 0. */
+  uint8_t session_player_timeouts[MAX_PLAYERS] = {0};
+
   while (!game_started) {
     ArgsBroadcastGameState_t args_broadcast_game_state = {
         .clients = clients,
@@ -1318,6 +1323,8 @@ int run_server(const CliArgs_t *cli_args, Path_t *path) {
         .lan_port = port,
     };
     memcpy(args_broadcast_game_state.ban_list, session_ban_list, sizeof(session_ban_list));
+    memcpy(args_broadcast_game_state.player_timeouts, session_player_timeouts,
+           sizeof(session_player_timeouts));
 
     /* Answer any pending LAN discovery query (non-blocking), so the game is
      * findable even while the lobby is still empty. */
@@ -1327,6 +1334,8 @@ int run_server(const CliArgs_t *cli_args, Path_t *path) {
     int8_t *dealer_id = &game_state.dealer_id;
 
     ELoop_t ret = register_new_client(&args_broadcast_game_state);
+    memcpy(session_player_timeouts, args_broadcast_game_state.player_timeouts,
+           sizeof(session_player_timeouts));
     if (ret == LOOP_CONTINUE)
       continue;
     else if (ret == LOOP_BREAK)
@@ -1538,6 +1547,9 @@ int run_server(const CliArgs_t *cli_args, Path_t *path) {
 
     if (reassign_dealer_if_needed(&game_state, slot_taken))
       broadcast_game_state(&args_broadcast_game_state);
+
+    memcpy(session_player_timeouts, args_broadcast_game_state.player_timeouts,
+           sizeof(session_player_timeouts));
   }
 
   for (int i = 0; i < MAX_CLIENTS; i++) {
