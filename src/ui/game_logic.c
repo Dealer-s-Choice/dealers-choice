@@ -738,8 +738,13 @@ EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
     dc_last_frame = dc_frame_now;
 
     POKEVAL_Hand_9 prev_hands[MAX_PLAYERS];
-    for (int i = 0; i < MAX_PLAYERS; i++)
+    bool prev_connected[MAX_PLAYERS];
+    bool prev_in[MAX_PLAYERS];
+    for (int i = 0; i < MAX_PLAYERS; i++) {
       prev_hands[i] = game_state->player[i].hand;
+      prev_connected[i] = game_state->player[i].is_connected;
+      prev_in[i] = game_state->player[i].in;
+    }
 
     ERecvStatus_t recv_status = recv_game_state(socket_context, game_state, &client_state, my_id);
     // printf("%d\n", __LINE__);
@@ -754,8 +759,20 @@ EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
           game_state->player[i].hand = preserved_hands[i];
         was_in[i] = game_state->player[i].in;
       }
+      /* Only rebuild the card widgets when something they depend on changed
+       * (hands, seating, or fold-state); bet/turn/pot/coin updates don't. */
+      bool cards_dirty = false;
+      for (int i = 0; i < MAX_PLAYERS; i++) {
+        if (game_state->player[i].is_connected != prev_connected[i] ||
+            game_state->player[i].in != prev_in[i] ||
+            memcmp(&game_state->player[i].hand, &prev_hands[i], sizeof(POKEVAL_Hand_9)) != 0) {
+          cards_dirty = true;
+          break;
+        }
+      }
       if (!game_state->winner_declared) {
-        cards_created = false;
+        if (cards_dirty)
+          cards_created = false;
         winner_highlighted = false;
       } else if (!winner_highlighted) {
         cards_created = false;
