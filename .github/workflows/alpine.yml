@@ -32,7 +32,7 @@ jobs:
             build-base meson samurai pkgconf git gettext-dev python3 \
             libsodium-dev protobuf-c-dev \
             sdl2-dev sdl2_ttf-dev sdl2_image-dev
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Meson setup
         run: meson setup _build
       - name: Build

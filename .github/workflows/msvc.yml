@@ -21,7 +21,7 @@ jobs:
   msvc:
     runs-on: windows-latest
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
 
     # vcpkg cache is just a build speedup — if the GitHub cache service is
     # having a bad day (transient blip, ~1s failures with no error text),
