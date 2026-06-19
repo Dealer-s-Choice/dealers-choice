@@ -1232,6 +1232,15 @@ ELoop_t register_new_client(ArgsBroadcastGameState_t *args) {
       args->game_settings->client_id = slot;
       send_game_settings(args, new_client);
       broadcast_game_state(args);
+
+      /* A client joining a running game missed the MSG_GAME_SELECT that was
+       * broadcast at game-select time, so its game-name / deuces-wild
+       * indicators stay blank. Send the current selection to just this
+       * client; its existing MSG_GAME_SELECT handler populates both (#223). */
+      if (!args->game_state->at_menu) {
+        if (send_game_select(new_client, args->game_type, args->deuces_wild) < 0)
+          fprintf(stderr, "[register_new_client] Failed to send game type to client %d\n", slot);
+      }
     } else {
       printf("Server full. Rejecting connection.\n");
       tcpme_close(new_client);
