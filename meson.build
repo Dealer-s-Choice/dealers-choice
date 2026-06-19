@@ -245,7 +245,7 @@ executable(
 # Manual registry test tool (not installed).
 executable(
   'registry-probe',
-  ['src/registry/registry_probe.c'],
+  ['tests/registry_probe.c'],
   dependencies: dc_core_dep,
   install: false,
 )
