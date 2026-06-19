@@ -418,9 +418,12 @@ RoundResults handle_round_real(ArgsBroadcastGameState_t *args, uint32_t initial_
       opcode = bringin_round_unopened ? MSG_CALL_COMPLETE_FOLD : MSG_CALL_RAISE_FOLD;
     else
       opcode = bringin_round_unopened ? MSG_COMPLETE_CHECK_FOLD : MSG_BET_CHECK_FOLD;
-    if (send_opcode(args->clients[turn->id], opcode) != 0)
+    uint8_t owed_buf[4];
+    tcpme_put_be32(owed_buf, owed);
+    if (send_message(args->clients[turn->id], opcode, owed_buf, sizeof(owed_buf)) != 0)
       fputs("Error sending action prompt", stderr);
-    dc_log(DC_LOG_DEBUG, "sent action-prompt opcode 0x%04X to player %d", opcode, turn->id);
+    dc_log(DC_LOG_DEBUG, "sent action-prompt opcode 0x%04X (owed %u) to player %d", opcode, owed,
+           turn->id);
 
     while (dc_get_ticks() - start < wait_ms) {
       register_new_client(args);

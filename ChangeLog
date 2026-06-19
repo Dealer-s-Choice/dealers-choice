@@ -14,6 +14,8 @@
     the client instead of being fixed in the server's language (#74)
   * Action timeouts now accumulate across hands, so a player who keeps timing
     out is disconnected even when the timeouts span different hands (#31)
+  + During a game, the amount you owe to call is shown next to the bet amount
+    above the step scale (#60)
 
 2026-06-15
 

@@ -42,7 +42,9 @@
 typedef struct {
   UIWidget_t base; /* base.rect = the scale region (set by step_scale_layout) */
   SDL_Renderer *renderer;
-  TextWidget_t *label; /* selected value, rendered above the track */
+  TextWidget_t *label;       /* selected value, rendered above the track */
+  TextWidget_t *owed_label;  /* "(N)" amount owed, drawn right of the value (#60) */
+  uint32_t owed;             /* amount to call; 0 hides owed_label */
   uint32_t values[STEP_SCALE_MAX];
   SDL_Keycode hotkeys[STEP_SCALE_MAX];
   bool enabled[STEP_SCALE_MAX]; /* which notches are selectable (caller-managed) */
@@ -68,5 +70,9 @@ void step_scale_layout(StepScaleWidget_t *s, SDL_Rect region);
 bool step_scale_handle(StepScaleWidget_t *s, const SDL_Event *e, SDL_Point mouse);
 
 uint32_t step_scale_value(const StepScaleWidget_t *s);
+
+/* Set the amount owed to call, shown in parens right of the selected value.
+ * 0 hides it. Call before step_scale_layout. */
+void step_scale_set_owed(StepScaleWidget_t *s, uint32_t owed);
 
 #endif

@@ -129,6 +129,7 @@ typedef struct {
   bool call_raise_fold;
   bool call_complete_fold;
   bool complete_check_fold;
+  uint32_t owed; /* amount needed to call this turn; carried on the action prompt (#60) */
   unsigned int ping_times[MAX_CLIENTS];
   uint8_t game_type;
   bool deuces_wild;

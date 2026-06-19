@@ -1354,6 +1354,7 @@ EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
       /* ---- bet-amount step scale (left cell) ---- */
       bet_scale->active =
           (*turn_id == my_id) && !client_state.do_discard_draw && !game_state->winner_declared;
+      step_scale_set_owed(bet_scale, client_state.owed);
       step_scale_layout(
           bet_scale, (SDL_Rect){slider_cell_x + pad, dash_y + pad, slider_inner, dash_h - 2 * pad});
       ui_widget_render(&bet_scale->base);

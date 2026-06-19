@@ -46,6 +46,8 @@ static void step_scale_render(UIWidget_t *w) {
 
   if (s->label && s->active)
     ui_widget_render(&s->label->base);
+  if (s->owed_label && s->active && s->owed > 0)
+    ui_widget_render(&s->owed_label->base);
 }
 
 StepScaleWidget_t *step_scale_create(const uint32_t *values, const SDL_Keycode *hotkeys, int count,
@@ -73,6 +75,14 @@ StepScaleWidget_t *step_scale_create(const uint32_t *values, const SDL_Keycode *
     return NULL;
   }
 
+  s->owed_label = text_widget_create("", label_font, DC_TEXT_MUTED);
+  if (!s->owed_label) {
+    ui_widget_destroy(&s->label->base);
+    free(s);
+    return NULL;
+  }
+  s->owed = 0;
+
   s->base.render = step_scale_render;
   s->base.enabled = true;
   return s;
@@ -83,6 +93,8 @@ void step_scale_destroy(StepScaleWidget_t *s) {
     return;
   if (s->label)
     ui_widget_destroy(&s->label->base);
+  if (s->owed_label)
+    ui_widget_destroy(&s->owed_label->base);
   free(s);
 }
 
@@ -107,6 +119,19 @@ void step_scale_layout(StepScaleWidget_t *s, SDL_Rect region) {
     text_widget_set_text(s->label, buf);
     ui_widget_place(&s->label->base, region.x + (region.w - s->label->base.rect.w) / 2, region.y);
   }
+
+  if (s->owed_label && s->owed > 0) {
+    char obuf[20];
+    snprintf(obuf, sizeof obuf, "(%u)", (unsigned)s->owed);
+    text_widget_set_text(s->owed_label, obuf);
+    int gap = s->label ? s->label->base.rect.h / 2 : 4;
+    int ox = s->label ? s->label->base.rect.x + s->label->base.rect.w + gap : region.x;
+    ui_widget_place(&s->owed_label->base, ox, region.y);
+  }
+}
+
+void step_scale_set_owed(StepScaleWidget_t *s, uint32_t owed) {
+  s->owed = owed;
 }
 
 bool step_scale_handle(StepScaleWidget_t *s, const SDL_Event *e, SDL_Point mouse) {

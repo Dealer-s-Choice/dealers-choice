@@ -356,16 +356,21 @@ ERecvStatus_t recv_game_state(SocketContext_t *socket_context, GameState_t *game
       client_state->turn_switch = true;
       break;
     case MSG_BET_CHECK_FOLD:
-      client_state->bet_check_fold = true;
-      break;
     case MSG_CALL_RAISE_FOLD:
-      client_state->call_raise_fold = true;
-      break;
     case MSG_CALL_COMPLETE_FOLD:
-      client_state->call_complete_fold = true;
-      break;
     case MSG_COMPLETE_CHECK_FOLD:
-      client_state->complete_check_fold = true;
+      /* All action prompts carry the amount owed to call (0 for the check
+       * variants), so the client can show it by the bet scale (#60). */
+      if (size >= OPCODE_SIZE + 4)
+        client_state->owed = tcpme_get_be32(buffer + OPCODE_SIZE);
+      if (opcode == MSG_BET_CHECK_FOLD)
+        client_state->bet_check_fold = true;
+      else if (opcode == MSG_CALL_RAISE_FOLD)
+        client_state->call_raise_fold = true;
+      else if (opcode == MSG_CALL_COMPLETE_FOLD)
+        client_state->call_complete_fold = true;
+      else
+        client_state->complete_check_fold = true;
       break;
     case MSG_DRAW_PROMPT:
       if (size != 2) {
