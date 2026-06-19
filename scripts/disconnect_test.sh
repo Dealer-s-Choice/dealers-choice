@@ -14,7 +14,7 @@
 #                        disconnected" and reconnect/auth events)
 #   bot{1..4}.log        each bot's per-decision verbose log
 #   bot{1..4}_runs.log   wrapper log: timestamps of every (re)start
-#   hands.jsonl          server's --server-log-hands output
+#   hands.jsonl          server's --log-hands output
 #   disconnect_events    one line per disconnect cycle (start ts, victim, gap_s)
 #   game_results.md      existing markdown game log
 
@@ -62,9 +62,9 @@ trap cleanup EXIT INT TERM
 
 echo "Starting server on port $PORT (out: $OUT_DIR), running ${DURATION}s" >&2
 "$SERVER" \
-  --server-conf "$OUT_DIR/server.conf" \
-  --server-log-hands "$OUT_DIR/hands.jsonl" \
-  --server-log-game-results "$OUT_DIR/game_results.md" \
+  --conf "$OUT_DIR/server.conf" \
+  --log-hands "$OUT_DIR/hands.jsonl" \
+  --log-game-results "$OUT_DIR/game_results.md" \
   >"$OUT_DIR/server.log" 2>&1 &
 SERVER_PID=$!
 

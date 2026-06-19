@@ -4,7 +4,7 @@
 
 The server reads
 [data/server.conf](https://github.com/Dealer-s-Choice/dealers_choice/blob/trunk/data/server.conf)
-on startup (or the file specified via `--server-conf`).
+on startup (or the file specified via `--conf`).
 
 ### Password
 

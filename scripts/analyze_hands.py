@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Independently rank the showdown hands logged by --server-log-hands and
+"""Independently rank the showdown hands logged by --log-hands and
 verify the server's declared winner.
 
 Reads the JSON-lines file written by the server (one line per showdown or

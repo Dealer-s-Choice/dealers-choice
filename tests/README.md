@@ -57,7 +57,7 @@ The fuzzer cycles through every variant (5-card draw / showdown / stud
 {5,6,7}-card / California lowball / Texas Hold'em / Omaha / 7-card
 no-peek, each in non-wild and where applicable wild form) and writes
 one JSON object per hand in the same format the server emits via
-`--server-log-hands`.  `analyze_hands.py` independently ranks every
+`--log-hands`.  `analyze_hands.py` independently ranks every
 hand and asserts pokeval's declared winner matches.
 
 Override the count and seed via env vars when running through meson:
@@ -83,7 +83,7 @@ Defaults: 90 seconds, output under
   `end_of_game_timeout`, password set)
 - `server.log` — server stdout/stderr
 - `bot{1..3}.log` — verbose bot decision traces
-- `hands.jsonl` — `--server-log-hands` output
+- `hands.jsonl` — `--log-hands` output
 - `game_results.md` — markdown game log
 
 Pipe `hands.jsonl` to `scripts/analyze_hands.py` after the run to

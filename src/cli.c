@@ -148,9 +148,9 @@ CliArgs_t parse_cli_args(int argc, char *argv[]) {
 
 CliArgs_t parse_server_args(int argc, char *argv[]) {
   enum {
-    OPT_SERVER_LOG_GAME_RESULTS = 1,
-    OPT_SERVER_LOG_HANDS,
-    OPT_SERVER_CONF,
+    OPT_LOG_GAME_RESULTS = 1,
+    OPT_LOG_HANDS,
+    OPT_CONF,
     OPT_BIND,
     OPT_PORT,
     OPT_VERSION,
@@ -162,9 +162,9 @@ CliArgs_t parse_server_args(int argc, char *argv[]) {
   };
 
   static const glopt_option_t options[] = {
-      {"server-log-game-results", GLOPT_REQUIRED_ARG, OPT_SERVER_LOG_GAME_RESULTS, 0},
-      {"server-log-hands", GLOPT_REQUIRED_ARG, OPT_SERVER_LOG_HANDS, 0},
-      {"server-conf", GLOPT_REQUIRED_ARG, OPT_SERVER_CONF, 0},
+      {"log-game-results", GLOPT_REQUIRED_ARG, OPT_LOG_GAME_RESULTS, 0},
+      {"log-hands", GLOPT_REQUIRED_ARG, OPT_LOG_HANDS, 0},
+      {"conf", GLOPT_REQUIRED_ARG, OPT_CONF, 0},
       {"bind-address", GLOPT_REQUIRED_ARG, OPT_BIND, 0},
       {"port", GLOPT_REQUIRED_ARG, OPT_PORT, 0},
       {"version", GLOPT_NO_ARG, OPT_VERSION, 0},
@@ -188,13 +188,13 @@ CliArgs_t parse_server_args(int argc, char *argv[]) {
   int opt;
   while ((opt = glopt_next(&parser, argc, argv)) != -1) {
     switch (opt) {
-    case OPT_SERVER_LOG_GAME_RESULTS:
+    case OPT_LOG_GAME_RESULTS:
       cli_args.server_log_game_results_file = parser.optarg;
       break;
-    case OPT_SERVER_LOG_HANDS:
+    case OPT_LOG_HANDS:
       cli_args.server_log_hands_file = parser.optarg;
       break;
-    case OPT_SERVER_CONF:
+    case OPT_CONF:
       cli_args.server_conf = parser.optarg;
       break;
     case OPT_BIND:
@@ -233,15 +233,15 @@ CliArgs_t parse_server_args(int argc, char *argv[]) {
       fputs("Usage: " DEALERSCHOICE_NAME "-server [options]\n"
             "  --bind-address [IP]        Address to bind to (default: all interfaces)\n"
             "  --port [port]\n"
-            "  --server-conf [path]       Alternate server config file\n"
-            "  --server-log-game-results [path]\n"
+            "  --conf [path]              Alternate server config file\n"
+            "  --log-game-results [path]\n"
             "  --verbose\n"
             "  --debug                    Verbose plus per-opcode trace (DC_LOG_DEBUG)\n"
             "  --log-file [path]          Write timestamped diagnostics to a file\n"
             "  --version\n"
             "\n"
             "Testing options:\n"
-            "  --server-log-hands [path]\n"
+            "  --log-hands [path]\n"
             "  --disable-timeout          Do not disconnect players who exceed the action "
             "timeout\n"
             "  --autodeal                 Auto-deal hands (implies --disable-timeout)\n",

@@ -1,7 +1,7 @@
 /*
  * pokeval_fuzz — generate random hands across every supported variant,
  * call into pokeval to find the winner(s), and emit one JSON object per
- * hand in the same format the server uses for --server-log-hands.
+ * hand in the same format the server uses for --log-hands.
  *
  * scripts/analyze_hands.py can then run across the output to compare
  * pokeval's verdict against an independent Python evaluator.  Any
