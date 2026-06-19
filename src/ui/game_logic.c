@@ -597,12 +597,14 @@ EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
   int32_t prev_coins[MAX_PLAYERS];
   bool was_in[MAX_PLAYERS];
   POKEVAL_Hand_9 preserved_hands[MAX_PLAYERS];
+  bool folded_showing[MAX_PLAYERS];
   int last_bettor_id = 0;
   for (int i = 0; i < MAX_PLAYERS; i++) {
     was_connected[i] = game_state->player[i].is_connected;
     prev_coins[i] = game_state->player[i].coins;
     was_in[i] = game_state->player[i].in;
     preserved_hands[i] = game_state->player[i].hand;
+    folded_showing[i] = false;
   }
 
   char status_msgs[SIZEOF_STATUS_MSGS][LEN_STATUS_STR] = {0};
@@ -753,9 +755,14 @@ EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
       running = false;
     } else if (recv_status == RECV_SUCCESS) {
       for (int i = 0; i < MAX_PLAYERS; i++) {
-        if (was_in[i] && !game_state->player[i].in)
+        if (game_state->player[i].in)
+          folded_showing[i] = false;
+        if (was_in[i] && !game_state->player[i].in) {
           preserved_hands[i] = prev_hands[i];
-        if (game_state->player[i].is_connected && !game_state->player[i].in)
+          folded_showing[i] = true;
+        }
+        if (folded_showing[i] && game_state->player[i].is_connected &&
+            !game_state->player[i].in)
           game_state->player[i].hand = preserved_hands[i];
         was_in[i] = game_state->player[i].in;
       }

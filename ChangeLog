@@ -8,6 +8,8 @@
     player who joined a hand already in progress then disconnects
   * Show the current game name and Deuces Wild status to a player who joins a
     game already in progress (#223)
+  * Stop showing phantom face-down cards in the slot of an observer who joined
+    a game already in progress (#329)
 
 2026-06-15
 
