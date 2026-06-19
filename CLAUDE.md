@@ -53,6 +53,14 @@ manual GUI client. To stress timing/network paths, add loopback latency per
 `tests/README.md`: `sudo tc qdisc add dev lo root netem delay 75ms 15ms`
 (remove with `... del dev lo root`).
 
+**Verify with `gcc -Werror` before calling a branch CI-ready.** The ASan build
+above uses **clang**, but the CI *gate* compiles with **gcc `-Werror`**, which
+emits warnings clang stays silent on (e.g. `-Wformat-truncation`). A branch that
+is clean under clang/ASan can still red the gate. Do a quick gcc pass before
+pushing: `CC=gcc CFLAGS=-Werror meson setup _build_gcc && meson compile -C
+_build_gcc`. (This bit a subagent branch once — clang-clean, gate-red on a
+truncation warning.)
+
 **Reusable test/dev tooling lives in `~/src/DealersChoice/tools/`** (outside
 the repo — local aids, not project source). Save any new reusable scripts
 there rather than scattering them in `/tmp`; existing ones are `soak.sh` and
