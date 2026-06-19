@@ -683,6 +683,13 @@ void remove_disconnected_player(ArgsBroadcastGameState_t *args, const int8_t id)
   args->clients[id] = TCPME_INVALID_SOCKET;
   args->slot_taken[id] = false;
 
+  /* Whether this player was actually in the current hand. player_count tracks
+   * in-hand players (set at hand start, decremented by handle_fold). A mid-hand
+   * joiner spectates with in==false and was never counted, and a folded player
+   * was already decremented — decrementing again for either would falsely drop
+   * player_count and end the hand for everyone else (observer-quit regression). */
+  const bool was_in = p->in;
+
   // Reset player info
   p->coins = args->config->starting_coins;
   p->winner = false;
@@ -691,19 +698,22 @@ void remove_disconnected_player(ArgsBroadcastGameState_t *args, const int8_t id)
 
   // If the disconnect happened during a game, not at the menu
   if (args->game_state->player_count > 0) {
-    args->game_state->player_count--;
     char status_str[LEN_STATUS_STR] = {0};
     snprintf(status_str, sizeof status_str, _("%s disconnected"), p->nick);
     broadcast_status_message(args, status_str);
 
-    /* Only rotate the turn pointer if play_game is still active — between
-     * hands `args->starting_turn` is NULL because its backing storage
-     * lives on play_game's (returned) stack frame.  Without this guard
-     * we'd dereference dead stack memory (caught by ASan as
-     * stack-use-after-return). */
-    if (args->starting_turn && *args->starting_turn && args->game_state->player_count > 1)
-      if ((*args->starting_turn)->id == id)
-        *args->starting_turn = get_next_player(args->game_state->player, id);
+    if (was_in) {
+      args->game_state->player_count--;
+
+      /* Only rotate the turn pointer if play_game is still active — between
+       * hands `args->starting_turn` is NULL because its backing storage
+       * lives on play_game's (returned) stack frame.  Without this guard
+       * we'd dereference dead stack memory (caught by ASan as
+       * stack-use-after-return). */
+      if (args->starting_turn && *args->starting_turn && args->game_state->player_count > 1)
+        if ((*args->starting_turn)->id == id)
+          *args->starting_turn = get_next_player(args->game_state->player, id);
+    }
   }
 
   memset(p->nick, 0, sizeof(p->nick));

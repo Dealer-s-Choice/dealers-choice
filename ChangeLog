@@ -4,6 +4,8 @@
   + The server is now a separate program, dealers-choice-server.
   * Fix a crash where the GUI client could use a huge amount of memory and
     be killed soon after joining a game (#334)
+  * Fix the hand ending too early, or declaring the wrong winner, when a
+    player who joined a hand already in progress then disconnects
 
 2026-06-15
 
