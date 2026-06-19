@@ -234,6 +234,22 @@ executable(
   install: true,
 )
 
+# Headless server registry (directory). Links libdc_core only (no SDL).
+executable(
+  meson.project_name() + '-registry',
+  ['src/registry/registry_main.c'],
+  dependencies: dc_core_dep,
+  install: true,
+)
+
+# Manual registry test tool (not installed).
+executable(
+  'registry-probe',
+  ['src/registry/registry_probe.c'],
+  dependencies: dc_core_dep,
+  install: false,
+)
+
 install_subdir(
   'data',
   install_dir: join_paths(get_option('datadir'), meson.project_name()),

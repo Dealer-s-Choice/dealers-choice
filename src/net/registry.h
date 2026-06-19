@@ -29,9 +29,9 @@
 
 #define REGISTRY_PROTOCOL_VERSION 1
 
-/* Default TCP port for the registry. Distinct from the game port (22777), the
+/* Default TCP port for the registry. Well clear of the game port (22777), the
  * test base port (22778), and LAN discovery (22787). Operator-configurable. */
-#define REGISTRY_DEFAULT_PORT "22789"
+#define REGISTRY_DEFAULT_PORT "22070"
 
 /* Max advertised server-name length (excluding the terminating NUL). */
 #define REGISTRY_NAME_MAX 32
