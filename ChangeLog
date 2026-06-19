@@ -1,4 +1,5 @@
 - (in-progress)
+  + New poker variant: 5-card triple draw (three draw rounds) (#59)
   + LAN game discovery: the connect screen now lists DC servers running on
     your local network; click one to join
   + The server is now a separate program, dealers-choice-server.

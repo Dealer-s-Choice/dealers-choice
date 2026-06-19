@@ -58,6 +58,7 @@ game_logic = [
   'check',
   '5_card_showdown',
   '5_card_draw',
+  '5_card_triple_draw',
   '5_card_stud',
   'kick_ban',
   'texas_holdem',
