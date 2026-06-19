@@ -34,6 +34,7 @@
 #include "dc_config.h"
 #include "dc_windows.h"
 #include "layout_config.h"
+#include "net/registry.h"
 #include "util.h"
 
 /* Atomically replace dst with src. POSIX rename() does this directly; on
@@ -81,6 +82,8 @@ const ConfigEntry server_config_entries[] = {
     {"bind_address", CFG_TYPE_STRING, "127.0.0.1", offsetof(ServerConfig_t, bind_address),
      sizeof(((ServerConfig_t *)0)->bind_address)},
     {"port", CFG_TYPE_UINT16, DEFAULT_PORT, offsetof(ServerConfig_t, port), sizeof(uint16_t)},
+    {"server_name", CFG_TYPE_STRING, "Dealer's Choice server",
+     offsetof(ServerConfig_t, server_name), sizeof(((ServerConfig_t *)0)->server_name)},
     {"end_of_game_timeout", CFG_TYPE_UINT32, "15", offsetof(ServerConfig_t, end_of_game_timeout_ms),
      sizeof(uint32_t)},
     {"action_timeout", CFG_TYPE_UINT32, "30", offsetof(ServerConfig_t, action_timeout_ms),
@@ -320,6 +323,32 @@ void player_config_set_field(PlayerConfig_t *cfg, size_t entry_idx, const char *
   config_set_from_string_real(cfg, &player_config_entries[entry_idx], val);
 }
 
+/* Parse "host" or "host:port" (one ':' only, so IPv6 literals stay intact —
+ * use a hostname for a custom-port IPv6 registry) and append to the list. */
+static void add_registry(ServerConfig_t *cfg, const char *spec) {
+  if (!spec || !*spec || cfg->registry_count >= MAX_REGISTRIES)
+    return;
+  char host[REGISTRY_HOST_LEN];
+  snprintf(host, sizeof host, "%s", spec);
+  uint16_t port = (uint16_t)atoi(REGISTRY_DEFAULT_PORT);
+  char *colon = strrchr(host, ':');
+  if (colon && colon[1] && strchr(host, ':') == colon) {
+    bool digits = true;
+    for (const char *p = colon + 1; *p; p++)
+      if (*p < '0' || *p > '9') {
+        digits = false;
+        break;
+      }
+    if (digits) {
+      *colon = '\0';
+      port = (uint16_t)atoi(colon + 1);
+    }
+  }
+  snprintf(cfg->registry_host[cfg->registry_count], REGISTRY_HOST_LEN, "%s", host);
+  cfg->registry_port[cfg->registry_count] = port;
+  cfg->registry_count++;
+}
+
 ServerConfig_t get_server_config(Path_t *path, const CliArgs_t *cli_args) {
   ServerConfig_t config = {0};
 
@@ -354,6 +383,16 @@ ServerConfig_t get_server_config(Path_t *path, const CliArgs_t *cli_args) {
         unsigned long v;
         parse_unsigned(attr, UINT32_MAX, &v);
         config.bet_amounts[config.bet_amount_count++] = (uint32_t)v;
+        canfigger_free_current_attr_str_advance(cfg_node->attributes, &attr);
+      }
+    } else if (strcasecmp(cfg_node->key, "registry") == 0) {
+      /* registry = host1, host2:port  (first token is the value, rest attrs) */
+      if (cfg_node->value)
+        add_registry(&config, cfg_node->value);
+      char *attr = NULL;
+      canfigger_free_current_attr_str_advance(cfg_node->attributes, &attr);
+      while (attr) {
+        add_registry(&config, attr);
         canfigger_free_current_attr_str_advance(cfg_node->attributes, &attr);
       }
     } else {

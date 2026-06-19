@@ -158,6 +158,7 @@ CliArgs_t parse_server_args(int argc, char *argv[]) {
     OPT_DEBUG,
     OPT_DISABLE_TIMEOUT,
     OPT_AUTODEAL,
+    OPT_DISABLE_PUBLISH,
     OPT_LOG_FILE,
   };
 
@@ -172,6 +173,7 @@ CliArgs_t parse_server_args(int argc, char *argv[]) {
       {"debug", GLOPT_NO_ARG, OPT_DEBUG, 0},
       {"disable-timeout", GLOPT_NO_ARG, OPT_DISABLE_TIMEOUT, 0},
       {"autodeal", GLOPT_NO_ARG, OPT_AUTODEAL, 0},
+      {"disable-publish", GLOPT_NO_ARG, OPT_DISABLE_PUBLISH, 0},
       {"log-file", GLOPT_REQUIRED_ARG, OPT_LOG_FILE, 0},
       {NULL, 0, 0, 0}};
 
@@ -223,6 +225,9 @@ CliArgs_t parse_server_args(int argc, char *argv[]) {
     case OPT_AUTODEAL:
       cli_args.autodeal = true;
       cli_args.disable_timeout = true;
+      break;
+    case OPT_DISABLE_PUBLISH:
+      cli_args.disable_publish = true;
       break;
     case OPT_LOG_FILE:
       dc_log_set_file(parser.optarg);

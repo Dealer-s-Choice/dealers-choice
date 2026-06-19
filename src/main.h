@@ -43,6 +43,7 @@ typedef struct {
   bool autodeal;
   bool auto_connect;
   bool card_preview;
+  bool disable_publish; /* don't announce to any registry (#33) */
 } CliArgs_t;
 
 #endif

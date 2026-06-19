@@ -35,9 +35,16 @@
 #include "net.h"
 #include "util.h"
 
+#define MAX_REGISTRIES 4
+#define REGISTRY_HOST_LEN 64
+
 typedef struct ServerConfig_t {
   char bind_address[TCPME_ADDRSTRLEN];
   uint16_t port;
+  char server_name[64]; /* advertised to LAN discovery + the registry (#33) */
+  char registry_host[MAX_REGISTRIES][REGISTRY_HOST_LEN]; /* registries to publish to */
+  uint16_t registry_port[MAX_REGISTRIES];
+  uint8_t registry_count;
   uint32_t end_of_game_timeout_ms;
   uint32_t action_timeout_ms;
   uint32_t dealer_timeout_ms;

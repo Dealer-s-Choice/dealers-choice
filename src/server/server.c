@@ -35,6 +35,7 @@
 #include "game.h"
 #include "globals.h"
 #include "lan_discovery.h"
+#include "registry.h"
 #include "server.h"
 #include "server_internal.h"
 #include "util.h"
@@ -1038,12 +1039,69 @@ static void service_lan_discovery(ArgsBroadcastGameState_t *args, bool in_progre
     info.max_players = MAX_CLIENTS;
     info.password_protected = (args->config->password[0] != '\0');
     info.in_progress = in_progress;
+    snprintf(info.name, sizeof info.name, "%.*s", (int)(sizeof info.name - 1),
+             args->config->server_name);
     lan_discovery_answer(args->lan_discovery_sock, &info);
+  }
+}
+
+/* Registry publish policy (DC-owned; tcpme stays generic). */
+#define REG_PUB_HEARTBEAT_MS 30000u     /* normal heartbeat interval */
+#define REG_PUB_BACKOFF_MID_MS 120000u  /* after 3 consecutive failures */
+#define REG_PUB_BACKOFF_LONG_MS 300000u /* after 6 consecutive failures */
+#define REG_PUB_CONNECT_MS 300u         /* bounded connect — won't stall the game */
+#define REG_PUB_IO_MS 2000u
+
+/* Announce/heartbeat this server to every configured registry. Non-blocking
+ * (bounded connect) and rate-limited with exponential backoff (30s normal;
+ * 2 min after 3 fails; 5 min after 6) so a down/slow registry never stalls
+ * gameplay (#33). */
+static void service_registry_publish(ArgsBroadcastGameState_t *args) {
+  if (args->cli_args->disable_publish || args->config->registry_count == 0)
+    return;
+  static uint32_t last_attempt = 0;
+  static uint32_t interval = 0; /* 0 => attempt on the first call */
+  static int fail_count = 0;
+  uint32_t now = dc_get_ticks();
+  if (interval != 0 && now - last_attempt < interval)
+    return;
+  last_attempt = now;
+
+  RegistryServer_t info = {0};
+  info.tcp_port = args->lan_port;
+  info.player_count = count_active_clients(args->slot_taken);
+  info.max_players = MAX_CLIENTS;
+  info.password_protected = (args->config->password[0] != '\0');
+  info.in_progress = !args->game_state->at_menu;
+  snprintf(info.name, sizeof info.name, "%.*s", (int)(sizeof info.name - 1),
+           args->config->server_name);
+
+  bool any_ok = false;
+  for (int i = 0; i < args->config->registry_count; i++) {
+    tcpme_socket_t s = tcpme_connect_timeout(args->config->registry_host[i],
+                                             args->config->registry_port[i], REG_PUB_CONNECT_MS);
+    if (!tcpme_socket_valid(s))
+      continue;
+    tcpme_set_timeout(s, REG_PUB_IO_MS);
+    if (registry_send_announce(s, &info) == 0)
+      any_ok = true;
+    tcpme_close(s);
+  }
+
+  if (any_ok) {
+    fail_count = 0;
+    interval = REG_PUB_HEARTBEAT_MS;
+  } else {
+    fail_count++;
+    interval = (fail_count >= 6)   ? REG_PUB_BACKOFF_LONG_MS
+               : (fail_count >= 3) ? REG_PUB_BACKOFF_MID_MS
+                                   : REG_PUB_HEARTBEAT_MS;
   }
 }
 
 ELoop_t register_new_client(ArgsBroadcastGameState_t *args) {
   service_lan_discovery(args, true);
+  service_registry_publish(args);
   // checks for and accepts incoming connections
   tcpme_socket_t new_client = tcpme_accept(*args->server_sock);
   if (tcpme_socket_valid(new_client)) {
