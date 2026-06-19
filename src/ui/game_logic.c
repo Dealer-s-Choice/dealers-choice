@@ -298,13 +298,38 @@ enum {
 
 typedef struct {
   const char *text;
+  const char *past_tense; /* announced to other players when this action is taken (#74) */
 } ActionButtonAttrs;
 
 static const ActionButtonAttrs action_button_attrs[MAX_ACTIONS] = {
-    [CHECK] = {N_("Check")},     [BET] = {N_("Bet")},     [FOLD] = {N_("Fold")},
-    [CALL] = {N_("Call")},       [RAISE] = {N_("Raise")}, [COMPLETE] = {N_("Complete")},
-    [DISCARD] = {N_("Discard")},
+    [CHECK] = {N_("Check"), N_("checked")},  [BET] = {N_("Bet"), N_("bet")},
+    [FOLD] = {N_("Fold"), N_("folded")},     [CALL] = {N_("Call"), N_("called")},
+    [RAISE] = {N_("Raise"), N_("raised")},   [COMPLETE] = {N_("Complete"), N_("completed")},
+    [DISCARD] = {N_("Discard"), N_("drew")},
 };
+
+/* Map a wire announce verb (EActionAnnounce_t) to its action-button index, so the
+ * client renders the action in its own locale instead of the server's (#74). */
+static int action_button_for_verb(int verb) {
+  switch (verb) {
+  case ANNOUNCE_CHECKED:
+    return CHECK;
+  case ANNOUNCE_BET:
+    return BET;
+  case ANNOUNCE_FOLDED:
+    return FOLD;
+  case ANNOUNCE_CALLED:
+    return CALL;
+  case ANNOUNCE_RAISED:
+    return RAISE;
+  case ANNOUNCE_COMPLETED:
+    return COMPLETE;
+  case ANNOUNCE_DREW:
+    return DISCARD;
+  default:
+    return -1;
+  }
+}
 
 static SDL_Keycode action_hotkey(int action) {
   switch (action) {
@@ -783,6 +808,22 @@ EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
         winner_highlighted = false;
       } else if (!winner_highlighted) {
         cards_created = false;
+      }
+
+      /* Render a player's action in our own locale from the wire code (#74). */
+      if (client_state.action_announce_pending) {
+        client_state.action_announce_pending = false;
+        int bidx = action_button_for_verb(client_state.action_announce_verb);
+        int8_t aid = client_state.action_announce_player;
+        if (bidx >= 0 && aid >= 0 && aid < MAX_PLAYERS) {
+          const char *verb_str = _(action_button_attrs[bidx].past_tense);
+          const char *nick = game_state->player[aid].nick;
+          if (client_state.action_announce_amount > 0)
+            snprintf(client_state.server_status_str, LEN_STATUS_STR, "%s %s %u", nick, verb_str,
+                     client_state.action_announce_amount);
+          else
+            snprintf(client_state.server_status_str, LEN_STATUS_STR, "%s %s", nick, verb_str);
+        }
       }
     }
 

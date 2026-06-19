@@ -56,12 +56,27 @@ typedef enum {
   ACTION_FOLD = 0x05
 } EPlayerAction_t;
 
+/* Past-tense action codes the server broadcasts (MSG_ACTION_ANNOUNCE); the
+ * client maps each to a translated string so the server's locale never leaks
+ * onto the wire (#74). Wire values are frozen — append only. */
+typedef enum {
+  ANNOUNCE_NONE = -1,
+  ANNOUNCE_CHECKED = 0,
+  ANNOUNCE_BET = 1,
+  ANNOUNCE_FOLDED = 2,
+  ANNOUNCE_CALLED = 3,
+  ANNOUNCE_RAISED = 4,
+  ANNOUNCE_COMPLETED = 5,
+  ANNOUNCE_DREW = 6,
+} EActionAnnounce_t;
+
 #define SIZE_MESSAGE_GAME_SELECT 4
 
 typedef struct {
   uint8_t action;
   uint32_t amount; // only used for bet/raise
   const char *str;
+  int verb; // EActionAnnounce_t for the wire announcement; ANNOUNCE_NONE if none
 } PlayerActionMsg_t;
 
 typedef struct {

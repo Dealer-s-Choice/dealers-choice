@@ -10,6 +10,8 @@
     game already in progress (#223)
   * Stop showing phantom face-down cards in the slot of an observer who joined
     a game already in progress (#329)
+  + Player action messages (checked, bet, folded, etc.) are now translatable by
+    the client instead of being fixed in the server's language (#74)
 
 2026-06-15
 

@@ -92,6 +92,7 @@ typedef enum {
   // Bring-in round opcodes: Complete = raise to the full small bet (not a full raise).
   MSG_CALL_COMPLETE_FOLD = 0x0011,  // Other players: call bring-in, complete, or fold
   MSG_COMPLETE_CHECK_FOLD = 0x0012, // Bring-in player's second turn: complete or check
+  MSG_ACTION_ANNOUNCE = 0x0013,     // A player's action, as a code the client translates (#74)
 } EMsgOpcode_t;
 
 #define DEFAULT_PORT "22777"
@@ -120,6 +121,10 @@ typedef struct {
   bool last_chance_played;
   char server_status_str[LEN_STATUS_STR];
   bool play_coin_sound;
+  bool action_announce_pending;
+  int8_t action_announce_player;
+  int32_t action_announce_verb;
+  uint32_t action_announce_amount;
   bool bet_check_fold;
   bool call_raise_fold;
   bool call_complete_fold;

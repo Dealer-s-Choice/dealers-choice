@@ -59,6 +59,8 @@ typedef enum {
 void broadcast_game_state(ArgsBroadcastGameState_t *args);
 void broadcast_turn_id(const ArgsBroadcastGameState_t *args);
 void broadcast_status_message(const ArgsBroadcastGameState_t *args, const char *msg);
+void broadcast_action_announce(const ArgsBroadcastGameState_t *args, int8_t player_id, int verb,
+                              uint32_t amount);
 void broadcast_game_type(const ArgsBroadcastGameState_t *args);
 
 uint8_t count_active_clients(const bool *slot_taken);

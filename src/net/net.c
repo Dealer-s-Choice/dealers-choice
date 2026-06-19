@@ -426,10 +426,22 @@ ERecvStatus_t recv_game_state(SocketContext_t *socket_context, GameState_t *game
       snprintf(client_state->server_status_str, sizeof(client_state->server_status_str), "%.*s",
                (int)msg_len, (char *)&buffer[2]);
       // fprintf(stderr, "[Status Message] %s\n", client_state->server_status_str);
-      if (strstr(client_state->server_status_str, "bet") ||
-          strstr(client_state->server_status_str, "call") ||
-          strstr(client_state->server_status_str, "raise"))
+    } break;
+
+    case MSG_ACTION_ANNOUNCE: {
+      ActionAnnounce *aa = action_announce__unpack(NULL, size - OPCODE_SIZE, buffer + OPCODE_SIZE);
+      if (!aa) {
+        fputs("Failed to unpack ActionAnnounce protobuf\n", stderr);
+        break;
+      }
+      client_state->action_announce_pending = true;
+      client_state->action_announce_player = (int8_t)aa->player_id;
+      client_state->action_announce_verb = aa->verb;
+      client_state->action_announce_amount = aa->amount;
+      if (aa->verb == ANNOUNCE_BET || aa->verb == ANNOUNCE_CALLED || aa->verb == ANNOUNCE_RAISED ||
+          aa->verb == ANNOUNCE_COMPLETED)
         client_state->play_coin_sound = true;
+      action_announce__free_unpacked(aa, NULL);
     } break;
 
     case MSG_NEW_HAND: {

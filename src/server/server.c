@@ -452,6 +452,42 @@ int send_status_message(tcpme_socket_t sock, const char *msg) {
   return send_message(sock, MSG_STATUS_MESSAGE, (const uint8_t *)msg, msg_len);
 }
 
+static int send_action_announce(tcpme_socket_t sock, int8_t player_id, int verb, uint32_t amount) {
+  ActionAnnounce msg = ACTION_ANNOUNCE__INIT;
+  msg.player_id = player_id;
+  msg.verb = verb;
+  msg.amount = amount;
+
+  uint8_t buf[32];
+  size_t len = action_announce__get_packed_size(&msg);
+  action_announce__pack(&msg, buf);
+
+  return send_message(sock, MSG_ACTION_ANNOUNCE, buf, len);
+}
+
+void broadcast_action_announce(const ArgsBroadcastGameState_t *args, int8_t player_id, int verb,
+                              uint32_t amount) {
+  if (count_active_clients(args->slot_taken) == 0)
+    return;
+  int8_t pl_idx = args->turn_id;
+  Player_t *recipient = &args->game_state->player[pl_idx];
+  if (!recipient->is_connected)
+    recipient = get_next_connected_client(args->game_state->player, pl_idx);
+  Player_t *start = recipient;
+
+  do {
+    pl_idx = recipient->id;
+    tcpme_socket_t sock = args->clients[pl_idx];
+    if (!tcpme_socket_valid(sock))
+      continue;
+
+    if (send_action_announce(sock, player_id, verb, amount) < 0)
+      fprintf(stderr, "[broadcast_action_announce] Failed to send to client %d\n", pl_idx);
+
+    recipient = get_next_connected_client(args->game_state->player, pl_idx);
+  } while (recipient && recipient != start);
+}
+
 void broadcast_status_message(const ArgsBroadcastGameState_t *args, const char *msg) {
   if (count_active_clients(args->slot_taken) == 0)
     return;

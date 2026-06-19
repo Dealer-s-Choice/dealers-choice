@@ -24,6 +24,7 @@ typedef struct PingRequest PingRequest;
 typedef struct PingResponse PingResponse;
 typedef struct PingEntry PingEntry;
 typedef struct PingBroadcast PingBroadcast;
+typedef struct ActionAnnounce ActionAnnounce;
 
 
 /* --- enums --- */
@@ -155,6 +156,24 @@ struct  PingBroadcast
 #define PING_BROADCAST__INIT \
  { PROTOBUF_C_MESSAGE_INIT (&ping_broadcast__descriptor) \
 , 0,NULL }
+
+
+struct  ActionAnnounce
+{
+  ProtobufCMessage base;
+  int32_t player_id;
+  /*
+   * EActionAnnounce_t
+   */
+  int32_t verb;
+  /*
+   * bet/raise/complete size, or cards drawn; 0 if unused
+   */
+  uint32_t amount;
+};
+#define ACTION_ANNOUNCE__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&action_announce__descriptor) \
+, 0, 0, 0 }
 
 
 /* Card methods */
@@ -328,6 +347,25 @@ PingBroadcast *
 void   ping_broadcast__free_unpacked
                      (PingBroadcast *message,
                       ProtobufCAllocator *allocator);
+/* ActionAnnounce methods */
+void   action_announce__init
+                     (ActionAnnounce         *message);
+size_t action_announce__get_packed_size
+                     (const ActionAnnounce   *message);
+size_t action_announce__pack
+                     (const ActionAnnounce   *message,
+                      uint8_t             *out);
+size_t action_announce__pack_to_buffer
+                     (const ActionAnnounce   *message,
+                      ProtobufCBuffer     *buffer);
+ActionAnnounce *
+       action_announce__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   action_announce__free_unpacked
+                     (ActionAnnounce *message,
+                      ProtobufCAllocator *allocator);
 /* --- per-message closures --- */
 
 typedef void (*Card_Closure)
@@ -357,6 +395,9 @@ typedef void (*PingEntry_Closure)
 typedef void (*PingBroadcast_Closure)
                  (const PingBroadcast *message,
                   void *closure_data);
+typedef void (*ActionAnnounce_Closure)
+                 (const ActionAnnounce *message,
+                  void *closure_data);
 
 /* --- services --- */
 
@@ -373,6 +414,7 @@ extern const ProtobufCMessageDescriptor ping_request__descriptor;
 extern const ProtobufCMessageDescriptor ping_response__descriptor;
 extern const ProtobufCMessageDescriptor ping_entry__descriptor;
 extern const ProtobufCMessageDescriptor ping_broadcast__descriptor;
+extern const ProtobufCMessageDescriptor action_announce__descriptor;
 
 PROTOBUF_C__END_DECLS
 

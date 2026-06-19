@@ -230,10 +230,7 @@ ELoop_t handle_draw(ArgsBroadcastGameState_t *args, tcpme_socket_t sock, const i
     // puts("");
   }
 
-  char status_str[LEN_STATUS_STR] = {0};
-  snprintf(status_str, sizeof status_str, "%s drew %d", args->game_state->player[id].nick,
-           req.discard_count);
-  broadcast_status_message(args, status_str);
+  broadcast_action_announce(args, id, ANNOUNCE_DREW, req.discard_count);
 
   if (req.discard_count > 0) {
     handle_sort_hand(&args->real_hand[id],
@@ -247,6 +244,7 @@ ELoop_t handle_draw(ArgsBroadcastGameState_t *args, tcpme_socket_t sock, const i
 
 static EPlayerAction_t handle_check(PlayerActionMsg_t *action) {
   action->str = _("checked");
+  action->verb = ANNOUNCE_CHECKED;
   return ACTION_CHECK;
 }
 
@@ -262,6 +260,7 @@ static EPlayerAction_t handle_fold(GameState_t *game_state, POKEVAL_Hand_9 *real
   if (game_state->player_count > 1 && turn == *starting_turn)
     *starting_turn = get_next_player(game_state->player, turn->id);
   action->str = _("folded");
+  action->verb = ANNOUNCE_FOLDED;
   return ACTION_FOLD;
 }
 
@@ -406,6 +405,7 @@ RoundResults handle_round_real(ArgsBroadcastGameState_t *args, uint32_t initial_
     uint32_t wait_ms = args->game_settings->action_timeout_ms;
     uint32_t start = dc_get_ticks();
     PlayerActionMsg_t action = {0};
+    action.verb = ANNOUNCE_NONE;
 
     uint32_t owed = (player_total_paid[turn->id] < total_bets_plus_raises)
                         ? total_bets_plus_raises - player_total_paid[turn->id]
@@ -455,6 +455,7 @@ RoundResults handle_round_real(ArgsBroadcastGameState_t *args, uint32_t initial_
                 server_handle_bet(args->game_state, &player_total_paid[turn->id], turn->id,
                                   action.amount, &total_bets_plus_raises);
                 action.str = (opcode == MSG_COMPLETE_CHECK_FOLD) ? _("completed ") : _("bet ");
+                action.verb = (opcode == MSG_COMPLETE_CHECK_FOLD) ? ANNOUNCE_COMPLETED : ANNOUNCE_BET;
                 break;
               case ACTION_FOLD:
                 handle_fold(args->game_state, args->real_hand, turn, args->starting_turn, &action);
@@ -470,6 +471,7 @@ RoundResults handle_round_real(ArgsBroadcastGameState_t *args, uint32_t initial_
                 server_handle_call(args->game_state, &player_total_paid[turn->id], turn->id,
                                    &total_bets_plus_raises);
                 action.str = _("called");
+                action.verb = ANNOUNCE_CALLED;
                 break;
               case ACTION_BET:
                 // Complete: raise to full bet from the bring-in (MSG_CALL_COMPLETE_FOLD).
@@ -477,6 +479,7 @@ RoundResults handle_round_real(ArgsBroadcastGameState_t *args, uint32_t initial_
                   server_handle_bet(args->game_state, &player_total_paid[turn->id], turn->id,
                                     action.amount, &total_bets_plus_raises);
                   action.str = _("completed ");
+                  action.verb = ANNOUNCE_COMPLETED;
                 } else {
                   fputs("BET received unexpectedly; ignoring\n", stderr);
                 }
@@ -491,10 +494,12 @@ RoundResults handle_round_real(ArgsBroadcastGameState_t *args, uint32_t initial_
                     server_handle_call(args->game_state, &player_total_paid[turn->id], turn->id,
                                        &total_bets_plus_raises);
                     action.str = _("called");
+                    action.verb = ANNOUNCE_CALLED;
                   } else {
                     server_handle_raise(args->game_state, &player_total_paid[turn->id], turn->id,
                                         action.amount, &total_bets_plus_raises);
                     action.str = _("raised ");
+                    action.verb = ANNOUNCE_RAISED;
                   }
                 } else
                   fputs("Raise received; however, max raises has been reached. The client should "
@@ -559,7 +564,8 @@ RoundResults handle_round_real(ArgsBroadcastGameState_t *args, uint32_t initial_
           snprintf(status_str, sizeof status_str, "%s %s", turn->nick, action.str);
       }
 
-      broadcast_status_message(args, status_str);
+      if (action.verb != ANNOUNCE_NONE)
+        broadcast_action_announce(args, turn->id, action.verb, action.amount);
       verbose_puts(status_str);
 
       // player_count might be 1 now, if a player folded due to an action timeout
@@ -584,10 +590,8 @@ RoundResults handle_round_real(ArgsBroadcastGameState_t *args, uint32_t initial_
         break;
       }
     } else {
-      if (action.str != NULL) {
-        snprintf(status_str, sizeof status_str, "%s %s", turn->nick, action.str);
-        broadcast_status_message(args, status_str);
-      }
+      if (action.verb != ANNOUNCE_NONE)
+        broadcast_action_announce(args, turn->id, action.verb, action.amount);
       award_last_player_in_game(args, turn, &results);
       break;
     }
