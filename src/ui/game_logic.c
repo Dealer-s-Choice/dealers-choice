@@ -85,12 +85,16 @@ static void create_card_context(CardWidget_t card_context[MAX_PLAYERS][MAX_HAND_
                                 const SDL_Point *player_pos, TTF_Font *font, const int my_id,
                                 const bool deuces_wild) {
   memset(card_context, 0, sizeof(CardWidget_t) * MAX_PLAYERS * MAX_HAND_SIZE);
+  if (start_i < 0 || start_i >= MAX_PLAYERS)
+    return;
   Player_t *turn = &players_array[start_i];
   Player_t *starting_turn = turn;
   do {
+    const int id = turn->id;
+    if (id < 0 || id >= MAX_PLAYERS)
+      break;
     for (int card_n = 0; card_n < MAX_HAND_SIZE; card_n++) {
       // printf("%d\n", __LINE__);
-      const int id = turn->id;
       DH_Card *card = &(turn->hand.card)[card_n];
       const SDL_Point card_pos = {
           player_pos[id].x + card_n * (g_layout_cfg.card_w + g_layout_cfg.card_padding),
@@ -718,7 +722,11 @@ EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
   client_state.timer_start = SDL_GetTicks();
   client_state.hourglass_rotate_start = client_state.timer_start;
 
-  const int8_t my_id = game_settings->client_id;
+  int8_t my_id = game_settings->client_id;
+  if (my_id < 0 || my_id >= MAX_PLAYERS) {
+    fprintf(stderr, "handle_game_logic: client_id %d out of range\n", my_id);
+    my_id = 0;
+  }
   tcpme_socket_t sock = socket_context->sock;
 
   /* Frame-hitch detection: the loop renders continuously, so a large gap
@@ -762,6 +770,8 @@ EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
       break;
 
     int8_t *turn_id = &client_state.turn_id;
+    if (*turn_id < 0 || *turn_id >= MAX_PLAYERS)
+      *turn_id = 0;
 
     if (!starting_turn)
       starting_turn = &game_state->player[*turn_id];

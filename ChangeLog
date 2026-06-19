@@ -2,6 +2,8 @@
   + LAN game discovery: the connect screen now lists DC servers running on
     your local network; click one to join
   + The server is now a separate program, dealers-choice-server.
+  * Fix a crash where the GUI client could use a huge amount of memory and
+    be killed soon after joining a game (#334)
 
 2026-06-15
 
