@@ -174,6 +174,12 @@ SDL3_net was evaluated as a replacement/supplement for tcpme. It has async DNS, 
 
 ## Styling system — `style.h` / `style.c`
 
+> **STATUS (2026-06-19): planned, NOT yet implemented.** On trunk, `src/ui/style.c`
+> is ~53 lines of hardcoded `SDL_Color` constants; there is no `[styles]` section in
+> `data/layout.conf`, no `StyleConfig_t`/`g_style_cfg`/`get_style_config`/`style_fields`,
+> and no `parse_color`. The design below is the target (task #66) — do not assume these
+> symbols exist.
+
 Widget colors and font choices are configured in the `[styles]` section of `layout.conf` and parsed at startup into `g_style_cfg`. **Do not use libcss or any external CSS library** — CSS is designed for flow-based document layout and does not map to an absolute-positioned SDL2 UI.
 
 ### Files
