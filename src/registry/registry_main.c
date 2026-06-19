@@ -68,7 +68,7 @@ static bool callback_verify(const char *ip, uint16_t port) {
   if (!tcpme_socket_valid(s))
     return false;
   tcpme_set_timeout(s, REG_VERIFY_TIMEOUT_MS);
-  bool ok = (send_protocol_header(s, 0) == 0);
+  bool ok = (send_protocol_header(s, PROTO_FLAG_PROBE) == 0);
   tcpme_close(s);
   return ok;
 }

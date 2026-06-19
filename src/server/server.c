@@ -1087,6 +1087,20 @@ ELoop_t register_new_client(ArgsBroadcastGameState_t *args) {
       }
     }
 
+    /* Validate the protocol header BEFORE allocating a slot. A registry verify
+     * probe (PROTO_FLAG_PROBE) then completes the handshake and disconnects
+     * without taking a slot or logging connect/nickname noise — so it succeeds
+     * even when the server is full (#33). */
+    uint8_t proto_flags = 0;
+    if (recv_and_validate_protocol_header(new_client, &proto_flags) != 0) {
+      tcpme_close(new_client);
+      return LOOP_CONTINUE;
+    }
+    if (proto_flags & PROTO_FLAG_PROBE) {
+      tcpme_close(new_client);
+      return LOOP_CONTINUE;
+    }
+
     int8_t slot = -1;
     for (int8_t i = 0; i < MAX_CLIENTS; i++) {
       if (!args->slot_taken[i]) {
@@ -1115,13 +1129,6 @@ ELoop_t register_new_client(ArgsBroadcastGameState_t *args) {
           args->real_hand[slot].card[i] = DH_card_null;
         memcpy(&args->game_state->player[slot].hand, &args->real_hand[slot],
                sizeof(POKEVAL_Hand_9));
-      }
-
-      uint8_t proto_flags = 0;
-      if (recv_and_validate_protocol_header(new_client, &proto_flags) != 0) {
-        do_socket_cleanup(new_client, args->socket_set, args->slot_taken, slot, NULL,
-                          &args->clients[slot]);
-        return LOOP_CONTINUE;
       }
 
       if (!dc_test_mode) {

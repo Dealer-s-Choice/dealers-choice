@@ -47,6 +47,10 @@
 
 /* Flags sent in GameProtocolHeader_t.flags */
 #define PROTO_FLAG_BOT 0x01
+/* A registry health-check: the connector only verifies the server speaks the
+ * DC protocol, then disconnects. The server completes the handshake without
+ * allocating a slot or expecting a join (#33). */
+#define PROTO_FLAG_PROBE 0x02
 
 /* Cap blocking socket I/O (recv/send) so a stalled or half-dead peer can't
  * wedge a connection; a timeout returns -1 and is handled as a disconnect. */
