@@ -473,6 +473,7 @@ void play_game(ArgsBroadcastGameState_t *args, DH_Deck *deck) {
   const GameChoice_t *choice = find_game_choice_by_type(args->game_type);
 
   if (args->cli_args->server_log_game_results_file) {
+    maybe_log_day_header(args->cli_args->server_log_game_results_file);
     char tmp[LEN_STATUS_STR] = {0};
     snprintf(tmp, sizeof(tmp), _("Game: %s%s"), choice->str,
              args->deuces_wild ? " / Deuces Wild" : "");
