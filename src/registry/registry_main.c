@@ -64,7 +64,7 @@ static void rlog(const char *fmt, ...) {
  * back and doing the version handshake (no password needed). Reuses the game
  * port, so it needs no extra firewall opening on the server's side. */
 static bool callback_verify(const char *ip, uint16_t port) {
-  tcpme_socket_t s = tcpme_connect(ip, port);
+  tcpme_socket_t s = tcpme_connect_timeout(ip, port, REG_VERIFY_TIMEOUT_MS);
   if (!tcpme_socket_valid(s))
     return false;
   tcpme_set_timeout(s, REG_VERIFY_TIMEOUT_MS);

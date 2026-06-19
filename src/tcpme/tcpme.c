@@ -25,6 +25,7 @@
 #else
 #include <arpa/inet.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <netdb.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
@@ -72,6 +73,23 @@ static void set_nosigpipe(tcpme_socket_t sock) {
   setsockopt(sock, SOL_SOCKET, SO_NOSIGPIPE, &one, sizeof(one));
 #else
   (void)sock;
+#endif
+}
+
+/* Toggle a socket's non-blocking mode. Returns 0 on success, -1 on error. */
+static int set_nonblocking(tcpme_socket_t sock, int nonblock) {
+#ifdef _WIN32
+  u_long mode = nonblock ? 1 : 0;
+  return ioctlsocket(sock, FIONBIO, &mode) == 0 ? 0 : -1;
+#else
+  int flags = fcntl(sock, F_GETFL, 0);
+  if (flags < 0)
+    return -1;
+  if (nonblock)
+    flags |= O_NONBLOCK;
+  else
+    flags &= ~O_NONBLOCK;
+  return fcntl(sock, F_SETFL, flags) == 0 ? 0 : -1;
 #endif
 }
 
@@ -275,6 +293,82 @@ tcpme_socket_t tcpme_connect(const char *host, uint16_t port) {
 
   if (sock == TCPME_INVALID_SOCKET)
     set_error_sys("Failed to connect");
+
+  return sock;
+}
+
+tcpme_socket_t tcpme_connect_timeout(const char *host, uint16_t port, uint32_t timeout_ms) {
+  char portstr[8];
+  snprintf(portstr, sizeof(portstr), "%u", (unsigned)port);
+
+  struct addrinfo hints;
+  memset(&hints, 0, sizeof(hints));
+  hints.ai_family = AF_UNSPEC;
+  hints.ai_socktype = SOCK_STREAM;
+  hints.ai_flags = AI_NUMERICSERV;
+
+  struct addrinfo *res = NULL;
+  int rc = getaddrinfo(host, portstr, &hints, &res);
+  if (rc != 0) {
+    set_error(gai_strerror(rc));
+    return TCPME_INVALID_SOCKET;
+  }
+
+  tcpme_socket_t sock = TCPME_INVALID_SOCKET;
+  for (struct addrinfo *ai = res; ai != NULL; ai = ai->ai_next) {
+    sock = socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol);
+    if (sock == TCPME_INVALID_SOCKET)
+      continue;
+    if (set_nonblocking(sock, 1) != 0) {
+      close_socket(sock);
+      sock = TCPME_INVALID_SOCKET;
+      continue;
+    }
+
+    bool connected = (connect(sock, ai->ai_addr, (socklen_t)ai->ai_addrlen) == 0);
+    if (!connected) {
+#ifdef _WIN32
+      bool in_progress = (WSAGetLastError() == WSAEWOULDBLOCK);
+#else
+      bool in_progress = (errno == EINPROGRESS);
+#endif
+      if (in_progress) {
+        fd_set wfds;
+        FD_ZERO(&wfds);
+        FD_SET(sock, &wfds);
+        struct timeval tv;
+        tv.tv_sec = (long)(timeout_ms / 1000);
+        tv.tv_usec = (long)((timeout_ms % 1000) * 1000);
+        int n = select(
+#ifdef _WIN32
+            0,
+#else
+            (int)sock + 1,
+#endif
+            NULL, &wfds, NULL, &tv);
+        if (n > 0 && FD_ISSET(sock, &wfds)) {
+          int so_error = 0;
+          socklen_t len = sizeof(so_error);
+          if (getsockopt(sock, SOL_SOCKET, SO_ERROR, (char *)&so_error, &len) == 0 && so_error == 0)
+            connected = true;
+        }
+      }
+    }
+
+    if (connected) {
+      set_nonblocking(sock, 0); /* restore blocking for normal send/recv */
+      set_nodelay(sock);
+      set_nosigpipe(sock);
+      break;
+    }
+    close_socket(sock);
+    sock = TCPME_INVALID_SOCKET;
+  }
+
+  freeaddrinfo(res);
+
+  if (sock == TCPME_INVALID_SOCKET)
+    set_error_sys("connect timed out or failed");
 
   return sock;
 }

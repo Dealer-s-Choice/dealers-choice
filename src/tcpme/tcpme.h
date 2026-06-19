@@ -118,6 +118,12 @@ tcpme_socket_t tcpme_accept(tcpme_socket_t server_sock);
 // Returns TCPME_INVALID_SOCKET on failure.
 tcpme_socket_t tcpme_connect(const char *host, uint16_t port);
 
+// Like tcpme_connect, but gives up on a non-responsive address after
+// timeout_ms (non-blocking connect + select), so a slow/unreachable host can't
+// block the caller indefinitely. The returned socket is in blocking mode.
+// Returns TCPME_INVALID_SOCKET on failure or timeout.
+tcpme_socket_t tcpme_connect_timeout(const char *host, uint16_t port, uint32_t timeout_ms);
+
 // Close a socket.
 void tcpme_close(tcpme_socket_t sock);
 
