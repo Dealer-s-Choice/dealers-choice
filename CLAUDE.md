@@ -30,6 +30,7 @@ meson test -C _build_dealers_choice -v --suite test_NAME  # single test
 Tests fall into two groups:
 - **Unit tests** (`tests/serialization.c`, `get_next_player.c`, etc.) — compiled C executables.
 - **Game-logic tests** (`tests/game_logic.py`) — Python harness that spawns a server binary + bot client(s) over TCP; each gets a unique port derived from `base_port = 22778` so they run in parallel safely.
+  - **Parallel worktrees collide on these ports.** The unique-port scheme is per *run* — two worktrees (e.g. parallel subagents) running the suite at once reuse the same ports (22782/3/5…) and fail with `tcpme_listen: Address already in use`. Give each worktree a distinct `DC_PORT` base (the harness honours `DC_PORT`) or serialize the game-logic test phase across worktrees.
 
 deckhandler and pokeval are built in-tree (`src/deckhandler`, `src/pokeval`), so their tests run in the normal `_build_dealers_choice` suite — under the `deckhandler` and `pokeval` suite names (`meson test -C _build_dealers_choice --suite pokeval`).
 
