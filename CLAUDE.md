@@ -235,6 +235,15 @@ The parser uses a static `style_fields[]` table (key, `FieldType_t`, `offsetof`,
 - **C standard:** C11 (`-std=c11`), warning level 3, with `-Werror` on aliasing, ODR, LTO type mismatches, and int conversion.
 - **Portability:** code runs on Linux, macOS, Windows (MSVC), and BSD. Platform guards use `host_sys` / `_WIN32`.
 - **i18n:** user-visible strings go through gettext macros (see `src/translate.h`). Translation `.po` files live in `po/`.
+- **Comments are rare and short.** Default to none; add one only when the *why* is non-obvious (a hidden constraint, a prior bug, a surprising invariant) — not to restate what the code does. **Exception:** public API docs — doxygen/header docblocks on public functions, parameters, and return codes — can be as long as needed; that's contract documentation for callers, not noise.
+
+## Working style & contributions
+
+Applies to human contributors and to any LLM/AI assistant used on this project:
+
+- **No sycophancy.** Don't agree just to be agreeable. Take an idea seriously, push back when something looks wrong, and propose the better alternative.
+- **ChangeLog: one line per entry** (two only if a single line genuinely can't carry the meaning). The diff and the linked PR/issue hold the detail — don't restate the change.
+- **LLM-drafted public text gets a short preface.** When an AI assistant writes content posted under a contributor's account — GitHub issues / PRs / comments, or a commit-message *body* (one-line subjects need none) — it should identify itself as an LLM (with model/version), note it was posted at that contributor's direction, write in its own voice (first person for what the tool did; the contributor's plain name — never an `@`-mention — for what they did), avoid anthropomorphic phrasing, and flag anything it hasn't verified. A contributor's own assistant config may set the exact format; this is just the project default.
 
 ## UI / SDL2 menus
 
