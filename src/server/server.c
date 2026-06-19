@@ -452,7 +452,31 @@ int send_status_message(tcpme_socket_t sock, const char *msg) {
   return send_message(sock, MSG_STATUS_MESSAGE, (const uint8_t *)msg, msg_len);
 }
 
-static int send_action_announce(tcpme_socket_t sock, int8_t player_id, int verb, uint32_t amount) {
+/* Send the same framed message to every connected client, walking the seat ring
+ * from the current turn. */
+static void broadcast_framed(const ArgsBroadcastGameState_t *args, uint16_t opcode,
+                             const uint8_t *payload, size_t len) {
+  if (count_active_clients(args->slot_taken) == 0)
+    return;
+  int8_t pl_idx = args->turn_id;
+  Player_t *recipient = &args->game_state->player[pl_idx];
+  if (!recipient->is_connected)
+    recipient = get_next_connected_client(args->game_state->player, pl_idx);
+  Player_t *start = recipient;
+
+  do {
+    pl_idx = recipient->id;
+    tcpme_socket_t sock = args->clients[pl_idx];
+    if (tcpme_socket_valid(sock) && send_message(sock, opcode, payload, len) < 0)
+      fprintf(stderr, "[broadcast_framed] Failed to send opcode 0x%04X to client %d\n", opcode,
+              pl_idx);
+
+    recipient = get_next_connected_client(args->game_state->player, pl_idx);
+  } while (recipient && recipient != start);
+}
+
+void broadcast_action_announce(const ArgsBroadcastGameState_t *args, int8_t player_id, int verb,
+                              uint32_t amount) {
   ActionAnnounce msg = ACTION_ANNOUNCE__INIT;
   msg.player_id = player_id;
   msg.verb = verb;
@@ -462,76 +486,19 @@ static int send_action_announce(tcpme_socket_t sock, int8_t player_id, int verb,
   size_t len = action_announce__get_packed_size(&msg);
   action_announce__pack(&msg, buf);
 
-  return send_message(sock, MSG_ACTION_ANNOUNCE, buf, len);
-}
-
-void broadcast_action_announce(const ArgsBroadcastGameState_t *args, int8_t player_id, int verb,
-                              uint32_t amount) {
-  if (count_active_clients(args->slot_taken) == 0)
-    return;
-  int8_t pl_idx = args->turn_id;
-  Player_t *recipient = &args->game_state->player[pl_idx];
-  if (!recipient->is_connected)
-    recipient = get_next_connected_client(args->game_state->player, pl_idx);
-  Player_t *start = recipient;
-
-  do {
-    pl_idx = recipient->id;
-    tcpme_socket_t sock = args->clients[pl_idx];
-    if (!tcpme_socket_valid(sock))
-      continue;
-
-    if (send_action_announce(sock, player_id, verb, amount) < 0)
-      fprintf(stderr, "[broadcast_action_announce] Failed to send to client %d\n", pl_idx);
-
-    recipient = get_next_connected_client(args->game_state->player, pl_idx);
-  } while (recipient && recipient != start);
+  broadcast_framed(args, MSG_ACTION_ANNOUNCE, buf, len);
 }
 
 void broadcast_status_message(const ArgsBroadcastGameState_t *args, const char *msg) {
-  if (count_active_clients(args->slot_taken) == 0)
-    return;
-  int8_t pl_idx = args->turn_id;
-  Player_t *recipient = &args->game_state->player[pl_idx];
-  if (!recipient->is_connected)
-    recipient = get_next_connected_client(args->game_state->player, pl_idx);
-  Player_t *start = recipient;
-
-  do {
-    pl_idx = recipient->id;
-    tcpme_socket_t sock = args->clients[pl_idx];
-    if (!tcpme_socket_valid(sock))
-      continue;
-
-    if (send_status_message(sock, msg) < 0) {
-      fprintf(stderr, "[broadcast_status_message] Failed to send to client %d\n", pl_idx);
-    }
-
-    recipient = get_next_connected_client(args->game_state->player, pl_idx);
-  } while (recipient && recipient != start);
+  size_t len = strlen(msg);
+  if (len > LEN_STATUS_STR)
+    len = LEN_STATUS_STR;
+  broadcast_framed(args, MSG_STATUS_MESSAGE, (const uint8_t *)msg, len);
 }
 
 void broadcast_game_type(const ArgsBroadcastGameState_t *args) {
-  if (count_active_clients(args->slot_taken) == 0)
-    return;
-  int8_t pl_idx = args->turn_id;
-  Player_t *recipient = &args->game_state->player[pl_idx];
-  if (!recipient->is_connected)
-    recipient = get_next_connected_client(args->game_state->player, pl_idx);
-  Player_t *start = recipient;
-
-  do {
-    pl_idx = recipient->id;
-    tcpme_socket_t sock = args->clients[pl_idx];
-    if (!tcpme_socket_valid(sock))
-      continue;
-
-    if (send_game_select(sock, args->game_type, args->deuces_wild) < 0) {
-      fprintf(stderr, "[broadcast_status_message] Failed to send to client %d\n", pl_idx);
-    }
-
-    recipient = get_next_connected_client(args->game_state->player, pl_idx);
-  } while (recipient && recipient != start);
+  GameSelectPayload_t payload = {args->game_type, args->deuces_wild ? (uint8_t)1 : (uint8_t)0};
+  broadcast_framed(args, MSG_GAME_SELECT, (const uint8_t *)&payload, sizeof(payload));
 }
 
 static int send_turn_id(tcpme_socket_t sock, const int8_t turn_id) {
