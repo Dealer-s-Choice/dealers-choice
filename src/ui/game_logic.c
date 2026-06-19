@@ -56,10 +56,6 @@
 
 #include "util.h"
 
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
-
 #define FRAME_HITCH_WARN_MS 250 /* a frame gap >= this => UI stalled (#307) */
 #define MAX_POT_COINS 60
 

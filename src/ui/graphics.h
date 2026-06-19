@@ -30,14 +30,20 @@
 #define __GRAPHICS_H
 
 #include <SDL2/SDL.h>
-#include <SDL2/SDL_ttf.h>
 #include <SDL2/SDL_image.h>
+#include <SDL2/SDL_ttf.h>
 
 #include "net.h"
 #include "types.h"
 
 #define LOGICAL_WIDTH 1920
 #define LOGICAL_HEIGHT 1080
+
+// Some toolchains (e.g. gcc on Ubuntu 24.04) don't expose M_PI without
+// _USE_MATH_DEFINES; provide a fallback for the rendering math.
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
 
 typedef enum {
   COLOR_WHITE,

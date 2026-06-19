@@ -61,11 +61,6 @@
 
 #include <sodium.h>
 
-// Build fails using gcc on Ubuntu 24.04 (and maybe others) without this
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
-
 // What's the max this needs to be to support the unicode suit symbol?
 // SIZEOF_CARD_TEXT is defined in client.h
 

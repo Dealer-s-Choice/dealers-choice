@@ -37,11 +37,6 @@
 #include "graphics.h"
 #include "util.h"
 
-// Build fails using gcc on Ubuntu 24.04 (and maybe others) without this
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
-
 // Card back pattern/color selection
 typedef struct {
   SDL_Color base_color;
