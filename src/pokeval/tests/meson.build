@@ -13,6 +13,8 @@ cases = [
   'four-of-a-kind',
   'five-of-a-kind',
   'wild',
+  'flush',
+  'score_stud_upcards',
   'no_peek_visible',
 ]
 

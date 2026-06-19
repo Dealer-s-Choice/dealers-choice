@@ -422,4 +422,84 @@ _MAIN_HEAD_
   assert(!hands[1].won); /* Q-high straight loses */
 }
 
+/* --- compare_hands_wild: Q-high wild straight flush beats 5-high wheel ---
+ * The historical bug (CLAUDE.md "Known issues" #1): a Q-high wild straight
+ * flush could lose to a 5-high wheel straight flush because the raw wilds
+ * sorted to the bottom of compare_high_cards.  This is the exact fuzz-caught
+ * failure case.  compare_wild_same_rank must substitute the wilds and compare
+ * the true straight-high, so the Q-high SF wins.
+ *   P0: Js 2h 9c 8c Tc 2c Qd — clubs SF, wilds fill Jc/Qc -> Q-high
+ *   P1: Kh 5h 2s 6s 4h Ah 2d — hearts SF, wilds fill 2h/3h -> 5-high wheel
+ */
+{
+  POKEVAL_NeedComparing hands[2] = {
+      {.id = 0,
+       .hand = {{{DH_CARD_JACK, DH_SUIT_SPADES},
+                 {DH_CARD_TWO, DH_SUIT_HEARTS},
+                 {DH_CARD_NINE, DH_SUIT_CLUBS},
+                 {DH_CARD_EIGHT, DH_SUIT_CLUBS},
+                 {DH_CARD_TEN, DH_SUIT_CLUBS},
+                 {DH_CARD_TWO, DH_SUIT_CLUBS},
+                 {DH_CARD_QUEEN, DH_SUIT_DIAMONDS},
+                 {DH_CARD_NULL, 0},
+                 {DH_CARD_NULL, 0}}}},
+      {.id = 1,
+       .hand = {{{DH_CARD_KING, DH_SUIT_HEARTS},
+                 {DH_CARD_FIVE, DH_SUIT_HEARTS},
+                 {DH_CARD_TWO, DH_SUIT_SPADES},
+                 {DH_CARD_SIX, DH_SUIT_SPADES},
+                 {DH_CARD_FOUR, DH_SUIT_HEARTS},
+                 {DH_CARD_ACE, DH_SUIT_HEARTS},
+                 {DH_CARD_TWO, DH_SUIT_DIAMONDS},
+                 {DH_CARD_NULL, 0},
+                 {DH_CARD_NULL, 0}}}},
+  };
+  uint8_t n_wins = POKEVAL_compare_hands_wild(hands, 2, DH_CARD_TWO);
+  fprintf(stderr, "wild SF compare (Q-high wild SF vs 5-high wheel SF): %d winner(s)\n", n_wins);
+  assert(POKEVAL_evaluate_hand_wild(hands[0].hand_5, DH_CARD_TWO) == POKEVAL_STRAIGHT_FLUSH);
+  assert(POKEVAL_evaluate_hand_wild(hands[1].hand_5, DH_CARD_TWO) == POKEVAL_STRAIGHT_FLUSH);
+  assert(n_wins == 1);
+  assert(hands[0].won);  /* Q-high straight flush wins */
+  assert(!hands[1].won); /* 5-high wheel straight flush loses */
+}
+
+/* --- compare_hands_wild: wild flush tie-break by substituted high cards ---
+ * Two wild flushes of equal rank; the wild substitutes to an ace, so both
+ * read A A K 9 down to a fifth card of 4 vs 3.  compare_flush_tiebreak_wild
+ * must walk the substituted faces high-down, so the 4 kicker wins.
+ *   P0: 2h Ac Kc 9c 4c 3d 5s — clubs flush, wild -> A : A A K 9 4
+ *   P1: 2s Ad Kd 9d 3d 6h 5c — diamonds flush, wild -> A : A A K 9 3
+ */
+{
+  POKEVAL_NeedComparing hands[2] = {
+      {.id = 0,
+       .hand = {{{DH_CARD_TWO, DH_SUIT_HEARTS},
+                 {DH_CARD_ACE, DH_SUIT_CLUBS},
+                 {DH_CARD_KING, DH_SUIT_CLUBS},
+                 {DH_CARD_NINE, DH_SUIT_CLUBS},
+                 {DH_CARD_FOUR, DH_SUIT_CLUBS},
+                 {DH_CARD_THREE, DH_SUIT_DIAMONDS},
+                 {DH_CARD_FIVE, DH_SUIT_SPADES},
+                 {DH_CARD_NULL, 0},
+                 {DH_CARD_NULL, 0}}}},
+      {.id = 1,
+       .hand = {{{DH_CARD_TWO, DH_SUIT_SPADES},
+                 {DH_CARD_ACE, DH_SUIT_DIAMONDS},
+                 {DH_CARD_KING, DH_SUIT_DIAMONDS},
+                 {DH_CARD_NINE, DH_SUIT_DIAMONDS},
+                 {DH_CARD_THREE, DH_SUIT_DIAMONDS},
+                 {DH_CARD_SIX, DH_SUIT_HEARTS},
+                 {DH_CARD_FIVE, DH_SUIT_CLUBS},
+                 {DH_CARD_NULL, 0},
+                 {DH_CARD_NULL, 0}}}},
+  };
+  uint8_t n_wins = POKEVAL_compare_hands_wild(hands, 2, DH_CARD_TWO);
+  fprintf(stderr, "wild flush compare (A A K 9 4 vs A A K 9 3): %d winner(s)\n", n_wins);
+  assert(POKEVAL_evaluate_hand_wild(hands[0].hand_5, DH_CARD_TWO) == POKEVAL_FLUSH);
+  assert(POKEVAL_evaluate_hand_wild(hands[1].hand_5, DH_CARD_TWO) == POKEVAL_FLUSH);
+  assert(n_wins == 1);
+  assert(hands[0].won);  /* higher fifth-card kicker wins */
+  assert(!hands[1].won);
+}
+
 _MAIN_TAIL_
