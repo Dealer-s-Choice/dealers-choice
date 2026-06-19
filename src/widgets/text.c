@@ -1,6 +1,19 @@
 #include "text.h"
 #include "util.h"
 
+/* Defensive cap: a malformed/unterminated string must never drive the
+ * TTF_RenderUTF8_Blended surface (w*h*4) allocation off into the weeds. */
+#define TEXT_WIDGET_MAX_LEN 4096
+
+/* True if text has no NUL within the first TEXT_WIDGET_MAX_LEN bytes
+ * (no strnlen: not portable to all DC targets, see lan_discovery.c). */
+static bool text_too_long(const char *text) {
+  size_t i = 0;
+  while (i < TEXT_WIDGET_MAX_LEN && text[i] != '\0')
+    i++;
+  return i >= TEXT_WIDGET_MAX_LEN;
+}
+
 static void text_widget_render(UIWidget_t *w) {
   TextWidget_t *tw = (TextWidget_t *)w;
 
@@ -25,6 +38,11 @@ TextWidget_t *text_widget_create(const char *text, TTF_Font *font, SDL_Color col
   if (!renderer || !text || !font)
     return NULL;
 
+  if (text_too_long(text)) {
+    fprintf(stderr, "text_widget_create: text too long, refusing render\n");
+    return NULL;
+  }
+
   TextWidget_t *tw = calloc(1, sizeof(*tw));
   if (!tw)
     return NULL;
@@ -35,6 +53,12 @@ TextWidget_t *text_widget_create(const char *text, TTF_Font *font, SDL_Color col
   tw->text = dc_strdup(text);
 
   SDL_Surface *s = TTF_RenderUTF8_Blended(font, text, color);
+  if (!s) {
+    fprintf(stderr, "TTF_RenderUTF8_Blended error: %s\n", TTF_GetError());
+    tw->base.render = text_widget_render;
+    tw->base.destroy = text_widget_destroy;
+    return tw;
+  }
   tw->tex = SDL_CreateTextureFromSurface(renderer, s);
 
   tw->base.rect.w = s->w;
@@ -52,6 +76,11 @@ void text_widget_set_text(TextWidget_t *tw, const char *text) {
   if (!tw || !text)
     return;
 
+  if (text_too_long(text)) {
+    fprintf(stderr, "text_widget_set_text: text too long, refusing render\n");
+    return;
+  }
+
   if (tw->tex)
     SDL_DestroyTexture(tw->tex);
 
@@ -59,8 +88,11 @@ void text_widget_set_text(TextWidget_t *tw, const char *text) {
   tw->text = dc_strdup(text);
 
   SDL_Surface *s = TTF_RenderUTF8_Blended(tw->font, text, tw->color);
-  if (!s)
+  if (!s) {
+    fprintf(stderr, "TTF_RenderUTF8_Blended error: %s\n", TTF_GetError());
+    tw->tex = NULL;
     return;
+  }
   tw->tex = SDL_CreateTextureFromSurface(tw->renderer, s);
   tw->base.rect.w = s->w;
   tw->base.rect.h = s->h;

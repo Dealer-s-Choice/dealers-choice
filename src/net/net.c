@@ -65,6 +65,8 @@ static void fill_player_from_message(Player_t *dst, const Player *msg) {
 
   if (msg->nick)
     snprintf(dst->nick, sizeof(dst->nick), "%s", msg->nick);
+  else
+    dst->nick[0] = '\0';
 
   dst->id = (int8_t)msg->id;
   dst->coins = msg->coins;
