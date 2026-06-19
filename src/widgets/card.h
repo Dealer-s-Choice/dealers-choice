@@ -49,6 +49,8 @@ typedef struct {
   bool is_null;
   bool is_wild;
   bool is_winning;
+  bool is_shaded; /* dim overlay: local player's own card that is hidden from
+                   * other players (stud/holdem hole cards) (#64) */
   bool my_card;   /* true when this card belongs to the local player */
   TTF_Font *font; /* kept for the card-back animated patterns that still
                    * compute glyph metrics; not used for face rendering. */

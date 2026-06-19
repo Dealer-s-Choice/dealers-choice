@@ -564,6 +564,15 @@ static void card_widget_render(UIWidget_t *w) {
   else
     SDL_SetTextureColorMod(entry.suit, 0, 0, 0);
   SDL_RenderCopy(renderer, entry.suit, NULL, &suit_rect);
+
+  /* Light dim overlay marking a card that is private to the local player —
+   * hidden from opponents (stud/holdem hole cards) (#64). */
+  if (cw->is_shaded) {
+    SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 70);
+    SDL_RenderFillRect(renderer, &w->rect);
+    SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);
+  }
 }
 
 static void card_widget_destroy(UIWidget_t *w) { free(w); }

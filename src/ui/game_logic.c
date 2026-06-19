@@ -977,6 +977,21 @@ EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
       create_card_context(card_context, starting_turn->id, players_array, seat_pos,
                           font->fonts[FONT_CARD], my_id, client_state.deuces_wild);
       layout_cards(card_context, players_array, seat_pos);
+
+      /* Dim the local player's own hole cards (private to opponents), but only
+       * in variants that also have visible cards (stud/holdem), so a pure-draw
+       * hand isn't uniformly shaded (#64). */
+      if (client_state.game_choice && my_id >= 0 && my_id < MAX_PLAYERS) {
+        const CardSlotType_t *slot = client_state.game_choice->card_slot;
+        bool has_visible = false;
+        for (int k = 0; k < MAX_HAND_SIZE; k++)
+          if (slot[k] == CARD_SLOT_FACE_UP || slot[k] == CARD_SLOT_COMMUNITY)
+            has_visible = true;
+        if (has_visible)
+          for (int k = 0; k < MAX_HAND_SIZE; k++)
+            card_context[my_id][k].is_shaded = (slot[k] == CARD_SLOT_HOLE);
+      }
+
       if (community_start > 0)
         layout_board_cards(card_context, starting_turn->id, community_start, community_count);
       if (game_state->winner_declared) {
