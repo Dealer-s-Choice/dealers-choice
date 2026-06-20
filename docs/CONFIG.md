@@ -111,11 +111,26 @@ corner during a game.
 
 Values may be a single letter or an SDL key name (e.g. `Space`, `Up`, `Home`).
 
-Some keys are reserved and the editor will refuse them: `Esc`,
-`Enter`/`Return`, `Tab`, the function keys `F1`–`F12`, and the digit keys
-`1`–`8` (the bet-amount scale). Menu-screen keys are not configurable
-either. (Cards to discard are selected with the mouse, not the keyboard.)
-
 Each action needs its own key: the editor refuses a key that is already
 bound to another action, because one keypress would otherwise trigger two
 actions at once.
+
+### Non-configurable keys
+
+These keys are fixed and the hotkey editor will refuse them, because the
+game and menus already use them:
+
+| Key | Use |
+|---|---|
+| `1`–`5` | Select your cards to discard during a draw |
+| `1`–`8` | Choose the bet/raise amount on the betting scale |
+| `Enter` / `Return` | Connect (connect screen); confirm a value (settings) |
+| `Alt`+`Enter`, `F11` | Toggle fullscreen |
+| `Esc` | Go back / quit prompt |
+| `Tab` | Move between input fields |
+| `Ctrl`+`V` | Paste into the focused text field |
+| `F1`–`F12` | Reserved (function-key row) |
+
+The digit keys `1`–`5` serve double duty: they pick cards to discard during
+a draw, and they pick a bet amount during betting (the game only listens for
+one of those at a time, depending on the current action).
