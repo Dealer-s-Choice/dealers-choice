@@ -119,28 +119,48 @@ logs uses LD_PRELOAD too, so they have to be combined).
 
 ## Network impairment via `tc netem`
 
-Stress tcpme by simulating WAN conditions on the loopback interface,
-then run any of the harnesses above unchanged.
+Stress tcpme by simulating WAN conditions on the loopback interface.
+`scripts/netem.sh` wraps the `tc` commands (needs sudo):
 
-### Setup
-
-    sudo tc qdisc add dev lo root netem delay 75ms 15ms
-
-That's 75 ms ± 15 ms loopback latency.  Verify:
-
-    tc qdisc show dev lo
-    ping -c 5 127.0.0.1   # should report ~75 ms RTT
-
-For added stress with packet loss:
-
-    sudo tc qdisc change dev lo root netem delay 75ms 15ms loss 0.5%
+    scripts/netem.sh on 60 12 0.5   # 60 ms +/- 12 ms latency, 0.5% loss
+    scripts/netem.sh status
+    scripts/netem.sh off            # IMPORTANT: affects all loopback traffic
 
 0.5 % loss exercises TCP retransmits and partial-read paths without
 making the link so chaotic that real bugs hide under transport noise.
 
-### Cleanup (important — affects everything else using lo)
+### What to run under impairment
 
-    sudo tc qdisc del dev lo root
+Pair netem with the **soak** (`scripts/soak.sh`) — real bots on normal
+30 s timeouts that tolerate latency:
+
+    scripts/netem.sh on 60 12 0.5
+    DC_BUILD=$PWD/_build_asan scripts/soak.sh   # judge by the log
+    scripts/netem.sh off
+
+Do **not** run the deterministic `meson test` game-logic tests (or
+`scripts/flaky-loop.sh`) under netem: they run in `DC_TEST` mode with
+deliberately short server timeouts, so added latency makes the server
+time out the lockstep client and disconnect it — 100 % spurious
+failures, not real bugs. Use `flaky-loop.sh` for flushing timing flakes
+under *CPU* load (run it alongside the soak), not network impairment.
+
+### The manual `tc` commands
+
+    sudo tc qdisc add dev lo root netem delay 75ms 15ms        # add latency
+    tc qdisc show dev lo
+    ping -c 5 127.0.0.1                                         # ~75 ms RTT
+    sudo tc qdisc change dev lo root netem delay 75ms 15ms loss 0.5%  # + loss
+    sudo tc qdisc del dev lo root                              # cleanup
+
+### What netem stresses
+
+- Connection handshake (SYN/ACK + DCPROTO header + nonce auth) under
+  realistic latency — exposes any code path that assumed instant
+  loopback response.
+- `recv_all_tcp` loop behavior when reads come back partial.
+- Action / dealer timeout budgets — 30 s defaults survive 75 ms RTT
+  fine, but combining with loss and many round-trips can push them.
 
 ## Profiling memory allocations with heaptrack
 
@@ -184,18 +204,6 @@ Useful things to look at:
 heaptrack is **not** part of `meson test` (it requires a real GUI
 session) and **not** a checkdepends; treat it as a manual investigation
 tool.
-
-(The `### What it stresses` section below belongs to the netem block
-above — keep that in mind when adding more profiling content here.)
-
-### What netem stresses
-
-- Connection handshake (SYN/ACK + DCPROTO header + nonce auth) under
-  realistic latency — exposes any code path that assumed instant
-  loopback response.
-- `recv_all_tcp` loop behavior when reads come back partial.
-- Action / dealer timeout budgets — 30 s defaults survive 75 ms RTT
-  fine, but combining with loss and many round-trips can push them.
 
 ## Sanitized build for manual / live verification
 
@@ -242,6 +250,19 @@ clone/worktree. Override the phase lengths for a ~5-minute run:
 never started, and backgrounding it can surface a harmless non-zero code.)
 Check `/tmp/soak.log` and grep the `SRVLOG` for `runtime error` /
 `AddressSanitizer`.
+
+### scripts/flaky-loop.sh — flush timing flakes under CPU load
+
+`scripts/flaky-loop.sh [test ...]` re-runs named meson tests under ASan many
+times, classifying each failure as a TIMEOUT (recv hang) vs ASSERTION
+(turn-order desync). Run it alongside `soak.sh` so the tests execute under CPU
+load — the documented trigger for the flaky 90 s recv-hangs (#282). `ROUNDS`
+defaults to 40; default tests are `test_raises test_check`.
+
+    ROUNDS=40 bash scripts/flaky-loop.sh test_raises test_check
+
+Do **not** run it under `tc netem` — DC_TEST's short timeouts make latency look
+like failures (see the netem section).
 
 ## Running the binaries directly
 
