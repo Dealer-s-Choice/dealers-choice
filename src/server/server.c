@@ -1290,6 +1290,8 @@ ELoop_t register_new_client(ArgsBroadcastGameState_t *args) {
 int run_server(const CliArgs_t *cli_args, Path_t *path) {
   GameState_t game_state = {0};
   ServerConfig_t config = init_game_state(&game_state, path, cli_args);
+  if (cli_args->server_name)
+    snprintf(config.server_name, sizeof(config.server_name), "%s", cli_args->server_name);
   GameSettings_t game_settings = init_game_settings(&config);
   game_state.pot = 0;
 

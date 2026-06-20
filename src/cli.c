@@ -153,6 +153,7 @@ CliArgs_t parse_server_args(int argc, char *argv[]) {
     OPT_CONF,
     OPT_BIND,
     OPT_PORT,
+    OPT_NAME,
     OPT_VERSION,
     OPT_VERBOSE,
     OPT_DEBUG,
@@ -168,6 +169,7 @@ CliArgs_t parse_server_args(int argc, char *argv[]) {
       {"conf", GLOPT_REQUIRED_ARG, OPT_CONF, 0},
       {"bind-address", GLOPT_REQUIRED_ARG, OPT_BIND, 0},
       {"port", GLOPT_REQUIRED_ARG, OPT_PORT, 0},
+      {"name", GLOPT_REQUIRED_ARG, OPT_NAME, 0},
       {"version", GLOPT_NO_ARG, OPT_VERSION, 0},
       {"verbose", GLOPT_NO_ARG, OPT_VERBOSE, 0},
       {"debug", GLOPT_NO_ARG, OPT_DEBUG, 0},
@@ -208,6 +210,9 @@ CliArgs_t parse_server_args(int argc, char *argv[]) {
       cli_args.port = (uint16_t)port_val;
       break;
     }
+    case OPT_NAME:
+      cli_args.server_name = parser.optarg;
+      break;
     case OPT_VERSION:
       print_version();
       exit(EXIT_SUCCESS);
@@ -238,6 +243,7 @@ CliArgs_t parse_server_args(int argc, char *argv[]) {
       fputs("Usage: " DEALERSCHOICE_NAME "-server [options]\n"
             "  --bind-address [IP]        Address to bind to (default: all interfaces)\n"
             "  --port [port]\n"
+            "  --name [name]              Server name shown to clients (overrides conf)\n"
             "  --conf [path]              Alternate server config file\n"
             "  --log-game-results [path]\n"
             "  --verbose\n"

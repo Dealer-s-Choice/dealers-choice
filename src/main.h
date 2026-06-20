@@ -34,6 +34,7 @@
 
 typedef struct {
   const char *host, *server_conf, *bind_address;
+  const char *server_name; /* --name: overrides server_name from the conf (#33) */
   uint16_t port;
   const char *server_log_game_results_file;
   const char *server_log_hands_file;
