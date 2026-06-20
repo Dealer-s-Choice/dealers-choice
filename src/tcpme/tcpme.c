@@ -5,6 +5,8 @@
  MIT License
 
  Copyright (c) 2026 Andy Alt
+
+ Written largely by Claude (an LLM by Anthropic) at Andy's direction.
 */
 
 /*
