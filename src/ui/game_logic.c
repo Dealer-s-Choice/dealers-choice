@@ -333,20 +333,27 @@ static int action_button_for_verb(int verb) {
 
 /* Best 5-card rank name for the local player's current hand, or NULL if fewer
  * than 5 cards are dealt yet. Drives the CTRL-H rank readout (#61). */
-static const char *local_hand_rank_name(const POKEVAL_Hand_9 *hand, bool deuces_wild) {
+static const char *local_hand_rank_name(const POKEVAL_Hand_9 *hand, const GameChoice_t *choice,
+                                        bool deuces_wild) {
   size_t n = 0;
   while (n < 9 && !DH_is_card_null(hand->card[n]))
     n++;
-  if (n < POKEVAL_HAND_SIZE)
-    return NULL;
 
   short r;
-  if (deuces_wild) {
-    POKEVAL_Hand_5 best = POKEVAL_hand5_from_hand7_wild(hand, DH_CARD_TWO);
-    r = POKEVAL_evaluate_hand_wild(best, DH_CARD_TWO);
+  if (choice && choice->g == OMAHA) {
+    /* Omaha uses exactly 2 hole + 3 board; POKEVAL_hand5_omaha iterates all 5
+     * community slots, so only evaluate once the full board (4 hole + 5
+     * community = 9 cards) is dealt — otherwise it would fold null slots in. */
+    if (n < 9)
+      return NULL;
+    r = POKEVAL_evaluate_hand(POKEVAL_hand5_omaha(hand));
   } else {
-    POKEVAL_Hand_5 best = POKEVAL_hand5_from_hand7(hand);
-    r = POKEVAL_evaluate_hand(best);
+    if (n < POKEVAL_HAND_SIZE)
+      return NULL;
+    if (deuces_wild)
+      r = POKEVAL_evaluate_hand_wild(POKEVAL_hand5_from_hand7_wild(hand, DH_CARD_TWO), DH_CARD_TWO);
+    else
+      r = POKEVAL_evaluate_hand(POKEVAL_hand5_from_hand7(hand));
   }
   if (r < 0 || r >= NUM_HAND_RANKS)
     return NULL;
@@ -1564,7 +1571,7 @@ EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
     /* CTRL-H: show the best rank of your own hand, lower-right corner (#61). */
     if (show_hand_rank && hand_rank_tw) {
       const char *rank = local_hand_rank_name(&game_state->player[my_id].hand,
-                                              client_state.deuces_wild);
+                                              client_state.game_choice, client_state.deuces_wild);
       if (rank) {
         text_widget_set_text(hand_rank_tw, _(rank));
         ui_widget_place(&hand_rank_tw->base,
