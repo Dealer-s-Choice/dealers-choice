@@ -29,6 +29,7 @@
 #include "dc_time.h"
 #include "net.h"
 #include "registry.h"
+#include "util.h"
 
 /* Registry policy (DC-owned; tcpme stays generic). */
 #define REG_TTL_MS 90000u           /* drop a listing not refreshed within this */
@@ -278,7 +279,9 @@ int main(int argc, char *argv[]) {
 
   for (int i = 1; i < argc; i++) {
     if (strcmp(argv[i], "--port") == 0 && i + 1 < argc) {
-      port = (uint16_t)atoi(argv[++i]);
+      unsigned long pv;
+      parse_unsigned(argv[++i], UINT16_MAX, &pv);
+      port = (uint16_t)pv;
     } else if (strcmp(argv[i], "--json") == 0 && i + 1 < argc) {
       json_path = argv[++i];
     } else if (strcmp(argv[i], "--verbose") == 0) {

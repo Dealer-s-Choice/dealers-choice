@@ -399,9 +399,12 @@ int main(int argc, char *argv[]) {
     case OPT_HOST:
       host = parser.optarg;
       break;
-    case OPT_PORT:
-      port = (uint16_t)atoi(parser.optarg);
+    case OPT_PORT: {
+      unsigned long pv;
+      parse_unsigned(parser.optarg, UINT16_MAX, &pv);
+      port = (uint16_t)pv;
       break;
+    }
     case OPT_NICK:
       nick = parser.optarg;
       break;
