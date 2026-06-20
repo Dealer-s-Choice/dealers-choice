@@ -23,6 +23,10 @@
     you can tell which of your cards opponents cannot see (#64)
   + In draw games you can pick discards with the mouse or number keys 1-5,
     and even before your turn, so on your turn you just press Discard (#22)
+  + Server registry: the new dealers-choice-registry program lists internet
+    servers; a server publishes itself to it (set "registry" in common.conf,
+    or --disable-publish to opt out), and the connect screen shows those
+    servers next to the LAN ones (#33)
   * Bump GAME_PROTOCOL_VERSION to 11
 
 2026-06-15
