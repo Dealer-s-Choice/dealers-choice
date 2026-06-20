@@ -93,6 +93,27 @@ script. The gotchas below are why it does each of those things.
   editing `dc_protocol.proto`, run `meson compile -C _build_… gen-proto`
   before the normal compile.
 
+**Screenshotting the GUI (X11, for verifying a visual change):** the SDL window
+is titled "Dealer's Choice" but `xdotool search --name` for it is unreliable
+(the apostrophe breaks the regex, and the window isn't matchable right after
+launch). Do **not** capture the root window — that grabs your other windows.
+Capture only the DC window via a before/after window-list diff:
+
+```sh
+xdotool search "" | sort > /tmp/wb.txt          # windows before launch
+# launch the GUI backgrounded, then sleep ~6s for the connect screen to render
+xdotool search "" | sort > /tmp/wa.txt           # windows after
+for w in $(comm -13 /tmp/wb.txt /tmp/wa.txt); do
+  case "$(xdotool getwindowname "$w")" in
+    *ealer*) import -window "$w" /tmp/dc_shot.png; break;;
+  esac
+done
+```
+
+For a throwaway GUI run that won't touch your real config, set
+`XDG_CONFIG_HOME=/tmp/somedir` (it writes a fresh `player.conf` there) and
+`DEALERSCHOICE_DATADIR=$PWD/data`; `--disable-audio` skips the audio threads.
+
 ## Architecture
 
 **Client-server** networked game, split across three binaries that talk over
