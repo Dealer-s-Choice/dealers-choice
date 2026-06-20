@@ -61,15 +61,16 @@ pushing: `CC=gcc CFLAGS=-Werror meson setup _build_gcc && meson compile -C
 _build_gcc`. (This bit a subagent branch once — clang-clean, gate-red on a
 truncation warning.)
 
-**Reusable test/dev tooling lives in `~/src/DealersChoice/tools/`** (outside
-the repo — local aids, not project source). Save any new reusable scripts
-there rather than scattering them in `/tmp`; existing ones are `soak.sh` and
-`flaky-loop.sh` (see that dir's `README.md`).
+**Test/dev tooling:** the bot soak is committed in-repo at `scripts/soak.sh`
+(`DC_REPO` defaults to the repo root, so it works from any clone/worktree).
+Other local-only aids live outside the repo in `~/src/DealersChoice/tools/`
+(e.g. `flaky-loop.sh`); save genuinely reusable project scripts in `scripts/`,
+throwaway personal ones in `tools/`.
 
-**Canonical launcher:** `~/src/DealersChoice/tools/soak.sh` already runs a
-sanitized server + bots correctly (sets `DC_PASSWORD`, no `---test`, exports
-`DEALERSCHOICE_DATADIR`) — use/adapt it instead of hand-rolling a launch
-script. The gotchas below are why it does each of those things.
+**Canonical launcher:** `scripts/soak.sh` already runs a sanitized server + bots
+correctly (sets `DC_PASSWORD`, no `---test`, exports `DEALERSCHOICE_DATADIR`) —
+use/adapt it instead of hand-rolling a launch script. The gotchas below are why
+it does each of those things.
 
 **After server-side changes, run a short bot soak.** It catches longevity / bot
 churn / 0-player-path regressions the unit suite can't. Override the phase
@@ -78,7 +79,7 @@ lengths for a ~5-min run and point it at your build:
 ```sh
 DC_BUILD=$PWD/_build_asan DC_PORT=24770 DC_PASSWORD=x \
   P1_BOTS=2 P1_MIN=3 P2_BOTS=3 P2_MIN=2 P3_ROUNDS=3 \
-  LOG=/tmp/soak.log bash ~/src/DealersChoice/tools/soak.sh
+  LOG=/tmp/soak.log bash scripts/soak.sh
 ```
 
 **Verify by reading the log, not the exit code.** A real pass ends with
