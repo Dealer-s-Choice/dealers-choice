@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<!--
+  Dealer's Choice active-server list — a self-contained, framework-free widget.
+
+  It fetches a registry's servers.json and renders it as a table, refreshing
+  periodically. The registry (dealers-choice-registry --json …) writes that
+  file; serve it with CORS (Access-Control-Allow-Origin) so a page on another
+  origin can fetch it.
+
+  Point it at a registry with the ?src= query parameter, e.g.
+    server-list.html?src=https://registry.example.org/servers.json
+  (defaults to ./servers.json next to this page).
+
+  Embed it in any site with an iframe:
+    <iframe src="https://your.site/server-list.html?src=https://registry.example.org/servers.json"
+            style="width:100%;height:400px;border:0"></iframe>
+
+  Written by Claude (Opus 4.8, an LLM by Anthropic) at Andy's direction.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dealer's Choice — active servers</title>
+<style>
+  body { font-family: system-ui, sans-serif; margin: 0; padding: 1rem;
+         background: #0b5d1e; color: #f4f4f4; }
+  h1 { font-size: 1.2rem; margin: 0 0 .75rem; }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { text-align: left; padding: .4rem .6rem; border-bottom: 1px solid #0000003a; }
+  th { font-weight: 600; color: #ffe08a; }
+  tr:hover td { background: #ffffff14; }
+  .muted { opacity: .7; }
+  .status-play { color: #ffd24d; }
+  .empty, .error { padding: .75rem .6rem; opacity: .85; }
+  .error { color: #ffb3b3; }
+  .updated { margin-top: .5rem; font-size: .8rem; opacity: .6; }
+</style>
+</head>
+<body>
+<h1>Dealer's Choice — active servers</h1>
+<div id="dc-servers"><div class="empty">Loading…</div></div>
+<div class="updated" id="dc-updated"></div>
+
+<script>
+(function () {
+  var params = new URLSearchParams(location.search);
+  var SRC = params.get("src") || "./servers.json";
+  var REFRESH_MS = 30000;
+  var box = document.getElementById("dc-servers");
+  var updated = document.getElementById("dc-updated");
+
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+
+  function render(servers) {
+    if (!servers || !servers.length) {
+      box.innerHTML = '<div class="empty">No servers are listed right now.</div>';
+      return;
+    }
+    var rows = servers.map(function (s) {
+      var addr = esc(s.ip) + ":" + esc(s.port);
+      var players = (s.players != null ? s.players : "?") + " / " + (s.max != null ? s.max : "?");
+      var status = s.in_progress
+        ? '<span class="status-play">playing</span>'
+        : '<span class="muted">waiting</span>';
+      var lock = s.password ? " 🔒" : "";
+      return "<tr><td>" + esc(s.name || "(unnamed)") + lock +
+             "</td><td>" + addr +
+             "</td><td>" + players +
+             "</td><td>" + status + "</td></tr>";
+    }).join("");
+    box.innerHTML =
+      "<table><thead><tr><th>Name</th><th>Address</th><th>Players</th><th>Status</th>" +
+      "</tr></thead><tbody>" + rows + "</tbody></table>";
+  }
+
+  function load() {
+    fetch(SRC, { cache: "no-store" })
+      .then(function (r) {
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        return r.json();
+      })
+      .then(function (data) {
+        render(Array.isArray(data) ? data : []);
+        updated.textContent = "Updated " + new Date().toLocaleTimeString();
+      })
+      .catch(function (e) {
+        box.innerHTML = '<div class="error">Could not load the server list (' +
+                        esc(e.message) + ").</div>";
+      });
+  }
+
+  load();
+  setInterval(load, REFRESH_MS);
+})();
+</script>
+</body>
+</html>
