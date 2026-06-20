@@ -80,7 +80,15 @@ typedef struct {
   char hotkey_complete[SIZEOF_HOTKEY_NAME];
   char hotkey_discard[SIZEOF_HOTKEY_NAME];
   char hotkey_hand_rank[SIZEOF_HOTKEY_NAME];
+  char registry_host[MAX_REGISTRIES][REGISTRY_HOST_LEN]; /* registries to browse (#33) */
+  uint16_t registry_port[MAX_REGISTRIES];
+  uint8_t registry_count;
 } PlayerConfig_t;
+
+/* Parse a "host" / "host:port" spec and append to a registry list (shared by
+ * server.conf and player.conf parsing). */
+void registry_list_add(char host_out[][REGISTRY_HOST_LEN], uint16_t *port_out, uint8_t *count,
+                       const char *spec);
 
 typedef enum {
   CFG_TYPE_STRING,

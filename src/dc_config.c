@@ -324,9 +324,11 @@ void player_config_set_field(PlayerConfig_t *cfg, size_t entry_idx, const char *
 }
 
 /* Parse "host" or "host:port" (one ':' only, so IPv6 literals stay intact —
- * use a hostname for a custom-port IPv6 registry) and append to the list. */
-static void add_registry(ServerConfig_t *cfg, const char *spec) {
-  if (!spec || !*spec || cfg->registry_count >= MAX_REGISTRIES)
+ * use a hostname for a custom-port IPv6 registry) and append to the list.
+ * Shared by the server and the client config readers. */
+void registry_list_add(char host_out[][REGISTRY_HOST_LEN], uint16_t *port_out, uint8_t *count,
+                       const char *spec) {
+  if (!spec || !*spec || *count >= MAX_REGISTRIES)
     return;
   char host[REGISTRY_HOST_LEN];
   snprintf(host, sizeof host, "%s", spec);
@@ -344,9 +346,9 @@ static void add_registry(ServerConfig_t *cfg, const char *spec) {
       port = (uint16_t)atoi(colon + 1);
     }
   }
-  snprintf(cfg->registry_host[cfg->registry_count], REGISTRY_HOST_LEN, "%s", host);
-  cfg->registry_port[cfg->registry_count] = port;
-  cfg->registry_count++;
+  snprintf(host_out[*count], REGISTRY_HOST_LEN, "%s", host);
+  port_out[*count] = port;
+  (*count)++;
 }
 
 ServerConfig_t get_server_config(Path_t *path, const CliArgs_t *cli_args) {
@@ -388,11 +390,12 @@ ServerConfig_t get_server_config(Path_t *path, const CliArgs_t *cli_args) {
     } else if (strcasecmp(cfg_node->key, "registry") == 0) {
       /* registry = host1, host2:port  (first token is the value, rest attrs) */
       if (cfg_node->value)
-        add_registry(&config, cfg_node->value);
+        registry_list_add(config.registry_host, config.registry_port, &config.registry_count,
+                          cfg_node->value);
       char *attr = NULL;
       canfigger_free_current_attr_str_advance(cfg_node->attributes, &attr);
       while (attr) {
-        add_registry(&config, attr);
+        registry_list_add(config.registry_host, config.registry_port, &config.registry_count, attr);
         canfigger_free_current_attr_str_advance(cfg_node->attributes, &attr);
       }
     } else {
@@ -497,13 +500,26 @@ PlayerConfig_t get_player_config(void) {
     memset(found_keys, 0, sizeof(found_keys));
 
     while (cfg_node) {
-      for (size_t i = 0; i < player_config_entry_count; i++) {
-        if (strcasecmp(cfg_node->key, player_config_entries[i].key) == 0) {
-          config_set_from_string_real(&config, &player_config_entries[i],
-                                      cfg_node->value ? cfg_node->value
-                                                      : player_config_entries[i].default_value);
-          found_keys[i] = true;
-          break;
+      if (strcasecmp(cfg_node->key, "registry") == 0) {
+        if (cfg_node->value)
+          registry_list_add(config.registry_host, config.registry_port, &config.registry_count,
+                            cfg_node->value);
+        char *attr = NULL;
+        canfigger_free_current_attr_str_advance(cfg_node->attributes, &attr);
+        while (attr) {
+          registry_list_add(config.registry_host, config.registry_port, &config.registry_count,
+                            attr);
+          canfigger_free_current_attr_str_advance(cfg_node->attributes, &attr);
+        }
+      } else {
+        for (size_t i = 0; i < player_config_entry_count; i++) {
+          if (strcasecmp(cfg_node->key, player_config_entries[i].key) == 0) {
+            config_set_from_string_real(&config, &player_config_entries[i],
+                                        cfg_node->value ? cfg_node->value
+                                                        : player_config_entries[i].default_value);
+            found_keys[i] = true;
+            break;
+          }
         }
       }
       canfigger_free_current_key_node_advance(&cfg_node);
