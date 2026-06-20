@@ -366,3 +366,14 @@ void draw_3d_border(SDL_Renderer *r, SDL_Rect rect, int thickness) {
     SDL_RenderFillRect(r, &(SDL_Rect){ring.x + ring.w - 1, ring.y, 1, ring.h});
   }
 }
+
+void gfx_fill_circle(SDL_Renderer *r, int cx, int cy, int radius) {
+  for (int y = -radius; y <= radius; y++) {
+    float dy = (float)y / (float)radius;
+    float inside = 1.0f - dy * dy;
+    if (inside < 0.0f)
+      continue;
+    int x = (int)(radius * sqrtf(inside) + 0.5f);
+    SDL_RenderDrawLine(r, cx - x, cy + y, cx + x, cy + y);
+  }
+}

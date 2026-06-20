@@ -70,9 +70,9 @@ const ConfigEntry player_config_entries[] = {
     HK(check, "c"),
     HK(bet, "b"),
     HK(fold, "f"),
-    HK(call, "c"),
+    HK(call, "l"),
     HK(raise, "r"),
-    HK(complete, "r"),
+    HK(complete, "o"),
     HK(discard, "d"),
     HK(hand_rank, "h"),
 #undef HK

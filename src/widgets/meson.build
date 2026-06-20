@@ -10,6 +10,7 @@ widgets_src = files(
   'link.c',
   'nick.c',
   'ping.c',
+  'round_button.c',
   'step_scale.c',
   'text.c',
 )

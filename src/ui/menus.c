@@ -51,18 +51,10 @@
 #include "widgets/checkbox.h"
 #include "widgets/image.h"
 #include "widgets/input.h"
+#include "widgets/round_button.h"
 #include "widgets/text.h"
 
 enum { LAN_MAX_SHOWN = 6 };
-
-static void lan_row_label(const LanGameInfo_t *g, char *buf, size_t n) {
-  const char *who = (g->name[0] != '\0') ? g->name : g->ip;
-  /* No password marker: the server password grants admin/bot privileges, it
-   * does NOT gate joining, so showing it here would mislead a player picking a
-   * server. */
-  snprintf(buf, n, "%s  %u/%u%s", who, (unsigned)g->player_count, (unsigned)g->max_players,
-           g->in_progress ? " [playing]" : "");
-}
 
 /* FNV-1a over the displayed fields, so the row buttons are rebuilt only when
  * the visible list actually changes. */
@@ -117,10 +109,138 @@ static int lan_expire(LanGameInfo_t *list, uint32_t *seen, int count, uint32_t n
 
 enum { REG_MAX_SHOWN = 8 };
 
-static void reg_row_label(const RegistryServer_t *s, char *buf, size_t n) {
-  const char *who = (s->name[0] != '\0') ? s->name : s->ip;
-  snprintf(buf, n, "%s  %u/%u%s", who, (unsigned)s->player_count, (unsigned)s->max_players,
-           s->in_progress ? " [playing]" : "");
+/* A single server as shown in a list table. LanGameInfo_t and RegistryServer_t
+ * have identical fields, so both LAN and registry rows map onto this and share
+ * one table builder. */
+typedef struct {
+  const char *name;
+  const char *ip;
+  uint16_t port;
+  uint8_t player_count;
+  uint8_t max_players;
+  bool in_progress;
+} ServerRow_t;
+
+enum { SERVER_TABLE_COLS = 5 }; /* Name | IP | Port | Players | Connect */
+enum { CONNECT_BTN_DIAMETER = 25 };
+
+/* Total laid-out width of a table (sum of column widths plus inter-column gaps). */
+static int server_table_width(const UITable_t *t) {
+  int w = 0;
+  for (int c = 0; c < t->cols; c++)
+    w += t->col_width[c];
+  if (t->cols > 1)
+    w += t->col_spacing * (t->cols - 1);
+  return w;
+}
+
+/* Y just past the last row of a laid-out table (its visual bottom edge). */
+static int server_table_bottom(const UITable_t *t) {
+  int y = t->y;
+  for (int r = 0; r < t->rows; r++)
+    y += t->row_height[r] + t->row_spacing;
+  return y;
+}
+
+/* Build a server-list table whose top is at `y`, horizontally centered on the
+ * viewport: a bold header row (Name | IP | Port | Players | Connect), then one
+ * row per server with text cells and a small round Connect button in the last
+ * column. Every widget is registered in `owner` for one-shot cleanup. The
+ * per-row Connect buttons are returned in connect_btn[] (parallel to rows[]) so
+ * the caller can hit-test them; the button is the only click target. Returns the
+ * number of data rows placed.
+ *
+ * No password indicator: a server password grants admin/bot privileges and does
+ * NOT gate joining, so a lock here would mislead. in_progress is informational
+ * (observers may still join) and is marked lightly on the Players cell. */
+static int server_table_build(UITable_t *t, UIRegistry_t *owner, Font_t *font, int y,
+                              const ServerRow_t *rows, int n, RoundButtonWidget_t **connect_btn) {
+  const SDL_Color connect_green = {40, 175, 75, 255};
+
+  ui_table_begin(t, 0, y, SERVER_TABLE_COLS);
+  for (int c = 0; c < SERVER_TABLE_COLS - 1; c++)
+    t->col_align[c] = 1; /* left-align the text columns; Connect column centers */
+
+  static const char *const hdr[SERVER_TABLE_COLS] = {"Name", "IP", "Port", "Players", "Connect"};
+  for (int c = 0; c < SERVER_TABLE_COLS; c++) {
+    TextWidget_t *h = text_widget_create(_(hdr[c]), font->fonts[FONT_DEFAULT_BOLD], DC_TEXT_ON_DARK);
+    if (h) {
+      ui_register(owner, &h->base);
+      ui_table_add(t, 0, c, &h->base);
+    }
+  }
+
+  int placed = 0;
+  for (int i = 0; i < n; i++) {
+    const ServerRow_t *s = &rows[i];
+    const char *who = (s->name && s->name[0] != '\0') ? s->name : s->ip;
+    char portbuf[8];
+    char plbuf[16];
+    snprintf(portbuf, sizeof(portbuf), "%u", (unsigned)s->port);
+    snprintf(plbuf, sizeof(plbuf), "%u/%u%s", (unsigned)s->player_count, (unsigned)s->max_players,
+             s->in_progress ? " *" : "");
+
+    const char *cells[SERVER_TABLE_COLS - 1] = {who, s->ip, portbuf, plbuf};
+    int row = i + 1;
+    for (int c = 0; c < SERVER_TABLE_COLS - 1; c++) {
+      TextWidget_t *tw = text_widget_create(cells[c], font->fonts[FONT_DEFAULT], DC_TEXT_ON_DARK);
+      if (tw) {
+        ui_register(owner, &tw->base);
+        ui_table_add(t, row, c, &tw->base);
+      }
+    }
+    RoundButtonWidget_t *cb = round_button_create(CONNECT_BTN_DIAMETER, connect_green);
+    if (cb) {
+      ui_register(owner, &cb->base);
+      ui_table_add(t, row, SERVER_TABLE_COLS - 1, &cb->base);
+    }
+    connect_btn[placed++] = cb;
+  }
+
+  /* Center the whole table on the viewport now that column widths are known. */
+  t->x = g_viewport.x + (g_viewport.w - server_table_width(t)) / 2;
+  ui_table_layout(t);
+  return placed;
+}
+
+/* Draw a styled backdrop for a laid-out table: a translucent panel, a darker
+ * header band, faint zebra striping, a header underline, and a border. Call
+ * before rendering the cells so the text and buttons land on top. */
+static void server_table_draw_style(const UITable_t *t, SDL_Renderer *r) {
+  if (t->rows < 1)
+    return;
+  const int pad = 10;
+  const SDL_Rect panel = {
+      t->x - pad,
+      t->y - pad,
+      server_table_width(t) + pad * 2,
+      (server_table_bottom(t) - t->row_spacing - t->y) + pad * 2,
+  };
+
+  SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_BLEND);
+  SDL_SetRenderDrawColor(r, 0, 0, 0, 110);
+  SDL_RenderFillRect(r, &panel);
+
+  int y = t->y;
+  for (int row = 0; row < t->rows; row++) {
+    SDL_Rect band = {panel.x, y - t->row_spacing / 2, panel.w, t->row_height[row] + t->row_spacing};
+    if (row == 0)
+      SDL_SetRenderDrawColor(r, 0, 0, 0, 130); /* header band */
+    else if ((row & 1) == 0)
+      SDL_SetRenderDrawColor(r, 255, 255, 255, 16); /* zebra */
+    else {
+      y += t->row_height[row] + t->row_spacing;
+      continue;
+    }
+    SDL_RenderFillRect(r, &band);
+    y += t->row_height[row] + t->row_spacing;
+  }
+
+  SDL_SetRenderDrawColor(r, 255, 255, 255, 90); /* header underline */
+  SDL_RenderFillRect(r, &(SDL_Rect){panel.x, t->y + t->row_height[0] + t->row_spacing / 2, panel.w, 2});
+
+  SDL_SetRenderDrawColor(r, 0, 0, 0, 200); /* border */
+  SDL_RenderDrawRect(r, &panel);
 }
 
 /* Query every configured registry and merge the results (dedup by ip:port) into
@@ -228,7 +348,23 @@ int menu_display_connect(PlayerConfig_t *player_config, char *host_str, uint16_t
       g_layout.menu.margin_x,
       port_input->base.rect.y + port_input->base.rect.h + g_layout_cfg.input_field_v_gap, 0, 0};
 
-  InputWidget_t *focused_inputs[2] = {host_input, port_input};
+  /* Nick is inline-editable here (a "nick:" label + input), so it can be set
+   * right before connecting without opening Settings. */
+  TextWidget_t *tw_nick = text_widget_create(_("nick:"), font->fonts[FONT_DEFAULT], DC_TEXT_ON_LIGHT);
+  if (tw_nick)
+    ui_widget_place(&tw_nick->base, input_nick_pos.x, input_nick_pos.y);
+  const int nick_label_w = tw_nick ? tw_nick->base.rect.w : 0;
+
+  InputWidget_t *nick_input =
+      input_widget_create(player_config->nick, font->fonts[FONT_DEFAULT], input_w, CFG_TYPE_STRING);
+  if (!nick_input)
+    goto err;
+  nick_input->max_len = SIZEOF_NICK - 1;
+  nick_input->base.rect.x = input_nick_pos.x + nick_label_w + g_layout_cfg.connect_input_w_pad;
+  nick_input->base.rect.y = input_nick_pos.y;
+  ui_register(&reg, &nick_input->base);
+
+  InputWidget_t *focused_inputs[3] = {host_input, port_input, nick_input};
   int focused_slot = 0;
 
   SDL_StartTextInput();
@@ -248,10 +384,6 @@ int menu_display_connect(PlayerConfig_t *player_config, char *host_str, uint16_t
     ui_widget_place(&tw_version->base, g_layout.menu.title_x + g_layout_cfg.version_x_offset,
                     g_layout.menu.title_y + g_layout_cfg.version_y_offset);
 
-  TextWidget_t *tw_nick =
-      text_widget_create(player_config->nick, font->fonts[FONT_DEFAULT], DC_TEXT_ON_LIGHT);
-  if (tw_nick)
-    ui_widget_place(&tw_nick->base, input_nick_pos.x, input_nick_pos.y);
 
   /* Heading above the discovered-server rows; only drawn when at least one
    * server is found. */
@@ -281,23 +413,34 @@ int menu_display_connect(PlayerConfig_t *player_config, char *host_str, uint16_t
   LanGameInfo_t found[LAN_MAX_SHOWN];
   uint32_t found_seen[LAN_MAX_SHOWN];
   int found_count = 0;
-  ButtonWidget_t *host_btn[LAN_MAX_SHOWN] = {0};
-  int host_btn_count = 0;
   uint64_t shown_sig = 0;
 
-  /* Internet servers from the configured registries: a second column to the
-   * right of the LAN list, refreshed on a slow timer (#33). */
-  const int reg_col_x = g_layout.menu.margin_x + g_layout_cfg.connect_input_w_pad + 360;
+  /* Server lists are stacked, centered tables: "Internet servers" on top,
+   * "Servers on LAN" below, with a divider between (#33). server_table_build()
+   * centers each table horizontally; the headings are centered to match and
+   * placed on (re)build. */
+  const int servers_top_y = lan_heading_y;
+  const int section_gap = g_layout_cfg.input_field_v_gap * 3;
+
+  /* Internet servers (top) from the configured registries, slow-refreshed. */
   RegistryServer_t reg_found[REG_MAX_SHOWN];
   int reg_found_count = 0;
-  ButtonWidget_t *reg_btn[REG_MAX_SHOWN] = {0};
-  int reg_btn_count = 0;
   bool reg_dirty = (player_config->registry_count > 0); /* fetch on first frame */
   uint32_t reg_last_fetch = 0;
+  UITable_t reg_table = {0};
+  UIRegistry_t reg_tbl_reg = {0};
+  RoundButtonWidget_t *reg_connect[REG_MAX_SHOWN] = {0};
+  int reg_connect_count = 0;
+  int reg_bottom = servers_top_y; /* visual bottom of the Internet section */
+  int prev_reg_bottom = -1;       /* the LAN table relayouts when this moves */
   TextWidget_t *tw_reg_heading =
       text_widget_create(_("Internet servers"), font->fonts[FONT_DEFAULT_BOLD], DC_TEXT_ON_DARK);
-  if (tw_reg_heading)
-    ui_widget_place(&tw_reg_heading->base, reg_col_x, lan_heading_y);
+
+  /* LAN servers (bottom). */
+  UITable_t lan_table = {0};
+  UIRegistry_t lan_tbl_reg = {0};
+  RoundButtonWidget_t *lan_connect[LAN_MAX_SHOWN] = {0};
+  int lan_connect_count = 0;
 
   while (running) {
     SDL_Event e;
@@ -311,12 +454,12 @@ int menu_display_connect(PlayerConfig_t *player_config, char *host_str, uint16_t
         btn_quit_connect->base.hovered = SDL_PointInRect(&mouse_pos, &btn_quit_connect->base.rect);
       for (size_t i = 0; i < LINK_DEFS_COUNT; i++)
         links[i]->base.hovered = SDL_PointInRect(&mouse_pos, &links[i]->base.rect);
-      for (int i = 0; i < host_btn_count; i++)
-        if (host_btn[i])
-          host_btn[i]->base.hovered = SDL_PointInRect(&mouse_pos, &host_btn[i]->base.rect);
-      for (int i = 0; i < reg_btn_count; i++)
-        if (reg_btn[i])
-          reg_btn[i]->base.hovered = SDL_PointInRect(&mouse_pos, &reg_btn[i]->base.rect);
+      for (int i = 0; i < lan_connect_count; i++)
+        if (lan_connect[i])
+          lan_connect[i]->base.hovered = SDL_PointInRect(&mouse_pos, &lan_connect[i]->base.rect);
+      for (int i = 0; i < reg_connect_count; i++)
+        if (reg_connect[i])
+          reg_connect[i]->base.hovered = SDL_PointInRect(&mouse_pos, &reg_connect[i]->base.rect);
       if (e.type == SDL_QUIT) {
         running = false;
       } else if (e.type == SDL_MOUSEBUTTONDOWN) {
@@ -334,6 +477,7 @@ int menu_display_connect(PlayerConfig_t *player_config, char *host_str, uint16_t
         } else if (button_save->interactive &&
                    SDL_PointInRect(&mouse_pos, &button_save->base.rect)) {
           button_save->click.start_time = SDL_GetTicks();
+          player_config_set_field(player_config, 0, input_widget_get_text(nick_input));
           player_config_set_field(player_config, 1, input_widget_get_text(host_input));
           player_config_set_field(player_config, 2, input_widget_get_text(port_input));
           save_player_config(player_config);
@@ -349,9 +493,13 @@ int menu_display_connect(PlayerConfig_t *player_config, char *host_str, uint16_t
           focused_inputs[focused_slot]->focused = false;
           focused_slot = 1;
           focused_inputs[focused_slot]->focused = true;
+        } else if (SDL_PointInRect(&mouse_pos, &nick_input->base.rect)) {
+          focused_inputs[focused_slot]->focused = false;
+          focused_slot = 2;
+          focused_inputs[focused_slot]->focused = true;
         } else {
-          for (int i = 0; i < host_btn_count; i++) {
-            if (host_btn[i] && SDL_PointInRect(&mouse_pos, &host_btn[i]->base.rect)) {
+          for (int i = 0; i < lan_connect_count; i++) {
+            if (lan_connect[i] && SDL_PointInRect(&mouse_pos, &lan_connect[i]->base.rect)) {
               input_widget_set_text(host_input, found[i].ip);
               char pbuf[8];
               snprintf(pbuf, sizeof(pbuf), "%u", (unsigned)found[i].tcp_port);
@@ -361,8 +509,8 @@ int menu_display_connect(PlayerConfig_t *player_config, char *host_str, uint16_t
               break;
             }
           }
-          for (int i = 0; i < reg_btn_count && running; i++) {
-            if (reg_btn[i] && SDL_PointInRect(&mouse_pos, &reg_btn[i]->base.rect)) {
+          for (int i = 0; i < reg_connect_count && running; i++) {
+            if (reg_connect[i] && SDL_PointInRect(&mouse_pos, &reg_connect[i]->base.rect)) {
               input_widget_set_text(host_input, reg_found[i].ip);
               char pbuf[8];
               snprintf(pbuf, sizeof(pbuf), "%u", (unsigned)reg_found[i].tcp_port);
@@ -406,7 +554,7 @@ int menu_display_connect(PlayerConfig_t *player_config, char *host_str, uint16_t
         case SDLK_TAB: {
           focused_inputs[focused_slot]->focused = false;
           int dir = (e.key.keysym.mod & KMOD_SHIFT) ? -1 : 1;
-          focused_slot = (focused_slot + dir + 2) % 2;
+          focused_slot = (focused_slot + dir + 3) % 3;
           focused_inputs[focused_slot]->focused = true;
           break;
         }
@@ -447,7 +595,46 @@ int menu_display_connect(PlayerConfig_t *player_config, char *host_str, uint16_t
       }
     }
 
-    /* --- LAN discovery: re-query, drain replies, expire, rebuild rows --- */
+    /* --- Internet servers (top): slow-refresh the registry table, anchored at
+     * the top of the server-list area (#33). --- */
+    if (player_config->registry_count > 0) {
+      uint32_t now = SDL_GetTicks();
+      if (reg_dirty || now - reg_last_fetch >= 10000) {
+        reg_found_count = registry_fetch(player_config, reg_found, REG_MAX_SHOWN);
+        reg_last_fetch = now;
+        reg_dirty = false;
+        dc_log(DC_LOG_DEBUG, "registry: fetched %d server(s)", reg_found_count);
+        for (int i = 0; i < reg_found_count; i++)
+          dc_log(DC_LOG_DEBUG, "registry:   [%d] %s:%u \"%s\" %u/%u", i, reg_found[i].ip,
+                 (unsigned)reg_found[i].tcp_port, reg_found[i].name,
+                 (unsigned)reg_found[i].player_count, (unsigned)reg_found[i].max_players);
+
+        const int reg_heading_h = tw_reg_heading ? tw_reg_heading->base.rect.h : 0;
+        ui_destroy_all(&reg_tbl_reg);
+        reg_connect_count = 0;
+        if (reg_found_count > 0) {
+          ServerRow_t rows[REG_MAX_SHOWN];
+          for (int i = 0; i < reg_found_count; i++)
+            rows[i] = (ServerRow_t){reg_found[i].name,        reg_found[i].ip,
+                                    reg_found[i].tcp_port,    reg_found[i].player_count,
+                                    reg_found[i].max_players, reg_found[i].in_progress};
+          reg_connect_count = server_table_build(
+              &reg_table, &reg_tbl_reg, font,
+              servers_top_y + reg_heading_h + g_layout_cfg.input_field_v_gap, rows, reg_found_count,
+              reg_connect);
+          if (tw_reg_heading)
+            ui_widget_place(&tw_reg_heading->base,
+                            g_viewport.x + (g_viewport.w - tw_reg_heading->base.rect.w) / 2,
+                            servers_top_y);
+          reg_bottom = server_table_bottom(&reg_table);
+        } else {
+          reg_bottom = servers_top_y; /* nothing shown; LAN starts at the top */
+        }
+      }
+    }
+
+    /* --- Servers on LAN (bottom): re-query, drain replies, expire, then rebuild
+     * below the Internet table; also relayout when the table above moves. --- */
     if (disc_set) {
       uint32_t now = SDL_GetTicks();
       if (now - last_query >= 2000) {
@@ -464,59 +651,35 @@ int menu_display_connect(PlayerConfig_t *player_config, char *host_str, uint16_t
       found_count = lan_expire(found, found_seen, found_count, now, 6000);
 
       uint64_t sig = lan_list_sig(found, found_count);
-      if (sig != shown_sig) {
-        for (int i = 0; i < host_btn_count; i++)
-          if (host_btn[i])
-            ui_widget_destroy(&host_btn[i]->base);
-        host_btn_count = 0;
-        int row_y = lan_heading_y +
-                    (tw_lan_heading ? tw_lan_heading->base.rect.h + g_layout_cfg.input_field_v_gap : 0);
-        for (int i = 0; i < found_count; i++) {
-          char label[96];
-          lan_row_label(&found[i], label, sizeof(label));
-          host_btn[i] = button_widget_create_styled(label, &ROLE_PRIMARY, font->fonts, (SDL_Keycode)0);
-          if (!host_btn[i])
-            continue;
-          host_btn[i]->base.rect.x = g_layout.menu.margin_x;
-          host_btn[i]->base.rect.y = row_y;
-          row_y += host_btn[i]->base.rect.h + g_layout_cfg.input_field_v_gap;
-          host_btn_count = i + 1;
+      bool moved = (reg_bottom != prev_reg_bottom);
+      if (sig != shown_sig || moved) {
+        const int lan_top = (reg_connect_count > 0) ? reg_bottom + section_gap : servers_top_y;
+        const int lan_heading_h = tw_lan_heading ? tw_lan_heading->base.rect.h : 0;
+        ui_destroy_all(&lan_tbl_reg);
+        lan_connect_count = 0;
+        if (found_count > 0) {
+          ServerRow_t rows[LAN_MAX_SHOWN];
+          for (int i = 0; i < found_count; i++)
+            rows[i] = (ServerRow_t){found[i].name,        found[i].ip,
+                                    found[i].tcp_port,    found[i].player_count,
+                                    found[i].max_players, found[i].in_progress};
+          lan_connect_count =
+              server_table_build(&lan_table, &lan_tbl_reg, font,
+                                 lan_top + lan_heading_h + g_layout_cfg.input_field_v_gap, rows,
+                                 found_count, lan_connect);
+          if (tw_lan_heading)
+            ui_widget_place(&tw_lan_heading->base,
+                            g_viewport.x + (g_viewport.w - tw_lan_heading->base.rect.w) / 2,
+                            lan_top);
         }
         shown_sig = sig;
-      }
-    }
-
-    /* --- Registry: refresh the internet-server list on a slow timer --- */
-    if (player_config->registry_count > 0) {
-      uint32_t now = SDL_GetTicks();
-      if (reg_dirty || now - reg_last_fetch >= 10000) {
-        reg_found_count = registry_fetch(player_config, reg_found, REG_MAX_SHOWN);
-        reg_last_fetch = now;
-        reg_dirty = false;
-        for (int i = 0; i < reg_btn_count; i++)
-          if (reg_btn[i])
-            ui_widget_destroy(&reg_btn[i]->base);
-        reg_btn_count = 0;
-        int row_y = lan_heading_y + (tw_reg_heading ? tw_reg_heading->base.rect.h +
-                                                          g_layout_cfg.input_field_v_gap
-                                                    : 0);
-        for (int i = 0; i < reg_found_count; i++) {
-          char label[96];
-          reg_row_label(&reg_found[i], label, sizeof(label));
-          reg_btn[i] =
-              button_widget_create_styled(label, &ROLE_PRIMARY, font->fonts, (SDL_Keycode)0);
-          if (!reg_btn[i])
-            continue;
-          reg_btn[i]->base.rect.x = reg_col_x;
-          reg_btn[i]->base.rect.y = row_y;
-          row_y += reg_btn[i]->base.rect.h + g_layout_cfg.input_field_v_gap;
-          reg_btn_count = i + 1;
-        }
+        prev_reg_bottom = reg_bottom;
       }
     }
 
     button_save->interactive =
         strcmp(input_widget_get_text(host_input), player_config->host) != 0 ||
+        strcmp(input_widget_get_text(nick_input), player_config->nick) != 0 ||
         (uint16_t)strtoul(input_widget_get_text(port_input), NULL, 10) != player_config->port;
 
     clear_screen(sdl_context->renderer);
@@ -524,18 +687,30 @@ int menu_display_connect(PlayerConfig_t *player_config, char *host_str, uint16_t
     ui_widget_render(&button_settings->base);
     ui_render_all(&reg);
 
-    if (host_btn_count > 0 && tw_lan_heading)
-      ui_widget_render(&tw_lan_heading->base);
+    if (reg_connect_count > 0) {
+      server_table_draw_style(&reg_table, sdl_context->renderer);
+      if (tw_reg_heading)
+        ui_widget_render(&tw_reg_heading->base);
+      ui_render_all(&reg_tbl_reg);
+    }
 
-    for (int i = 0; i < host_btn_count; i++)
-      if (host_btn[i])
-        ui_widget_render(&host_btn[i]->base);
+    if (lan_connect_count > 0) {
+      server_table_draw_style(&lan_table, sdl_context->renderer);
+      if (tw_lan_heading)
+        ui_widget_render(&tw_lan_heading->base);
+      ui_render_all(&lan_tbl_reg);
+    }
 
-    if (reg_btn_count > 0 && tw_reg_heading)
-      ui_widget_render(&tw_reg_heading->base);
-    for (int i = 0; i < reg_btn_count; i++)
-      if (reg_btn[i])
-        ui_widget_render(&reg_btn[i]->base);
+    /* Divider between the Internet and LAN sections when both are shown. */
+    if (reg_connect_count > 0 && lan_connect_count > 0) {
+      int wr = server_table_width(&reg_table);
+      int wl = server_table_width(&lan_table);
+      int sw = (wr > wl ? wr : wl);
+      SDL_Rect sep = {g_viewport.x + (g_viewport.w - sw) / 2, reg_bottom + section_gap / 2, sw, 2};
+      SDL_SetRenderDrawBlendMode(sdl_context->renderer, SDL_BLENDMODE_BLEND);
+      SDL_SetRenderDrawColor(sdl_context->renderer, 255, 255, 255, 120);
+      SDL_RenderFillRect(sdl_context->renderer, &sep);
+    }
 
     ui_widget_render(&tw_nick->base);
     ui_widget_render(&tw_title->base);
@@ -559,6 +734,12 @@ int menu_display_connect(PlayerConfig_t *player_config, char *host_str, uint16_t
   if (final_port && *final_port)
     *port = (uint16_t)strtoul(final_port, NULL, 10);
 
+  /* Apply the edited nick to the live config so this session connects under it
+   * even if it wasn't persisted with Save. */
+  const char *final_nick = input_widget_get_text(nick_input);
+  if (final_nick && *final_nick)
+    player_config_set_field(player_config, 0, final_nick);
+
   if (tw_title)
     ui_widget_destroy(&tw_title->base);
   if (tw_version)
@@ -572,10 +753,8 @@ int menu_display_connect(PlayerConfig_t *player_config, char *host_str, uint16_t
   ui_widget_destroy(&button_connect->base);
   ui_widget_destroy(&button_settings->base);
   ui_destroy_all(&reg);
-
-  for (int i = 0; i < host_btn_count; i++)
-    if (host_btn[i])
-      ui_widget_destroy(&host_btn[i]->base);
+  ui_destroy_all(&lan_tbl_reg);
+  ui_destroy_all(&reg_tbl_reg);
   if (disc_set)
     tcpme_free_set(disc_set);
   if (tcpme_socket_valid(disc_sock))
@@ -729,16 +908,35 @@ static void menu_display_hotkeys(PlayerConfig_t *player_config, SdlContext_t *sd
           const char *kn = SDL_GetKeyName(sym);
           /* A key SDL can't name (some non-Latin layouts) is ignored so the
            * action keeps its previous, still-resolvable binding. */
+          char cand[SIZEOF_HOTKEY_NAME];
+          cand[0] = '\0';
           if (kn && *kn) {
-            snprintf(keyname[capturing], sizeof(keyname[capturing]), "%s", kn);
+            snprintf(cand, sizeof(cand), "%s", kn);
             /* SDL names single keys uppercase ("C"); store lowercase to match
              * the lowercase defaults.  Multi-char names (Space) untouched. */
-            if (keyname[capturing][1] == '\0')
-              keyname[capturing][0] = (char)tolower((unsigned char)keyname[capturing][0]);
+            if (cand[1] == '\0')
+              cand[0] = (char)tolower((unsigned char)cand[0]);
           }
-          if (tw_value[capturing])
-            text_widget_set_text(tw_value[capturing], keyname[capturing]);
-          capturing = -1;
+          /* Reject a key already bound to another action: a duplicate binding
+           * makes one keypress fire two actions in-game (e.g. fold + the
+           * hand-rank overlay both on 'h'). */
+          int clash = -1;
+          for (size_t r = 0; cand[0] && r < n; r++)
+            if ((int)r != capturing && strcmp(keyname[r], cand) == 0) {
+              clash = (int)r;
+              break;
+            }
+          if (clash >= 0) {
+            if (tw_hint)
+              text_widget_set_text(tw_hint, _("That key is already used - pick another"));
+            /* stay in capture mode so the user can pick a different key */
+          } else {
+            if (cand[0])
+              snprintf(keyname[capturing], sizeof(keyname[capturing]), "%s", cand);
+            if (tw_value[capturing])
+              text_widget_set_text(tw_value[capturing], keyname[capturing]);
+            capturing = -1;
+          }
         }
       } else if (e.type == SDL_KEYDOWN) {
         if (e.key.keysym.sym == SDLK_ESCAPE)
@@ -1093,11 +1291,9 @@ void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *sdl_cont
           running = false;
           break;
         case SDLK_ESCAPE:
-          if (confirm_quit(font->fonts)) {
-            SDL_Event quit = {.type = SDL_QUIT};
-            SDL_PushEvent(&quit);
-            running = false;
-          }
+          /* Esc backs out to the connect screen (same as the corner arrow), not
+           * a quit prompt; the X button is for quitting. */
+          running = false;
           break;
         case SDLK_TAB: {
           if (n_ti == 0)

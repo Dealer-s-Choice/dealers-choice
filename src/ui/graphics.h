@@ -119,4 +119,7 @@ void show_loading_screen(SDL_Renderer *renderer, TTF_Font *font, const char *mes
 void draw_rect_border(SDL_Renderer *r, SDL_Rect rect);
 void draw_3d_border(SDL_Renderer *r, SDL_Rect rect, int thickness);
 
+/* Filled circle in the current draw color, centered at (cx, cy). */
+void gfx_fill_circle(SDL_Renderer *r, int cx, int cy, int radius);
+
 #endif

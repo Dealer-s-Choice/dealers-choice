@@ -92,18 +92,22 @@ directory](https://github.com/Dealer-s-Choice/dealers_choice/tree/trunk/po).
 ## Game-play hotkeys
 
 The keys used for in-game actions (check, bet, fold, call, raise, complete,
-discard) are configured in your `player.conf`. Defaults are written on
-first run, so existing entries can simply be edited:
+discard) and the hand-rank overlay are configured in your `player.conf`.
+Defaults are written on first run, so existing entries can simply be edited:
 
 ```
 hotkey_check = c
 hotkey_bet = b
 hotkey_fold = f
-hotkey_call = c
+hotkey_call = l
 hotkey_raise = r
-hotkey_complete = r
+hotkey_complete = o
 hotkey_discard = d
+hotkey_hand_rank = h
 ```
+
+`hotkey_hand_rank` toggles the current best-hand readout in the lower-right
+corner during a game.
 
 Values may be a single letter or an SDL key name (e.g. `Space`, `Up`, `Home`).
 
@@ -112,5 +116,6 @@ Some keys are reserved and the editor will refuse them: `Esc`,
 `1`–`8` (the bet-amount scale). Menu-screen keys are not configurable
 either. (Cards to discard are selected with the mouse, not the keyboard.)
 
-`check` and `call` may safely share a key (they're never offered at the
-same time), and likewise `raise` and `complete`.
+Each action needs its own key: the editor refuses a key that is already
+bound to another action, because one keypress would otherwise trigger two
+actions at once.

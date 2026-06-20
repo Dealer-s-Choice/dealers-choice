@@ -117,16 +117,24 @@ void step_scale_layout(StepScaleWidget_t *s, SDL_Rect region) {
     char buf[16];
     snprintf(buf, sizeof buf, "%u", (unsigned)s->values[sel]);
     text_widget_set_text(s->label, buf);
-    ui_widget_place(&s->label->base, region.x + (region.w - s->label->base.rect.w) / 2, region.y);
-  }
 
-  if (s->owed_label && s->owed > 0) {
-    char obuf[20];
-    snprintf(obuf, sizeof obuf, "(%u)", (unsigned)s->owed);
-    text_widget_set_text(s->owed_label, obuf);
-    int gap = s->label ? s->label->base.rect.h / 2 : 4;
-    int ox = s->label ? s->label->base.rect.x + s->label->base.rect.w + gap : region.x;
-    ui_widget_place(&s->owed_label->base, ox, region.y);
+    /* Center the value and the owed "(N)" together as one group, so the pair
+     * stays centered in the region rather than the value being centered and the
+     * owed amount hanging off to the right. */
+    const bool show_owed = (s->owed_label && s->owed > 0);
+    const int gap = s->label->base.rect.h / 2;
+    int owed_w = 0;
+    if (show_owed) {
+      char obuf[20];
+      snprintf(obuf, sizeof obuf, "(%u)", (unsigned)s->owed);
+      text_widget_set_text(s->owed_label, obuf);
+      owed_w = s->owed_label->base.rect.w;
+    }
+    const int group_w = s->label->base.rect.w + (show_owed ? gap + owed_w : 0);
+    const int gx = region.x + (region.w - group_w) / 2;
+    ui_widget_place(&s->label->base, gx, region.y);
+    if (show_owed)
+      ui_widget_place(&s->owed_label->base, gx + s->label->base.rect.w + gap, region.y);
   }
 }
 
