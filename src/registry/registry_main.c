@@ -5,6 +5,9 @@
  MIT License
 
  Copyright (c) 2026 Andy Alt
+
+ Initial version written by Claude (Opus 4.8, an LLM by Anthropic) at Andy's
+ direction.
 */
 
 /*
