@@ -197,6 +197,91 @@ above — keep that in mind when adding more profiling content here.)
 - Action / dealer timeout budgets — 30 s defaults survive 75 ms RTT
   fine, but combining with loss and many round-trips can push them.
 
+## Sanitized build for manual / live verification
+
+Running the server + a bot (and/or the GUI client) to play real hands should use
+a sanitized build, so memory errors / UB surface during play with a full
+ASan/UBSan report instead of a bare SIGABRT:
+
+    CC=clang CFLAGS="-fno-sanitize-recover=all" meson setup _build_asan \
+      -Db_sanitize=address,undefined -Db_lundef=false -Dgen_protobuf=true
+
+Run the binaries with
+`ASAN_OPTIONS` / `UBSAN_OPTIONS=halt_on_error=1:abort_on_error=1:print_stacktrace=1`.
+Line-buffer the verbose log so it doesn't lag behind the game (stdio
+block-buffers to a file):
+
+    stdbuf -oL -eL ./dealers-choice-server --verbose > log 2>&1
+
+For a fully-automated repro, run **two bots** (they auto-deal/play) instead of a
+manual GUI client.
+
+### gcc -Werror before calling a branch CI-ready
+
+The ASan build above uses **clang**, but the CI gate compiles with **gcc
+`-Werror`**, which emits warnings clang stays silent on (e.g.
+`-Wformat-truncation`). A branch clean under clang/ASan can still red the gate.
+Do a quick gcc pass first:
+
+    CC=gcc CFLAGS=-Werror meson setup _build_gcc -Dgen_protobuf=true
+    meson compile -C _build_gcc
+
+### scripts/soak.sh — phased sanitizer soak (run after server-side changes)
+
+`scripts/soak.sh` drives a sanitized server + bots through sustained play, bot
+churn, and the 0-player showdown path, with ASan/UBSan armed to abort on the
+first violation. `DC_REPO` defaults to the repo root, so it works from any
+clone/worktree. Override the phase lengths for a ~5-minute run:
+
+    DC_BUILD=$PWD/_build_asan DC_PORT=24770 DC_PASSWORD=x \
+      P1_BOTS=2 P1_MIN=3 P2_BOTS=3 P2_MIN=2 P3_ROUNDS=3 \
+      LOG=/tmp/soak.log bash scripts/soak.sh
+
+**Verify by reading the log, not the exit code.** A real pass ends with
+`DONE: all phases passed`. (The script has reported exit 0 while the server
+never started, and backgrounding it can surface a harmless non-zero code.)
+Check `/tmp/soak.log` and grep the `SRVLOG` for `runtime error` /
+`AddressSanitizer`.
+
+## Running the binaries directly
+
+When running binaries by hand (not via `meson test` / `game_logic.py`):
+
+- **Data dir:** non-Windows resolution is `../data` relative to the **cwd**
+  (`util.c:get_data_dir`), not the binary. So `cd _build_asan && ./dealers-choice`
+  finds `data/`; running `./_build_asan/dealers-choice` from the repo root fails
+  with "Unable to find data". Either `cd` into the build dir or set
+  `DEALERSCHOICE_DATADIR=$PWD/data`. (The `../data` lookup is a pre-release hack.)
+- **Bots need a password, not `---test`:** `dealers-choice-bot` only joins a
+  server that has a password set — export `DC_PASSWORD` for the server *and* each
+  bot. Do **not** use `---test` (it skips the server's auth handshake while the
+  bot still performs it, desyncing the connection; the server logs "Invalid
+  message size"). `---test` is for the C test-client in `game_logic.py`, not the
+  bot binary.
+- **`gen_protobuf` is a manual target:** `-Dgen_protobuf=true` only adds a
+  `gen-proto` run-target; it does not regenerate on a `.proto` change. After
+  editing `dc_protocol.proto`, run `meson compile -C _build_… gen-proto` first.
+
+## Screenshotting the GUI (X11)
+
+The SDL window is titled "Dealer's Choice" but `xdotool search --name` for it is
+unreliable (the apostrophe breaks the regex; the window isn't matchable right
+after launch). Don't capture the root window — that grabs unrelated windows.
+Capture only the DC window via a before/after window-list diff:
+
+    xdotool search "" | sort > /tmp/wb.txt    # windows before launch
+    # launch the GUI backgrounded, then sleep ~6s for the connect screen
+    xdotool search "" | sort > /tmp/wa.txt     # windows after
+    for w in $(comm -13 /tmp/wb.txt /tmp/wa.txt); do
+      case "$(xdotool getwindowname "$w")" in
+        *ealer*) import -window "$w" /tmp/dc_shot.png; break;;
+      esac
+    done
+
+For a throwaway run that won't touch your real config, set
+`XDG_CONFIG_HOME=/tmp/somedir` (fresh `player.conf`) and
+`DEALERSCHOICE_DATADIR=$PWD/data`; `--disable-audio` skips the audio threads.
+
 ## Troubleshooting
 
 ### Port already in use
@@ -206,6 +291,12 @@ from `base_port` in `tests/meson.build`) so tests can run in
 parallel.  If a test server process was left running after a crash or
 interrupt, its port will still be occupied and the next test run will
 fail on that test.  The other tests are unaffected.
+
+**Parallel worktrees collide:** the unique-port scheme is per *run*, so two
+worktrees running the suite at the same time reuse the same ports and fail with
+`tcpme_listen: Address already in use`. Give each worktree a distinct `DC_PORT`
+base (the harness honours `DC_PORT`) or serialize the game-logic phase across
+worktrees.
 
 Kill the leftover process:
 

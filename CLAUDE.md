@@ -21,115 +21,24 @@ meson subprojects update
 
 ## Tests
 
+**See [`tests/README.md`](tests/README.md) for the full testing guide** — the
+meson suite (unit + game-logic groups), the `scripts/` harnesses and
+`scripts/soak.sh`, sanitized builds for live verification, `tc netem` impairment,
+heaptrack profiling, running the binaries by hand (data-dir / bot-password /
+`gen_protobuf` gotchas), screenshotting the GUI, and troubleshooting.
+
 ```sh
 meson test -C _build_dealers_choice -v
-meson test -C _build_dealers_choice -v --setup One_pass   # single pass (faster)
-meson test -C _build_dealers_choice -v --suite test_NAME  # single test
 ```
 
-Tests fall into two groups:
-- **Unit tests** (`tests/serialization.c`, `get_next_player.c`, etc.) — compiled C executables.
-- **Game-logic tests** (`tests/game_logic.py`) — Python harness that spawns a server binary + bot client(s) over TCP; each gets a unique port derived from `base_port = 22778` so they run in parallel safely.
-  - **Parallel worktrees collide on these ports.** The unique-port scheme is per *run* — two worktrees (e.g. parallel subagents) running the suite at once reuse the same ports (22782/3/5…) and fail with `tcpme_listen: Address already in use`. Give each worktree a distinct `DC_PORT` base (the harness honours `DC_PORT`) or serialize the game-logic test phase across worktrees.
-
-deckhandler and pokeval are built in-tree (`src/deckhandler`, `src/pokeval`), so their tests run in the normal `_build_dealers_choice` suite — under the `deckhandler` and `pokeval` suite names (`meson test -C _build_dealers_choice --suite pokeval`).
-
-**Manual / live verification of a fix** — running the server + a bot (and/or a
-GUI client) to play real hands — should use a **sanitized build**:
-
-```sh
-CC=clang CFLAGS="-fno-sanitize-recover=all" meson setup _build_asan \
-  -Db_sanitize=address,undefined -Db_lundef=false -Dgen_protobuf=true
-```
-
-so memory errors and UB surface during real play, and any recurrence of a
-crash yields a full ASan/UBSan report instead of a bare SIGABRT. Run the
-server/bot with `ASAN_OPTIONS`/`UBSAN_OPTIONS=halt_on_error=1:abort_on_error=1:print_stacktrace=1`.
-Also **line-buffer the verbose log** (`stdbuf -oL -eL ./dealers-choice-server
---verbose > log 2>&1`) — stdio block-buffers to a file, so without this the
-server's verbose output lags and you can't watch the game flow in real time.
-For a fully-automated repro run **two bots** (they auto-deal/play) instead of a
-manual GUI client. To stress timing/network paths, add loopback latency per
-`tests/README.md`: `sudo tc qdisc add dev lo root netem delay 75ms 15ms`
-(remove with `... del dev lo root`).
-
-**Verify with `gcc -Werror` before calling a branch CI-ready.** The ASan build
-above uses **clang**, but the CI *gate* compiles with **gcc `-Werror`**, which
-emits warnings clang stays silent on (e.g. `-Wformat-truncation`). A branch that
-is clean under clang/ASan can still red the gate. Do a quick gcc pass before
-pushing: `CC=gcc CFLAGS=-Werror meson setup _build_gcc && meson compile -C
-_build_gcc`. (This bit a subagent branch once — clang-clean, gate-red on a
-truncation warning.)
-
-**Test/dev tooling:** the bot soak is committed in-repo at `scripts/soak.sh`
-(`DC_REPO` defaults to the repo root, so it works from any clone/worktree).
-Other local-only aids live outside the repo in `~/src/DealersChoice/tools/`
-(e.g. `flaky-loop.sh`); save genuinely reusable project scripts in `scripts/`,
-throwaway personal ones in `tools/`.
-
-**Canonical launcher:** `scripts/soak.sh` already runs a sanitized server + bots
-correctly (sets `DC_PASSWORD`, no `---test`, exports `DEALERSCHOICE_DATADIR`) —
-use/adapt it instead of hand-rolling a launch script. The gotchas below are why
-it does each of those things.
-
-**After server-side changes, run a short bot soak.** It catches longevity / bot
-churn / 0-player-path regressions the unit suite can't. Override the phase
-lengths for a ~5-min run and point it at your build:
-
-```sh
-DC_BUILD=$PWD/_build_asan DC_PORT=24770 DC_PASSWORD=x \
-  P1_BOTS=2 P1_MIN=3 P2_BOTS=3 P2_MIN=2 P3_ROUNDS=3 \
-  LOG=/tmp/soak.log bash scripts/soak.sh
-```
-
-**Verify by reading the log, not the exit code.** A real pass ends with
-`DONE: all phases passed`; the script has reported exit 0 while the server
-never started (stale launcher), and backgrounding it can surface a harmless
-non-zero code. Check `/tmp/soak.log` and grep the `SRVLOG` for `runtime error`
-/ `AddressSanitizer`.
-
-**Gotchas when running the binaries directly** (i.e. not via `meson test` /
-`game_logic.py`):
-- **Data dir:** non-Windows resolution is `../data` relative to **cwd**
-  (`util.c:get_data_dir`), *not* relative to the binary (that path is
-  Windows-only). So `cd _build_asan && ./dealers-choice …` finds `data/` on
-  its own; running `./_build_asan/dealers-choice …` from the repo root fails
-  with "Unable to find data" (it looks for `../data` = `DealersChoice/data`,
-  one level too high). Either `cd` into the build dir, or set
-  `DEALERSCHOICE_DATADIR=$PWD/data`. (The `../data` lookup is a pre-release
-  temporary hack — see the comment in `get_data_dir`.)
-- **Bots need a password, not `---test`:** `dealers-choice-bot` only joins a
-  server that has a password set — export `DC_PASSWORD=…` for the server
-  *and* each bot. Do **not** use `---test`: test mode skips the server's
-  auth handshake while the bot always performs it, desyncing the connection
-  (server logs `[NET] Invalid message size …`). `---test` is for the C
-  test-client in `game_logic.py`, not the bot binary. (`docs/BOT.md` states
-  the password requirement.)
-- **`gen_protobuf` is a manual target:** `-Dgen_protobuf=true` only adds a
-  `gen-proto` run-target; it does not regenerate on `.proto` change. After
-  editing `dc_protocol.proto`, run `meson compile -C _build_… gen-proto`
-  before the normal compile.
-
-**Screenshotting the GUI (X11, for verifying a visual change):** the SDL window
-is titled "Dealer's Choice" but `xdotool search --name` for it is unreliable
-(the apostrophe breaks the regex, and the window isn't matchable right after
-launch). Do **not** capture the root window — that grabs your other windows.
-Capture only the DC window via a before/after window-list diff:
-
-```sh
-xdotool search "" | sort > /tmp/wb.txt          # windows before launch
-# launch the GUI backgrounded, then sleep ~6s for the connect screen to render
-xdotool search "" | sort > /tmp/wa.txt           # windows after
-for w in $(comm -13 /tmp/wb.txt /tmp/wa.txt); do
-  case "$(xdotool getwindowname "$w")" in
-    *ealer*) import -window "$w" /tmp/dc_shot.png; break;;
-  esac
-done
-```
-
-For a throwaway GUI run that won't touch your real config, set
-`XDG_CONFIG_HOME=/tmp/somedir` (it writes a fresh `player.conf` there) and
-`DEALERSCHOICE_DATADIR=$PWD/data`; `--disable-audio` skips the audio threads.
+Quick reminders (details in `tests/README.md`):
+- All `meson` commands use `-C _build_dealers_choice` (see Build); never
+  `_build` / `build`.
+- The CI gate is **gcc `-Werror`**, but the ASan build is **clang** — do a gcc
+  pass before calling a branch CI-ready (clang stays silent on
+  `-Wformat-truncation` and the like).
+- After **server-side** changes, run a short `scripts/soak.sh` and judge it by
+  the log (`DONE: all phases passed`), not the exit code.
 
 ## Architecture
 
