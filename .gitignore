@@ -21,3 +21,6 @@ __pycache__/
 *.zst
 
 /packaging/aur
+
+# Claude Code per-user settings (hooks etc.)
+.claude/settings.local.json
