@@ -73,6 +73,7 @@ const ConfigEntry player_config_entries[] = {
     HK(raise, "r"),
     HK(complete, "r"),
     HK(discard, "d"),
+    HK(hand_rank, "h"),
 #undef HK
     {0}};
 

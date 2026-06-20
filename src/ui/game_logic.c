@@ -1692,14 +1692,15 @@ EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
           toggle_fullscreen(sdl_context);
           break;
 
-        case SDLK_h:
-          if (event.key.keysym.mod & KMOD_CTRL)
-            show_hand_rank = !show_hand_rank;
-          break;
-
         default:
           break;
         }
+
+        /* Hand-rank overlay toggle: a configurable single key (#61), so it's a
+         * runtime check against g_hotkey_cfg rather than a fixed switch case. */
+        if (g_hotkey_cfg.hand_rank != SDLK_UNKNOWN &&
+            event.key.keysym.sym == g_hotkey_cfg.hand_rank)
+          show_hand_rank = !show_hand_rank;
       }
       if (event.type == SDL_MOUSEBUTTONDOWN || event.type == SDL_KEYDOWN) {
         if (my_turn && !client_state.do_discard_draw) {

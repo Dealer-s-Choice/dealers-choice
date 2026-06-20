@@ -72,6 +72,7 @@ typedef struct {
   char hotkey_raise[SIZEOF_HOTKEY_NAME];
   char hotkey_complete[SIZEOF_HOTKEY_NAME];
   char hotkey_discard[SIZEOF_HOTKEY_NAME];
+  char hotkey_hand_rank[SIZEOF_HOTKEY_NAME];
 } PlayerConfig_t;
 
 typedef enum {

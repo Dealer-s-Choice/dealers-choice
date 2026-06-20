@@ -41,6 +41,7 @@ typedef struct {
   SDL_Keycode raise;
   SDL_Keycode complete;
   SDL_Keycode discard;
+  SDL_Keycode hand_rank;
 } HotkeyConfig_t;
 
 extern HotkeyConfig_t g_hotkey_cfg;

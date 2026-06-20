@@ -49,4 +49,5 @@ void init_hotkeys(const PlayerConfig_t *cfg) {
   g_hotkey_cfg.raise = resolve(cfg->hotkey_raise, "hotkey_raise");
   g_hotkey_cfg.complete = resolve(cfg->hotkey_complete, "hotkey_complete");
   g_hotkey_cfg.discard = resolve(cfg->hotkey_discard, "hotkey_discard");
+  g_hotkey_cfg.hand_rank = resolve(cfg->hotkey_hand_rank, "hotkey_hand_rank");
 }
