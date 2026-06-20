@@ -220,6 +220,8 @@ int main(int argc, char *argv[]) {
   layout_init(TTF_FontHeight(font.fonts[FONT_STATUS_MSG]));
 
   PlayerConfig_t player_config = get_player_config();
+  get_common_registries(path.data, player_config.registry_host, player_config.registry_port,
+                        &player_config.registry_count);
   if (!player_config.loaded) {
     fprintf(stderr, "Unable to load config\n");
     exit(EXIT_FAILURE);

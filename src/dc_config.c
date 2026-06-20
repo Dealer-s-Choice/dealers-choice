@@ -351,6 +351,33 @@ void registry_list_add(char host_out[][REGISTRY_HOST_LEN], uint16_t *port_out, u
   (*count)++;
 }
 
+/* Read the shared registry list from <data_dir>/common.conf (read by both the
+ * server, to publish, and the client, to browse). One "registry" key:
+ *   registry = host1, host2:port
+ * Missing file/key is fine — *count stays 0. */
+void get_common_registries(const char *data_dir, char host[][REGISTRY_HOST_LEN], uint16_t *port,
+                           uint8_t *count) {
+  *count = 0;
+  char *cfg_pathname = canfigger_path_join(data_dir, "common.conf");
+  if (!cfg_pathname)
+    return;
+  struct Canfigger *cfg_node = canfigger_parse_file(cfg_pathname, ',');
+  free(cfg_pathname);
+  while (cfg_node) {
+    if (strcasecmp(cfg_node->key, "registry") == 0) {
+      if (cfg_node->value)
+        registry_list_add(host, port, count, cfg_node->value);
+      char *attr = NULL;
+      canfigger_free_current_attr_str_advance(cfg_node->attributes, &attr);
+      while (attr) {
+        registry_list_add(host, port, count, attr);
+        canfigger_free_current_attr_str_advance(cfg_node->attributes, &attr);
+      }
+    }
+    canfigger_free_current_key_node_advance(&cfg_node);
+  }
+}
+
 ServerConfig_t get_server_config(Path_t *path, const CliArgs_t *cli_args) {
   ServerConfig_t config = {0};
 
@@ -385,17 +412,6 @@ ServerConfig_t get_server_config(Path_t *path, const CliArgs_t *cli_args) {
         unsigned long v;
         parse_unsigned(attr, UINT32_MAX, &v);
         config.bet_amounts[config.bet_amount_count++] = (uint32_t)v;
-        canfigger_free_current_attr_str_advance(cfg_node->attributes, &attr);
-      }
-    } else if (strcasecmp(cfg_node->key, "registry") == 0) {
-      /* registry = host1, host2:port  (first token is the value, rest attrs) */
-      if (cfg_node->value)
-        registry_list_add(config.registry_host, config.registry_port, &config.registry_count,
-                          cfg_node->value);
-      char *attr = NULL;
-      canfigger_free_current_attr_str_advance(cfg_node->attributes, &attr);
-      while (attr) {
-        registry_list_add(config.registry_host, config.registry_port, &config.registry_count, attr);
         canfigger_free_current_attr_str_advance(cfg_node->attributes, &attr);
       }
     } else {
@@ -433,6 +449,10 @@ ServerConfig_t get_server_config(Path_t *path, const CliArgs_t *cli_args) {
   const char *env_pw = getenv("DC_PASSWORD");
   if (env_pw)
     snprintf(config.password, sizeof(config.password), "%s", env_pw);
+
+  /* Registries to publish to come from the shared common.conf, not server.conf. */
+  get_common_registries(path->data, config.registry_host, config.registry_port,
+                        &config.registry_count);
 
   return config;
 }
@@ -500,26 +520,13 @@ PlayerConfig_t get_player_config(void) {
     memset(found_keys, 0, sizeof(found_keys));
 
     while (cfg_node) {
-      if (strcasecmp(cfg_node->key, "registry") == 0) {
-        if (cfg_node->value)
-          registry_list_add(config.registry_host, config.registry_port, &config.registry_count,
-                            cfg_node->value);
-        char *attr = NULL;
-        canfigger_free_current_attr_str_advance(cfg_node->attributes, &attr);
-        while (attr) {
-          registry_list_add(config.registry_host, config.registry_port, &config.registry_count,
-                            attr);
-          canfigger_free_current_attr_str_advance(cfg_node->attributes, &attr);
-        }
-      } else {
-        for (size_t i = 0; i < player_config_entry_count; i++) {
-          if (strcasecmp(cfg_node->key, player_config_entries[i].key) == 0) {
-            config_set_from_string_real(&config, &player_config_entries[i],
-                                        cfg_node->value ? cfg_node->value
-                                                        : player_config_entries[i].default_value);
-            found_keys[i] = true;
-            break;
-          }
+      for (size_t i = 0; i < player_config_entry_count; i++) {
+        if (strcasecmp(cfg_node->key, player_config_entries[i].key) == 0) {
+          config_set_from_string_real(&config, &player_config_entries[i],
+                                      cfg_node->value ? cfg_node->value
+                                                      : player_config_entries[i].default_value);
+          found_keys[i] = true;
+          break;
         }
       }
       canfigger_free_current_key_node_advance(&cfg_node);
