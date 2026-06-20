@@ -43,6 +43,7 @@
 #include "lan_discovery.h"
 #include "links.h"
 #include "menus.h"
+#include "net/registry.h"
 #include "util.h"
 #include "widgets/button.h"
 #include "widgets/card.h"
@@ -112,6 +113,45 @@ static int lan_expire(LanGameInfo_t *list, uint32_t *seen, int count, uint32_t n
     }
   }
   return w;
+}
+
+enum { REG_MAX_SHOWN = 8 };
+
+static void reg_row_label(const RegistryServer_t *s, char *buf, size_t n) {
+  const char *who = (s->name[0] != '\0') ? s->name : s->ip;
+  snprintf(buf, n, "%s  %u/%u%s", who, (unsigned)s->player_count, (unsigned)s->max_players,
+           s->in_progress ? " [playing]" : "");
+}
+
+/* Query every configured registry and merge the results (dedup by ip:port) into
+ * out[]. Bounded connect/recv so an unreachable registry can't hang the connect
+ * screen; only runs when registries are configured, so LAN-only users pay
+ * nothing. Returns the count. */
+static int registry_fetch(const PlayerConfig_t *pc, RegistryServer_t *out, int max) {
+  int count = 0;
+  for (int r = 0; r < pc->registry_count && count < max; r++) {
+    tcpme_socket_t s = tcpme_connect_timeout(pc->registry_host[r], pc->registry_port[r], 300);
+    if (!tcpme_socket_valid(s))
+      continue;
+    tcpme_set_timeout(s, 1000);
+    RegistryServer_t list[REGISTRY_MAX_SERVERS];
+    int n = 0;
+    if (registry_send_list_request(s) == 0 &&
+        registry_recv_list(s, list, REGISTRY_MAX_SERVERS, &n) == 0) {
+      for (int i = 0; i < n && count < max; i++) {
+        bool dup = false;
+        for (int j = 0; j < count; j++)
+          if (out[j].tcp_port == list[i].tcp_port && strcmp(out[j].ip, list[i].ip) == 0) {
+            dup = true;
+            break;
+          }
+        if (!dup)
+          out[count++] = list[i];
+      }
+    }
+    tcpme_close(s);
+  }
+  return count;
 }
 
 int menu_display_connect(PlayerConfig_t *player_config, char *host_str, uint16_t *port,
@@ -245,6 +285,20 @@ int menu_display_connect(PlayerConfig_t *player_config, char *host_str, uint16_t
   int host_btn_count = 0;
   uint64_t shown_sig = 0;
 
+  /* Internet servers from the configured registries: a second column to the
+   * right of the LAN list, refreshed on a slow timer (#33). */
+  const int reg_col_x = g_layout.menu.margin_x + g_layout_cfg.connect_input_w_pad + 360;
+  RegistryServer_t reg_found[REG_MAX_SHOWN];
+  int reg_found_count = 0;
+  ButtonWidget_t *reg_btn[REG_MAX_SHOWN] = {0};
+  int reg_btn_count = 0;
+  bool reg_dirty = (player_config->registry_count > 0); /* fetch on first frame */
+  uint32_t reg_last_fetch = 0;
+  TextWidget_t *tw_reg_heading =
+      text_widget_create(_("Internet servers"), font->fonts[FONT_DEFAULT_BOLD], DC_TEXT_ON_DARK);
+  if (tw_reg_heading)
+    ui_widget_place(&tw_reg_heading->base, reg_col_x, lan_heading_y);
+
   while (running) {
     SDL_Event e;
     while (SDL_PollEvent(&e)) {
@@ -260,6 +314,9 @@ int menu_display_connect(PlayerConfig_t *player_config, char *host_str, uint16_t
       for (int i = 0; i < host_btn_count; i++)
         if (host_btn[i])
           host_btn[i]->base.hovered = SDL_PointInRect(&mouse_pos, &host_btn[i]->base.rect);
+      for (int i = 0; i < reg_btn_count; i++)
+        if (reg_btn[i])
+          reg_btn[i]->base.hovered = SDL_PointInRect(&mouse_pos, &reg_btn[i]->base.rect);
       if (e.type == SDL_QUIT) {
         running = false;
       } else if (e.type == SDL_MOUSEBUTTONDOWN) {
@@ -298,6 +355,17 @@ int menu_display_connect(PlayerConfig_t *player_config, char *host_str, uint16_t
               input_widget_set_text(host_input, found[i].ip);
               char pbuf[8];
               snprintf(pbuf, sizeof(pbuf), "%u", (unsigned)found[i].tcp_port);
+              input_widget_set_text(port_input, pbuf);
+              run_client = true;
+              running = false;
+              break;
+            }
+          }
+          for (int i = 0; i < reg_btn_count && running; i++) {
+            if (reg_btn[i] && SDL_PointInRect(&mouse_pos, &reg_btn[i]->base.rect)) {
+              input_widget_set_text(host_input, reg_found[i].ip);
+              char pbuf[8];
+              snprintf(pbuf, sizeof(pbuf), "%u", (unsigned)reg_found[i].tcp_port);
               input_widget_set_text(port_input, pbuf);
               run_client = true;
               running = false;
@@ -418,6 +486,35 @@ int menu_display_connect(PlayerConfig_t *player_config, char *host_str, uint16_t
       }
     }
 
+    /* --- Registry: refresh the internet-server list on a slow timer --- */
+    if (player_config->registry_count > 0) {
+      uint32_t now = SDL_GetTicks();
+      if (reg_dirty || now - reg_last_fetch >= 10000) {
+        reg_found_count = registry_fetch(player_config, reg_found, REG_MAX_SHOWN);
+        reg_last_fetch = now;
+        reg_dirty = false;
+        for (int i = 0; i < reg_btn_count; i++)
+          if (reg_btn[i])
+            ui_widget_destroy(&reg_btn[i]->base);
+        reg_btn_count = 0;
+        int row_y = lan_heading_y + (tw_reg_heading ? tw_reg_heading->base.rect.h +
+                                                          g_layout_cfg.input_field_v_gap
+                                                    : 0);
+        for (int i = 0; i < reg_found_count; i++) {
+          char label[96];
+          reg_row_label(&reg_found[i], label, sizeof(label));
+          reg_btn[i] =
+              button_widget_create_styled(label, &ROLE_PRIMARY, font->fonts, (SDL_Keycode)0);
+          if (!reg_btn[i])
+            continue;
+          reg_btn[i]->base.rect.x = reg_col_x;
+          reg_btn[i]->base.rect.y = row_y;
+          row_y += reg_btn[i]->base.rect.h + g_layout_cfg.input_field_v_gap;
+          reg_btn_count = i + 1;
+        }
+      }
+    }
+
     button_save->interactive =
         strcmp(input_widget_get_text(host_input), player_config->host) != 0 ||
         (uint16_t)strtoul(input_widget_get_text(port_input), NULL, 10) != player_config->port;
@@ -433,6 +530,12 @@ int menu_display_connect(PlayerConfig_t *player_config, char *host_str, uint16_t
     for (int i = 0; i < host_btn_count; i++)
       if (host_btn[i])
         ui_widget_render(&host_btn[i]->base);
+
+    if (reg_btn_count > 0 && tw_reg_heading)
+      ui_widget_render(&tw_reg_heading->base);
+    for (int i = 0; i < reg_btn_count; i++)
+      if (reg_btn[i])
+        ui_widget_render(&reg_btn[i]->base);
 
     ui_widget_render(&tw_nick->base);
     ui_widget_render(&tw_title->base);
@@ -464,6 +567,8 @@ int menu_display_connect(PlayerConfig_t *player_config, char *host_str, uint16_t
     ui_widget_destroy(&tw_nick->base);
   if (tw_lan_heading)
     ui_widget_destroy(&tw_lan_heading->base);
+  if (tw_reg_heading)
+    ui_widget_destroy(&tw_reg_heading->base);
   ui_widget_destroy(&button_connect->base);
   ui_widget_destroy(&button_settings->base);
   ui_destroy_all(&reg);
