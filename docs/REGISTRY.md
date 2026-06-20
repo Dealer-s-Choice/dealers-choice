@@ -28,6 +28,21 @@ Open inbound TCP on the registry's port (default 22070) on the registry host.
 **Game servers need no extra firewall change** — the verification connects back
 to the game port players already use.
 
+## Configuring which registries to use
+
+The list of registries lives in **`common.conf`** (in the data directory),
+read by both the game client (to show internet servers on the connect screen)
+and the headless server (to publish itself):
+
+```ini
+# common.conf
+registry = registry.example.org, 203.0.113.5:22070
+```
+
+Comma-separated `host` or `host:port`; the default registry port is 22070. The
+headless server publishes to every listed registry unless started with
+`--disable-publish`. Leave the line commented out for LAN-only play.
+
 ## Privacy — what is and isn't stored
 
 The registry is deliberate about addresses:
