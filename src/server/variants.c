@@ -58,6 +58,7 @@ void game_five_card_draw(ArgsBroadcastGameState_t *args, Player_t *players_array
     if (results.n_winners > 0 || i == choice->n_draws)
       break;
 
+    args->game_state->draw_phase = true; /* gates client discard pre-select */
     broadcast_game_state(args);
     turn = *args->starting_turn;
 
@@ -79,6 +80,7 @@ void game_five_card_draw(ArgsBroadcastGameState_t *args, Player_t *players_array
 
       turn = get_next_player(players_array, turn->id);
     } while (turn && turn != *args->starting_turn);
+    args->game_state->draw_phase = false;
     broadcast_game_state(args);
     if (results.n_winners > 0)
       break;
@@ -461,6 +463,7 @@ void play_game(ArgsBroadcastGameState_t *args, DH_Deck *deck) {
   args->game_state->winner_declared = false;
   args->game_state->prev_bet_amount = 0;
   args->game_state->round_opener_id = -1;
+  args->game_state->draw_phase = false;
   args->game_state->player_count = count_active_clients(args->slot_taken);
   verbose_printf("player count: %d\n", args->game_state->player_count);
   args->game_state->winner_declared = false;

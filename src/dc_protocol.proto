@@ -31,6 +31,7 @@ message GameState {
   reserved 8;
   repeated Player player = 9;
   int32 round_opener_id = 10;
+  bool draw_phase = 11; // true while a draw round is active (gates client discard pre-select)
 }
 
 message GameSettings {

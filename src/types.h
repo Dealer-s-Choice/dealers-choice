@@ -89,6 +89,7 @@ typedef struct {
   uint32_t raises_remaining;
   uint32_t prev_bet_amount;
   bool winner_declared;
+  bool draw_phase; /* true while a draw round is active (gates discard pre-select) */
   Player_t player[MAX_PLAYERS];
 } GameState_t;
 

@@ -1599,8 +1599,13 @@ EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
      * discard prompt arrives you can just hit Discard (#22). The card .selected
      * flags are the source of truth; n_cards_selected is recomputed from them
      * after the poll. */
+    /* Discard pre-selection is allowed only while a draw round is active (server
+     * sets game_state->draw_phase), so it can't collide with betting; on your own
+     * draw turn do_discard_draw is also set (see the draw_phase/do_discard_draw
+     * truth table). */
     bool can_select_discards = client_state.game_choice && client_state.game_choice->n_draws > 0 &&
-                               game_state->player[my_id].in && !game_state->winner_declared;
+                               game_state->player[my_id].in && !game_state->winner_declared &&
+                               game_state->draw_phase;
 
     SDL_Event event;
     while (SDL_PollEvent(&event)) {

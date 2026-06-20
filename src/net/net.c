@@ -96,6 +96,7 @@ uint8_t *serialize_game_state(const GameState_t *src, uint32_t *size_out) {
   msg.prev_bet_amount = src->prev_bet_amount;
   msg.player_count = src->player_count;
   msg.winner_declared = src->winner_declared;
+  msg.draw_phase = src->draw_phase;
 
   Player *player_msgs[MAX_PLAYERS];
   struct player_message_builder_t builders[MAX_PLAYERS];
@@ -135,6 +136,7 @@ bool deserialize_game_state(const uint8_t *data, uint32_t size, GameState_t *out
   out->prev_bet_amount = msg->prev_bet_amount;
   out->player_count = (uint8_t)msg->player_count;
   out->winner_declared = msg->winner_declared;
+  out->draw_phase = msg->draw_phase;
 
   size_t n = msg->n_player < MAX_PLAYERS ? msg->n_player : MAX_PLAYERS;
   for (size_t i = 0; i < n; ++i) {

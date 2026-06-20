@@ -94,10 +94,14 @@ struct  GameState
   size_t n_player;
   Player **player;
   int32_t round_opener_id;
+  /*
+   * true while a draw round is active (gates client discard pre-select)
+   */
+  protobuf_c_boolean draw_phase;
 };
 #define GAME_STATE__INIT \
  { PROTOBUF_C_MESSAGE_INIT (&game_state__descriptor) \
-, 0, 0, 0, 0, 0, 0, 0, 0,NULL, 0 }
+, 0, 0, 0, 0, 0, 0, 0, 0,NULL, 0, 0 }
 
 
 struct  GameSettings

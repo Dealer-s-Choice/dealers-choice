@@ -26,6 +26,7 @@ void test_game_state(void) {
   GameState_t game_state = {0};
   game_state = (GameState_t){.pot = 500,
                              .at_menu = true,
+                             .draw_phase = true,
                              .player[0] = {
                                  .nick = "Foo",
                                  .id = 0,
@@ -50,6 +51,7 @@ void test_game_state(void) {
   assert(ok);
   assert(game_state_receiver.pot == 500);
   assert(game_state_receiver.at_menu == true);
+  assert(game_state_receiver.draw_phase == true);
   assert(strcmp(game_state_receiver.player[0].nick, "Foo") == 0);
   assert(game_state_receiver.player[0].id == 0);
   assert(game_state_receiver.player[0].coins == STARTING_N_COINS);
