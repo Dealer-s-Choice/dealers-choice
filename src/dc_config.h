@@ -85,10 +85,6 @@ typedef struct {
   uint8_t registry_count;
 } PlayerConfig_t;
 
-/* Parse a "host" / "host:port" spec and append to a registry list. */
-void registry_list_add(char host_out[][REGISTRY_HOST_LEN], uint16_t *port_out, uint8_t *count,
-                       const char *spec);
-
 /* Read the shared registry list from <data_dir>/common.conf (used by both the
  * server, to publish, and the client, to browse). */
 void get_common_registries(const char *data_dir, char host[][REGISTRY_HOST_LEN], uint16_t *port,

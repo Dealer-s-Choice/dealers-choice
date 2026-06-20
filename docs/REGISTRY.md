@@ -37,12 +37,14 @@ and the headless server (to publish itself):
 
 ```ini
 # common.conf
-registry = registry.example.org, 203.0.113.5:22070
+registry = registry.example.org
+registry = 203.0.113.5, 22071
 ```
 
-Comma-separated `host` or `host:port`; the default registry port is 22070. The
-headless server publishes to every listed registry unless started with
-`--disable-publish`. Leave the line commented out for LAN-only play.
+One registry per line (dnsmasq-style): the host is the value, with an optional
+port as a comma attribute (default 22070). Repeat the line for more registries.
+The headless server publishes to every listed registry unless started with
+`--disable-publish`. Leave it commented out for LAN-only play.
 
 ## Privacy — what is and isn't stored
 

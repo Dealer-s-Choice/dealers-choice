@@ -323,38 +323,12 @@ void player_config_set_field(PlayerConfig_t *cfg, size_t entry_idx, const char *
   config_set_from_string_real(cfg, &player_config_entries[entry_idx], val);
 }
 
-/* Parse "host" or "host:port" (one ':' only, so IPv6 literals stay intact —
- * use a hostname for a custom-port IPv6 registry) and append to the list.
- * Shared by the server and the client config readers. */
-void registry_list_add(char host_out[][REGISTRY_HOST_LEN], uint16_t *port_out, uint8_t *count,
-                       const char *spec) {
-  if (!spec || !*spec || *count >= MAX_REGISTRIES)
-    return;
-  char host[REGISTRY_HOST_LEN];
-  snprintf(host, sizeof host, "%s", spec);
-  uint16_t port = (uint16_t)atoi(REGISTRY_DEFAULT_PORT);
-  char *colon = strrchr(host, ':');
-  if (colon && colon[1] && strchr(host, ':') == colon) {
-    bool digits = true;
-    for (const char *p = colon + 1; *p; p++)
-      if (*p < '0' || *p > '9') {
-        digits = false;
-        break;
-      }
-    if (digits) {
-      *colon = '\0';
-      port = (uint16_t)atoi(colon + 1);
-    }
-  }
-  snprintf(host_out[*count], REGISTRY_HOST_LEN, "%s", host);
-  port_out[*count] = port;
-  (*count)++;
-}
-
 /* Read the shared registry list from <data_dir>/common.conf (read by both the
- * server, to publish, and the client, to browse). One "registry" key:
- *   registry = host1, host2:port
- * Missing file/key is fine — *count stays 0. */
+ * server, to publish, and the client, to browse). dnsmasq-style: one registry
+ * per line, the host is the value and an optional port is the first attribute:
+ *   registry = registry.example.org
+ *   registry = 203.0.113.5, 22071
+ * The port defaults to REGISTRY_DEFAULT_PORT. Missing file/key is fine. */
 void get_common_registries(const char *data_dir, char host[][REGISTRY_HOST_LEN], uint16_t *port,
                            uint8_t *count) {
   *count = 0;
@@ -364,15 +338,21 @@ void get_common_registries(const char *data_dir, char host[][REGISTRY_HOST_LEN],
   struct Canfigger *cfg_node = canfigger_parse_file(cfg_pathname, ',');
   free(cfg_pathname);
   while (cfg_node) {
-    if (strcasecmp(cfg_node->key, "registry") == 0) {
-      if (cfg_node->value)
-        registry_list_add(host, port, count, cfg_node->value);
+    if (strcasecmp(cfg_node->key, "registry") == 0 && cfg_node->value && *count < MAX_REGISTRIES) {
+      snprintf(host[*count], REGISTRY_HOST_LEN, "%s", cfg_node->value);
+      unsigned long p = strtoul(REGISTRY_DEFAULT_PORT, NULL, 10);
       char *attr = NULL;
       canfigger_free_current_attr_str_advance(cfg_node->attributes, &attr);
+      bool first = true;
       while (attr) {
-        registry_list_add(host, port, count, attr);
+        if (first) {
+          parse_unsigned(attr, UINT16_MAX, &p); /* exits on a malformed port */
+          first = false;
+        }
         canfigger_free_current_attr_str_advance(cfg_node->attributes, &attr);
       }
+      port[*count] = (uint16_t)p;
+      (*count)++;
     }
     canfigger_free_current_key_node_advance(&cfg_node);
   }
