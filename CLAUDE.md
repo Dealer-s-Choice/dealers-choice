@@ -71,6 +71,22 @@ sanitized server + bots correctly (sets `DC_PASSWORD`, no `---test`, exports
 `DEALERSCHOICE_DATADIR`) — use/adapt it instead of hand-rolling a launch
 script. The gotchas below are why it does each of those things.
 
+**After server-side changes, run a short bot soak.** It catches longevity / bot
+churn / 0-player-path regressions the unit suite can't. Override the phase
+lengths for a ~5-min run and point it at your build:
+
+```sh
+DC_BUILD=$PWD/_build_asan DC_PORT=24770 DC_PASSWORD=x \
+  P1_BOTS=2 P1_MIN=3 P2_BOTS=3 P2_MIN=2 P3_ROUNDS=3 \
+  LOG=/tmp/soak.log bash ~/src/DealersChoice/tools/soak.sh
+```
+
+**Verify by reading the log, not the exit code.** A real pass ends with
+`DONE: all phases passed`; the script has reported exit 0 while the server
+never started (stale launcher), and backgrounding it can surface a harmless
+non-zero code. Check `/tmp/soak.log` and grep the `SRVLOG` for `runtime error`
+/ `AddressSanitizer`.
+
 **Gotchas when running the binaries directly** (i.e. not via `meson test` /
 `game_logic.py`):
 - **Data dir:** non-Windows resolution is `../data` relative to **cwd**
