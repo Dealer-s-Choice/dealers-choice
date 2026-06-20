@@ -21,10 +21,11 @@ games (the LAN-only equivalent is built into the game and needs no registry).
 ## Running it
 
 ```
-dealers-choice-registry --port 22070 --json /path/to/servers.json --verbose
+dealers-choice-registry --json /path/to/servers.json --verbose
 ```
 
-Open inbound TCP on the registry's port (default 22070) on the registry host.
+The port defaults to 22070; pass `--port` to change it. Open inbound TCP on
+that port on the registry host.
 **Game servers need no extra firewall change** — the verification connects back
 to the game port players already use.
 
