@@ -186,7 +186,7 @@ int send_game_select(tcpme_socket_t sock, uint8_t game_type, bool deuces_wild) {
     return 0;
   }
 
-  fprintf(stderr, "Game type failed to send: %s\n", choice ? choice->str : "Unknown");
+  dc_log(DC_LOG_ERROR, "Game type failed to send: %s", choice ? choice->str : "Unknown");
   return result;
 }
 
@@ -207,8 +207,7 @@ bool get_game_select_payload(uint8_t *buffer, const uint32_t size, const int cli
 
   // Size check — includes opcode in this context
   if (size != OPCODE_SIZE + sizeof(GameSelectPayload_t)) {
-    fprintf(stderr,
-            "[NET] Invalid MSG_GAME_SELECT size from client %d "
+    dc_log(DC_LOG_WARN,             "[NET] Invalid MSG_GAME_SELECT size from client %d "
             "(got %zu, expected %zu)\n",
             client_id, (size_t)size, (size_t)(OPCODE_SIZE + sizeof(GameSelectPayload_t)));
     return false;
@@ -240,7 +239,7 @@ static Player_t *get_next_player_real(Player_t *players_array, int cur, bool wan
     return &players_array[cur];
   }
 
-  fprintf(stderr, "No valid players/clients found\n%s:%d\n", file, line);
+  dc_log(DC_LOG_ERROR, "No valid players/clients found\n%s:%d", file, line);
   return NULL;
 }
 
