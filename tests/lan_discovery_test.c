@@ -40,6 +40,7 @@ int main(void) {
   adv.max_players = 5;
   adv.password_protected = true;
   adv.in_progress = false;
+  adv.instance_id = 0x12345678;
   strcpy(adv.name, "test table");
 
   assert(lan_discovery_query(cli, LAN_DISCOVERY_PORT));
@@ -58,6 +59,7 @@ int main(void) {
   assert(got.max_players == 5);
   assert(got.password_protected == true);
   assert(got.in_progress == false);
+  assert(got.instance_id == 0x12345678);
   assert(strcmp(got.name, "test table") == 0);
   assert(strlen(got.ip) > 0);
 
@@ -75,6 +77,7 @@ int main(void) {
       if (lan_discovery_read_response6(cli6, &g6)) {
         assert(g6.tcp_port == 22777);
         assert(g6.max_players == 5);
+        assert(g6.instance_id == 0x12345678);
         assert(strcmp(g6.name, "test table") == 0);
         assert(strlen(g6.ip) > 0);
         printf("ipv6 discovery round trip OK (ip=%s)\n", g6.ip);

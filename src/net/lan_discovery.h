@@ -48,6 +48,7 @@ typedef struct {
   uint8_t max_players;         /* seat capacity */
   bool password_protected;
   bool in_progress;
+  uint32_t instance_id;        /* random per-server id; client dedups multi-NIC replies on it */
   char name[LAN_NAME_MAX + 1]; /* optional; may be empty */
 } LanGameInfo_t;
 

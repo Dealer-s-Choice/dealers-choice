@@ -15,10 +15,23 @@
 /* Discovery wire protocol, versioned independently of GAME_PROTOCOL_VERSION.
  * Query:    magic[5] 'Q' ver
  * Response: magic[5] 'R' ver port_hi port_lo player_count max_players flags
- *           name_len name[name_len]
- * All multi-byte fields are big-endian. */
+ *           instance_id[4] name_len name[name_len]
+ * All multi-byte fields are big-endian.
+ *
+ * instance_id is a random per-server-process id. The same server answers a query
+ * on every interface it's reachable on (one IPv4 + several IPv6 link-local, plus
+ * loopback), so without it the client lists one server once per source address.
+ * The client dedups by instance_id, keeping the most-connectable address.
+ * Deduping by id rather than by name+port avoids false-merging two distinct
+ * servers that both use the default name.
+ *
+ * The version stays 1: LAN discovery has never shipped, so there is no deployed
+ * format to stay compatible with — bump only once a release exists. */
 #define LAN_MAGIC "DCLAN"
 #define LAN_MAGIC_LEN 5
+/* Bump ONLY when the wire format changes *after* a release has shipped this
+ * protocol. Pre-release format changes (like adding instance_id) need no bump:
+ * everyone rebuilds from source, so there's no old format in the wild. */
 #define LAN_DISC_VERSION 1
 #define LAN_MSG_QUERY 'Q'
 #define LAN_MSG_RESPONSE 'R'
@@ -26,8 +39,9 @@
 #define LAN_FLAG_PASSWORD 0x01
 #define LAN_FLAG_IN_PROGRESS 0x02
 
-#define LAN_HDR_LEN (LAN_MAGIC_LEN + 2)              /* magic + type + version */
-#define LAN_RESP_FIXED_LEN (LAN_HDR_LEN + 2 + 1 + 1 + 1 + 1) /* + port,pc,mp,flags,namelen */
+#define LAN_HDR_LEN (LAN_MAGIC_LEN + 2) /* magic + type + version */
+/* + port(2) pc(1) mp(1) flags(1) instance_id(4) namelen(1) */
+#define LAN_RESP_FIXED_LEN (LAN_HDR_LEN + 2 + 1 + 1 + 1 + 4 + 1)
 #define LAN_PKT_MAX (LAN_RESP_FIXED_LEN + LAN_NAME_MAX)
 
 static bool valid_header(const unsigned char *p, int n, char want_type) {
@@ -66,6 +80,10 @@ static size_t build_response(unsigned char *out, const LanGameInfo_t *info) {
   out[o++] = info->max_players;
   out[o++] = (unsigned char)((info->password_protected ? LAN_FLAG_PASSWORD : 0) |
                              (info->in_progress ? LAN_FLAG_IN_PROGRESS : 0));
+  out[o++] = (unsigned char)((info->instance_id >> 24) & 0xff);
+  out[o++] = (unsigned char)((info->instance_id >> 16) & 0xff);
+  out[o++] = (unsigned char)((info->instance_id >> 8) & 0xff);
+  out[o++] = (unsigned char)(info->instance_id & 0xff);
   out[o++] = (unsigned char)name_len;
   memcpy(out + o, info->name, name_len);
   o += name_len;
@@ -86,6 +104,9 @@ static bool parse_response(const unsigned char *buf, int n, LanGameInfo_t *out) 
   unsigned char flags = buf[o++];
   out->password_protected = (flags & LAN_FLAG_PASSWORD) != 0;
   out->in_progress = (flags & LAN_FLAG_IN_PROGRESS) != 0;
+  out->instance_id = ((uint32_t)buf[o] << 24) | ((uint32_t)buf[o + 1] << 16) |
+                     ((uint32_t)buf[o + 2] << 8) | (uint32_t)buf[o + 3];
+  o += 4;
   unsigned char name_len = buf[o++];
   if (name_len > LAN_NAME_MAX)
     name_len = LAN_NAME_MAX;
