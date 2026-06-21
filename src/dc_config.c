@@ -340,17 +340,18 @@ void get_common_registries(const char *data_dir, char host[][REGISTRY_HOST_LEN],
   char *cfg_pathname = canfigger_path_join(data_dir, "common.conf");
   if (!cfg_pathname)
     return;
-  /* The usual "no internet servers" cause is a missing/unbundled common.conf, so
-   * warn (with the path tried) when it genuinely can't be opened. An existing but
-   * empty/all-commented file is a valid LAN-only config, so don't warn on that. */
+  /* common.conf ships with every install, so a missing/unreadable one means a
+   * broken or incomplete install — fail loudly. An existing but empty/all-
+   * commented file is a valid LAN-only / no-registry config (it just yields zero
+   * registries below); only the open failure is fatal. */
   FILE *probe = fopen(cfg_pathname, "r");
-  if (!probe)
-    dc_log(DC_LOG_WARN,
-           "cannot open %s (%s); no registries configured, so the internet server list "
-           "will be empty",
+  if (!probe) {
+    dc_log(DC_LOG_ERROR, "cannot open %s (%s); the install looks incomplete (common.conf is required)",
            cfg_pathname, strerror(errno));
-  else
-    fclose(probe);
+    free(cfg_pathname);
+    exit(EXIT_FAILURE);
+  }
+  fclose(probe);
   struct Canfigger *cfg_node = canfigger_parse_file(cfg_pathname, ',');
   free(cfg_pathname);
   while (cfg_node) {
@@ -570,6 +571,18 @@ LayoutConfig_t get_layout_config(const char *data_dir) {
   }
 
   printf("Reading layout config: %s\n", cfg_pathname);
+  /* layout.conf ships with every install, so a missing/unreadable one means a
+   * broken or incomplete install — fail loudly rather than silently running with
+   * default geometry. (common.conf, by contrast, is optional / LAN-only and only
+   * warns.) An existing-but-empty file is fine and falls back to defaults below. */
+  FILE *probe = fopen(cfg_pathname, "r");
+  if (!probe) {
+    dc_log(DC_LOG_ERROR, "cannot open %s (%s); the install looks incomplete (layout.conf is required)",
+           cfg_pathname, strerror(errno));
+    free(cfg_pathname);
+    exit(EXIT_FAILURE);
+  }
+  fclose(probe);
   struct Canfigger *cfg_node = canfigger_parse_file(cfg_pathname, ',');
   free(cfg_pathname);
   if (!cfg_node)
