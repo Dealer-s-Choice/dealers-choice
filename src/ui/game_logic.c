@@ -1638,7 +1638,13 @@ EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
       }
       if (step_scale_handle(bet_scale, &event, mouse_pos)) {
         client_state.selected_amount = step_scale_value(bet_scale);
-        break;
+        /* This is inside `while (SDL_PollEvent(&event))`, which is the ONLY
+         * event drain per frame. A `break` here discarded every other event
+         * still queued this frame — so a Call/Fold/h keypress arriving in the
+         * same ~16ms frame as a bet-slider change was silently swallowed (the
+         * "had to press twice" / "h works then doesn't on my turn" bugs).
+         * `continue` consumes just this event and keeps draining the queue. */
+        continue;
       }
 
       if (event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_LEFT &&
