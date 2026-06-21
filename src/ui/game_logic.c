@@ -849,7 +849,13 @@ EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
         if (bidx >= 0 && aid >= 0 && aid < MAX_PLAYERS) {
           const char *verb_str = _(action_button_attrs[bidx].past_tense);
           const char *nick = game_state->player[aid].nick;
-          if (client_state.action_announce_amount > 0)
+          /* DREW always shows its count, even 0 ("drew 0"): the number is the
+           * card-draw count, not a chip amount, so suppressing it on 0 (as we do
+           * for bet/call/raise/complete) would read just "drew". This regressed
+           * in the #74 move of status assembly from server to client, where the
+           * server's unconditional "%s drew %d" became the shared amount>0 guard. */
+          if (client_state.action_announce_verb == ANNOUNCE_DREW ||
+              client_state.action_announce_amount > 0)
             snprintf(client_state.server_status_str, LEN_STATUS_STR, "%s %s %u", nick, verb_str,
                      client_state.action_announce_amount);
           else
