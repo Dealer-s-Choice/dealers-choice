@@ -68,8 +68,9 @@ The server uses two ports:
 
 * **TCP 22777** (the game port, set with `--port`). Players connect to this.
   It must be reachable.
-* **UDP 22787** (LAN discovery). Clients on the same network broadcast on this
-  port to find servers automatically and list them under "Servers on LAN". This
+* **UDP 22787** (LAN discovery). Clients on the same network find servers
+  automatically and list them under "Servers on LAN", using IPv4 limited
+  broadcast and IPv6 link-local multicast (group `ff02::4443`) on this port. This
   is optional: without it, players can still join by typing the server's IP
   address in the connect screen.
 

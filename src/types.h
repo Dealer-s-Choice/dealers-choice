@@ -126,9 +126,12 @@ typedef struct {
   int ban_count;
   // No-peek: cards flipped face-up per player, used when building visible hands.
   int no_peek_n_flipped[MAX_PLAYERS];
-  // LAN discovery responder, serviced between actions so the game stays
-  // findable even while a hand is in progress. Optional: set may be NULL.
+  // LAN discovery responders, serviced between actions so the game stays
+  // findable even while a hand is in progress. Optional: set may be NULL. The
+  // IPv4 (broadcast) and IPv6 (multicast) sockets share one set; either may be
+  // invalid if that family couldn't be opened.
   tcpme_socket_t lan_discovery_sock;
+  tcpme_socket_t lan_discovery_sock6;
   tcpme_set_t *lan_discovery_set;
   uint16_t lan_port;
 } ArgsBroadcastGameState_t;

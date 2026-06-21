@@ -400,14 +400,24 @@ int menu_display_connect(PlayerConfig_t *player_config, char *host_str, uint16_t
 
   /* LAN discovery: passively look for games on the network and show them as
    * clickable rows below the nick. Clicking a row connects to it immediately.
-   * Optional — if the socket can't be opened, the screen just works manually. */
+   * Optional — if a socket can't be opened, the screen just works manually.
+   * Two sockets share one set: IPv4 (broadcast) + IPv6 (link-local multicast);
+   * responses from both merge into found[] (deduped by ip:port in lan_upsert). */
   tcpme_socket_t disc_sock = lan_discovery_open_client();
+  tcpme_socket_t disc_sock6 = lan_discovery_open_client6();
   tcpme_set_t *disc_set = NULL;
-  if (tcpme_socket_valid(disc_sock)) {
-    disc_set = tcpme_alloc_set(1);
-    if (disc_set)
-      tcpme_add_socket(disc_set, disc_sock);
-    lan_discovery_query(disc_sock, player_config->lan_discovery_port);
+  if (tcpme_socket_valid(disc_sock) || tcpme_socket_valid(disc_sock6)) {
+    disc_set = tcpme_alloc_set(2);
+    if (disc_set) {
+      if (tcpme_socket_valid(disc_sock))
+        tcpme_add_socket(disc_set, disc_sock);
+      if (tcpme_socket_valid(disc_sock6))
+        tcpme_add_socket(disc_set, disc_sock6);
+    }
+    if (tcpme_socket_valid(disc_sock))
+      lan_discovery_query(disc_sock, player_config->lan_discovery_port);
+    if (tcpme_socket_valid(disc_sock6))
+      lan_discovery_query6(disc_sock6);
   }
   uint32_t last_query = SDL_GetTicks();
   LanGameInfo_t found[LAN_MAX_SHOWN];
@@ -638,15 +648,30 @@ int menu_display_connect(PlayerConfig_t *player_config, char *host_str, uint16_t
     if (disc_set) {
       uint32_t now = SDL_GetTicks();
       if (now - last_query >= 2000) {
-        lan_discovery_query(disc_sock, player_config->lan_discovery_port);
+        if (tcpme_socket_valid(disc_sock))
+          lan_discovery_query(disc_sock, player_config->lan_discovery_port);
+        if (tcpme_socket_valid(disc_sock6))
+          lan_discovery_query6(disc_sock6);
         last_query = now;
       }
+      /* Drain replies from both family sockets; merge into found[] (lan_upsert
+       * dedups by ip:port, so a server reachable on both v4 and v6 lists once). */
       int drain = 0;
-      while (drain++ < 32 && tcpme_check_sockets(disc_set, 0) > 0 &&
-             tcpme_socket_ready(disc_set, disc_sock)) {
+      while (drain++ < 32 && tcpme_check_sockets(disc_set, 0) > 0) {
+        bool got = false;
         LanGameInfo_t g;
-        if (lan_discovery_read_response(disc_sock, &g))
+        if (tcpme_socket_valid(disc_sock) && tcpme_socket_ready(disc_set, disc_sock) &&
+            lan_discovery_read_response(disc_sock, &g)) {
           found_count = lan_upsert(found, found_seen, found_count, LAN_MAX_SHOWN, &g, now);
+          got = true;
+        }
+        if (tcpme_socket_valid(disc_sock6) && tcpme_socket_ready(disc_set, disc_sock6) &&
+            lan_discovery_read_response6(disc_sock6, &g)) {
+          found_count = lan_upsert(found, found_seen, found_count, LAN_MAX_SHOWN, &g, now);
+          got = true;
+        }
+        if (!got)
+          break; /* select fired but nothing parseable this pass */
       }
       found_count = lan_expire(found, found_seen, found_count, now, 6000);
 
@@ -759,6 +784,8 @@ int menu_display_connect(PlayerConfig_t *player_config, char *host_str, uint16_t
     tcpme_free_set(disc_set);
   if (tcpme_socket_valid(disc_sock))
     tcpme_close(disc_sock);
+  if (tcpme_socket_valid(disc_sock6))
+    tcpme_close(disc_sock6);
 
   if (run_client)
     return RUN_CLIENT;

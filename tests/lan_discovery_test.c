@@ -61,6 +61,33 @@ int main(void) {
   assert(strcmp(got.name, "test table") == 0);
   assert(strlen(got.ip) > 0);
 
+  /* --- IPv6 link-local multicast round trip (best-effort) ---
+   * Same-host multicast loopback is not available everywhere (CI runners, hosts
+   * with IPv6 disabled), so this path is non-fatal: it validates the round trip
+   * where the environment supports it, and is skipped otherwise. The real
+   * cross-machine check is a two-host manual test. */
+  {
+    tcpme_socket_t resp6 = lan_discovery_open_responder6(LAN_DISCOVERY_PORT);
+    tcpme_socket_t cli6 = lan_discovery_open_client6();
+    if (tcpme_socket_valid(resp6) && tcpme_socket_valid(cli6) && lan_discovery_query6(cli6) &&
+        wait_ready(resp6, 1000) && lan_discovery_answer6(resp6, &adv) && wait_ready(cli6, 1000)) {
+      LanGameInfo_t g6 = {0};
+      if (lan_discovery_read_response6(cli6, &g6)) {
+        assert(g6.tcp_port == 22777);
+        assert(g6.max_players == 5);
+        assert(strcmp(g6.name, "test table") == 0);
+        assert(strlen(g6.ip) > 0);
+        printf("ipv6 discovery round trip OK (ip=%s)\n", g6.ip);
+      }
+    } else {
+      printf("ipv6 discovery round trip skipped (no multicast loopback here)\n");
+    }
+    if (tcpme_socket_valid(resp6))
+      tcpme_close(resp6);
+    if (tcpme_socket_valid(cli6))
+      tcpme_close(cli6);
+  }
+
   /* lan_discovery_query() sends to both broadcast and loopback, and on some
    * hosts the broadcast copy is also delivered locally -- so the responder may
    * still have a duplicate query queued. Drain any pending datagrams so the

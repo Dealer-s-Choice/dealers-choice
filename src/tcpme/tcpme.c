@@ -26,6 +26,7 @@
 #include <arpa/inet.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <net/if.h> /* if_nameindex / if_nametoindex for IPv6 multicast joins */
 #include <netdb.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
@@ -551,6 +552,175 @@ int tcpme_udp_recvfrom(tcpme_socket_t sock, void *buf, int len, char *out_ip, si
   }
   if (out_port)
     *out_port = ntohs(src.sin_port);
+  return n;
+}
+
+// --- UDP (IPv6 + multicast, e.g. for LAN multicast discovery) ----------------
+//
+// IPv6 has no broadcast; discovery on a link uses multicast instead. These
+// mirror the IPv4 UDP helpers above but on an AF_INET6 socket, plus the
+// multicast plumbing (group join, per-interface send) link-local discovery
+// needs. The socket is V6ONLY so a host can run an IPv4 *and* an IPv6 discovery
+// socket on the same port without one stealing the other's datagrams.
+
+// IPV6_JOIN_GROUP is the RFC 3493 name; some stacks only define the older alias.
+#if !defined(IPV6_JOIN_GROUP) && defined(IPV6_ADD_MEMBERSHIP)
+#define IPV6_JOIN_GROUP IPV6_ADD_MEMBERSHIP
+#endif
+
+tcpme_socket_t tcpme_udp_open6(uint16_t bind_port) {
+  tcpme_socket_t sock = socket(AF_INET6, SOCK_DGRAM, 0);
+  if (sock == TCPME_INVALID_SOCKET) {
+    set_error_sys("udp6: socket() failed");
+    return TCPME_INVALID_SOCKET;
+  }
+
+  int one = 1;
+  setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (const char *)&one, sizeof(one));
+  // Keep this socket purely IPv6 so it can coexist with a separate IPv4 UDP
+  // socket bound to the same port (the dual-stack discovery setup).
+  setsockopt(sock, IPPROTO_IPV6, IPV6_V6ONLY, (const char *)&one, sizeof(one));
+  // Link-local scope (1 hop) and loop multicast back, so a server and client on
+  // the same host still discover each other.
+  int hops = 1;
+  setsockopt(sock, IPPROTO_IPV6, IPV6_MULTICAST_HOPS, (const char *)&hops, sizeof(hops));
+  setsockopt(sock, IPPROTO_IPV6, IPV6_MULTICAST_LOOP, (const char *)&one, sizeof(one));
+
+  struct sockaddr_in6 addr;
+  memset(&addr, 0, sizeof(addr));
+  addr.sin6_family = AF_INET6;
+  addr.sin6_addr = in6addr_any;
+  addr.sin6_port = htons(bind_port);
+  if (bind(sock, (struct sockaddr *)&addr, sizeof(addr)) != 0) {
+    set_error_sys("udp6: bind() failed");
+    close_socket(sock);
+    return TCPME_INVALID_SOCKET;
+  }
+  return sock;
+}
+
+// Join `group` (a numeric IPv6 multicast address) on every usable interface.
+// Link-local groups (ff02::/16) are per-link, so receiving on more than one NIC
+// requires a membership per interface. Returns the number of joins that
+// succeeded (0 means the socket will hear nothing).
+int tcpme_mcast6_join_all(tcpme_socket_t sock, const char *group) {
+  struct ipv6_mreq mreq;
+  memset(&mreq, 0, sizeof(mreq));
+  if (inet_pton(AF_INET6, group, &mreq.ipv6mr_multiaddr) != 1) {
+    set_error("udp6: invalid multicast group");
+    return 0;
+  }
+  int joined = 0;
+#ifndef _WIN32
+  struct if_nameindex *ifs = if_nameindex();
+  if (ifs) {
+    for (struct if_nameindex *p = ifs; p->if_index != 0 || p->if_name != NULL; p++) {
+      mreq.ipv6mr_interface = p->if_index;
+      if (setsockopt(sock, IPPROTO_IPV6, IPV6_JOIN_GROUP, (const char *)&mreq, sizeof(mreq)) == 0)
+        joined++;
+    }
+    if_freenameindex(ifs);
+  }
+#endif
+  // Also join on the default interface (index 0). On Windows (no if_nameindex
+  // enumeration here) this is the only join attempted.
+  mreq.ipv6mr_interface = 0;
+  if (setsockopt(sock, IPPROTO_IPV6, IPV6_JOIN_GROUP, (const char *)&mreq, sizeof(mreq)) == 0)
+    joined++;
+  if (joined == 0)
+    set_error_sys("udp6: no multicast group joins succeeded");
+  return joined;
+}
+
+// Send `buf` to `group`:`port` out every interface (setting IPV6_MULTICAST_IF per
+// NIC and the destination scope), so a query reaches servers on each attached
+// link. Returns the number of interfaces the datagram went out on.
+int tcpme_udp_mcast6_send_all(tcpme_socket_t sock, const char *group, uint16_t port,
+                              const void *buf, int len) {
+  struct sockaddr_in6 addr;
+  memset(&addr, 0, sizeof(addr));
+  addr.sin6_family = AF_INET6;
+  addr.sin6_port = htons(port);
+  if (inet_pton(AF_INET6, group, &addr.sin6_addr) != 1) {
+    set_error("udp6: invalid multicast group");
+    return 0;
+  }
+  int sent = 0;
+#ifndef _WIN32
+  struct if_nameindex *ifs = if_nameindex();
+  if (ifs) {
+    for (struct if_nameindex *p = ifs; p->if_index != 0 || p->if_name != NULL; p++) {
+      unsigned idx = p->if_index;
+      setsockopt(sock, IPPROTO_IPV6, IPV6_MULTICAST_IF, (const char *)&idx, sizeof(idx));
+      addr.sin6_scope_id = idx; // link-local destination needs the outgoing scope
+      if ((int)sendto(sock, (const char *)buf, (size_t)len, 0, (struct sockaddr *)&addr,
+                      sizeof(addr)) == len)
+        sent++;
+    }
+    if_freenameindex(ifs);
+  }
+#endif
+  if (sent == 0) {
+    // Fallback: default interface (and the only path on Windows here).
+    unsigned idx = 0;
+    setsockopt(sock, IPPROTO_IPV6, IPV6_MULTICAST_IF, (const char *)&idx, sizeof(idx));
+    addr.sin6_scope_id = 0;
+    if ((int)sendto(sock, (const char *)buf, (size_t)len, 0, (struct sockaddr *)&addr,
+                    sizeof(addr)) == len)
+      sent++;
+  }
+  if (sent == 0)
+    set_error_sys("udp6: multicast sendto() failed on all interfaces");
+  return sent;
+}
+
+// Like tcpme_udp_recvfrom but for IPv6, and also returns the sender's scope id
+// (the interface index for a link-local fe80:: source) — needed to reply to, or
+// later connect to, a link-local address.
+int tcpme_udp_recvfrom6(tcpme_socket_t sock, void *buf, int len, char *out_ip, size_t out_iplen,
+                        unsigned *out_scope, uint16_t *out_port) {
+  struct sockaddr_in6 src;
+  socklen_t srclen = sizeof(src);
+  int n;
+#ifndef _WIN32
+  do {
+    n = (int)recvfrom(sock, (char *)buf, (size_t)len, 0, (struct sockaddr *)&src, &srclen);
+  } while (n < 0 && errno == EINTR);
+#else
+  n = (int)recvfrom(sock, (char *)buf, len, 0, (struct sockaddr *)&src, &srclen);
+#endif
+  if (n < 0) {
+    set_error_sys("udp6: recvfrom() failed");
+    return -1;
+  }
+  if (out_ip && out_iplen > 0) {
+    if (!inet_ntop(AF_INET6, &src.sin6_addr, out_ip, (socklen_t)out_iplen))
+      out_ip[0] = '\0';
+  }
+  if (out_scope)
+    *out_scope = src.sin6_scope_id;
+  if (out_port)
+    *out_port = ntohs(src.sin6_port);
+  return n;
+}
+
+// Unicast `buf` to an IPv6 address, carrying the scope id for a link-local
+// destination (0 for global/ULA addresses).
+int tcpme_udp_sendto6(tcpme_socket_t sock, const char *ip, unsigned scope, uint16_t port,
+                      const void *buf, int len) {
+  struct sockaddr_in6 addr;
+  memset(&addr, 0, sizeof(addr));
+  addr.sin6_family = AF_INET6;
+  addr.sin6_port = htons(port);
+  addr.sin6_scope_id = scope;
+  if (inet_pton(AF_INET6, ip, &addr.sin6_addr) != 1) {
+    set_error("udp6: invalid IPv6 address");
+    return -1;
+  }
+  int n = (int)sendto(sock, (const char *)buf, (size_t)len, 0, (struct sockaddr *)&addr,
+                      sizeof(addr));
+  if (n < 0)
+    set_error_sys("udp6: sendto() failed");
   return n;
 }
 

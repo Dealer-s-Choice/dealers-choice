@@ -1031,18 +1031,26 @@ static int verify_client_password(tcpme_socket_t sock, const char *stored_passwo
 static void service_lan_discovery(ArgsBroadcastGameState_t *args, bool in_progress) {
   if (!args->lan_discovery_set)
     return;
-  if (tcpme_check_sockets(args->lan_discovery_set, 0) > 0 &&
-      tcpme_socket_ready(args->lan_discovery_set, args->lan_discovery_sock)) {
-    LanGameInfo_t info = {0};
-    info.tcp_port = args->lan_port;
-    info.player_count = count_active_clients(args->slot_taken);
-    info.max_players = MAX_CLIENTS;
-    info.password_protected = (args->config->password[0] != '\0');
-    info.in_progress = in_progress;
-    snprintf(info.name, sizeof info.name, "%.*s", (int)(sizeof info.name - 1),
-             args->config->server_name);
+  if (tcpme_check_sockets(args->lan_discovery_set, 0) <= 0)
+    return;
+
+  /* Both family sockets share one set; build the advertised info once and answer
+   * on whichever has a pending query (IPv4 broadcast and/or IPv6 multicast). */
+  LanGameInfo_t info = {0};
+  info.tcp_port = args->lan_port;
+  info.player_count = count_active_clients(args->slot_taken);
+  info.max_players = MAX_CLIENTS;
+  info.password_protected = (args->config->password[0] != '\0');
+  info.in_progress = in_progress;
+  snprintf(info.name, sizeof info.name, "%.*s", (int)(sizeof info.name - 1),
+           args->config->server_name);
+
+  if (tcpme_socket_valid(args->lan_discovery_sock) &&
+      tcpme_socket_ready(args->lan_discovery_set, args->lan_discovery_sock))
     lan_discovery_answer(args->lan_discovery_sock, &info);
-  }
+  if (tcpme_socket_valid(args->lan_discovery_sock6) &&
+      tcpme_socket_ready(args->lan_discovery_set, args->lan_discovery_sock6))
+    lan_discovery_answer6(args->lan_discovery_sock6, &info);
 }
 
 /* Registry publish policy (DC-owned; tcpme stays generic). */
@@ -1320,16 +1328,22 @@ int run_server(const CliArgs_t *cli_args, Path_t *path) {
   printf("Server listening on ");
   print_socket_addr(server);
 
-  /* LAN discovery: answer broadcast queries so clients on the same network can
-   * find this game without a registry server. Optional — if the discovery port
-   * can't be opened (e.g. already in use) advertising is simply disabled and
-   * the game still runs. */
+  /* LAN discovery: answer queries so clients on the same network can find this
+   * game without a registry server. Two responders share one select set: IPv4
+   * (limited broadcast) and IPv6 (link-local multicast). Each is optional — if a
+   * family's socket can't be opened (port in use, no IPv6), that family is simply
+   * disabled and the game still runs. */
   tcpme_socket_t discovery_sock = lan_discovery_open_responder(config.lan_discovery_port);
+  tcpme_socket_t discovery_sock6 = lan_discovery_open_responder6(config.lan_discovery_port);
   tcpme_set_t *discovery_set = NULL;
-  if (tcpme_socket_valid(discovery_sock)) {
-    discovery_set = tcpme_alloc_set(1);
-    if (discovery_set)
-      tcpme_add_socket(discovery_set, discovery_sock);
+  if (tcpme_socket_valid(discovery_sock) || tcpme_socket_valid(discovery_sock6)) {
+    discovery_set = tcpme_alloc_set(2);
+    if (discovery_set) {
+      if (tcpme_socket_valid(discovery_sock))
+        tcpme_add_socket(discovery_set, discovery_sock);
+      if (tcpme_socket_valid(discovery_sock6))
+        tcpme_add_socket(discovery_set, discovery_sock6);
+    }
   } else {
     fprintf(stderr, "LAN discovery disabled: %s\n", tcpme_get_error());
   }
@@ -1386,6 +1400,7 @@ int run_server(const CliArgs_t *cli_args, Path_t *path) {
         .turn_id = 0,
         .ban_count = session_ban_count,
         .lan_discovery_sock = discovery_sock,
+        .lan_discovery_sock6 = discovery_sock6,
         .lan_discovery_set = discovery_set,
         .lan_port = port,
     };
@@ -1629,6 +1644,8 @@ int run_server(const CliArgs_t *cli_args, Path_t *path) {
     tcpme_free_set(discovery_set);
   if (tcpme_socket_valid(discovery_sock))
     tcpme_close(discovery_sock);
+  if (tcpme_socket_valid(discovery_sock6))
+    tcpme_close(discovery_sock6);
 
   tcpme_close(server);
   tcpme_free_set(socket_set);

@@ -182,6 +182,38 @@ int tcpme_udp_sendto(tcpme_socket_t sock, const char *ip, uint16_t port, const v
 int tcpme_udp_recvfrom(tcpme_socket_t sock, void *buf, int len, char *out_ip, size_t out_iplen,
                        uint16_t *out_port);
 
+// --- UDP (IPv6 + multicast, e.g. for LAN multicast discovery) ---------------
+//
+// IPv6 has no broadcast, so discovery on a link uses multicast. These mirror the
+// IPv4 helpers on an AF_INET6 (V6ONLY) socket, so a host can run both an IPv4 and
+// an IPv6 discovery socket on the same port. Mechanism only; the caller owns the
+// group address, port, and payload.
+
+// Open a V6ONLY UDP socket bound to [::]:bind_port (0 = ephemeral), with
+// multicast hop limit 1 (link-local) and loopback enabled. Returns
+// TCPME_INVALID_SOCKET on failure.
+tcpme_socket_t tcpme_udp_open6(uint16_t bind_port);
+
+// Join the numeric IPv6 multicast group on every usable interface (link-local
+// groups are per-link). Returns the number of interfaces joined (0 = none).
+int tcpme_mcast6_join_all(tcpme_socket_t sock, const char *group);
+
+// Send len bytes to group:port out every interface. Returns the number of
+// interfaces sent on, or 0 on total failure.
+int tcpme_udp_mcast6_send_all(tcpme_socket_t sock, const char *group, uint16_t port,
+                              const void *buf, int len);
+
+// Like tcpme_udp_recvfrom but for IPv6; out_scope (when non-NULL) receives the
+// sender's scope id (interface index of a link-local fe80:: source), needed to
+// reply to or connect to that address. Returns bytes received, or -1 on error.
+int tcpme_udp_recvfrom6(tcpme_socket_t sock, void *buf, int len, char *out_ip, size_t out_iplen,
+                        unsigned *out_scope, uint16_t *out_port);
+
+// Unicast len bytes to an IPv6 address, with scope id for a link-local
+// destination (0 for global/ULA). Returns bytes sent, or -1 on error.
+int tcpme_udp_sendto6(tcpme_socket_t sock, const char *ip, unsigned scope, uint16_t port,
+                      const void *buf, int len);
+
 // Allocate a socket set for select-based readiness polling.
 // capacity is the maximum number of sockets the set will hold.
 // Returns NULL on allocation failure.
