@@ -34,6 +34,7 @@
 #include "dc_config.h"
 #include "dc_windows.h"
 #include "layout_config.h"
+#include "net/lan_discovery.h"
 #include "net/registry.h"
 #include "util.h"
 
@@ -330,8 +331,9 @@ void player_config_set_field(PlayerConfig_t *cfg, size_t entry_idx, const char *
  *   registry = 203.0.113.5, 22071
  * The port defaults to REGISTRY_DEFAULT_PORT. Missing file/key is fine. */
 void get_common_registries(const char *data_dir, char host[][REGISTRY_HOST_LEN], uint16_t *port,
-                           uint8_t *count) {
+                           uint8_t *count, uint16_t *lan_discovery_port) {
   *count = 0;
+  *lan_discovery_port = LAN_DISCOVERY_PORT; /* default; common.conf may override */
   char *cfg_pathname = canfigger_path_join(data_dir, "common.conf");
   if (!cfg_pathname)
     return;
@@ -353,6 +355,10 @@ void get_common_registries(const char *data_dir, char host[][REGISTRY_HOST_LEN],
       }
       port[*count] = (uint16_t)p;
       (*count)++;
+    } else if (strcasecmp(cfg_node->key, "lan_discovery_port") == 0 && cfg_node->value) {
+      unsigned long p;
+      parse_unsigned(cfg_node->value, UINT16_MAX, &p); /* exits on a malformed port */
+      *lan_discovery_port = (uint16_t)p;
     }
     canfigger_free_current_key_node_advance(&cfg_node);
   }
@@ -430,9 +436,12 @@ ServerConfig_t get_server_config(Path_t *path, const CliArgs_t *cli_args) {
   if (env_pw)
     snprintf(config.password, sizeof(config.password), "%s", env_pw);
 
-  /* Registries to publish to come from the shared common.conf, not server.conf. */
+  /* Registries to publish to (and the LAN-discovery port) come from the shared
+   * common.conf, not server.conf. A --discovery-port CLI flag overrides it. */
   get_common_registries(path->data, config.registry_host, config.registry_port,
-                        &config.registry_count);
+                        &config.registry_count, &config.lan_discovery_port);
+  if (cli_args->discovery_port != 0)
+    config.lan_discovery_port = cli_args->discovery_port;
 
   return config;
 }

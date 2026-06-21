@@ -45,6 +45,7 @@ typedef struct ServerConfig_t {
   char registry_host[MAX_REGISTRIES][REGISTRY_HOST_LEN]; /* registries to publish to */
   uint16_t registry_port[MAX_REGISTRIES];
   uint8_t registry_count;
+  uint16_t lan_discovery_port; /* from common.conf; default LAN_DISCOVERY_PORT (#33) */
   uint32_t end_of_game_timeout_ms;
   uint32_t action_timeout_ms;
   uint32_t dealer_timeout_ms;
@@ -83,12 +84,14 @@ typedef struct {
   char registry_host[MAX_REGISTRIES][REGISTRY_HOST_LEN]; /* registries to browse (#33) */
   uint16_t registry_port[MAX_REGISTRIES];
   uint8_t registry_count;
+  uint16_t lan_discovery_port; /* from common.conf; default LAN_DISCOVERY_PORT (#33) */
 } PlayerConfig_t;
 
-/* Read the shared registry list from <data_dir>/common.conf (used by both the
- * server, to publish, and the client, to browse). */
+/* Read the shared registry list and LAN-discovery port from
+ * <data_dir>/common.conf (used by both the server, to publish, and the client,
+ * to browse). lan_discovery_port defaults to LAN_DISCOVERY_PORT. */
 void get_common_registries(const char *data_dir, char host[][REGISTRY_HOST_LEN], uint16_t *port,
-                           uint8_t *count);
+                           uint8_t *count, uint16_t *lan_discovery_port);
 
 typedef enum {
   CFG_TYPE_STRING,

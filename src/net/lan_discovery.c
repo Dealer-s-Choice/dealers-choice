@@ -43,7 +43,7 @@ static size_t name_length(const char *name) {
   return i;
 }
 
-tcpme_socket_t lan_discovery_open_responder(void) { return tcpme_udp_open(LAN_DISCOVERY_PORT, false); }
+tcpme_socket_t lan_discovery_open_responder(uint16_t port) { return tcpme_udp_open(port, false); }
 
 bool lan_discovery_answer(tcpme_socket_t sock, const LanGameInfo_t *info) {
   unsigned char buf[LAN_PKT_MAX];
@@ -75,21 +75,20 @@ bool lan_discovery_answer(tcpme_socket_t sock, const LanGameInfo_t *info) {
 
 tcpme_socket_t lan_discovery_open_client(void) { return tcpme_udp_open(0, true); }
 
-bool lan_discovery_query(tcpme_socket_t sock) {
+bool lan_discovery_query(tcpme_socket_t sock, uint16_t port) {
   unsigned char q[LAN_HDR_LEN];
   memcpy(q, LAN_MAGIC, LAN_MAGIC_LEN);
   q[LAN_MAGIC_LEN] = LAN_MSG_QUERY;
   q[LAN_MAGIC_LEN + 1] = LAN_DISC_VERSION;
 
-  bool sent_bcast =
-      tcpme_udp_broadcast(sock, LAN_DISCOVERY_PORT, q, (int)sizeof(q)) == (int)sizeof(q);
+  bool sent_bcast = tcpme_udp_broadcast(sock, port, q, (int)sizeof(q)) == (int)sizeof(q);
 
   /* Also query loopback directly: limited broadcast (255.255.255.255) is not
    * reliably looped back to a responder on the same host, so without this a
    * server and client on one machine (the common test setup) wouldn't find
    * each other. */
   bool sent_loop =
-      tcpme_udp_sendto(sock, "127.0.0.1", LAN_DISCOVERY_PORT, q, (int)sizeof(q)) == (int)sizeof(q);
+      tcpme_udp_sendto(sock, "127.0.0.1", port, q, (int)sizeof(q)) == (int)sizeof(q);
 
   /* Report success if either query went out. Some hosts have no
    * broadcast-capable route (restricted CI runners, loopback-only setups),

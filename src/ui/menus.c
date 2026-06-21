@@ -407,7 +407,7 @@ int menu_display_connect(PlayerConfig_t *player_config, char *host_str, uint16_t
     disc_set = tcpme_alloc_set(1);
     if (disc_set)
       tcpme_add_socket(disc_set, disc_sock);
-    lan_discovery_query(disc_sock);
+    lan_discovery_query(disc_sock, player_config->lan_discovery_port);
   }
   uint32_t last_query = SDL_GetTicks();
   LanGameInfo_t found[LAN_MAX_SHOWN];
@@ -638,7 +638,7 @@ int menu_display_connect(PlayerConfig_t *player_config, char *host_str, uint16_t
     if (disc_set) {
       uint32_t now = SDL_GetTicks();
       if (now - last_query >= 2000) {
-        lan_discovery_query(disc_sock);
+        lan_discovery_query(disc_sock, player_config->lan_discovery_port);
         last_query = now;
       }
       int drain = 0;

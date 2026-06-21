@@ -29,7 +29,7 @@ static bool wait_ready(tcpme_socket_t s, uint32_t ms) {
 int main(void) {
   assert(tcpme_init() == 0);
 
-  tcpme_socket_t resp = lan_discovery_open_responder();
+  tcpme_socket_t resp = lan_discovery_open_responder(LAN_DISCOVERY_PORT);
   assert(tcpme_socket_valid(resp));
   tcpme_socket_t cli = lan_discovery_open_client();
   assert(tcpme_socket_valid(cli));
@@ -42,7 +42,7 @@ int main(void) {
   adv.in_progress = false;
   strcpy(adv.name, "test table");
 
-  assert(lan_discovery_query(cli));
+  assert(lan_discovery_query(cli, LAN_DISCOVERY_PORT));
 
   /* Responder receives the query (via loopback) and replies. */
   assert(wait_ready(resp, 2000));

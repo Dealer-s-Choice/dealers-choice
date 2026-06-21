@@ -36,6 +36,7 @@ typedef struct {
   const char *host, *server_conf, *bind_address;
   const char *server_name; /* --name: overrides server_name from the conf (#33) */
   uint16_t port;
+  uint16_t discovery_port; /* --discovery-port: overrides common.conf lan_discovery_port (#33) */
   const char *server_log_game_results_file;
   const char *server_log_hands_file;
   bool run_server_flag;

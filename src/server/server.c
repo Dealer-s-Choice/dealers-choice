@@ -1324,7 +1324,7 @@ int run_server(const CliArgs_t *cli_args, Path_t *path) {
    * find this game without a registry server. Optional — if the discovery port
    * can't be opened (e.g. already in use) advertising is simply disabled and
    * the game still runs. */
-  tcpme_socket_t discovery_sock = lan_discovery_open_responder();
+  tcpme_socket_t discovery_sock = lan_discovery_open_responder(config.lan_discovery_port);
   tcpme_set_t *discovery_set = NULL;
   if (tcpme_socket_valid(discovery_sock)) {
     discovery_set = tcpme_alloc_set(1);
