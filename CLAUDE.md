@@ -188,7 +188,7 @@ The parser uses a static `style_fields[]` table (key, `FieldType_t`, `offsetof`,
 - **C standard:** C11 (`-std=c11`), warning level 3, with `-Werror` on aliasing, ODR, LTO type mismatches, and int conversion.
 - **Portability:** code runs on Linux, macOS, Windows (MSVC), and BSD. Platform guards use `host_sys` / `_WIN32`.
 - **i18n:** user-visible strings go through gettext macros (see `src/translate.h`). Translation `.po` files live in `po/`.
-- **Comments are rare and short.** Default to none; add one only when the *why* is non-obvious (a hidden constraint, a prior bug, a surprising invariant) — not to restate what the code does. **Exception:** public API docs — doxygen/header docblocks on public functions, parameters, and return codes — can be as long as needed; that's contract documentation for callers, not noise.
+- **Comments are welcome on this project.** Andy maintains Dealer's Choice and wants explanatory comments kept — including ones written to orient a future AI session, not just human readers. Favour comments that capture the *why* (a hidden constraint, a prior bug, a surprising invariant, why an approach was chosen) over ones that merely restate the code. Don't pad with noise, but don't strip useful context to hit a "rare and short" bar — that bar applies to other people's projects, not this one. **Public API docs** — doxygen/header docblocks on public functions, parameters, and return codes — can be as long as needed; that's contract documentation for callers.
 
 ## Working style & contributions
 
