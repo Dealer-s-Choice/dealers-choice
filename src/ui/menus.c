@@ -267,13 +267,23 @@ static void server_table_draw_style(const UITable_t *t, SDL_Renderer *r) {
  * out[]. Bounded connect/recv so an unreachable registry can't hang the connect
  * screen; only runs when registries are configured, so LAN-only users pay
  * nothing. Returns the count. */
+/* Timeouts for browsing a registry. These cover a full INTERNET round trip (DNS
+ * resolution + TCP handshake to a remote registry), so they must be generous:
+ * 300ms was fine on LAN/localhost but timed out for remote users over
+ * higher-latency links / first-time DNS lookups. NOTE: this fetch runs
+ * synchronously on the connect screen, so a slow/unreachable registry stalls the
+ * UI up to these values — the real fix is to move it off the UI thread (#82). */
+#define REG_FETCH_CONNECT_MS 2500
+#define REG_FETCH_IO_MS 2000
+
 static int registry_fetch(const PlayerConfig_t *pc, RegistryServer_t *out, int max) {
   int count = 0;
   for (int r = 0; r < pc->registry_count && count < max; r++) {
-    tcpme_socket_t s = tcpme_connect_timeout(pc->registry_host[r], pc->registry_port[r], 300);
+    tcpme_socket_t s =
+        tcpme_connect_timeout(pc->registry_host[r], pc->registry_port[r], REG_FETCH_CONNECT_MS);
     if (!tcpme_socket_valid(s))
       continue;
-    tcpme_set_timeout(s, 1000);
+    tcpme_set_timeout(s, REG_FETCH_IO_MS);
     RegistryServer_t list[REGISTRY_MAX_SERVERS];
     int n = 0;
     if (registry_send_list_request(s) == 0 &&
