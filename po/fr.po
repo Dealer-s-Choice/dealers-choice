@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: dealers-choice\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-06-15 00:56-0500\n"
+"POT-Creation-Date: 2026-06-20 23:48-0500\n"
 "PO-Revision-Date: 2025-07-02 00:18-0500\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -17,177 +17,215 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n > 1);\n"
 
-#: src/client.c:138 src/client.c:1256
-msgid "Deuces Wild"
-msgstr ""
-
-#: src/client.c:180
-msgid "Players"
-msgstr ""
-
-#: src/client.c:184
-msgid "Dealer"
-msgstr ""
-
-#: src/client.c:188
-msgid "Ping"
-msgstr ""
-
-#: src/client.c:202
-msgid "Waiting for more players..."
-msgstr ""
-
-#: src/client.c:208
-msgid "Waiting for dealer to select game..."
-msgstr ""
-
-#: src/client.c:215 src/client.c:1236
-msgid "Kick"
-msgstr ""
-
-#: src/client.c:217 src/client.c:1238
-msgid "Ban"
-msgstr ""
-
-#. Show dealing screen immediately after click
-#: src/client.c:577
-msgid "Dealing..."
-msgstr ""
-
-#: src/client.c:893
-msgid "Check"
-msgstr "Parole"
-
-#: src/client.c:893
-msgid "Bet"
-msgstr "Miser"
-
-#: src/client.c:893
-msgid "Fold"
-msgstr "Se coucher"
-
-#: src/client.c:894
-msgid "Call"
-msgstr "Suivre"
-
-#: src/client.c:894
-msgid "Raise"
-msgstr "Relancer"
-
-#: src/client.c:894
-msgid "Complete"
-msgstr ""
-
-#: src/client.c:895
-msgid "Discard"
-msgstr "Défausser"
-
-#: src/client.c:2316
-msgid "Cancel"
-msgstr ""
-
-#: src/client.c:2322 src/client.c:2337
-#, c-format
-msgid "Attempting connection to: %s... (%d/%d)"
-msgstr ""
-
-#: src/main.c:61
-msgid "Connect"
-msgstr "Se connecter"
-
-#: src/main.c:63 src/main.c:728
-msgid "Settings"
-msgstr ""
-
-#: src/main.c:98 src/main.c:430 src/main.c:685
-msgid "Save"
-msgstr ""
-
-#: src/main.c:105 src/main.c:696
-msgid "Load Defaults"
-msgstr ""
-
-#: src/main.c:392 src/main.c:707
-msgid "Hotkeys"
-msgstr ""
-
-#: src/main.c:396 src/main.c:500
-msgid "Click an action, then press a key"
-msgstr ""
-
-#: src/main.c:463
-msgid "That key is reserved - pick another"
-msgstr ""
-
-#: src/main.c:498
-msgid "press a key..."
-msgstr ""
-
-#. TRANSLATORS: "Discord", "Lazarus Project" should not be translated
-#: src/links.c:9
-#, fuzzy
-msgid "Discord Channel (on Lazarus Project Server)"
-msgstr " Canal Discord (sur le serveur du projet Lazarus) "
-
-#: src/links.c:12
-msgid "Website"
-msgstr ""
-
-#: src/server.c:865
+#: src/server/round.c:246 src/ui/game_logic.c:305
 #, fuzzy
 msgid "checked"
 msgstr "Parole"
 
-#: src/server.c:880
+#: src/server/round.c:262 src/ui/game_logic.c:306
 msgid "folded"
 msgstr ""
 
-#: src/server.c:1073 src/server.c:1095
+#: src/server/round.c:460 src/server/round.c:484
 msgid "completed "
 msgstr ""
 
-#: src/server.c:1073
+#: src/server/round.c:460
 msgid "bet "
 msgstr ""
 
-#: src/server.c:1088 src/server.c:1109
+#: src/server/round.c:476 src/server/round.c:499 src/ui/game_logic.c:306
 msgid "called"
 msgstr ""
 
-#: src/server.c:1113
+#: src/server/round.c:504
 #, fuzzy
 msgid "raised "
 msgstr "Relancer"
 
-#: src/server.c:1248
+#: src/server/server.c:676
 #, c-format
 msgid "%s disconnected"
 msgstr ""
 
-#: src/server.c:1269
+#: src/server/server.c:701
 #, c-format
 msgid "%s was kicked"
 msgstr ""
 
-#: src/server.c:1288
+#: src/server/server.c:720
 #, c-format
 msgid "%s was banned"
 msgstr ""
 
-#: src/server.c:1526
+#: src/server/variants.c:185
 #, c-format
 msgid "%s brings in for %u"
 msgstr ""
 
-#: src/server.c:1719
+#: src/server/variants.c:381
 #, c-format
 msgid "%s ran out of cards"
 msgstr ""
 
-#: src/server.c:1817
+#: src/server/variants.c:481
 #, c-format
 msgid "Game: %s%s"
 msgstr ""
+
+#: src/ui/client.c:240 src/ui/graphics.c:95
+msgid "Cancel"
+msgstr ""
+
+#: src/ui/client.c:246 src/ui/client.c:261
+#, c-format
+msgid "Attempting connection to: %s... (%d/%d)"
+msgstr ""
+
+#: src/ui/game_logic.c:305
+msgid "Check"
+msgstr "Parole"
+
+#: src/ui/game_logic.c:305
+msgid "Bet"
+msgstr "Miser"
+
+#: src/ui/game_logic.c:305
+#, fuzzy
+msgid "bet"
+msgstr "Miser"
+
+#: src/ui/game_logic.c:306
+msgid "Fold"
+msgstr "Se coucher"
+
+#: src/ui/game_logic.c:306
+msgid "Call"
+msgstr "Suivre"
+
+#: src/ui/game_logic.c:307
+msgid "Raise"
+msgstr "Relancer"
+
+#: src/ui/game_logic.c:307
+#, fuzzy
+msgid "raised"
+msgstr "Relancer"
+
+#: src/ui/game_logic.c:307
+msgid "Complete"
+msgstr ""
+
+#: src/ui/game_logic.c:307
+msgid "completed"
+msgstr ""
+
+#: src/ui/game_logic.c:308
+msgid "Discard"
+msgstr "Défausser"
+
+#: src/ui/game_logic.c:308
+msgid "drew"
+msgstr ""
+
+#: src/ui/game_logic.c:701 src/ui/game_select.c:143
+msgid "Kick"
+msgstr ""
+
+#: src/ui/game_logic.c:703 src/ui/game_select.c:145
+msgid "Ban"
+msgstr ""
+
+#: src/ui/game_logic.c:721 src/ui/game_select.c:66
+msgid "Deuces Wild"
+msgstr ""
+
+#: src/ui/game_select.c:108
+msgid "Players"
+msgstr ""
+
+#: src/ui/game_select.c:112
+msgid "Dealer"
+msgstr ""
+
+#: src/ui/game_select.c:116
+msgid "Ping"
+msgstr ""
+
+#: src/ui/game_select.c:130
+msgid "Waiting for more players..."
+msgstr ""
+
+#: src/ui/game_select.c:136
+msgid "Waiting for dealer to select game..."
+msgstr ""
+
+#. Show dealing screen immediately after click
+#: src/ui/game_select.c:505
+msgid "Dealing..."
+msgstr ""
+
+#: src/ui/graphics.c:93
+msgid "Are you sure you want to quit?"
+msgstr ""
+
+#: src/ui/graphics.c:97
+msgid "Quit"
+msgstr ""
+
+#: src/ui/menus.c:280
+msgid "Connect"
+msgstr "Se connecter"
+
+#: src/ui/menus.c:282 src/ui/menus.c:1190
+msgid "Settings"
+msgstr ""
+
+#: src/ui/menus.c:317 src/ui/menus.c:873 src/ui/menus.c:1147
+msgid "Save"
+msgstr ""
+
+#: src/ui/menus.c:324 src/ui/menus.c:1158
+msgid "Load Defaults"
+msgstr ""
+
+#. Nick is inline-editable here (a "nick:" label + input), so it can be set
+#. * right before connecting without opening Settings.
+#: src/ui/menus.c:353
+msgid "nick:"
+msgstr ""
+
+#: src/ui/menus.c:393
+msgid "Servers on LAN"
+msgstr ""
+
+#: src/ui/menus.c:437
+msgid "Internet servers"
+msgstr ""
+
+#: src/ui/menus.c:835 src/ui/menus.c:1169
+msgid "Hotkeys"
+msgstr ""
+
+#: src/ui/menus.c:839 src/ui/menus.c:962
+msgid "Click an action, then press a key"
+msgstr ""
+
+#: src/ui/menus.c:906
+msgid "That key is reserved - pick another"
+msgstr ""
+
+#: src/ui/menus.c:931
+msgid "That key is already used - pick another"
+msgstr ""
+
+#: src/ui/menus.c:960
+msgid "press a key..."
+msgstr ""
+
+#, fuzzy
+#~ msgid "Discord Channel (on Lazarus Project Server)"
+#~ msgstr " Canal Discord (sur le serveur du projet Lazarus) "
 
 #~ msgid "Connected players:"
 #~ msgstr "Joueurs connectés :"
