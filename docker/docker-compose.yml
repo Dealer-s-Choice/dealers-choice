@@ -66,7 +66,11 @@ services:
       # is pointed at the mount via the fixed --json path in the command above.
       - DC_REGISTRY_ARGS=${DC_REGISTRY_ARGS:-}
     volumes:
-      - "${DC_REGISTRY_DIR}:/dc_registry"
+      # Default keeps the bind spec valid even when the registry isn't used —
+      # an empty ${DC_REGISTRY_DIR} is a hard parse error that breaks every
+      # `docker compose` command, profile or not. Set DC_REGISTRY_DIR to a real
+      # path when you actually run the registry; the dir is only mounted then.
+      - "${DC_REGISTRY_DIR:-./dc_registry}:/dc_registry"
     ports:
       - "${DC_REGISTRY_PORT:-22070}:22070"
     profiles:
