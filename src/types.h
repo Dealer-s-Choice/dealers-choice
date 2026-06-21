@@ -134,6 +134,7 @@ typedef struct {
   tcpme_socket_t lan_discovery_sock6;
   tcpme_set_t *lan_discovery_set;
   uint16_t lan_port;
+  uint32_t lan_instance_id; /* random per-process id sent in discovery replies (clients dedup on it) */
 } ArgsBroadcastGameState_t;
 
 struct GameChoice_t;

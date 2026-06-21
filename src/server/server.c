@@ -1042,6 +1042,7 @@ static void service_lan_discovery(ArgsBroadcastGameState_t *args, bool in_progre
   info.max_players = MAX_CLIENTS;
   info.password_protected = (args->config->password[0] != '\0');
   info.in_progress = in_progress;
+  info.instance_id = args->lan_instance_id;
   snprintf(info.name, sizeof info.name, "%.*s", (int)(sizeof info.name - 1),
            args->config->server_name);
 
@@ -1403,6 +1404,9 @@ int run_server(const CliArgs_t *cli_args, Path_t *path) {
         .lan_discovery_sock6 = discovery_sock6,
         .lan_discovery_set = discovery_set,
         .lan_port = port,
+        /* One random id per server process; lets clients collapse the multiple
+         * discovery replies they get (one per interface) into a single row. */
+        .lan_instance_id = randombytes_random(),
     };
     memcpy(args_broadcast_game_state.ban_list, session_ban_list, sizeof(session_ban_list));
     memcpy(args_broadcast_game_state.player_timeouts, session_player_timeouts,

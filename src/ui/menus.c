@@ -73,13 +73,33 @@ static uint64_t lan_list_sig(const LanGameInfo_t *list, int count) {
   return h;
 }
 
-/* Insert g, or refresh an existing entry matched by ip+port. Returns the new
- * count (unchanged if the list is full). */
+/* How connectable a discovered address is, for picking which one to show when a
+ * server answers on several. Higher is better. */
+static int addr_score(const char *ip) {
+  if (strncmp(ip, "127.", 4) == 0 || strcmp(ip, "::1") == 0)
+    return 0; /* loopback: same host only */
+  if (strncmp(ip, "fe80", 4) == 0 || strncmp(ip, "FE80", 4) == 0)
+    return 1; /* IPv6 link-local: only on that link */
+  return 2;   /* routable LAN IPv4, or global/ULA IPv6 */
+}
+
+/* Insert g, or refresh the entry for the same server. Servers are matched by
+ * instance_id, not ip:port: one server answers a discovery query on every
+ * interface it's reachable on (IPv4 + several IPv6 link-local + loopback), so
+ * keying on address would list it many times. The dynamic fields are always
+ * refreshed from g; the displayed address is kept as the most-connectable of the
+ * ones seen (so e.g. 192.168.x wins over fe80::%n and 127.0.0.1). Returns the
+ * new count (unchanged if the list is full). */
 static int lan_upsert(LanGameInfo_t *list, uint32_t *seen, int count, int max,
                       const LanGameInfo_t *g, uint32_t now) {
   for (int i = 0; i < count; i++) {
-    if (list[i].tcp_port == g->tcp_port && strcmp(list[i].ip, g->ip) == 0) {
-      list[i] = *g;
+    if (list[i].instance_id == g->instance_id) {
+      char prev_ip[sizeof list[i].ip];
+      snprintf(prev_ip, sizeof prev_ip, "%s", list[i].ip);
+      bool take_new_ip = addr_score(g->ip) > addr_score(prev_ip);
+      list[i] = *g; /* refresh player_count / flags / name */
+      if (!take_new_ip)
+        snprintf(list[i].ip, sizeof list[i].ip, "%s", prev_ip);
       seen[i] = now;
       return count;
     }
@@ -402,7 +422,8 @@ int menu_display_connect(PlayerConfig_t *player_config, char *host_str, uint16_t
    * clickable rows below the nick. Clicking a row connects to it immediately.
    * Optional — if a socket can't be opened, the screen just works manually.
    * Two sockets share one set: IPv4 (broadcast) + IPv6 (link-local multicast);
-   * responses from both merge into found[] (deduped by ip:port in lan_upsert). */
+   * responses from both merge into found[] (deduped by server instance_id in
+   * lan_upsert, so one server isn't listed once per interface/address). */
   tcpme_socket_t disc_sock = lan_discovery_open_client();
   tcpme_socket_t disc_sock6 = lan_discovery_open_client6();
   tcpme_set_t *disc_set = NULL;
@@ -655,7 +676,8 @@ int menu_display_connect(PlayerConfig_t *player_config, char *host_str, uint16_t
         last_query = now;
       }
       /* Drain replies from both family sockets; merge into found[] (lan_upsert
-       * dedups by ip:port, so a server reachable on both v4 and v6 lists once). */
+       * dedups by instance_id, so one server reachable on many addresses
+       * (IPv4 + several IPv6 link-local + loopback) shows as a single row). */
       int drain = 0;
       while (drain++ < 32 && tcpme_check_sockets(disc_set, 0) > 0) {
         bool got = false;
