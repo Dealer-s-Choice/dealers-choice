@@ -62,6 +62,23 @@ daemonize the server, you can use the [docker-compose
 file](https://github.com/Dealer-s-Choice/dealers_choice/tree/trunk/docker) or
 [tmux](https://coderwall.com/p/purqma/use-tmux-for-a-poor-man-s-daemon).
 
+### Network ports
+
+The server uses two ports:
+
+* **TCP 22777** (the game port, set with `--port`). Players connect to this.
+  It must be reachable.
+* **UDP 22787** (LAN discovery). Clients on the same network broadcast on this
+  port to find servers automatically and list them under "Servers on LAN". This
+  is optional: without it, players can still join by typing the server's IP
+  address in the connect screen.
+
+If the server host runs a firewall, it must be configured to allow inbound
+connections on these ports, or the server will not be found (and may not be
+reachable at all). Restricting the rules to your local network is a good idea.
+The client machine's firewall must also allow the server's discovery reply, so
+a strict firewall there can block discovery too.
+
 See [docs/CONFIG.md](docs/CONFIG.md) for server configuration options including
 password protection.
 
