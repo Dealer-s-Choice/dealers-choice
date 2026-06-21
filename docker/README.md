@@ -13,6 +13,9 @@ systemd service.
 
 You need Docker and the Compose plugin.
 
+Each service (server, bot, registry) is opt-in. A plain `docker compose up`
+starts nothing. You choose what to run with `--profile`.
+
 1. Copy the example settings file and edit it:
 
        cp env.example .env
@@ -22,9 +25,9 @@ You need Docker and the Compose plugin.
 
 2. Start the server in this directory:
 
-       docker compose up -d
+       docker compose --profile server up -d
 
-3. Stop the server:
+3. Stop everything:
 
        docker compose down
 
@@ -37,18 +40,31 @@ All settings are optional except `DC_PASSWORD`. See `env.example`.
 | `DC_PASSWORD` | Password clients must use to join. **Required.** | (none) |
 | `DC_PORT` | Host port the server is published on. | `22777` |
 | `DC_IMAGE` | Container image to run. | `ghcr.io/dealer-s-choice/dealers_choice:latest` |
-| `DC_CONFIG_DIR` | Host folder mounted read-only at `/dc_config` (put `server.conf` here). | (none) |
-| `DC_OUTPUT_DIR` | Host folder mounted at `/dc_output` for log/result files the server writes. | (none) |
+| `DC_CONFIG_DIR` | Host folder mounted at `/dc_config` (put `server.conf` here). | (none) |
+| `DC_OUTPUT_DIR` | Host folder mounted at `/dc_output` where the server writes its logs. | (none) |
 | `DC_EXTRA_ARGS` | Extra command-line options for the server. | (none) |
+| `DC_BOT_HOST` | Server the bot connects to. Only used by the `bot` profile. | `dealers-choice-server` |
+| `DC_BOT_PORT` | Port the bot connects to. Only used by the `bot` profile. | `22777` |
+| `DC_BOT_ARGS` | Extra command-line options for the bot. Only used by the `bot` profile. | (none) |
 | `DC_REGISTRY_DIR` | Host folder mounted at `/dc_registry` where the registry writes `servers.json`. Only used by the `registry` profile. | (none) |
 | `DC_REGISTRY_PORT` | Host port the registry is published on. Only used by the `registry` profile. | `22070` |
 | `DC_REGISTRY_ARGS` | Extra command-line options for the registry (for example `--verbose`). Only used by the `registry` profile. | (none) |
 
-The server does not read `DC_CONFIG_DIR` or `DC_OUTPUT_DIR` itself. They only
-set where the host folders are mounted. To make the server use them, point its
-options at the mounted paths through `DC_EXTRA_ARGS`, for example:
+The server writes a hand log and a results log automatically. They are named by
+`DC_PORT` and placed under the `/dc_output` mount:
 
-    DC_EXTRA_ARGS=--conf /dc_config/server.conf --log-game-results /dc_output/game_results.md
+    hands-22777.txt
+    results-22777.md
+
+Naming the files by port lets you run two servers (with different `DC_PORT`
+values) without their logs colliding. Set `DC_OUTPUT_DIR` to choose where they
+land on the host.
+
+The server does not read `DC_CONFIG_DIR` or `DC_OUTPUT_DIR` itself. They only
+set where the host folders are mounted. Use `DC_EXTRA_ARGS` for anything else,
+such as a config file or a server name:
+
+    DC_EXTRA_ARGS=--conf /dc_config/server.conf --name "My Table"
 
 `DC_IMAGE` defaults to the `:latest` tag, which follows the development version
 (the current git trunk), not a stable release. To pin a released version, set a
@@ -59,16 +75,21 @@ version tag (replace `vX.Y.Z` with a real version from the releases page):
 ### Bots (optional)
 
 The Compose file can also run one or more bots. Bots are not started by
-default. To start the server together with bots:
+default, and they do not start a server for you.
 
-    docker compose --profile bot up -d
+To start a server and a bot together, give both profiles:
+
+    docker compose --profile server --profile bot up -d
 
 To run several bots at once:
 
     docker compose --profile bot up -d --scale dealers-choice-bot=3
 
-By default the bots connect to the server in the same Compose project. To point
-them at a different server, set `DC_BOT_HOST` and `DC_BOT_PORT`.
+By default a bot connects to the `dealers-choice-server` service on port
+`22777`. To point it at a different server (for example one already running, or
+an external host), set `DC_BOT_HOST` and `DC_BOT_PORT`. The bot has no built-in
+dependency on the server. If no server is reachable, the bot exits with an error
+and is restarted, so start a server first or point the bot at a running one.
 
 ### Registry (optional)
 
