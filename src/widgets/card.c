@@ -67,6 +67,10 @@ static CardBackStyle_t card_back_styles[] = {
 
 static int selected_card_back = -1;
 
+/* Forward decl: private-card gradient overlay (#64), defined after
+ * card_widget_render which calls it. */
+static void draw_private_shade(SDL_Renderer *renderer, CardWidget_t *cw);
+
 void card_widget_select_back_for_game(void) {
   selected_card_back = pcg32_boundedrand_r(&rng, ARRAY_SIZE(card_back_styles));
 }
@@ -558,17 +562,92 @@ static void card_widget_render(UIWidget_t *w) {
     SDL_SetTextureColorMod(entry.suit, 0, 0, 0);
   SDL_RenderCopy(renderer, entry.suit, NULL, &suit_rect);
 
-  /* Light dim overlay marking a card that is private to the local player —
-   * hidden from opponents (stud/holdem hole cards) (#64). */
-  if (cw->is_shaded) {
-    SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
-    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 70);
-    SDL_RenderFillRect(renderer, &w->rect);
-    SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);
-  }
+  /* Dim overlay marking a card that is private to the local player —
+   * hidden from opponents (stud/holdem hole cards) (#64).
+   *
+   * Rather than a flat dim, the overlay is a diagonal gradient: darkest
+   * (most opaque) in the lower-left and upper-right corners, fading to
+   * nearly clear toward the centre. This reads as a subtle "this card is
+   * shaded just for you" cue without obscuring the pip/suit in the middle.
+   *
+   * The gradient is baked once into a small per-pixel texture cached on the
+   * widget (cw->shade_tex) and stretched over the card each frame, so the
+   * render loop only does a single SDL_RenderCopy. */
+  if (cw->is_shaded)
+    draw_private_shade(renderer, cw);
 }
 
-static void card_widget_destroy(UIWidget_t *w) { free(w); }
+/* Build (or rebuild) the cached gradient overlay texture for a private card.
+ * The alpha at each texel is proportional to |u - v| where u,v are the
+ * normalized x,y position in [0,1]: that quantity is maximal at the
+ * lower-left (u=0,v=1) and upper-right (u=1,v=0) corners and zero along the
+ * top-left/bottom-right diagonal and at the centre — giving the requested
+ * two-dark-corners, light-middle look. Returns true on success. */
+static bool build_shade_texture(SDL_Renderer *renderer, CardWidget_t *cw, int w, int h) {
+  if (w <= 0 || h <= 0)
+    return false;
+
+  SDL_Texture *tex =
+      SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, w, h);
+  if (!tex)
+    return false;
+  SDL_SetTextureBlendMode(tex, SDL_BLENDMODE_BLEND);
+
+  void *pixels = NULL;
+  int pitch = 0;
+  if (SDL_LockTexture(tex, NULL, &pixels, &pitch) != 0) {
+    SDL_DestroyTexture(tex);
+    return false;
+  }
+
+  /* Peak alpha at the two dark corners. Kept modest so the middle stays
+   * readable; the centre fades to fully transparent. */
+  const int max_alpha = 150;
+  for (int y = 0; y < h; y++) {
+    Uint32 *row = (Uint32 *)((Uint8 *)pixels + (size_t)y * pitch);
+    /* v in [0,1] top->bottom */
+    float v = (h > 1) ? (float)y / (float)(h - 1) : 0.0f;
+    for (int x = 0; x < w; x++) {
+      float u = (w > 1) ? (float)x / (float)(w - 1) : 0.0f;
+      float t = fabsf(u - v); /* 0 at centre/main-diagonal, 1 at the two corners */
+      Uint8 a = (Uint8)(t * (float)max_alpha + 0.5f);
+      /* RGBA8888 is 0xRRGGBBAA in memory order via this packing; the colour
+       * is black, only alpha varies. */
+      row[x] = ((Uint32)0u << 24) | ((Uint32)0u << 16) | ((Uint32)0u << 8) | (Uint32)a;
+    }
+  }
+
+  SDL_UnlockTexture(tex);
+
+  if (cw->shade_tex)
+    SDL_DestroyTexture((SDL_Texture *)cw->shade_tex);
+  cw->shade_tex = tex;
+  cw->shade_tex_w = w;
+  cw->shade_tex_h = h;
+  return true;
+}
+
+static void draw_private_shade(SDL_Renderer *renderer, CardWidget_t *cw) {
+  const SDL_Rect *r = &cw->base.rect;
+  if (!cw->shade_tex || cw->shade_tex_w != r->w || cw->shade_tex_h != r->h) {
+    if (!build_shade_texture(renderer, cw, r->w, r->h)) {
+      /* Fall back to the old flat dim if texture creation failed. */
+      SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+      SDL_SetRenderDrawColor(renderer, 0, 0, 0, 70);
+      SDL_RenderFillRect(renderer, r);
+      SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);
+      return;
+    }
+  }
+  SDL_RenderCopy(renderer, (SDL_Texture *)cw->shade_tex, NULL, r);
+}
+
+static void card_widget_destroy(UIWidget_t *w) {
+  CardWidget_t *cw = (CardWidget_t *)w;
+  if (cw->shade_tex)
+    SDL_DestroyTexture((SDL_Texture *)cw->shade_tex);
+  free(w);
+}
 
 void card_widget_init(CardWidget_t *cw, TTF_Font *font) {
   *cw = (CardWidget_t){0};
