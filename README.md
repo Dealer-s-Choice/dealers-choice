@@ -113,8 +113,17 @@ See [docs/CONFIG.md](docs/CONFIG.md) for details.
 
 ## Dedicated Servers
 
-There are no dedicated public servers yet (See
-[Project](https://github.com/orgs/Dealer-s-Choice/projects/1) for road map).
+There are no supported public servers yet (see the
+[road map](https://github.com/orgs/Dealer-s-Choice/projects/1)).
+
+An experimental test server is online for trying out network play. It runs the
+current development version, so a client from the
+[latest release](https://github.com/Dealer-s-Choice/dealers_choice/releases/latest)
+**will not connect**. To join it, use a current build: a
+[development snapshot](https://github.com/Dealer-s-Choice/dealers-choice/releases/tag/snapshot)
+(Linux AppImage or Windows), or a build from `trunk`. The test server appears on
+its own in the connect screen's internet server list. It may be reset or taken
+offline at any time.
 
 ## Building
 
