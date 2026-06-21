@@ -32,6 +32,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <errno.h>
 
 #include "dc_time.h"
 #include "game.h"
@@ -482,7 +483,7 @@ void play_game(ArgsBroadcastGameState_t *args, DH_Deck *deck) {
              args->deuces_wild ? " / Deuces Wild" : "");
     FILE *fp = fopen(args->cli_args->server_log_game_results_file, "a");
     if (!fp)
-      perror("fopen");
+      dc_log(DC_LOG_ERROR, "fopen: %s", strerror(errno));
     else {
       fprintf(fp, "### %s\n\n", tmp);
       Player_t *p = *args->starting_turn;

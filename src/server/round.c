@@ -33,6 +33,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
 
 #include "dc_time.h"
 #include "game.h"
@@ -143,7 +144,7 @@ ELoop_t handle_draw(ArgsBroadcastGameState_t *args, tcpme_socket_t sock, const i
       register_new_client(args);
       int num_ready = tcpme_check_sockets(args->socket_set, 10);
       if (num_ready == -1) {
-        fprintf(stderr, "tcpme_check_sockets: %s\n", tcpme_get_error());
+        dc_log(DC_LOG_ERROR, "tcpme_check_sockets: %s", tcpme_get_error());
         return LOOP_ERROR;
       }
       if (num_ready > 0) {
@@ -182,7 +183,7 @@ ELoop_t handle_draw(ArgsBroadcastGameState_t *args, tcpme_socket_t sock, const i
     /* Payload buffer must fit both PING_RESPONSE (up to ~12 B) and
      * MSG_DRAW_REQUEST (exactly 7 B: 2 opcode + 1 count + 4 indices). */
     if (msg_size < 2 || msg_size > sizeof(buffer)) {
-      fprintf(stderr, "[handle_draw] Invalid message size: %u\n", msg_size);
+      dc_log(DC_LOG_WARN, "[handle_draw] Invalid message size: %u", msg_size);
       return LOOP_ERROR;
     }
     memset(buffer, 0, sizeof(buffer));
@@ -200,7 +201,7 @@ ELoop_t handle_draw(ArgsBroadcastGameState_t *args, tcpme_socket_t sock, const i
       continue;
 
     if (opcode != MSG_DRAW_REQUEST) {
-      fprintf(stderr, "[handle_draw] Unrecognised opcode 0x%04X\n", opcode);
+      dc_log(DC_LOG_WARN, "[handle_draw] Unrecognised opcode 0x%04X", opcode);
       return LOOP_ERROR;
     }
 
@@ -333,7 +334,7 @@ void determine_winner(ArgsBroadcastGameState_t *args, RoundResults *results) {
     if (args->cli_args->server_log_game_results_file) {
       FILE *fp = fopen(args->cli_args->server_log_game_results_file, "a");
       if (!fp)
-        perror("fopen");
+        dc_log(DC_LOG_ERROR, "fopen: %s", strerror(errno));
       else {
         fprintf(fp, "pot: %u<br>\n", pot);
         fprintf(fp, "%s\n\n", status_str);
@@ -362,7 +363,7 @@ void award_last_player_in_game(ArgsBroadcastGameState_t *args, Player_t *turn,
   if (args->cli_args->server_log_game_results_file) {
     FILE *fp = fopen(args->cli_args->server_log_game_results_file, "a");
     if (!fp)
-      perror("fopen");
+      dc_log(DC_LOG_ERROR, "fopen: %s", strerror(errno));
     else {
       fprintf(fp, "pot: %d<br>\n", args->game_state->pot);
       fprintf(fp, "%s\n\n", status_str);
@@ -464,7 +465,7 @@ RoundResults handle_round_real(ArgsBroadcastGameState_t *args, uint32_t initial_
                 handle_fold(args->game_state, args->real_hand, turn, args->starting_turn, &action);
                 break;
               default:
-                fprintf(stderr, "Invalid Action %u received for opcode 0x%04X from player %d\n",
+                dc_log(DC_LOG_WARN, "Invalid Action %u received for opcode 0x%04X from player %d",
                         action.action, opcode, turn->id);
                 remove_disconnected_player(args, turn->id);
               }
@@ -490,8 +491,7 @@ RoundResults handle_round_real(ArgsBroadcastGameState_t *args, uint32_t initial_
               case ACTION_RAISE:
                 if (args->game_state->raises_remaining > 0) {
                   if (action.amount < args->game_state->prev_bet_amount) {
-                    fprintf(stderr,
-                            "Raise amount %" PRIu32 " below minimum %" PRIu32
+                    dc_log(DC_LOG_ERROR,                             "Raise amount %" PRIu32 " below minimum %" PRIu32
                             " from player %d; treating as call\n",
                             action.amount, args->game_state->prev_bet_amount, turn->id);
                     server_handle_call(args->game_state, &player_total_paid[turn->id], turn->id,

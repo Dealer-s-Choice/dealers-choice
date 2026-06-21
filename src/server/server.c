@@ -28,6 +28,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <errno.h>
 #include <time.h>
 
 #include "dc_config.h"
@@ -119,7 +120,7 @@ void maybe_log_day_header(const char *path) {
     return;
   FILE *fp = fopen(path, "a");
   if (!fp) {
-    perror("fopen");
+    dc_log(DC_LOG_ERROR, "fopen: %s", strerror(errno));
     return;
   }
   fprintf(fp, "## %04d-%02d-%02d\n\n", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday);
@@ -137,7 +138,7 @@ void log_hands_json(const ArgsBroadcastGameState_t *args, const POKEVAL_NeedComp
     return;
   FILE *fp = fopen(args->cli_args->server_log_hands_file, "a");
   if (!fp) {
-    perror("fopen");
+    dc_log(DC_LOG_ERROR, "fopen: %s", strerror(errno));
     return;
   }
   const GameChoice_t *choice = find_game_choice_by_type(args->game_type);
@@ -195,7 +196,7 @@ void log_hands_fold_json(const ArgsBroadcastGameState_t *args, const Player_t *w
     return;
   FILE *fp = fopen(args->cli_args->server_log_hands_file, "a");
   if (!fp) {
-    perror("fopen");
+    dc_log(DC_LOG_ERROR, "fopen: %s", strerror(errno));
     return;
   }
   const GameChoice_t *choice = find_game_choice_by_type(args->game_type);
@@ -224,7 +225,7 @@ ServerConfig_t init_game_state(GameState_t *game_state, Path_t *path, const CliA
 
   const int max_starting_coins = 99999999;
   if (config.starting_coins > max_starting_coins) {
-    fprintf(stderr, "Error: starting_coins too high (max %d)\n", max_starting_coins);
+    dc_log(DC_LOG_ERROR, "Error: starting_coins too high (max %d)", max_starting_coins);
     exit(EXIT_FAILURE);
   }
 
@@ -308,7 +309,7 @@ void deal_cards_to_players(GameState_t *game_state, DH_Deck *deck, const uint8_t
 
   const GameChoice_t *choice = find_game_choice_by_type(game_type);
   if (!choice) {
-    fprintf(stderr, "deal_cards_to_players: unknown game_type 0x%02x\n", game_type);
+    dc_log(DC_LOG_ERROR, "deal_cards_to_players: unknown game_type 0x%02x", game_type);
     return;
   }
 
@@ -410,7 +411,7 @@ void broadcast_game_state(ArgsBroadcastGameState_t *args) {
     uint32_t send_start = dc_get_ticks();
     if (send_all_tcp(args->clients[i], &size_net, sizeof(size_net)) != 0 ||
         send_all_tcp(args->clients[i], data, size) != 0) {
-      fprintf(stderr, "Failed to send game state to client %d\n", i);
+      dc_log(DC_LOG_ERROR, "Failed to send game state to client %d", i);
       handle_disconnections(args);
     } else {
       uint32_t send_ms = dc_get_ticks() - send_start;
@@ -439,7 +440,7 @@ static void send_game_settings(ArgsBroadcastGameState_t *args, tcpme_socket_t so
 
   // fprintf(stderr, "sending to %d\n", i);
   if (send_all_tcp(sock, &size_net, sizeof(size_net)) != 0 || send_all_tcp(sock, data, size) != 0) {
-    fprintf(stderr, "Failed to send game settings to client\n");
+    dc_log(DC_LOG_ERROR, "Failed to send game settings to client");
     handle_disconnections(args);
   }
   free(data);
@@ -469,7 +470,7 @@ static void broadcast_framed(const ArgsBroadcastGameState_t *args, uint16_t opco
     pl_idx = recipient->id;
     tcpme_socket_t sock = args->clients[pl_idx];
     if (tcpme_socket_valid(sock) && send_message(sock, opcode, payload, len) < 0)
-      fprintf(stderr, "[broadcast_framed] Failed to send opcode 0x%04X to client %d\n", opcode,
+      dc_log(DC_LOG_ERROR, "[broadcast_framed] Failed to send opcode 0x%04X to client %d", opcode,
               pl_idx);
 
     recipient = get_next_connected_client(args->game_state->player, pl_idx);
@@ -514,7 +515,7 @@ void broadcast_turn_id(const ArgsBroadcastGameState_t *args) {
 
     tcpme_socket_t sock = args->clients[i];
     if (send_turn_id(sock, args->turn_id) < 0) {
-      fprintf(stderr, "[broadcast_turn_id] Failed to send to client %d\n", i);
+      dc_log(DC_LOG_ERROR, "[broadcast_turn_id] Failed to send to client %d", i);
     }
   }
 }
@@ -543,7 +544,7 @@ ETurnMsg_t recv_turn_player_msg(tcpme_socket_t sock, PlayerActionMsg_t *out_acti
 
     uint32_t size = tcpme_get_be32((const uint8_t *)&size_net);
     if (size < 2 || size > 16) {
-      fprintf(stderr, "[recv_turn_player_msg] Invalid message size: %u\n", size);
+      dc_log(DC_LOG_WARN, "[recv_turn_player_msg] Invalid message size: %u", size);
       return TURN_MSG_DISCONNECT;
     }
 
@@ -577,7 +578,7 @@ ETurnMsg_t recv_turn_player_msg(tcpme_socket_t sock, PlayerActionMsg_t *out_acti
       return TURN_MSG_KICK_BAN;
     }
 
-    fprintf(stderr, "[recv_turn_player_msg] Unrecognised opcode 0x%04X\n", opcode);
+    dc_log(DC_LOG_WARN, "[recv_turn_player_msg] Unrecognised opcode 0x%04X", opcode);
     return TURN_MSG_DISCONNECT;
   }
 }
@@ -627,7 +628,7 @@ static int broadcast_ping_times(ArgsBroadcastGameState_t *args, const uint32_t p
       continue;
     int result = send_message(args->clients[i], MSG_PING_BROADCAST, buf, len);
     if (result < 0) {
-      fprintf(stderr, "[PING] Failed to broadcast to client %d\n", i);
+      dc_log(DC_LOG_ERROR, "[PING] Failed to broadcast to client %d", i);
     }
   }
   free(buf);
@@ -881,7 +882,7 @@ static void ensure_unique_nick(GameState_t *game_state, Player_t *player, const 
     suffix++;
   }
 
-  fprintf(stderr, "Could not find a unique nickname after %d attempts\n", suffix_limit);
+  dc_log(DC_LOG_WARN, "Could not find a unique nickname after %d attempts", suffix_limit);
 }
 
 static EReturnCode_t init_game(ArgsBroadcastGameState_t *args, DH_Deck *deck) {
@@ -938,18 +939,18 @@ static int recv_and_validate_protocol_header(tcpme_socket_t sock, uint8_t *flags
   verbose_puts("Exchanging protocol information...");
   GameProtocolHeader_t hdr = {0};
   if (recv_all_tcp(sock, &hdr, sizeof(hdr)) <= 0) {
-    fprintf(stderr, "Failed to receive protocol header\n");
+    dc_log(DC_LOG_ERROR, "Failed to receive protocol header");
     return -1;
   }
 
   if (memcmp(hdr.magic, GAME_PROTOCOL_MAGIC, sizeof(hdr.magic)) != 0) {
-    fprintf(stderr, "Protocol magic mismatch: got '%.8s'\n", hdr.magic);
+    dc_log(DC_LOG_WARN, "Protocol magic mismatch: got '%.8s'", hdr.magic);
     return -1;
   }
 
   uint32_t version = tcpme_get_be16((const uint8_t *)&hdr.version);
   if (version != GAME_PROTOCOL_VERSION) {
-    fprintf(stderr, "Unsupported protocol version: %u\n", version);
+    dc_log(DC_LOG_WARN, "Unsupported protocol version: %u", version);
     uint8_t nack = 1;
     send_all_tcp(sock, &nack, sizeof(nack)); // best-effort; we're closing anyway
     return -1;
@@ -957,7 +958,7 @@ static int recv_and_validate_protocol_header(tcpme_socket_t sock, uint8_t *flags
 
   uint8_t ack = 0;
   if (send_all_tcp(sock, &ack, sizeof(ack)) != 0) {
-    fprintf(stderr, "Failed to send protocol ACK\n");
+    dc_log(DC_LOG_ERROR, "Failed to send protocol ACK");
     return -1;
   }
 
@@ -1213,7 +1214,7 @@ ELoop_t register_new_client(ArgsBroadcastGameState_t *args) {
 
         unsigned char nonce[NONCE_SIZE];
         if (send_nonce(new_client, nonce) < 0) {
-          fprintf(stderr, "Failed to send nonce\n");
+          dc_log(DC_LOG_ERROR, "Failed to send nonce");
           return -1;
         }
 
@@ -1238,7 +1239,7 @@ ELoop_t register_new_client(ArgsBroadcastGameState_t *args) {
         // Step 1: Recv the size first (must happen before interpreting it)
         if (recv_all_tcp(new_client, &net_len, sizeof(net_len)) <= 0) {
           // Handle error: client disconnected or invalid
-          fprintf(stderr, "Failed to receive nickname length.\n");
+          dc_log(DC_LOG_ERROR, "Failed to receive nickname length.");
           do_socket_cleanup(new_client, args->socket_set, args->slot_taken, slot, player,
                             &args->clients[slot]);
           return LOOP_CONTINUE;
@@ -1249,7 +1250,7 @@ ELoop_t register_new_client(ArgsBroadcastGameState_t *args) {
 
         // Step 3: Validate length
         if (len == 0) {
-          fprintf(stderr, "Invalid nickname length: %d\n", len);
+          dc_log(DC_LOG_WARN, "Invalid nickname length: %d", len);
           do_socket_cleanup(new_client, args->socket_set, args->slot_taken, slot, player,
                             &args->clients[slot]);
           return LOOP_CONTINUE;
@@ -1260,7 +1261,7 @@ ELoop_t register_new_client(ArgsBroadcastGameState_t *args) {
         // Step 4: Read nickname
         memset(player->nick, 0, sizeof(player->nick));
         if (recv_all_tcp(new_client, player->nick, len) != (int)len) {
-          fprintf(stderr, "Failed to receive nickname.\n");
+          dc_log(DC_LOG_ERROR, "Failed to receive nickname.");
           do_socket_cleanup(new_client, args->socket_set, args->slot_taken, slot, player,
                             &args->clients[slot]);
           return LOOP_CONTINUE;
@@ -1286,7 +1287,7 @@ ELoop_t register_new_client(ArgsBroadcastGameState_t *args) {
        * client; its existing MSG_GAME_SELECT handler populates both (#223). */
       if (!args->game_state->at_menu) {
         if (send_game_select(new_client, args->game_type, args->deuces_wild) < 0)
-          fprintf(stderr, "[register_new_client] Failed to send game type to client %d\n", slot);
+          dc_log(DC_LOG_ERROR, "[register_new_client] Failed to send game type to client %d", slot);
       }
     } else {
       printf("Server full. Rejecting connection.\n");
@@ -1305,7 +1306,7 @@ int run_server(const CliArgs_t *cli_args, Path_t *path) {
   game_state.pot = 0;
 
   if (tcpme_init() != 0) {
-    fprintf(stderr, "tcpme init failed: %s\n", tcpme_get_error());
+    dc_log(DC_LOG_ERROR, "tcpme init failed: %s", tcpme_get_error());
     return 1;
   }
 
@@ -1321,7 +1322,7 @@ int run_server(const CliArgs_t *cli_args, Path_t *path) {
 
   tcpme_socket_t server = tcpme_listen(host, port);
   if (!tcpme_socket_valid(server)) {
-    fprintf(stderr, "tcpme_listen: %s\n", tcpme_get_error());
+    dc_log(DC_LOG_ERROR, "tcpme_listen: %s", tcpme_get_error());
     tcpme_quit();
     return 1;
   }
@@ -1346,7 +1347,7 @@ int run_server(const CliArgs_t *cli_args, Path_t *path) {
         tcpme_add_socket(discovery_set, discovery_sock6);
     }
   } else {
-    fprintf(stderr, "LAN discovery disabled: %s\n", tcpme_get_error());
+    dc_log(DC_LOG_ERROR, "LAN discovery disabled: %s", tcpme_get_error());
   }
 
   tcpme_socket_t clients[MAX_CLIENTS];
@@ -1354,7 +1355,7 @@ int run_server(const CliArgs_t *cli_args, Path_t *path) {
     clients[i] = TCPME_INVALID_SOCKET;
   tcpme_set_t *socket_set = tcpme_alloc_set(MAX_CLIENTS + 1);
   if (!socket_set) {
-    fprintf(stderr, "Failed to allocate socket set: %s\n", tcpme_get_error());
+    dc_log(DC_LOG_ERROR, "Failed to allocate socket set: %s", tcpme_get_error());
     tcpme_close(server);
     tcpme_quit();
     return 1;
@@ -1451,7 +1452,7 @@ int run_server(const CliArgs_t *cli_args, Path_t *path) {
           if (!tcpme_socket_valid(clients[i]))
             continue;
           if (send_ping_request(clients[i]) < 0)
-            fprintf(stderr, "[PING] Failed to send ping request to client %d\n", i);
+            dc_log(DC_LOG_ERROR, "[PING] Failed to send ping request to client %d", i);
         }
         last_ping_time = now;
         should_broadcast = true;
@@ -1471,26 +1472,26 @@ int run_server(const CliArgs_t *cli_args, Path_t *path) {
           // Read the message size first (4 bytes)
           uint32_t size_net = 0;
           if (recv_all_tcp(clients[i], &size_net, sizeof(size_net)) <= 0) {
-            fprintf(stderr, "[NET] Disconnection while reading size from client %d\n", i);
+            dc_log(DC_LOG_ERROR, "[NET] Disconnection while reading size from client %d", i);
             remove_disconnected_player(&args_broadcast_game_state, i);
             continue;
           }
 
           uint32_t size = tcpme_get_be32((const uint8_t *)&size_net);
           if (size == 0 || size > 65536) {
-            fprintf(stderr, "[NET] Invalid message size from client %d: %u\n", i, size);
+            dc_log(DC_LOG_WARN, "[NET] Invalid message size from client %d: %u", i, size);
             continue;
           }
 
           // Read the payload (size bytes)
           uint8_t *buffer = malloc(size);
           if (!buffer) {
-            fprintf(stderr, "[NET] Memory allocation failed for client %d\n", i);
+            dc_log(DC_LOG_ERROR, "[NET] Memory allocation failed for client %d", i);
             continue;
           }
 
           if (recv_all_tcp(clients[i], buffer, size) <= 0) {
-            fprintf(stderr, "[NET] Disconnection while reading payload from client %d\n", i);
+            dc_log(DC_LOG_ERROR, "[NET] Disconnection while reading payload from client %d", i);
             free(buffer);
             continue;
           }
@@ -1507,7 +1508,7 @@ int run_server(const CliArgs_t *cli_args, Path_t *path) {
           case MSG_PING_RESPONSE: {
             PingResponse *resp = ping_response__unpack(NULL, size - 2, buffer + 2);
             if (!resp) {
-              fprintf(stderr, "[PING] Failed to unpack PingResponse from client %d\n", i);
+              dc_log(DC_LOG_ERROR, "[PING] Failed to unpack PingResponse from client %d", i);
             } else {
               now = dc_get_ticks();
               ping_times[i] = now - resp->timestamp;
@@ -1562,7 +1563,7 @@ int run_server(const CliArgs_t *cli_args, Path_t *path) {
               dealer_timeout_start = 0;
               autodeal_start = 0;
             } else {
-              fprintf(stderr, "Non-dealer client %d sent MSG_GAME_SELECT (ignored)\n", i);
+              dc_log(DC_LOG_WARN, "Non-dealer client %d sent MSG_GAME_SELECT (ignored)", i);
             }
             break;
           }
@@ -1588,7 +1589,7 @@ int run_server(const CliArgs_t *cli_args, Path_t *path) {
 
           default:
             // Ignore or log
-            fprintf(stderr, "[NET] Unknown opcode %04X from client %d\n", opcode, i);
+            dc_log(DC_LOG_WARN, "[NET] Unknown opcode %04X from client %d", opcode, i);
             break;
           }
 

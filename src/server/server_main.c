@@ -63,7 +63,7 @@ int main(int argc, char *argv[]) {
   const CliArgs_t cli_args = parse_server_args(argc, argv);
 
   if (sodium_init() < 0) {
-    fprintf(stderr, "libsodium init failed\n");
+    dc_log(DC_LOG_ERROR, "libsodium init failed");
     return 1;
   }
   pcg_srand_auto();
