@@ -52,6 +52,15 @@ TextWidget_t *text_widget_create(const char *text, TTF_Font *font, SDL_Color col
   tw->color = color;
   tw->text = dc_strdup(text);
 
+  /* An empty string has zero width; SDL_ttf returns NULL with a "zero width"
+   * error on it. Render nothing (no texture, zero-size rect from calloc) rather
+   * than log-spam — text_widget_render already no-ops when tex is NULL. */
+  if (text[0] == '\0') {
+    tw->base.render = text_widget_render;
+    tw->base.destroy = text_widget_destroy;
+    return tw;
+  }
+
   SDL_Surface *s = TTF_RenderUTF8_Blended(font, text, color);
   if (!s) {
     fprintf(stderr, "TTF_RenderUTF8_Blended error: %s\n", TTF_GetError());
@@ -86,6 +95,14 @@ void text_widget_set_text(TextWidget_t *tw, const char *text) {
 
   free(tw->text);
   tw->text = dc_strdup(text);
+
+  /* Empty string -> no texture, zero-size rect (see text_widget_create). */
+  if (text[0] == '\0') {
+    tw->tex = NULL;
+    tw->base.rect.w = 0;
+    tw->base.rect.h = 0;
+    return;
+  }
 
   SDL_Surface *s = TTF_RenderUTF8_Blended(tw->font, text, tw->color);
   if (!s) {
