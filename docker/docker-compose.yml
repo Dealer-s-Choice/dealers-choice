@@ -25,12 +25,19 @@ services:
     # Long-lived daemon: restart on crash and after reboot, but honor a manual
     # `compose stop`. (For local dev you may prefer `no`.)
     restart: unless-stopped
+    # Opt-in, like the bot and registry, so a bare `up` (or bringing up the
+    # registry) never auto-starts a server. Start it explicitly:
+    #   docker compose --profile server up -d
+    profiles:
+      - server
 
   # Optional bot(s) — not started by default.
   #   docker compose --profile bot up
   #   docker compose --profile bot up --scale dealers-choice-bot=3
-  # By default connects to the server service on the compose network; override
-  # DC_BOT_HOST/DC_BOT_PORT to point at an external server.
+  # Connects to DC_BOT_HOST:DC_BOT_PORT (default: the server service on 22777).
+  # No dependency on the server service: start a server yourself (--profile
+  # server) or point DC_BOT_HOST/DC_BOT_PORT at an external one. If no server is
+  # reachable the bot just errors out and (per restart: on-failure) retries.
   dealers-choice-bot:
     image: ${DC_IMAGE:-ghcr.io/dealer-s-choice/dealers_choice:latest}
     build:
@@ -42,8 +49,6 @@ services:
       - DC_BOT_PORT=${DC_BOT_PORT:-22777}
       - DC_BOT_ARGS=${DC_BOT_ARGS:-}
       - DC_PASSWORD=${DC_PASSWORD}
-    depends_on:
-      - dealers-choice-server
     profiles:
       - bot
     # Restart only if the bot crashes — not when it exits cleanly (done/quit).
