@@ -27,6 +27,7 @@
 */
 
 #include "card_text_atlas.h"
+#include "util.h"
 
 #include "deckhandler.h"
 #include "style.h"
@@ -118,13 +119,13 @@ void card_text_atlas_init(SDL_Renderer *renderer, TTF_Font *face_font, const cha
     for (int c = 0; c < ATLAS_COLORS; c++) {
       SDL_Surface *surface = TTF_RenderUTF8_Blended(face_font, face_str, colors[c]);
       if (!surface) {
-        fprintf(stderr, "card_text_atlas_init: face render (%s) failed: %s\n", face_str,
+        dc_log(DC_LOG_ERROR, "card_text_atlas_init: face render (%s) failed: %s", face_str,
                 TTF_GetError());
         continue;
       }
       SDL_Texture *texture = SDL_CreateTextureFromSurface(renderer, surface);
       if (!texture) {
-        fprintf(stderr, "card_text_atlas_init: face texture (%s) failed: %s\n", face_str,
+        dc_log(DC_LOG_ERROR, "card_text_atlas_init: face texture (%s) failed: %s", face_str,
                 SDL_GetError());
         SDL_FreeSurface(surface);
         continue;
@@ -156,20 +157,20 @@ void card_text_atlas_init(SDL_Renderer *renderer, TTF_Font *face_font, const cha
        * errno via strerror gives the human-friendly OS reason
        * ("No such file or directory", "Permission denied"); SDL's
        * own string is usually less specific. */
-      fprintf(stderr, "card_text_atlas_init: open %s failed: %s (SDL: %s)\n", path, strerror(errno),
+      dc_log(DC_LOG_ERROR, "card_text_atlas_init: open %s failed: %s (SDL: %s)", path, strerror(errno),
               SDL_GetError());
       continue;
     }
     SDL_Surface *surface = IMG_LoadSVG_RW(rw);
     SDL_RWclose(rw);
     if (!surface) {
-      fprintf(stderr, "card_text_atlas_init: IMG_LoadSVG_RW(%s) failed: %s\n", path,
+      dc_log(DC_LOG_ERROR, "card_text_atlas_init: IMG_LoadSVG_RW(%s) failed: %s", path,
               IMG_GetError());
       continue;
     }
     SDL_Texture *texture = SDL_CreateTextureFromSurface(renderer, surface);
     if (!texture) {
-      fprintf(stderr, "card_text_atlas_init: suit texture (%s) failed: %s\n", svg_name,
+      dc_log(DC_LOG_ERROR, "card_text_atlas_init: suit texture (%s) failed: %s", svg_name,
               SDL_GetError());
       SDL_FreeSurface(surface);
       continue;

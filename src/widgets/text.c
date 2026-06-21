@@ -39,7 +39,7 @@ TextWidget_t *text_widget_create(const char *text, TTF_Font *font, SDL_Color col
     return NULL;
 
   if (text_too_long(text)) {
-    fprintf(stderr, "text_widget_create: text too long, refusing render\n");
+    dc_log(DC_LOG_WARN, "text_widget_create: text too long, refusing render");
     return NULL;
   }
 
@@ -63,7 +63,7 @@ TextWidget_t *text_widget_create(const char *text, TTF_Font *font, SDL_Color col
 
   SDL_Surface *s = TTF_RenderUTF8_Blended(font, text, color);
   if (!s) {
-    fprintf(stderr, "TTF_RenderUTF8_Blended error: %s\n", TTF_GetError());
+    dc_log(DC_LOG_ERROR, "TTF_RenderUTF8_Blended error: %s", TTF_GetError());
     tw->base.render = text_widget_render;
     tw->base.destroy = text_widget_destroy;
     return tw;
@@ -86,7 +86,7 @@ void text_widget_set_text(TextWidget_t *tw, const char *text) {
     return;
 
   if (text_too_long(text)) {
-    fprintf(stderr, "text_widget_set_text: text too long, refusing render\n");
+    dc_log(DC_LOG_WARN, "text_widget_set_text: text too long, refusing render");
     return;
   }
 
@@ -106,7 +106,7 @@ void text_widget_set_text(TextWidget_t *tw, const char *text) {
 
   SDL_Surface *s = TTF_RenderUTF8_Blended(tw->font, text, tw->color);
   if (!s) {
-    fprintf(stderr, "TTF_RenderUTF8_Blended error: %s\n", TTF_GetError());
+    dc_log(DC_LOG_ERROR, "TTF_RenderUTF8_Blended error: %s", TTF_GetError());
     tw->tex = NULL;
     return;
   }
