@@ -124,7 +124,7 @@ uint8_t *serialize_game_state(const GameState_t *src, uint32_t *size_out) {
 bool deserialize_game_state(const uint8_t *data, uint32_t size, GameState_t *out) {
   GameState *msg = game_state__unpack(NULL, size, data);
   if (!msg) {
-    fprintf(stderr, "Failed to unpack GameState message\n");
+    dc_log(DC_LOG_ERROR, "Failed to unpack GameState message");
     return false;
   }
 
@@ -177,7 +177,7 @@ GameSettings_t deserialize_game_settings(const uint8_t *data, size_t size) {
 
   GameSettings *msg = game_settings__unpack(NULL, size, data);
   if (!msg) {
-    fprintf(stderr, "Failed to unpack GameSettings message\n");
+    dc_log(DC_LOG_ERROR, "Failed to unpack GameSettings message");
     return result;
   }
 
@@ -252,7 +252,7 @@ Player_t deserialize_player(const uint8_t *data, size_t size) {
 
   Player *msg = player__unpack(NULL, size, data);
   if (!msg) {
-    fprintf(stderr, "Failed to unpack Player message\n");
+    dc_log(DC_LOG_ERROR, "Failed to unpack Player message");
     return result;
   }
 
@@ -269,11 +269,11 @@ int send_all_tcp(tcpme_socket_t sock, const void *data, size_t length) {
   while (total_sent < length) {
     int sent = tcpme_send(sock, buf + total_sent, (int)(length - total_sent));
     if (sent < 0) {
-      fprintf(stderr, "tcpme_send failed: %s\n", tcpme_get_error());
+      dc_log(DC_LOG_ERROR, "tcpme_send failed: %s", tcpme_get_error());
       return -1;
     }
     if (sent == 0) {
-      fprintf(stderr, "tcpme_send: connection closed\n");
+      dc_log(DC_LOG_ERROR, "tcpme_send: connection closed");
       return -1;
     }
     total_sent += sent;
@@ -315,34 +315,33 @@ ERecvStatus_t recv_game_state(SocketContext_t *socket_context, GameState_t *game
 
     tcpme_socket_t sock = socket_context->sock;
     if (!tcpme_socket_ready(socket_context->set, sock)) {
-      fprintf(stderr, "[recv_game_state] sock not ready\n");
+      dc_log(DC_LOG_ERROR, "[recv_game_state] sock not ready");
       return RECV_ERROR;
     }
 
     uint32_t size_net = 0;
     int r_size = recv_all_tcp(sock, &size_net, sizeof(size_net));
     if (r_size != (int)sizeof(size_net)) {
-      fprintf(stderr, "[recv_game_state] Disconnected while reading game state size (%d).\n",
+      dc_log(DC_LOG_ERROR, "[recv_game_state] Disconnected while reading game state size (%d).",
               r_size);
       return RECV_ERROR;
     }
 
     uint32_t size = tcpme_get_be32((const uint8_t *)&size_net);
     if (size == 0 || size > 65536) {
-      fprintf(stderr, "[recv_game_state] Invalid game state size: %u\n", size);
+      dc_log(DC_LOG_WARN, "[recv_game_state] Invalid game state size: %u", size);
       return RECV_ERROR;
     }
 
     uint8_t *buffer = malloc(size);
     if (!buffer) {
-      fprintf(stderr, "[recv_game_state] Memory allocation failed\n");
+      dc_log(DC_LOG_ERROR, "[recv_game_state] Memory allocation failed");
       return RECV_ERROR;
     }
 
     int r_payload = recv_all_tcp(sock, buffer, size);
     if (r_payload != (int)size) {
-      fprintf(stderr,
-              "[recv_game_state] Disconnected while reading game state payload (got %d, expected "
+      dc_log(DC_LOG_ERROR,               "[recv_game_state] Disconnected while reading game state payload (got %d, expected "
               "%u). tcpme_get_error(): %s\n",
               r_payload, size, tcpme_get_error());
       free(buffer);
@@ -376,7 +375,7 @@ ERecvStatus_t recv_game_state(SocketContext_t *socket_context, GameState_t *game
       break;
     case MSG_DRAW_PROMPT:
       if (size != 2) {
-        fprintf(stderr, "[recv_game_state] Invalid size for MSG_DRAW_PROMPT: %u\n", size);
+        dc_log(DC_LOG_WARN, "[recv_game_state] Invalid size for MSG_DRAW_PROMPT: %u", size);
         break;
       }
       client_state->do_discard_draw = true;
@@ -387,7 +386,7 @@ ERecvStatus_t recv_game_state(SocketContext_t *socket_context, GameState_t *game
     case MSG_PING_REQUEST: {
       PingRequest *req = ping_request__unpack(NULL, size - 2, buffer + 2);
       if (!req) {
-        fprintf(stderr, "[PING] Failed to unpack PingRequest\n");
+        dc_log(DC_LOG_ERROR, "[PING] Failed to unpack PingRequest");
         break;
       }
 
@@ -401,7 +400,7 @@ ERecvStatus_t recv_game_state(SocketContext_t *socket_context, GameState_t *game
 
       // Send back response to server
       if (send_message(sock, MSG_PING_RESPONSE, buf, len) < 0) {
-        fprintf(stderr, "[PING] Failed to send PingResponse\n");
+        dc_log(DC_LOG_ERROR, "[PING] Failed to send PingResponse");
       }
 
       ping_request__free_unpacked(req, NULL);
@@ -411,7 +410,7 @@ ERecvStatus_t recv_game_state(SocketContext_t *socket_context, GameState_t *game
     case MSG_PING_BROADCAST: {
       PingBroadcast *pb = ping_broadcast__unpack(NULL, size - 2, buffer + 2);
       if (!pb) {
-        fprintf(stderr, "[PING] Failed to unpack PingBroadcast\n");
+        dc_log(DC_LOG_ERROR, "[PING] Failed to unpack PingBroadcast");
         break;
       }
 
@@ -465,7 +464,7 @@ ERecvStatus_t recv_game_state(SocketContext_t *socket_context, GameState_t *game
       }
 
       if (pb_hand->n_card == 0 || pb_hand->n_card > MAX_HAND_SIZE) {
-        fprintf(stderr, "Invalid hand size: %zu\n", pb_hand->n_card);
+        dc_log(DC_LOG_WARN, "Invalid hand size: %zu", pb_hand->n_card);
         hand__free_unpacked(pb_hand, NULL);
         break;
       }
@@ -489,8 +488,7 @@ ERecvStatus_t recv_game_state(SocketContext_t *socket_context, GameState_t *game
 
     default:
       if (!deserialize_game_state(buffer, size, game_state))
-        fprintf(stderr,
-                "[recv_game_state] unrecognized opcode 0x%04X (size=%u) could not be parsed as "
+        dc_log(DC_LOG_ERROR,                 "[recv_game_state] unrecognized opcode 0x%04X (size=%u) could not be parsed as "
                 "GameState\n",
                 opcode, size);
     }
@@ -523,24 +521,24 @@ ERecvStatus_t recv_game_settings(tcpme_socket_t client_socket, tcpme_set_t *sock
   uint32_t size_net = 0;
   int r_size = recv_all_tcp(client_socket, &size_net, sizeof(size_net));
   if (r_size <= 0) {
-    fprintf(stderr, "[recv_game_settings] Disconnected while reading game state size %d\n", r_size);
+    dc_log(DC_LOG_ERROR, "[recv_game_settings] Disconnected while reading game state size %d", r_size);
     return RECV_ERROR;
   }
 
   uint32_t size = tcpme_get_be32((const uint8_t *)&size_net);
   if (size == 0 || size > 65536) {
-    fprintf(stderr, "[recv_game_settings] Invalid game settings size: %u\n", size);
+    dc_log(DC_LOG_WARN, "[recv_game_settings] Invalid game settings size: %u", size);
     return RECV_ERROR;
   }
 
   uint8_t *buffer = malloc(size);
   if (!buffer) {
-    fprintf(stderr, "[recv_game_settings] Memory allocation failed\n");
+    dc_log(DC_LOG_ERROR, "[recv_game_settings] Memory allocation failed");
     return RECV_ERROR;
   }
 
   if (recv_all_tcp(client_socket, buffer, size) <= 0) {
-    fprintf(stderr, "[recv_game_settings] Disconnected while reading game state payload\n");
+    dc_log(DC_LOG_ERROR, "[recv_game_settings] Disconnected while reading game state payload");
     free(buffer);
     return RECV_ERROR;
   }
@@ -593,12 +591,11 @@ int send_protocol_header(tcpme_socket_t sock, uint8_t flags) {
 
   uint8_t response;
   if (recv_all_tcp(sock, &response, sizeof(response)) <= 0) {
-    fprintf(stderr, "Protocol version mismatch or server closed connection\n");
+    dc_log(DC_LOG_WARN, "Protocol version mismatch or server closed connection");
     return -1;
   }
   if (response != 0) {
-    fprintf(stderr,
-            "Server rejected connection: protocol version mismatch "
+    dc_log(DC_LOG_WARN,             "Server rejected connection: protocol version mismatch "
             "(client version: %d)\n",
             GAME_PROTOCOL_VERSION);
     return -1;
@@ -612,7 +609,7 @@ int authenticate_with_server(tcpme_socket_t sock, const char *password) {
   unsigned char hash[HASH_SIZE];
 
   if (recv_all_tcp(sock, nonce, NONCE_SIZE) < 0) {
-    fprintf(stderr, "Failed to receive nonce\n");
+    dc_log(DC_LOG_ERROR, "Failed to receive nonce");
     return -1;
   }
 
@@ -623,7 +620,7 @@ int authenticate_with_server(tcpme_socket_t sock, const char *password) {
   crypto_hash_sha256_final(&state, hash);
 
   if (send_all_tcp(sock, hash, HASH_SIZE) != 0) {
-    fprintf(stderr, "Failed to send authentication response\n");
+    dc_log(DC_LOG_ERROR, "Failed to send authentication response");
     return -1;
   }
 
@@ -634,7 +631,7 @@ bool bot_connect(const char *host_str, uint16_t port, const char *nick, const ch
                  SocketContext_t *out) {
   tcpme_socket_t sock = tcpme_connect(host_str, port);
   if (!tcpme_socket_valid(sock)) {
-    fprintf(stderr, "Failed to connect: %s\n", tcpme_get_error());
+    dc_log(DC_LOG_ERROR, "Failed to connect: %s", tcpme_get_error());
     return false;
   }
   tcpme_set_timeout(sock, SOCKET_IO_TIMEOUT_MS);
@@ -650,7 +647,7 @@ bool bot_connect(const char *host_str, uint16_t port, const char *nick, const ch
     goto fail;
 
   if (authenticate_with_server(sock, password ? password : "") < 0) {
-    fprintf(stderr, "Authentication failed\n");
+    dc_log(DC_LOG_ERROR, "Authentication failed");
     goto fail;
   }
 
@@ -659,7 +656,7 @@ bool bot_connect(const char *host_str, uint16_t port, const char *nick, const ch
     uint16_t net_len;
     tcpme_put_be16((uint8_t *)&net_len, len);
     if (send_all_tcp(sock, &net_len, sizeof(net_len)) != 0 || send_all_tcp(sock, nick, len) != 0) {
-      fprintf(stderr, "Failed to send nick\n");
+      dc_log(DC_LOG_ERROR, "Failed to send nick");
       goto fail;
     }
   }
