@@ -21,9 +21,13 @@ services:
       - DC_PORT=${DC_PORT:-22777}
       - DC_EXTRA_ARGS=${DC_EXTRA_ARGS:-}
       - DC_PASSWORD=${DC_PASSWORD}
+    # Leaving DC_*_DIR unset (the default) uses a managed named volume, owned by
+    # the image's non-root user, so it works with no host-uid setup. Set
+    # DC_CONFIG_DIR / DC_OUTPUT_DIR to a host PATH to bind-mount instead (e.g. to
+    # read logs on the host) — then match DC_UID to that path's owner.
     volumes:
-      - "${DC_CONFIG_DIR}:/dc_config"
-      - "${DC_OUTPUT_DIR}:/dc_output"
+      - "${DC_CONFIG_DIR:-dc_config}:/dc_config"
+      - "${DC_OUTPUT_DIR:-dc_output}:/dc_output"
     # Publish the same port inside and out so the advertised port (= listen port,
     # set by --port above) is the one clients actually reach.
     ports:
@@ -34,6 +38,14 @@ services:
     # Opt-in, like the bot and registry, so a bare `up` (or bringing up the
     # registry) never auto-starts a server. Start it explicitly:
     #   docker compose --profile server up -d
+    # Run unprivileged with no extra capabilities, so a compromised parser is an
+    # unprivileged container account, not container-root. DC_UID/DC_GID default to
+    # 1000; set them to match the host owner of the mounted dirs if different.
+    user: "${DC_UID:-1000}:${DC_GID:-1000}"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     profiles:
       - server
 
@@ -58,6 +70,11 @@ services:
       - DC_BOT_PORT=${DC_BOT_PORT:-${DC_PORT:-22777}}
       - DC_BOT_ARGS=${DC_BOT_ARGS:-}
       - DC_PASSWORD=${DC_PASSWORD}
+    user: "${DC_UID:-1000}:${DC_GID:-1000}"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     profiles:
       - bot
     # Restart only if the bot crashes — not when it exits cleanly (done/quit).
@@ -83,14 +100,28 @@ services:
       # is pointed at the mount via the fixed --json path in the command above.
       - DC_REGISTRY_ARGS=${DC_REGISTRY_ARGS:-}
     volumes:
-      # Default keeps the bind spec valid even when the registry isn't used —
-      # an empty ${DC_REGISTRY_DIR} is a hard parse error that breaks every
-      # `docker compose` command, profile or not. Set DC_REGISTRY_DIR to a real
-      # path when you actually run the registry; the dir is only mounted then.
-      - "${DC_REGISTRY_DIR:-./dc_registry}:/dc_registry"
+      # Default (unset) → a managed named volume owned by the non-root user, so it
+      # works with no host-uid setup (and an unset var can't break the bind spec).
+      # Set DC_REGISTRY_DIR to a host path to serve servers.json from there (e.g.
+      # a website) — then match DC_UID to that path's owner.
+      - "${DC_REGISTRY_DIR:-dc_registry}:/dc_registry"
     ports:
       - "${DC_REGISTRY_PORT:-22070}:22070"
+    user: "${DC_UID:-1000}:${DC_GID:-1000}"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     profiles:
       - registry
     # Long-lived daemon, same policy as the server.
     restart: unless-stopped
+
+# Named volumes used when DC_*_DIR is left unset (the default). Each Compose
+# project gets its own, so separate server instances don't share storage. The
+# image owns these mountpoints as the non-root user, so fresh volumes are
+# writable without any host-uid setup.
+volumes:
+  dc_config:
+  dc_output:
+  dc_registry:
