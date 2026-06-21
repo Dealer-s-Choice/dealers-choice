@@ -1,6 +1,11 @@
 # Package source files
 
-src/client.c
 src/main.c
-src/links.c
-src/server.c
+src/server/round.c
+src/server/server.c
+src/server/variants.c
+src/ui/client.c
+src/ui/game_logic.c
+src/ui/game_select.c
+src/ui/graphics.c
+src/ui/menus.c
