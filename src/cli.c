@@ -269,5 +269,13 @@ CliArgs_t parse_server_args(int argc, char *argv[]) {
       exit(EXIT_FAILURE);
     }
   }
+
+  /* Tests/CI (and ops) can suppress registry announces via the environment, so a
+   * server reading the shipped common.conf (which carries the public registry
+   * line) doesn't publish to the live registry. Equivalent to --disable-publish;
+   * the meson test env sets it for every test. */
+  if (getenv("DC_DISABLE_PUBLISH") != NULL)
+    cli_args.disable_publish = true;
+
   return cli_args;
 }

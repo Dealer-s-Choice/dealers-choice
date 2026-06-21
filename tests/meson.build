@@ -12,6 +12,10 @@ base_env = {
   'DEALERSCHOICE_DATADIR': join_paths(meson.project_source_root(), 'data'),
   'MESON_BUILD_ROOT': meson.project_build_root(),
   'MESON_BUILD_TEST_ROOT': meson.current_build_dir(),
+  # Tests read the shipped data/common.conf, which carries the public registry
+  # line. Without this, every test-launched server would announce to the live
+  # registry (and fail its verify, since CI/test hosts aren't reachable).
+  'DC_DISABLE_PUBLISH': '1',
 }
 
 foreach name : unit_tests
