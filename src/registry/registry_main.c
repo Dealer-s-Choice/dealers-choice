@@ -32,12 +32,17 @@
 #include "util.h"
 
 /* Registry policy (DC-owned; tcpme stays generic). */
-#define REG_TTL_MS 90000u           /* drop a listing not refreshed within this */
-#define REG_PER_IP_MAX 4            /* max distinct listings per source IP */
-#define REG_VERIFY_TIMEOUT_MS 2000u /* callback-verify connect/handshake timeout */
-#define REG_IO_TIMEOUT_MS 5000u     /* per-connection recv timeout */
-#define REG_JSON_INTERVAL_MS 5000u  /* how often to rewrite servers.json */
-#define REG_TICK_MS 500u            /* accept-poll tick */
+#define REG_TTL_MS 90000u    /* drop a listing not refreshed within this */
+#define REG_PER_IP_MAX 4     /* max distinct listings per source IP */
+/* Verify is a blocking connect-back on this single-threaded loop, so it is kept
+ * short: every announce of an unreachable address (scanner, or a real server
+ * behind NAT) costs the full timeout, during which no list request is served. */
+#define REG_VERIFY_TIMEOUT_MS 500u /* callback-verify connect/handshake timeout */
+#define REG_IO_TIMEOUT_MS 2000u    /* per-connection recv (bounds a slow peer) */
+#define REG_VERIFY_FAIL_BACKOFF_MS 30000u /* skip re-verifying a just-failed IP */
+#define REG_FAIL_TRACK 64                 /* recently-failed source IPs tracked */
+#define REG_JSON_INTERVAL_MS 5000u        /* how often to rewrite servers.json */
+#define REG_TICK_MS 500u                  /* accept-poll tick */
 
 typedef struct {
   RegistryServer_t srv;
@@ -48,6 +53,20 @@ typedef struct {
 static RegEntry_t g_table[REGISTRY_MAX_SERVERS];
 static bool g_verbose = false;
 static volatile sig_atomic_t g_running = 1;
+
+/* Recently-failed source IPs. After a verify failure we skip re-verifying that
+ * IP for REG_VERIFY_FAIL_BACKOFF_MS, so a host announcing an unreachable address
+ * (scanner, or a real server behind NAT) can't make every heartbeat cost a full
+ * verify timeout on this single-threaded loop. Keyed on IP only, so a flooder
+ * that varies the announced port is still covered; only failures are tracked, so
+ * legit servers (which verify fine, even several behind one NAT'd IP) are never
+ * throttled. */
+typedef struct {
+  char ip[TCPME_ADDRSTRLEN];
+  uint32_t at;
+  bool used;
+} FailIp_t;
+static FailIp_t g_fail[REG_FAIL_TRACK];
 
 static void on_signal(int sig) {
   (void)sig;
@@ -179,6 +198,45 @@ static const char *normalize_ip(const char *ip) {
   return ip;
 }
 
+/* True if this IP failed verify within the backoff window — skip the (blocking)
+ * re-verify and reject the announce cheaply. */
+static bool verify_backing_off(const char *ip, uint32_t now) {
+  for (int i = 0; i < REG_FAIL_TRACK; i++)
+    if (g_fail[i].used && strcmp(g_fail[i].ip, ip) == 0)
+      return (now - g_fail[i].at) < REG_VERIFY_FAIL_BACKOFF_MS;
+  return false;
+}
+
+/* Record (or refresh) a verify failure for this IP. Reuses an existing slot for
+ * the same IP, else a free slot, else evicts the oldest. */
+static void note_verify_fail(const char *ip, uint32_t now) {
+  int slot = -1;
+  for (int i = 0; i < REG_FAIL_TRACK; i++) {
+    if (g_fail[i].used && strcmp(g_fail[i].ip, ip) == 0) {
+      slot = i;
+      break;
+    }
+    if (!g_fail[i].used && slot < 0)
+      slot = i;
+  }
+  if (slot < 0) {
+    slot = 0;
+    for (int i = 1; i < REG_FAIL_TRACK; i++)
+      if (g_fail[i].at < g_fail[slot].at)
+        slot = i;
+  }
+  snprintf(g_fail[slot].ip, sizeof g_fail[slot].ip, "%s", ip);
+  g_fail[slot].at = now;
+  g_fail[slot].used = true;
+}
+
+/* Clear any failure record for an IP that has now verified successfully. */
+static void clear_verify_fail(const char *ip) {
+  for (int i = 0; i < REG_FAIL_TRACK; i++)
+    if (g_fail[i].used && strcmp(g_fail[i].ip, ip) == 0)
+      g_fail[i].used = false;
+}
+
 static void handle_connection(tcpme_socket_t client, const char *peer_ip) {
   uint16_t opcode = 0;
   const uint8_t *payload = NULL;
@@ -192,13 +250,20 @@ static void handle_connection(tcpme_socket_t client, const char *peer_ip) {
     if (registry_parse_announce(payload, plen, &srv) == 0) {
       /* Trust the connection source for the IP, never the payload. */
       snprintf(srv.ip, sizeof srv.ip, "%s", normalize_ip(peer_ip));
-      if (srv.tcp_port != 0 && callback_verify(srv.ip, srv.tcp_port)) {
-        if (table_upsert(&srv, dc_get_ticks()))
+      uint32_t now = dc_get_ticks();
+      if (srv.tcp_port == 0) {
+        /* nothing to verify or list */
+      } else if (verify_backing_off(srv.ip, now)) {
+        rlog("skip verify (backoff) %s:%u", srv.ip, srv.tcp_port);
+      } else if (callback_verify(srv.ip, srv.tcp_port)) {
+        clear_verify_fail(srv.ip);
+        if (table_upsert(&srv, now))
           rlog("listed %s:%u \"%s\" (%u/%u)", srv.ip, srv.tcp_port, srv.name, srv.player_count,
                srv.max_players);
         else
           rlog("rejected %s:%u (per-IP cap or full)", srv.ip, srv.tcp_port);
       } else {
+        note_verify_fail(srv.ip, now);
         rlog("verify failed %s:%u", srv.ip, srv.tcp_port);
       }
     }
