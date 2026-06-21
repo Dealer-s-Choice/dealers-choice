@@ -37,7 +37,7 @@ static SDL_Keycode resolve(const char *name, const char *label) {
     return SDLK_UNKNOWN;
   SDL_Keycode kc = SDL_GetKeyFromName(name);
   if (kc == SDLK_UNKNOWN)
-    fprintf(stderr, "init_hotkeys: unrecognised key name '%s' for %s\n", name, label);
+    dc_log(DC_LOG_ERROR, "init_hotkeys: unrecognised key name '%s' for %s", name, label);
   return kc;
 }
 

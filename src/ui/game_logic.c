@@ -71,7 +71,7 @@ static void make_human_readable_card(DH_Card *card, CardWidget_t *cw) {
   cw->suit = card->suit;
   snprintf(cw->text, sizeof(cw->text), "%s%s", face, suit);
   if (strlen(cw->text) == 0) {
-    fprintf(stderr, "%s:String length 0\n", __func__);
+    dc_log(DC_LOG_ERROR, "%s:String length 0", __func__);
     exit(EXIT_FAILURE);
   }
 }
@@ -598,7 +598,7 @@ static void render_text_pot(const char *text, const SDL_Point center, const Font
   SDL_Surface *surface = TTF_RenderUTF8_Blended(font->fonts[FONT_DEFAULT_BOLD], *text ? text : " ",
                                                 get_color(COLOR_BLACK));
   if (!surface) {
-    fprintf(stderr, "TTF_RenderUTF8_Blended error: %s\n", TTF_GetError());
+    dc_log(DC_LOG_ERROR, "TTF_RenderUTF8_Blended error: %s", TTF_GetError());
     return;
   }
 
@@ -606,7 +606,7 @@ static void render_text_pot(const char *text, const SDL_Point center, const Font
   SDL_Texture *texture = SDL_CreateTextureFromSurface(renderer, surface);
   if (!texture) {
     SDL_FreeSurface(surface);
-    fprintf(stderr, "SDL_CreateTextureFromSurface error: %s\n", SDL_GetError());
+    dc_log(DC_LOG_ERROR, "SDL_CreateTextureFromSurface error: %s", SDL_GetError());
     return;
   }
 
@@ -778,7 +778,7 @@ EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
 
   int8_t my_id = game_settings->client_id;
   if (my_id < 0 || my_id >= MAX_PLAYERS) {
-    fprintf(stderr, "handle_game_logic: client_id %d out of range\n", my_id);
+    dc_log(DC_LOG_WARN, "handle_game_logic: client_id %d out of range", my_id);
     my_id = 0;
   }
   tcpme_socket_t sock = socket_context->sock;

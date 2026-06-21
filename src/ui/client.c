@@ -71,7 +71,7 @@
 void ma_sound_start_wrap(ma_sound *pSound, const char *file, const int line) {
   ma_result result = ma_sound_start(pSound);
   if (result != MA_SUCCESS) {
-    fprintf(stderr, "[ma_sound_start] Failed (%s:%d) -> result = %d\n", file, line, result);
+    dc_log(DC_LOG_ERROR, "[ma_sound_start] Failed (%s:%d) -> result = %d", file, line, result);
   }
 }
 
@@ -132,7 +132,7 @@ static size_t load_coin_textures(SDL_Renderer *renderer, const char *base_path, 
     if (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
       continue;
     if (i >= max_count) {
-      fprintf(stderr, "Warning: more than %zu coin images found; increase MAX_COIN_IMAGES\n",
+      dc_log(DC_LOG_ERROR, "Warning: more than %zu coin images found; increase MAX_COIN_IMAGES",
               max_count);
       break;
     }
@@ -152,7 +152,7 @@ static size_t load_coin_textures(SDL_Renderer *renderer, const char *base_path, 
     if (nlen <= 4 || strcmp(ent->d_name + nlen - 4, ".png") != 0)
       continue;
     if (i >= max_count) {
-      fprintf(stderr, "Warning: more than %zu coin images found; increase MAX_COIN_IMAGES\n",
+      dc_log(DC_LOG_ERROR, "Warning: more than %zu coin images found; increase MAX_COIN_IMAGES",
               max_count);
       break;
     }
@@ -341,7 +341,7 @@ bool get_socket_context_and_run_client(PlayerConfig_t *player_config, const CliA
       break;
 
     if (!timed_out)
-      fprintf(stderr, "Attempt %d: Failed to connect to server: %s\n", attempts + 1,
+      dc_log(DC_LOG_ERROR, "Attempt %d: Failed to connect to server: %s", attempts + 1,
               tcpme_get_error());
 
     // Wait out the remainder of ATTEMPT_TIMEOUT_MS so each attempt cycle
@@ -387,7 +387,7 @@ bool get_socket_context_and_run_client(PlayerConfig_t *player_config, const CliA
   tcpme_socket_t sock = socket_context.sock;
   socket_context.set = tcpme_alloc_set(1);
   if (!socket_context.set) {
-    fprintf(stderr, "Failed to allocate socket set: %s\n", tcpme_get_error());
+    dc_log(DC_LOG_ERROR, "Failed to allocate socket set: %s", tcpme_get_error());
     tcpme_close(sock);
     return false;
   }
@@ -402,7 +402,7 @@ bool get_socket_context_and_run_client(PlayerConfig_t *player_config, const CliA
     const char *env_pw = getenv("DC_PASSWORD");
     const char *password = env_pw ? env_pw : player_config->password;
     if (authenticate_with_server(sock, password) < 0)
-      fprintf(stderr, "Authentication attempt failed\n");
+      dc_log(DC_LOG_ERROR, "Authentication attempt failed");
 
     GameState_t game_state = {0};
     GameSettings_t game_settings = {0};
@@ -412,7 +412,7 @@ bool get_socket_context_and_run_client(PlayerConfig_t *player_config, const CliA
     uint16_t net_len = SDL_SwapBE16(len);
     send_all_tcp(sock, &net_len, sizeof(net_len));
     if (send_all_tcp(sock, player_config->nick, len) != 0)
-      fprintf(stderr, "Failed to send player nick to server\n");
+      dc_log(DC_LOG_ERROR, "Failed to send player nick to server");
 
     const Uint32 timeout = 2000;    // 2 seconds
     const Uint32 retry_delay = 100; // milliseconds per retry
@@ -424,7 +424,7 @@ bool get_socket_context_and_run_client(PlayerConfig_t *player_config, const CliA
       if (recv_status == RECV_SUCCESS) {
         break;
       } else if (recv_status == RECV_ERROR) {
-        fprintf(stderr, "Failed to receive game settings\n");
+        dc_log(DC_LOG_ERROR, "Failed to receive game settings");
         exit(EXIT_FAILURE);
       }
 
@@ -439,7 +439,7 @@ bool get_socket_context_and_run_client(PlayerConfig_t *player_config, const CliA
       if (recv_status == RECV_SUCCESS) {
         break;
       } else if (recv_status == RECV_ERROR) {
-        fprintf(stderr, "Failed to receive initial game state\n");
+        dc_log(DC_LOG_ERROR, "Failed to receive initial game state");
         exit(EXIT_FAILURE);
       }
 
@@ -501,7 +501,7 @@ bool get_socket_context_and_run_client(PlayerConfig_t *player_config, const CliA
       }
     }
     if (sound_context.result != MA_SUCCESS) {
-      fprintf(stderr, "Error: Failed to initialize audio engine (code: %d).\n",
+      dc_log(DC_LOG_ERROR, "Error: Failed to initialize audio engine (code: %d).",
               sound_context.result);
       exit(EXIT_FAILURE);
     }
@@ -534,14 +534,14 @@ bool get_socket_context_and_run_client(PlayerConfig_t *player_config, const CliA
       char *snd_path = canfigger_path_join(path->data, sub);
       free(sub);
       if (!snd_path) {
-        fprintf(stderr, "Failed to build sound path %zd\n", i);
+        dc_log(DC_LOG_ERROR, "Failed to build sound path %zd", i);
         goto cleanup_audio;
       }
       bool ok = ma_sound_init_from_file(&sound_context.engine, snd_path, 0, NULL, NULL,
                                         &sounds[i].sound) == MA_SUCCESS;
       free(snd_path);
       if (!ok) {
-        fprintf(stderr, "Failed to init sound %zd\n", i);
+        dc_log(DC_LOG_ERROR, "Failed to init sound %zd", i);
         goto cleanup_audio;
       }
       n_sounds_init++;
@@ -552,14 +552,14 @@ bool get_socket_context_and_run_client(PlayerConfig_t *player_config, const CliA
       char *snd_path = canfigger_path_join(path->data, sub);
       free(sub);
       if (!snd_path) {
-        fprintf(stderr, "Failed to build sound path %zd\n", i);
+        dc_log(DC_LOG_ERROR, "Failed to build sound path %zd", i);
         goto cleanup_audio;
       }
       bool ok = ma_sound_init_from_file(&sound_context.engine, snd_path, 0, NULL, NULL,
                                         &coin_hit_sounds[i].sound) == MA_SUCCESS;
       free(snd_path);
       if (!ok) {
-        fprintf(stderr, "Failed to init sound %zd\n", i);
+        dc_log(DC_LOG_ERROR, "Failed to init sound %zd", i);
         goto cleanup_audio;
       }
       n_coin_sounds_init++;

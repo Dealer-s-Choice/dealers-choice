@@ -30,6 +30,7 @@
 #include <stdlib.h>
 
 #include "graphics.h"
+#include "util.h"
 #include "layout.h"
 #include "style.h"
 #include "translate.h"
@@ -259,7 +260,7 @@ TTF_Font *open_font(const FontArgs_t *args) {
     return font;
 
   // fprintf(stderr, "Failed to load font (%s): %s\n", args->file, TTF_GetError());
-  fprintf(stderr, "TTF_OpenFont: %s\n", SDL_GetError());
+  dc_log(DC_LOG_ERROR, "TTF_OpenFont: %s", SDL_GetError());
   exit(EXIT_FAILURE);
 }
 
