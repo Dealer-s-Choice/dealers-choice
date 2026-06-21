@@ -44,7 +44,7 @@ All settings are optional except `DC_PASSWORD`. See `env.example`.
 | `DC_OUTPUT_DIR` | Host folder mounted at `/dc_output` where the server writes its logs. | (none) |
 | `DC_EXTRA_ARGS` | Extra command-line options for the server. | (none) |
 | `DC_BOT_HOST` | Server the bot connects to. Only used by the `bot` profile. | `dealers-choice-server` |
-| `DC_BOT_PORT` | Port the bot connects to. Only used by the `bot` profile. | `22777` |
+| `DC_BOT_PORT` | Port the bot connects to. Only used by the `bot` profile. | `DC_PORT` |
 | `DC_BOT_ARGS` | Extra command-line options for the bot. Only used by the `bot` profile. | (none) |
 | `DC_REGISTRY_DIR` | Host folder mounted at `/dc_registry` where the registry writes `servers.json`. Only used by the `registry` profile. | (none) |
 | `DC_REGISTRY_PORT` | Host port the registry is published on. Only used by the `registry` profile. | `22070` |
@@ -85,9 +85,10 @@ To run several bots at once:
 
     docker compose --profile bot up -d --scale dealers-choice-bot=3
 
-By default a bot connects to the `dealers-choice-server` service on port
-`22777`. To point it at a different server (for example one already running, or
-an external host), set `DC_BOT_HOST` and `DC_BOT_PORT`. The bot has no built-in
+By default a bot connects to the `dealers-choice-server` service on `DC_PORT`
+(so reusing a per-instance env file points the bot at that instance's server).
+To point it at a different server (for example one already running, or an
+external host), set `DC_BOT_HOST` and `DC_BOT_PORT`. The bot has no built-in
 dependency on the server. If no server is reachable, the bot exits with an error
 and is restarted, so start a server first or point the bot at a running one.
 

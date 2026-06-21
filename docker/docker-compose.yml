@@ -52,7 +52,10 @@ services:
     command: sh -c 'exec dealers-choice-bot --host "$$DC_BOT_HOST" --port "$$DC_BOT_PORT" $$DC_BOT_ARGS'
     environment:
       - DC_BOT_HOST=${DC_BOT_HOST:-dealers-choice-server}
-      - DC_BOT_PORT=${DC_BOT_PORT:-22777}
+      # Defaults to DC_PORT, so reusing a per-instance env file (e.g. one with
+      # DC_PORT=22778) points the bot at that instance's server with no extra
+      # var. Set DC_BOT_PORT explicitly to target an external/off-instance server.
+      - DC_BOT_PORT=${DC_BOT_PORT:-${DC_PORT:-22777}}
       - DC_BOT_ARGS=${DC_BOT_ARGS:-}
       - DC_PASSWORD=${DC_PASSWORD}
     profiles:
