@@ -40,6 +40,17 @@ Quick reminders (details in `tests/README.md`):
 - After **server-side** changes, run a short `scripts/soak.sh` and judge it by
   the log (`DONE: all phases passed`), not the exit code.
 
+### Claude Code commands
+
+Project slash commands live in `.claude/commands/`. They are discovered **only
+when Claude Code is launched from the repo root** (`dealers_choice/`) — starting
+from a parent dir means `/dc-*` won't resolve (`cd`-ing in afterward doesn't fix
+it; the project root is fixed at launch). Available:
+
+- `/dc-verify` — gcc `-Werror` gate + clang ASan/UBSan build + full meson tests.
+- `/dc-soak` — short (~5 min) sanitized bot soak (run after server-side changes).
+- `/dc-gate` — pre-merge gate: runs `/dc-verify` then `/dc-soak`, one PASS/FAIL.
+
 ## Architecture
 
 **Client-server** networked game, split across three binaries that talk over
@@ -88,6 +99,17 @@ Binaries: `dealers-choice` = `main.c` + `game_dep`; `dealers-choice-bot` = `bot.
 - Version constant: `GAME_PROTOCOL_VERSION` in `src/net/net.h`. **Andy owns this bump — never change it yourself.** He bumps it whenever the wire protocol changes (a new game/opcode, a new field in the protobuf schema, framing changes), not on a fixed per-release schedule; expect it to change less often as the protocol stabilizes.
 - Default port: 22777.
 - Auth: libsodium-based password hashing.
+- **Registry (directory server).** `dealers-choice-server` announces itself to,
+  and the GUI client browses, the registries in `data/common.conf` (default: the
+  public `registry.dealers-choice-foss.dev`, TCP 22070). The
+  `dealers-choice-registry` binary (`src/registry/registry_main.c`) verifies each
+  announce by connecting back, expires stale entries (TTL), and writes
+  `servers.json`. Client opt-out: `registry_browser = no` in player.conf /
+  `--disable-registry-browser`. Server opt-out: `--disable-publish` or the
+  `DC_DISABLE_PUBLISH` env (the meson tests set it so test servers never publish
+  to the live registry). Details in `docs/REGISTRY.md`; Docker in
+  `docker/README.md`. Open registry work: #74 (non-blocking verify), #75 (reload
+  `servers.json` on boot + faster announce retry).
 
 ### Audio
 
@@ -99,7 +121,13 @@ miniaudio is used for sound effects. Both `ma_engine_init` and `ma_engine_uninit
 
 **Unresolved: no sound after device switch / on startup.**
 
-Two possible root causes have been identified — they may both be in play:
+**Update (2026-06-21): likely hardware, not DC.** Since switching to a new
+Logitech USB wired headset (~2 weeks prior), the no-sound problem has **not
+reproduced**. This strengthens root cause #1 (the old C-Media chip on a marginal
+USB port) over any DC software bug. The restart machinery below has not been
+needed since; it remains a candidate to strip back to the freeze-fix-only state.
+
+Two possible root causes had been identified — they may both have been in play:
 
 1. **Marginal USB port putting the C-Media sink in a bad state.** The C-Media USB audio chip (0d8c:0012) was enumerating cleanly (`dmesg` showed no errors, `power/control = on`) but PA's sink was going `SUSPENDED` and not resuming correctly, causing DC and browser video to stall when trying to open audio streams. Switching the headset to a different USB port fixed it immediately; switching back to the original port continued to work. The port had a marginal connection that was good enough to enumerate but caused intermittent PA sink state corruption.
 
@@ -114,10 +142,6 @@ Two possible root causes have been identified — they may both be in play:
 ### Subprojects
 
 `canfigger` and `miniaudio` are Meson subprojects under `subprojects/` (canfigger via a pinned `.wrap`); changes to them are committed in their own upstreams, not the main repo. `pokeval` and `deckhandler` were moved **in-tree** (`src/pokeval`, `src/deckhandler`) as of 0.0.14 — they are **not** subprojects, and their upstream repos are archived, so edit and commit them directly in the main repo.
-
-### SDL3_net — deferred (branch `use-sdl3_net`)
-
-SDL3_net was evaluated as a replacement/supplement for tcpme. It has async DNS, dual-stack, and interface binding — all things SDL2_net lacks. However, SDL3 itself (a hard dependency of SDL3_net) is not packaged in Ubuntu (not in Jammy, Noble, or any backport) because it was only released January 2025. This makes it impractical for packagers and end users building from source. **tcpme already covers all the needed functionality**, so SDL3_net was set aside. Revisit when major distros ship SDL3.
 
 ## Styling system — `style.h` / `style.c`
 
@@ -213,6 +237,12 @@ boilerplate. Two refactors worth doing once there are ~4–5 of these screens
   positions its label+box rows manually and is a candidate.
 - **Shared "menu event loop" helper** to handle quit / Escape / back-arrow /
   F11 fullscreen once, instead of every screen copying that block.
+- **`menu_display_settings` is fragile and full** (#76). It hardcodes positional
+  config indices (`bool_idx`, `password_idx`) and assumes a single bool checkbox;
+  the 2×3 grid is full, so a second bool (`registry_browser`) had to be
+  special-cased into the third column. Redesign: drive widgets from
+  `player_config_entries[]` by type (checkbox per `CFG_TYPE_BOOL`), drop the
+  positional hardcoding, and use a scalable (scroll/paginated) layout.
 
 A heavier framework (Dear ImGui, etc.) is **not** the answer — it fights the
 absolute-positioned style and the `style.h` config system.
