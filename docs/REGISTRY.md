@@ -46,6 +46,11 @@ port as a comma attribute (default 22070). Repeat the line for more registries.
 The headless server publishes to every listed registry unless started with
 `--disable-publish`. Leave it commented out for LAN-only play.
 
+The client browses these registries by default. To stop the client from
+contacting any registry (it will then show only LAN servers), set
+`registry_browser = no` in `player.conf`, change it on the Settings screen, or
+run the client with `--disable-registry-browser`. See [CONFIG.md](CONFIG.md).
+
 ## Privacy — what is and isn't stored
 
 The registry is deliberate about addresses:

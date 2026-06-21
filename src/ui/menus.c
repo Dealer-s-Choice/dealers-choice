@@ -453,10 +453,13 @@ int menu_display_connect(PlayerConfig_t *player_config, char *host_str, uint16_t
   const int servers_top_y = lan_heading_y;
   const int section_gap = g_layout_cfg.input_field_v_gap * 3;
 
-  /* Internet servers (top) from the configured registries, slow-refreshed. */
+  /* Internet servers (top) from the configured registries, slow-refreshed.
+   * registry_browser (player.conf / --disable-registry-browser) lets the user
+   * opt out of querying the registry entirely. */
+  const bool browse_registry = (player_config->registry_count > 0 && player_config->registry_browser);
   RegistryServer_t reg_found[REG_MAX_SHOWN];
   int reg_found_count = 0;
-  bool reg_dirty = (player_config->registry_count > 0); /* fetch on first frame */
+  bool reg_dirty = browse_registry; /* fetch on first frame */
   uint32_t reg_last_fetch = 0;
   UITable_t reg_table = {0};
   UIRegistry_t reg_tbl_reg = {0};
@@ -628,7 +631,7 @@ int menu_display_connect(PlayerConfig_t *player_config, char *host_str, uint16_t
 
     /* --- Internet servers (top): slow-refresh the registry table, anchored at
      * the top of the server-list area (#33). --- */
-    if (player_config->registry_count > 0) {
+    if (browse_registry) {
       uint32_t now = SDL_GetTicks();
       if (reg_dirty || now - reg_last_fetch >= 10000) {
         reg_found_count = registry_fetch(player_config, reg_found, REG_MAX_SHOWN);
@@ -1108,6 +1111,14 @@ void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *sdl_cont
    * BOOL entries get a CheckboxWidget_t instead of an InputWidget_t. */
   const size_t bool_idx = 5;
   const size_t password_idx = 7;
+  /* registry_browser renders as a standalone checkbox in the third column (the
+   * two-column grid is already full), so it is excluded from the grid loops. */
+  size_t reg_browse_idx = player_config_entry_count;
+  for (size_t i = 0; i < player_config_entry_count; i++)
+    if (strcmp(player_config_entries[i].key, "registry_browser") == 0) {
+      reg_browse_idx = i;
+      break;
+    }
 
   /* Checkbox for the bool entry */
   const bool init_checked =
@@ -1118,6 +1129,26 @@ void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *sdl_cont
   CheckboxWidget_t *turn_cb = checkbox_widget_create(init_checked, checkbox_size);
   if (turn_cb)
     ui_register(&reg, &turn_cb->base);
+
+  /* Standalone registry_browser checkbox + label in the third column, below the
+   * Hotkeys button (row 1). Kept out of the auto-grid above. */
+  const bool reg_init_checked =
+      (reg_browse_idx < player_config_entry_count) &&
+      *(const bool *)((const uint8_t *)player_config + player_config_entries[reg_browse_idx].offset);
+  CheckboxWidget_t *reg_cb =
+      (reg_browse_idx < player_config_entry_count)
+          ? checkbox_widget_create(reg_init_checked, checkbox_size)
+          : NULL;
+  TextWidget_t *tw_reg_label = NULL;
+  if (reg_cb) {
+    reg_cb->base.rect.x = g_layout.menu.settings_x_third;
+    reg_cb->base.rect.y = row_y[1] + input_y_offset;
+    ui_register(&reg, &reg_cb->base);
+    tw_reg_label =
+        text_widget_create("registry_browser", font->fonts[FONT_DEFAULT], DC_TEXT_ON_LIGHT);
+    if (tw_reg_label)
+      ui_widget_place(&tw_reg_label->base, g_layout.menu.settings_x_third, row_y[1]);
+  }
 
   /* Text inputs for displayed non-bool entries (skip host=1, port=2) */
   char init_str[MAX_PLAYER_CONFIG_ENTRIES][MAX_INPUT_LENGTH];
@@ -1131,6 +1162,10 @@ void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *sdl_cont
     }
     if (i == 1 || i == 2) {
       inputs[i] = NULL;
+      continue;
+    }
+    if (i == reg_browse_idx) {
+      inputs[i] = NULL; /* standalone checkbox in the third column, not the grid */
       continue;
     }
     if (i == bool_idx) {
@@ -1188,7 +1223,7 @@ void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *sdl_cont
   size_t text_input_indices[MAX_PLAYER_CONFIG_ENTRIES];
   size_t n_ti = 0;
   for (size_t i = 0; i < player_config_entry_count; i++)
-    if (!is_hotkey_entry(i) && i != bool_idx && i != 1 && i != 2)
+    if (!is_hotkey_entry(i) && i != bool_idx && i != reg_browse_idx && i != 1 && i != 2)
       text_input_indices[n_ti++] = i;
   int focused_slot = 0; /* index into text_input_indices */
 
@@ -1250,6 +1285,8 @@ void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *sdl_cont
         continue;
       if (i == 1 || i == 2)
         continue;
+      if (i == reg_browse_idx)
+        continue;
       int col = (int)(rpos % 2);
       int row = (int)(rpos / 2);
       int lx = (col == 0) ? x_left : x_right;
@@ -1280,6 +1317,8 @@ void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *sdl_cont
             SDL_PointInRect(&mouse_pos, &btn_quit_settings->base.rect);
       if (turn_cb)
         turn_cb->base.hovered = SDL_PointInRect(&mouse_pos, &turn_cb->base.rect);
+      if (reg_cb)
+        reg_cb->base.hovered = SDL_PointInRect(&mouse_pos, &reg_cb->base.rect);
 
       if (e.type == SDL_QUIT) {
         SDL_PushEvent(&e);
@@ -1295,6 +1334,8 @@ void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *sdl_cont
           for (size_t i = 0; i < player_config_entry_count; i++) {
             if (i == bool_idx)
               player_config_set_field(player_config, i, turn_cb && turn_cb->checked ? "yes" : "no");
+            else if (i == reg_browse_idx)
+              player_config_set_field(player_config, i, reg_cb && reg_cb->checked ? "yes" : "no");
             else if (inputs[i])
               player_config_set_field(player_config, i, input_widget_get_text(inputs[i]));
           }
@@ -1309,6 +1350,10 @@ void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *sdl_cont
               if (turn_cb)
                 turn_cb->checked =
                     strcmp(player_config_entries[bool_idx].default_value, "yes") == 0;
+            } else if (i == reg_browse_idx) {
+              if (reg_cb)
+                reg_cb->checked =
+                    strcmp(player_config_entries[reg_browse_idx].default_value, "yes") == 0;
             } else if (inputs[i]) {
               input_widget_set_text(inputs[i], player_config_entries[i].default_value);
             }
@@ -1320,6 +1365,8 @@ void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *sdl_cont
           running = false;
         } else if (turn_cb && SDL_PointInRect(&mouse_pos, &turn_cb->base.rect)) {
           turn_cb->checked = !turn_cb->checked;
+        } else if (reg_cb && SDL_PointInRect(&mouse_pos, &reg_cb->base.rect)) {
+          reg_cb->checked = !reg_cb->checked;
         } else {
           for (size_t s = 0; s < n_ti; s++) {
             size_t i = text_input_indices[s];
@@ -1392,7 +1439,8 @@ void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *sdl_cont
       }
     }
 
-    dirty = turn_cb && turn_cb->checked != init_checked;
+    dirty = (turn_cb && turn_cb->checked != init_checked) ||
+            (reg_cb && reg_cb->checked != reg_init_checked);
     for (size_t i = 0; i < player_config_entry_count && !dirty; i++)
       if (inputs[i] && strcmp(input_widget_get_text(inputs[i]), init_str[i]) != 0)
         dirty = true;
@@ -1405,6 +1453,8 @@ void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *sdl_cont
     for (size_t i = 0; i < player_config_entry_count; i++)
       if (tw_labels[i])
         ui_widget_render(&tw_labels[i]->base);
+    if (tw_reg_label)
+      ui_widget_render(&tw_reg_label->base);
 
     if (back_img) {
       float t = (SDL_GetTicks() - anim_start) / 1000.0f;
@@ -1427,6 +1477,8 @@ void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *sdl_cont
     for (size_t i = 0; i < player_config_entry_count; i++) {
       if (i == bool_idx)
         player_config_set_field(player_config, i, turn_cb && turn_cb->checked ? "yes" : "no");
+      else if (i == reg_browse_idx)
+        player_config_set_field(player_config, i, reg_cb && reg_cb->checked ? "yes" : "no");
       else if (inputs[i])
         player_config_set_field(player_config, i, input_widget_get_text(inputs[i]));
     }
@@ -1435,6 +1487,8 @@ void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *sdl_cont
 
   if (tw_settings_title)
     ui_widget_destroy(&tw_settings_title->base);
+  if (tw_reg_label)
+    ui_widget_destroy(&tw_reg_label->base);
   for (size_t i = 0; i < player_config_entry_count; i++)
     if (tw_labels[i])
       ui_widget_destroy(&tw_labels[i]->base);

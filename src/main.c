@@ -222,6 +222,9 @@ int main(int argc, char *argv[]) {
   PlayerConfig_t player_config = get_player_config();
   get_common_registries(path.data, player_config.registry_host, player_config.registry_port,
                         &player_config.registry_count, &player_config.lan_discovery_port);
+  /* --disable-registry-browser overrides the player.conf preference for this run. */
+  if (cli_args.disable_registry_browser)
+    player_config.registry_browser = false;
   if (!player_config.loaded) {
     fprintf(stderr, "Unable to load config\n");
     exit(EXIT_FAILURE);

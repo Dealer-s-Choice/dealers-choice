@@ -75,6 +75,26 @@ sound.notify.turn = yes # Use "no" to disable your turn audio notification
 connect.attempts = 6 # Number of connection attempts before giving up
 ```
 
+## Server browser
+
+The connect screen lists internet servers by asking the registries in
+`common.conf` (see the [registry guide](REGISTRY.md)). To stop the client from
+contacting any registry, set:
+
+```
+registry_browser = no
+```
+
+The default is `yes`. You can also change this on the Settings screen, or turn
+it off for one run from the command line:
+
+```
+dealers-choice --disable-registry-browser
+```
+
+This only affects the internet server list. LAN discovery is separate and is
+not changed by this setting.
+
 ## Language
 
 To use a language that is different from your system's default:

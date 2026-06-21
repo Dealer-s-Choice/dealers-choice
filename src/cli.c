@@ -55,6 +55,7 @@ CliArgs_t parse_cli_args(int argc, char *argv[]) {
     OPT_AUTO_CONNECT,
     OPT_CARD_PREVIEW,
     OPT_LOG_FILE,
+    OPT_DISABLE_REGISTRY_BROWSER,
   };
 
   static const glopt_option_t options[] = {{"server", GLOPT_NO_ARG, OPT_SERVER, 0},
@@ -67,6 +68,8 @@ CliArgs_t parse_cli_args(int argc, char *argv[]) {
                                            {"auto-connect", GLOPT_NO_ARG, OPT_AUTO_CONNECT, 0},
                                            {"card-preview", GLOPT_NO_ARG, OPT_CARD_PREVIEW, 0},
                                            {"log-file", GLOPT_REQUIRED_ARG, OPT_LOG_FILE, 0},
+                                           {"disable-registry-browser", GLOPT_NO_ARG,
+                                            OPT_DISABLE_REGISTRY_BROWSER, 0},
                                            {NULL, 0, 0, 0}};
 
   glopt_parser_t parser;
@@ -120,6 +123,9 @@ CliArgs_t parse_cli_args(int argc, char *argv[]) {
     case OPT_LOG_FILE:
       dc_log_set_file(parser.optarg);
       break;
+    case OPT_DISABLE_REGISTRY_BROWSER:
+      cli_args.disable_registry_browser = true;
+      break;
     case '?':
     default:
       print_version();
@@ -129,6 +135,7 @@ CliArgs_t parse_cli_args(int argc, char *argv[]) {
           "  --host [IP]\n"
           "  --port [port]\n"
           "  --disable-audio\n"
+          "  --disable-registry-browser Do not query the registry for the internet server list\n"
           "  --auto-connect             Connect immediately using host/port from player.conf\n"
           "  --verbose\n"
           "  --debug                    Verbose plus per-opcode trace (DC_LOG_DEBUG)\n"

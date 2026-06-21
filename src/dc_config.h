@@ -73,6 +73,7 @@ typedef struct {
   bool turn_notify;
   uint8_t connect_attempts;
   char password[MAX_INPUT_LENGTH];
+  bool registry_browser; /* query the registry for the internet server list (#33) */
   char hotkey_check[SIZEOF_HOTKEY_NAME];
   char hotkey_bet[SIZEOF_HOTKEY_NAME];
   char hotkey_fold[SIZEOF_HOTKEY_NAME];

@@ -45,7 +45,8 @@ typedef struct {
   bool autodeal;
   bool auto_connect;
   bool card_preview;
-  bool disable_publish; /* don't announce to any registry (#33) */
+  bool disable_publish; /* server: don't announce to any registry (#33) */
+  bool disable_registry_browser; /* client: don't query the registry for the server list (#33) */
 } CliArgs_t;
 
 #endif

@@ -65,6 +65,8 @@ const ConfigEntry player_config_entries[] = {
      sizeof(uint8_t)},
     {"password", CFG_TYPE_STRING, "", offsetof(PlayerConfig_t, password),
      sizeof(((PlayerConfig_t *)0)->password)},
+    {"registry_browser", CFG_TYPE_BOOL, "yes", offsetof(PlayerConfig_t, registry_browser),
+     sizeof(bool)},
 #define HK(name, def)                                                                              \
   {"hotkey_" #name, CFG_TYPE_STRING, def, offsetof(PlayerConfig_t, hotkey_##name),                 \
    SIZEOF_HOTKEY_NAME}
