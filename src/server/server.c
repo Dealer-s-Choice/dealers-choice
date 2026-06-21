@@ -411,7 +411,7 @@ void broadcast_game_state(ArgsBroadcastGameState_t *args) {
     uint32_t send_start = dc_get_ticks();
     if (send_all_tcp(args->clients[i], &size_net, sizeof(size_net)) != 0 ||
         send_all_tcp(args->clients[i], data, size) != 0) {
-      dc_log(DC_LOG_ERROR, "Failed to send game state to client %d", i);
+      dc_log(DC_LOG_WARN, "Failed to send game state to client %d", i);
       handle_disconnections(args);
     } else {
       uint32_t send_ms = dc_get_ticks() - send_start;
@@ -440,7 +440,7 @@ static void send_game_settings(ArgsBroadcastGameState_t *args, tcpme_socket_t so
 
   // fprintf(stderr, "sending to %d\n", i);
   if (send_all_tcp(sock, &size_net, sizeof(size_net)) != 0 || send_all_tcp(sock, data, size) != 0) {
-    dc_log(DC_LOG_ERROR, "Failed to send game settings to client");
+    dc_log(DC_LOG_WARN, "Failed to send game settings to client");
     handle_disconnections(args);
   }
   free(data);
@@ -470,7 +470,7 @@ static void broadcast_framed(const ArgsBroadcastGameState_t *args, uint16_t opco
     pl_idx = recipient->id;
     tcpme_socket_t sock = args->clients[pl_idx];
     if (tcpme_socket_valid(sock) && send_message(sock, opcode, payload, len) < 0)
-      dc_log(DC_LOG_ERROR, "[broadcast_framed] Failed to send opcode 0x%04X to client %d", opcode,
+      dc_log(DC_LOG_WARN, "[broadcast_framed] Failed to send opcode 0x%04X to client %d", opcode,
               pl_idx);
 
     recipient = get_next_connected_client(args->game_state->player, pl_idx);
@@ -515,7 +515,7 @@ void broadcast_turn_id(const ArgsBroadcastGameState_t *args) {
 
     tcpme_socket_t sock = args->clients[i];
     if (send_turn_id(sock, args->turn_id) < 0) {
-      dc_log(DC_LOG_ERROR, "[broadcast_turn_id] Failed to send to client %d", i);
+      dc_log(DC_LOG_WARN, "[broadcast_turn_id] Failed to send to client %d", i);
     }
   }
 }
@@ -628,7 +628,7 @@ static int broadcast_ping_times(ArgsBroadcastGameState_t *args, const uint32_t p
       continue;
     int result = send_message(args->clients[i], MSG_PING_BROADCAST, buf, len);
     if (result < 0) {
-      dc_log(DC_LOG_ERROR, "[PING] Failed to broadcast to client %d", i);
+      dc_log(DC_LOG_WARN, "[PING] Failed to broadcast to client %d", i);
     }
   }
   free(buf);
@@ -1472,7 +1472,7 @@ int run_server(const CliArgs_t *cli_args, Path_t *path) {
           // Read the message size first (4 bytes)
           uint32_t size_net = 0;
           if (recv_all_tcp(clients[i], &size_net, sizeof(size_net)) <= 0) {
-            dc_log(DC_LOG_ERROR, "[NET] Disconnection while reading size from client %d", i);
+            dc_log(DC_LOG_WARN, "[NET] Disconnection while reading size from client %d", i);
             remove_disconnected_player(&args_broadcast_game_state, i);
             continue;
           }
@@ -1491,7 +1491,7 @@ int run_server(const CliArgs_t *cli_args, Path_t *path) {
           }
 
           if (recv_all_tcp(clients[i], buffer, size) <= 0) {
-            dc_log(DC_LOG_ERROR, "[NET] Disconnection while reading payload from client %d", i);
+            dc_log(DC_LOG_WARN, "[NET] Disconnection while reading payload from client %d", i);
             free(buffer);
             continue;
           }

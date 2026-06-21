@@ -269,11 +269,11 @@ int send_all_tcp(tcpme_socket_t sock, const void *data, size_t length) {
   while (total_sent < length) {
     int sent = tcpme_send(sock, buf + total_sent, (int)(length - total_sent));
     if (sent < 0) {
-      dc_log(DC_LOG_ERROR, "tcpme_send failed: %s", tcpme_get_error());
+      dc_log(DC_LOG_WARN, "tcpme_send failed: %s", tcpme_get_error());
       return -1;
     }
     if (sent == 0) {
-      dc_log(DC_LOG_ERROR, "tcpme_send: connection closed");
+      dc_log(DC_LOG_WARN, "tcpme_send: connection closed");
       return -1;
     }
     total_sent += sent;
