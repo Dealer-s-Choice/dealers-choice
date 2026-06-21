@@ -7,7 +7,11 @@ services:
     # Logs go to port-named files under the output mount, so two servers on
     # different DC_PORT values don't clobber each other's logs. $$DC_PORT is
     # expanded by the container's shell (not Compose) from the DC_PORT env below.
-    command: sh -c 'exec dealers-choice-server --log-hands "/dc_output/hands-$$DC_PORT.txt" --log-game-results "/dc_output/results-$$DC_PORT.md" $$DC_EXTRA_ARGS'
+    # --port makes the server LISTEN on DC_PORT (not the hardcoded default), so
+    # the port it advertises to the registry / LAN discovery matches the port it
+    # is actually reachable on. Without it, a remapped publish (DC_PORT:22777)
+    # would make the server announce 22777 while only DC_PORT is reachable.
+    command: sh -c 'exec dealers-choice-server --port "$$DC_PORT" --log-hands "/dc_output/hands-$$DC_PORT.txt" --log-game-results "/dc_output/results-$$DC_PORT.md" $$DC_EXTRA_ARGS'
     environment:
       # DC_PORT is the published (host) port; it names the log files above and is
       # not otherwise read by the server. DC_CONFIG_DIR/DC_OUTPUT_DIR are NOT read
@@ -20,8 +24,10 @@ services:
     volumes:
       - "${DC_CONFIG_DIR}:/dc_config"
       - "${DC_OUTPUT_DIR}:/dc_output"
+    # Publish the same port inside and out so the advertised port (= listen port,
+    # set by --port above) is the one clients actually reach.
     ports:
-      - "${DC_PORT:-22777}:22777"
+      - "${DC_PORT:-22777}:${DC_PORT:-22777}"
     # Long-lived daemon: restart on crash and after reboot, but honor a manual
     # `compose stop`. (For local dev you may prefer `no`.)
     restart: unless-stopped
