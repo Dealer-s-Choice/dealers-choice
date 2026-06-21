@@ -491,8 +491,8 @@ RoundResults handle_round_real(ArgsBroadcastGameState_t *args, uint32_t initial_
               case ACTION_RAISE:
                 if (args->game_state->raises_remaining > 0) {
                   if (action.amount < args->game_state->prev_bet_amount) {
-                    dc_log(DC_LOG_ERROR,                             "Raise amount %" PRIu32 " below minimum %" PRIu32
-                            " from player %d; treating as call\n",
+                    dc_log(DC_LOG_ERROR, "Raise amount %" PRIu32 " below minimum %" PRIu32
+                            " from player %d; treating as call",
                             action.amount, args->game_state->prev_bet_amount, turn->id);
                     server_handle_call(args->game_state, &player_total_paid[turn->id], turn->id,
                                        &total_bets_plus_raises);

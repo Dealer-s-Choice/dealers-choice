@@ -90,7 +90,13 @@ typedef enum {
 /* Timestamped logger: prints "YYYY-MM-DD HH:MM:SS [LEVEL] <msg>\n" to stderr.
  * DEBUG is gated by --debug; INFO and WARN by --verbose; ERROR always prints.
  * The message must NOT include a trailing newline (dc_log appends one). */
-#if defined(__GNUC__)
+/* Use the gnu_printf archetype on MinGW: its default "printf" archetype is
+ * ms_printf, which rejects C99 conversions like %z (UCRT supports them at
+ * runtime, so it's only the compile-time format check that's wrong). gnu_printf
+ * is the GNU/glibc behaviour gcc and clang already use elsewhere. */
+#if defined(__MINGW32__)
+void dc_log(DCLogLevel_t level, const char *fmt, ...) __attribute__((format(gnu_printf, 2, 3)));
+#elif defined(__GNUC__)
 void dc_log(DCLogLevel_t level, const char *fmt, ...) __attribute__((format(printf, 2, 3)));
 #else
 void dc_log(DCLogLevel_t level, const char *fmt, ...);

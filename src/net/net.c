@@ -341,8 +341,8 @@ ERecvStatus_t recv_game_state(SocketContext_t *socket_context, GameState_t *game
 
     int r_payload = recv_all_tcp(sock, buffer, size);
     if (r_payload != (int)size) {
-      dc_log(DC_LOG_ERROR,               "[recv_game_state] Disconnected while reading game state payload (got %d, expected "
-              "%u). tcpme_get_error(): %s\n",
+      dc_log(DC_LOG_ERROR, "[recv_game_state] Disconnected while reading game state payload (got %d, expected "
+              "%u). tcpme_get_error(): %s",
               r_payload, size, tcpme_get_error());
       free(buffer);
       return RECV_ERROR;
@@ -488,8 +488,8 @@ ERecvStatus_t recv_game_state(SocketContext_t *socket_context, GameState_t *game
 
     default:
       if (!deserialize_game_state(buffer, size, game_state))
-        dc_log(DC_LOG_ERROR,                 "[recv_game_state] unrecognized opcode 0x%04X (size=%u) could not be parsed as "
-                "GameState\n",
+        dc_log(DC_LOG_ERROR, "[recv_game_state] unrecognized opcode 0x%04X (size=%u) could not be parsed as "
+                "GameState",
                 opcode, size);
     }
 
@@ -595,8 +595,8 @@ int send_protocol_header(tcpme_socket_t sock, uint8_t flags) {
     return -1;
   }
   if (response != 0) {
-    dc_log(DC_LOG_WARN,             "Server rejected connection: protocol version mismatch "
-            "(client version: %d)\n",
+    dc_log(DC_LOG_WARN, "Server rejected connection: protocol version mismatch "
+            "(client version: %d)",
             GAME_PROTOCOL_VERSION);
     return -1;
   }

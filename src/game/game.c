@@ -207,8 +207,8 @@ bool get_game_select_payload(uint8_t *buffer, const uint32_t size, const int cli
 
   // Size check — includes opcode in this context
   if (size != OPCODE_SIZE + sizeof(GameSelectPayload_t)) {
-    dc_log(DC_LOG_WARN,             "[NET] Invalid MSG_GAME_SELECT size from client %d "
-            "(got %zu, expected %zu)\n",
+    dc_log(DC_LOG_WARN, "[NET] Invalid MSG_GAME_SELECT size from client %d "
+            "(got %zu, expected %zu)",
             client_id, (size_t)size, (size_t)(OPCODE_SIZE + sizeof(GameSelectPayload_t)));
     return false;
   }
