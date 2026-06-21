@@ -40,6 +40,9 @@ All settings are optional except `DC_PASSWORD`. See `env.example`.
 | `DC_CONFIG_DIR` | Host folder mounted read-only at `/dc_config` (put `server.conf` here). | (none) |
 | `DC_OUTPUT_DIR` | Host folder mounted at `/dc_output` for log/result files the server writes. | (none) |
 | `DC_EXTRA_ARGS` | Extra command-line options for the server. | (none) |
+| `DC_REGISTRY_DIR` | Host folder mounted at `/dc_registry` where the registry writes `servers.json`. Only used by the `registry` profile. | (none) |
+| `DC_REGISTRY_PORT` | Host port the registry is published on. Only used by the `registry` profile. | `22070` |
+| `DC_REGISTRY_ARGS` | Extra command-line options for the registry (for example `--verbose`). Only used by the `registry` profile. | (none) |
 
 The server does not read `DC_CONFIG_DIR` or `DC_OUTPUT_DIR` itself. They only
 set where the host folders are mounted. To make the server use them, point its
@@ -66,6 +69,29 @@ To run several bots at once:
 
 By default the bots connect to the server in the same Compose project. To point
 them at a different server, set `DC_BOT_HOST` and `DC_BOT_PORT`.
+
+### Registry (optional)
+
+> **Warning: the registry is experimental.**
+> It is new and lightly tested, and the protocol is not final. Run a registry
+> only if you are adventurous and want to host a public server directory.
+
+The registry is a directory of public game servers. Game servers announce
+themselves to it, and clients can browse the list to find internet games. You
+do not need a registry for LAN play. The registry does not store the IP
+addresses of clients who only browse the list.
+
+The registry is not started by default. To start it:
+
+    docker compose --profile registry up -d
+
+Before you start it, set `DC_REGISTRY_DIR` to a host folder. The registry
+writes the server list to `servers.json` inside that folder. A website can then
+serve that file.
+
+The registry listens on port `22070`. Change the published host port with
+`DC_REGISTRY_PORT`. Open inbound TCP on that port on the registry host. To see
+log output, set `DC_REGISTRY_ARGS=--verbose`.
 
 ## systemd (without Docker)
 

@@ -45,3 +45,30 @@ services:
     profiles:
       - bot
     restart: no
+
+  # Optional registry (directory) — not started by default.
+  #   docker compose --profile registry up
+  # EXPERIMENTAL: only for adventurous operators running a *public* server
+  # directory. The registry is new and lightly tested; the protocol is not
+  # final. Game servers announce themselves to it and clients browse the list.
+  # It does NOT store browsing-client IP addresses.
+  # The server list is written to /dc_registry/servers.json (mounted from
+  # DC_REGISTRY_DIR) so a website can serve it. Add --verbose via
+  # DC_REGISTRY_ARGS to log announces / list requests.
+  dealers-choice-registry:
+    image: ${DC_IMAGE:-ghcr.io/dealer-s-choice/dealers_choice:latest}
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    command: sh -c 'exec dealers-choice-registry --json /dc_registry/servers.json $$DC_REGISTRY_ARGS'
+    environment:
+      # DC_REGISTRY_DIR only feeds the volume bind source below; the registry
+      # is pointed at the mount via the fixed --json path in the command above.
+      - DC_REGISTRY_ARGS=${DC_REGISTRY_ARGS:-}
+    volumes:
+      - "${DC_REGISTRY_DIR}:/dc_registry"
+    ports:
+      - "${DC_REGISTRY_PORT:-22070}:22070"
+    profiles:
+      - registry
+    restart: no
