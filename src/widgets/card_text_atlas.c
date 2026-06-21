@@ -51,6 +51,10 @@ static struct {
   int w, h;
 } g_suit_atlas[ATLAS_SUITS];
 
+/* Single shared "hidden from opponents" badge for private hole cards (#64) —
+ * loaded once, blitted by every shaded card (no per-card texture). */
+static SDL_Texture *g_hidden_icon = NULL;
+
 static bool g_initialised = false;
 static SDL_Renderer *g_renderer = NULL;
 static TTF_Font *g_face_font = NULL;
@@ -92,6 +96,10 @@ static void destroy_locked(void) {
       g_suit_atlas[s].texture = NULL;
     }
     g_suit_atlas[s].w = g_suit_atlas[s].h = 0;
+  }
+  if (g_hidden_icon) {
+    SDL_DestroyTexture(g_hidden_icon);
+    g_hidden_icon = NULL;
   }
 }
 
@@ -184,6 +192,34 @@ void card_text_atlas_init(SDL_Renderer *renderer, TTF_Font *face_font, const cha
     SDL_FreeSurface(surface);
   }
 
+  /* Load the shared "hidden from opponents" badge (eye-off) for private hole
+   * cards (#64). White glyph on a translucent disc; card_widget_render blits it
+   * as-is into a card corner. NULL on failure -> cards just show no badge. */
+  {
+    char path[4096];
+    snprintf(path, sizeof(path), "%s/images/eye-off.svg", data_dir);
+    SDL_RWops *rw = SDL_RWFromFile(path, "rb");
+    if (!rw) {
+      dc_log(DC_LOG_ERROR, "card_text_atlas_init: open %s failed: %s (SDL: %s)", path,
+             strerror(errno), SDL_GetError());
+    } else {
+      SDL_Surface *surface = IMG_LoadSVG_RW(rw);
+      SDL_RWclose(rw);
+      if (!surface) {
+        dc_log(DC_LOG_ERROR, "card_text_atlas_init: IMG_LoadSVG_RW(%s) failed: %s", path,
+               IMG_GetError());
+      } else {
+        g_hidden_icon = SDL_CreateTextureFromSurface(renderer, surface);
+        if (!g_hidden_icon)
+          dc_log(DC_LOG_ERROR, "card_text_atlas_init: hidden-icon texture failed: %s",
+                 SDL_GetError());
+        else
+          SDL_SetTextureBlendMode(g_hidden_icon, SDL_BLENDMODE_BLEND);
+        SDL_FreeSurface(surface);
+      }
+    }
+  }
+
   g_initialised = true;
 }
 
@@ -217,3 +253,6 @@ bool card_text_atlas_get(int face_val, int suit_val, CardAtlasEntry_t *out) {
 }
 
 bool card_text_atlas_is_initialised(void) { return g_initialised; }
+
+/* Shared "hidden from opponents" badge texture, or NULL if unavailable. */
+SDL_Texture *card_text_atlas_hidden_icon(void) { return g_initialised ? g_hidden_icon : NULL; }

@@ -49,19 +49,11 @@ typedef struct {
   bool is_null;
   bool is_wild;
   bool is_winning;
-  bool is_shaded; /* dim overlay: local player's own card that is hidden from
-                   * other players (stud/holdem hole cards) (#64) */
+  bool is_shaded; /* local player's own card that is hidden from other players
+                   * (stud/holdem hole cards); drawn with the eye-off badge (#64) */
   bool my_card;   /* true when this card belongs to the local player */
   TTF_Font *font; /* kept for the card-back animated patterns that still
                    * compute glyph metrics; not used for face rendering. */
-  /* Cached gradient texture for the is_shaded private-card overlay (#64).
-   * Generated lazily in card_widget_render and reused across frames; the
-   * cached size is tracked so the texture is regenerated if the card is
-   * ever laid out at a different size (e.g. a layout change). Freed in
-   * card_widget_destroy. */
-  void *shade_tex; /* SDL_Texture* (void* to keep this header SDL-core-free) */
-  int shade_tex_w;
-  int shade_tex_h;
 } CardWidget_t;
 
 void card_widget_init(CardWidget_t *cw, TTF_Font *font);

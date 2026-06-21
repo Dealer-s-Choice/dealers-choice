@@ -67,7 +67,7 @@ static CardBackStyle_t card_back_styles[] = {
 
 static int selected_card_back = -1;
 
-/* Forward decl: private-card gradient overlay (#64), defined after
+/* Forward decl: private-card "hidden" badge (#64), defined after
  * card_widget_render which calls it. */
 static void draw_private_shade(SDL_Renderer *renderer, CardWidget_t *cw);
 
@@ -562,93 +562,34 @@ static void card_widget_render(UIWidget_t *w) {
     SDL_SetTextureColorMod(entry.suit, 0, 0, 0);
   SDL_RenderCopy(renderer, entry.suit, NULL, &suit_rect);
 
-  /* Dim overlay marking a card that is private to the local player —
-   * hidden from opponents (stud/holdem hole cards) (#64).
-   *
-   * Rather than a flat dim, the overlay is a diagonal gradient: darkest
-   * (most opaque) in the lower-left and upper-right corners, fading to
-   * nearly clear toward the centre. This reads as a subtle "this card is
-   * shaded just for you" cue without obscuring the pip/suit in the middle.
-   *
-   * The gradient is baked once into a small per-pixel texture cached on the
-   * widget (cw->shade_tex) and stretched over the card each frame, so the
-   * render loop only does a single SDL_RenderCopy. */
+  /* Mark a card that is private to the local player — hidden from opponents
+   * (stud/hold'em hole cards) (#64) — with a small "eye-off" badge in the
+   * top-right corner (a shared icon from the atlas), rather than dimming the
+   * card face. */
   if (cw->is_shaded)
     draw_private_shade(renderer, cw);
 }
 
-/* Build (or rebuild) the cached private-card overlay texture: fully transparent
- * except a small solid-black right triangle in the lower-left and upper-right
- * corners — a discreet marker that the card is hidden from opponents (#64),
- * leaving the face unobscured. Baked once and stretched over the card each frame
- * (one SDL_RenderCopy). Returns true on success. */
-static bool build_shade_texture(SDL_Renderer *renderer, CardWidget_t *cw, int w, int h) {
-  if (w <= 0 || h <= 0)
-    return false;
-
-  SDL_Texture *tex =
-      SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, w, h);
-  if (!tex)
-    return false;
-  SDL_SetTextureBlendMode(tex, SDL_BLENDMODE_BLEND);
-
-  void *pixels = NULL;
-  int pitch = 0;
-  if (SDL_LockTexture(tex, NULL, &pixels, &pitch) != 0) {
-    SDL_DestroyTexture(tex);
-    return false;
-  }
-
-  /* Solid-black right triangle in the lower-left and upper-right corners;
-   * transparent everywhere else. corner_frac is the triangle leg length as a
-   * fraction of the card's width/height (small = discreet marker). */
-  const float corner_frac = 0.28f;
-  const float lx = (float)w * corner_frac; /* horizontal leg */
-  const float ly = (float)h * corner_frac; /* vertical leg */
-  for (int y = 0; y < h; y++) {
-    Uint32 *row = (Uint32 *)((Uint8 *)pixels + (size_t)y * pitch);
-    for (int x = 0; x < w; x++) {
-      /* lower-left: right angle at the bottom-left, hypotenuse x/lx + up/ly = 1 */
-      float up = (float)(h - 1 - y);
-      bool in_ll = lx > 0.0f && ly > 0.0f && ((float)x / lx + up / ly) <= 1.0f;
-      /* upper-right: right angle at the top-right */
-      float fromright = (float)(w - 1 - x);
-      bool in_ur = lx > 0.0f && ly > 0.0f && (fromright / lx + (float)y / ly) <= 1.0f;
-      /* RGBA8888 packed; black, alpha 255 inside a corner triangle else 0. */
-      Uint8 a = (in_ll || in_ur) ? 255 : 0;
-      row[x] = ((Uint32)0u << 24) | ((Uint32)0u << 16) | ((Uint32)0u << 8) | (Uint32)a;
-    }
-  }
-
-  SDL_UnlockTexture(tex);
-
-  if (cw->shade_tex)
-    SDL_DestroyTexture((SDL_Texture *)cw->shade_tex);
-  cw->shade_tex = tex;
-  cw->shade_tex_w = w;
-  cw->shade_tex_h = h;
-  return true;
-}
-
+/* Blit the shared "hidden from opponents" badge (eye-off icon) into the
+ * top-right corner of a private hole card (#64). The icon is one shared texture
+ * owned by the atlas — no per-card texture. badge_frac sets the square size as a
+ * fraction of the card's short side. */
 static void draw_private_shade(SDL_Renderer *renderer, CardWidget_t *cw) {
+  SDL_Texture *icon = card_text_atlas_hidden_icon();
+  if (!icon)
+    return;
   const SDL_Rect *r = &cw->base.rect;
-  if (!cw->shade_tex || cw->shade_tex_w != r->w || cw->shade_tex_h != r->h) {
-    if (!build_shade_texture(renderer, cw, r->w, r->h)) {
-      /* Fall back to the old flat dim if texture creation failed. */
-      SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
-      SDL_SetRenderDrawColor(renderer, 0, 0, 0, 70);
-      SDL_RenderFillRect(renderer, r);
-      SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);
-      return;
-    }
-  }
-  SDL_RenderCopy(renderer, (SDL_Texture *)cw->shade_tex, NULL, r);
+  const float badge_frac = 0.40f;
+  int shortside = (r->w < r->h) ? r->w : r->h;
+  int size = (int)((float)shortside * badge_frac);
+  if (size < 8)
+    size = 8;
+  int margin = size / 6;
+  SDL_Rect dst = {r->x + r->w - size - margin, r->y + margin, size, size};
+  SDL_RenderCopy(renderer, icon, NULL, &dst);
 }
 
 static void card_widget_destroy(UIWidget_t *w) {
-  CardWidget_t *cw = (CardWidget_t *)w;
-  if (cw->shade_tex)
-    SDL_DestroyTexture((SDL_Texture *)cw->shade_tex);
   free(w);
 }
 

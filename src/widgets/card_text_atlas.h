@@ -91,6 +91,12 @@ bool card_text_atlas_get(int face_val, int suit_val, CardAtlasEntry_t *out);
 /* True once card_text_atlas_init has succeeded. */
 bool card_text_atlas_is_initialised(void);
 
+/* Shared "hidden from opponents" badge (eye-off icon) for the local player's
+ * private hole cards (#64), or NULL if unavailable. Owned by the atlas — do not
+ * destroy it. card_widget_render blits it into a corner when the card is
+ * marked private. */
+SDL_Texture *card_text_atlas_hidden_icon(void);
+
 /* Total textures the atlas holds when fully populated: 13 faces × 2
  * colors + 4 suits = 30. */
 #define CARD_TEXT_ATLAS_SIZE 30

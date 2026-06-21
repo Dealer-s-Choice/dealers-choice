@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96">
+  <!-- "hidden from opponents" badge for the local player's private hole cards.
+       Dark translucent disc so the glyph reads on any card background; white
+       eye-with-a-slash glyph. Oversized (96x96) so SDL downscales it crisply,
+       matching the suit SVG convention. -->
+  <circle cx="48" cy="48" r="44" fill="#0e1216" fill-opacity="0.62"/>
+  <g fill="none" stroke="#ffffff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M20 50 C30 34, 66 34, 76 50 C66 66, 30 66, 20 50 Z"/>
+    <circle cx="48" cy="50" r="9" fill="#ffffff" stroke="none"/>
+    <line x1="26" y1="22" x2="70" y2="74"/>
+  </g>
+</svg>
