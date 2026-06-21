@@ -27,6 +27,7 @@
 */
 
 #include <canfigger.h>
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -270,21 +271,21 @@ static void config_field_to_string(const void *cfg, const ConfigEntry *entry, ch
 void save_player_config(const PlayerConfig_t *config) {
   char *cfgdir = canfigger_config_dir(DEALERSCHOICE_NAME);
   if (!cfgdir) {
-    fprintf(stderr, "Unable to determine config directory.\n");
+    dc_log(DC_LOG_ERROR, "Unable to determine config directory.");
     return;
   }
 
   char *cfg_pathname = canfigger_path_join(cfgdir, "player.conf");
   free(cfgdir);
   if (!cfg_pathname) {
-    fprintf(stderr, "canfigger_path_join failed\n");
+    dc_log(DC_LOG_ERROR, "canfigger_path_join failed");
     return;
   }
 
   size_t tmp_len = strlen(cfg_pathname) + sizeof(".tmp");
   char *tmp_pathname = malloc(tmp_len);
   if (!tmp_pathname) {
-    perror("malloc");
+    dc_log(DC_LOG_ERROR, "malloc: %s", strerror(errno));
     free(cfg_pathname);
     return;
   }
@@ -292,7 +293,7 @@ void save_player_config(const PlayerConfig_t *config) {
 
   FILE *fp = fopen(tmp_pathname, "w");
   if (!fp) {
-    perror("fopen");
+    dc_log(DC_LOG_ERROR, "fopen: %s", strerror(errno));
     free(tmp_pathname);
     free(cfg_pathname);
     return;
@@ -309,10 +310,10 @@ void save_player_config(const PlayerConfig_t *config) {
     write_ok = false;
 
   if (!write_ok) {
-    perror("writing player.conf");
+    dc_log(DC_LOG_ERROR, "writing player.conf: %s", strerror(errno));
     remove(tmp_pathname);
   } else if (replace_file(tmp_pathname, cfg_pathname) != 0) {
-    perror("rename player.conf");
+    dc_log(DC_LOG_ERROR, "rename player.conf: %s", strerror(errno));
     remove(tmp_pathname);
   }
 
@@ -372,7 +373,7 @@ ServerConfig_t get_server_config(Path_t *path, const CliArgs_t *cli_args) {
   if (!cli_args->server_conf) {
     path->server_conf_name = canfigger_path_join(path->data, "server.conf");
     if (!path->server_conf_name) {
-      fprintf(stderr, "canfigger_path_join failed\n");
+      dc_log(DC_LOG_ERROR, "canfigger_path_join failed");
       return config;
     }
   } else {
@@ -454,19 +455,19 @@ PlayerConfig_t get_player_config(void) {
 
   char *cfgdir = canfigger_config_dir(DEALERSCHOICE_NAME);
   if (!cfgdir) {
-    fprintf(stderr, "Unable to determine config directory.\n");
+    dc_log(DC_LOG_ERROR, "Unable to determine config directory.");
     return config;
   }
 
   EPathState state = check_pathname_state(cfgdir);
   if (state == PATH_NOT_FOUND) {
     if (make_directory_recursive(cfgdir) != 0) {
-      fprintf(stderr, "Failed to create config dir: %s\n", cfgdir);
+      dc_log(DC_LOG_ERROR, "Failed to create config dir: %s", cfgdir);
       free(cfgdir);
       return config;
     }
   } else if (state == PATH_ERROR) {
-    fprintf(stderr, "Error checking config dir: %s\n", cfgdir);
+    dc_log(DC_LOG_ERROR, "Error checking config dir: %s", cfgdir);
     free(cfgdir);
     return config;
   }
@@ -474,7 +475,7 @@ PlayerConfig_t get_player_config(void) {
   char *cfg_pathname = canfigger_path_join(cfgdir, "player.conf");
   free(cfgdir);
   if (!cfg_pathname) {
-    fprintf(stderr, "canfigger_path_join failed\n");
+    dc_log(DC_LOG_ERROR, "canfigger_path_join failed");
     return config;
   }
 
@@ -493,14 +494,14 @@ PlayerConfig_t get_player_config(void) {
         }
         fclose(fp);
       } else {
-        perror("fopen");
+        dc_log(DC_LOG_ERROR, "fopen: %s", strerror(errno));
         free(cfg_pathname);
         exit(EXIT_FAILURE);
       }
     } else {
       /* File exists but couldn't be parsed (e.g., empty due to a race between
        * parallel processes). Use defaults so the caller can proceed. */
-      fprintf(stderr, "Error accessing %s\n", cfg_pathname);
+      dc_log(DC_LOG_ERROR, "Error accessing %s", cfg_pathname);
       for (size_t i = 0; i < player_config_entry_count; i++)
         config_set_from_string_real(&config, &player_config_entries[i],
                                     player_config_entries[i].default_value);
@@ -526,7 +527,7 @@ PlayerConfig_t get_player_config(void) {
     // Append missing keys with default values
     FILE *fp = fopen(cfg_pathname, "a");
     if (!fp) {
-      perror("fopen (appending missing keys)");
+      dc_log(DC_LOG_ERROR, "fopen (appending missing keys): %s", strerror(errno));
     } else {
       for (size_t i = 0; i < player_config_entry_count; i++) {
         if (!found_keys[i]) {
@@ -553,7 +554,7 @@ LayoutConfig_t get_layout_config(const char *data_dir) {
 
   char *cfg_pathname = canfigger_path_join(data_dir, "layout.conf");
   if (!cfg_pathname) {
-    fprintf(stderr, "canfigger_path_join failed for layout.conf\n");
+    dc_log(DC_LOG_ERROR, "canfigger_path_join failed for layout.conf");
     goto use_defaults;
   }
 

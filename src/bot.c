@@ -423,14 +423,14 @@ int main(int argc, char *argv[]) {
   pcg_srand_auto();
 
   if (tcpme_init() != 0) {
-    fprintf(stderr, "tcpme_init failed: %s\n", tcpme_get_error());
+    dc_log(DC_LOG_ERROR, "tcpme_init failed: %s", tcpme_get_error());
     return 1;
   }
 
   SocketContext_t socket_ctx = {0};
   const char *password = getenv("DC_PASSWORD");
   if (!bot_connect(host, port, nick, password ? password : "", &socket_ctx)) {
-    fprintf(stderr, "Failed to connect to %s:%d\n", host, port);
+    dc_log(DC_LOG_ERROR, "Failed to connect to %s:%d", host, port);
     tcpme_quit();
     return 1;
   }
@@ -446,7 +446,7 @@ int main(int argc, char *argv[]) {
         break;
     } while (s == RECV_NOTHING);
     if (s != RECV_SUCCESS) {
-      fprintf(stderr, "Failed to receive game settings\n");
+      dc_log(DC_LOG_ERROR, "Failed to receive game settings");
       socket_cleanup(&socket_ctx);
       tcpme_quit();
       return 1;

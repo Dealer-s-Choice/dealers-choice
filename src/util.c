@@ -168,7 +168,7 @@ void *real_calloc_wrap(const size_t n, const size_t size, const char *func, int 
   if (ptr)
     return ptr;
 
-  fprintf(stderr, "calloc: %s in %s() at line %d\n", strerror(errno), func, line);
+  dc_log(DC_LOG_ERROR, "calloc: %s in %s() at line %d", strerror(errno), func, line);
   exit(EXIT_FAILURE);
 }
 
@@ -177,7 +177,7 @@ void *real_malloc_wrap(const size_t size, const char *func, int line) {
   if (ptr)
     return ptr;
 
-  fprintf(stderr, "malloc: %s in %s() at line %d\n", strerror(errno), func, line);
+  dc_log(DC_LOG_ERROR, "malloc: %s in %s() at line %d", strerror(errno), func, line);
   exit(EXIT_FAILURE);
 }
 
@@ -252,7 +252,7 @@ void parse_signed(const char *s, long minv, long maxv, long *out) {
   long v = strtol(s, &endptr, 0);
 
   if (errno == ERANGE || *endptr != '\0' || v < minv || v > maxv) {
-    fprintf(stderr, "Invalid signed integer value: '%s'\n", s);
+    dc_log(DC_LOG_ERROR, "Invalid signed integer value: '%s'", s);
     exit(EXIT_FAILURE);
   }
 
@@ -265,7 +265,7 @@ void parse_unsigned(const char *s, unsigned long maxv, unsigned long *out) {
   unsigned long v = strtoul(s, &endptr, 0);
 
   if (errno == ERANGE || *endptr != '\0' || v > maxv) {
-    fprintf(stderr, "Invalid unsigned integer value: '%s'\n", s);
+    dc_log(DC_LOG_ERROR, "Invalid unsigned integer value: '%s'", s);
     exit(EXIT_FAILURE);
   }
 

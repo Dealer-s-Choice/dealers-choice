@@ -181,12 +181,12 @@ int main(int argc, char *argv[]) {
   const CliArgs_t cli_args = parse_cli_args(argc, argv);
 
   if (SDL_Init(SDL_INIT_VIDEO) == -1) {
-    fprintf(stderr, "SDL init failed: %s\n", SDL_GetError());
+    dc_log(DC_LOG_ERROR, "SDL init failed: %s", SDL_GetError());
     return 1;
   }
 
   if (TTF_Init() == -1) {
-    fprintf(stderr, "TTF_Init: %s\n", TTF_GetError());
+    dc_log(DC_LOG_ERROR, "TTF_Init: %s", TTF_GetError());
     return -1;
   }
 
@@ -226,7 +226,7 @@ int main(int argc, char *argv[]) {
   if (cli_args.disable_registry_browser)
     player_config.registry_browser = false;
   if (!player_config.loaded) {
-    fprintf(stderr, "Unable to load config\n");
+    dc_log(DC_LOG_ERROR, "Unable to load config");
     exit(EXIT_FAILURE);
   }
   init_hotkeys(&player_config);
@@ -249,12 +249,12 @@ int main(int argc, char *argv[]) {
 
   /* Client networking + password hashing — only needed past this point. */
   if (sodium_init() < 0) {
-    fprintf(stderr, "libsodium init failed\n");
+    dc_log(DC_LOG_ERROR, "libsodium init failed");
     exit(1);
   }
   pcg_srand_auto();
   if (tcpme_init() != 0) {
-    fprintf(stderr, "tcpme_init failed: %s\n", tcpme_get_error());
+    dc_log(DC_LOG_ERROR, "tcpme_init failed: %s", tcpme_get_error());
     return 1;
   }
 
