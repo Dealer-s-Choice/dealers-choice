@@ -577,12 +577,11 @@ static void card_widget_render(UIWidget_t *w) {
     draw_private_shade(renderer, cw);
 }
 
-/* Build (or rebuild) the cached gradient overlay texture for a private card.
- * The alpha at each texel is proportional to |u - v| where u,v are the
- * normalized x,y position in [0,1]: that quantity is maximal at the
- * lower-left (u=0,v=1) and upper-right (u=1,v=0) corners and zero along the
- * top-left/bottom-right diagonal and at the centre — giving the requested
- * two-dark-corners, light-middle look. Returns true on success. */
+/* Build (or rebuild) the cached private-card overlay texture: fully transparent
+ * except a small solid-black right triangle in the lower-left and upper-right
+ * corners — a discreet marker that the card is hidden from opponents (#64),
+ * leaving the face unobscured. Baked once and stretched over the card each frame
+ * (one SDL_RenderCopy). Returns true on success. */
 static bool build_shade_texture(SDL_Renderer *renderer, CardWidget_t *cw, int w, int h) {
   if (w <= 0 || h <= 0)
     return false;
@@ -600,19 +599,23 @@ static bool build_shade_texture(SDL_Renderer *renderer, CardWidget_t *cw, int w,
     return false;
   }
 
-  /* Peak alpha at the two dark corners. Kept modest so the middle stays
-   * readable; the centre fades to fully transparent. */
-  const int max_alpha = 150;
+  /* Solid-black right triangle in the lower-left and upper-right corners;
+   * transparent everywhere else. corner_frac is the triangle leg length as a
+   * fraction of the card's width/height (small = discreet marker). */
+  const float corner_frac = 0.28f;
+  const float lx = (float)w * corner_frac; /* horizontal leg */
+  const float ly = (float)h * corner_frac; /* vertical leg */
   for (int y = 0; y < h; y++) {
     Uint32 *row = (Uint32 *)((Uint8 *)pixels + (size_t)y * pitch);
-    /* v in [0,1] top->bottom */
-    float v = (h > 1) ? (float)y / (float)(h - 1) : 0.0f;
     for (int x = 0; x < w; x++) {
-      float u = (w > 1) ? (float)x / (float)(w - 1) : 0.0f;
-      float t = fabsf(u - v); /* 0 at centre/main-diagonal, 1 at the two corners */
-      Uint8 a = (Uint8)(t * (float)max_alpha + 0.5f);
-      /* RGBA8888 is 0xRRGGBBAA in memory order via this packing; the colour
-       * is black, only alpha varies. */
+      /* lower-left: right angle at the bottom-left, hypotenuse x/lx + up/ly = 1 */
+      float up = (float)(h - 1 - y);
+      bool in_ll = lx > 0.0f && ly > 0.0f && ((float)x / lx + up / ly) <= 1.0f;
+      /* upper-right: right angle at the top-right */
+      float fromright = (float)(w - 1 - x);
+      bool in_ur = lx > 0.0f && ly > 0.0f && (fromright / lx + (float)y / ly) <= 1.0f;
+      /* RGBA8888 packed; black, alpha 255 inside a corner triangle else 0. */
+      Uint8 a = (in_ll || in_ur) ? 255 : 0;
       row[x] = ((Uint32)0u << 24) | ((Uint32)0u << 16) | ((Uint32)0u << 8) | (Uint32)a;
     }
   }
