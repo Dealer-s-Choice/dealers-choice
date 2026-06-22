@@ -1,3 +1,12 @@
+# Container stdout/stderr log rotation via Docker's json-file driver (NOT baked
+# into DC): caps each container's logs at max-file * max-size. Referenced by
+# every service through the *dc_logging anchor.
+x-logging: &dc_logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
 services:
   dealers-choice-server:
     image: ${DC_IMAGE:-ghcr.io/dealer-s-choice/dealers_choice:latest}
@@ -46,6 +55,7 @@ services:
       - no-new-privileges:true
     cap_drop:
       - ALL
+    logging: *dc_logging
     profiles:
       - server
 
@@ -75,6 +85,7 @@ services:
       - no-new-privileges:true
     cap_drop:
       - ALL
+    logging: *dc_logging
     profiles:
       - bot
     # Restart only if the bot crashes — not when it exits cleanly (done/quit).
@@ -112,6 +123,7 @@ services:
       - no-new-privileges:true
     cap_drop:
       - ALL
+    logging: *dc_logging
     profiles:
       - registry
     # Long-lived daemon, same policy as the server.
