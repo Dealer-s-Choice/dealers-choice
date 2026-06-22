@@ -64,6 +64,20 @@ Override the count and seed via env vars when running through meson:
 
     DC_FUZZ_N=2000 DC_FUZZ_SEED=42 meson test -C _build_dealers_choice -v test_pokeval_fuzz
 
+### Wire-protocol fuzzers
+
+`test_net_fuzz`, `test_registry_fuzz`, and `test_lan_fuzz` throw randomized
+and malformed input at the network-facing parsers. CI runs them under
+ASan/UBSan, so input that could crash or corrupt memory fails the build
+instead of reaching a live server. They take the same count/seed knobs as the
+pokeval fuzzer:
+
+    DC_FUZZ_N=200000 DC_FUZZ_SEED=42 \
+      meson test -C _build_dealers_choice -v test_net_fuzz
+
+or run a binary directly (`_build_dealers_choice/tests/test_net_fuzz [count] [seed]`).
+Run them at high volume now and then; a fixed seed only covers so much.
+
 ## Local server + bots harnesses
 
 Two shell scripts in `scripts/` bring up a real server with bot
