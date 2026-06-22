@@ -1318,7 +1318,7 @@ const ProtobufCMessageDescriptor action_announce__descriptor =
   (ProtobufCMessageInit) action_announce__init,
   NULL,NULL,NULL    /* reserved[123] */
 };
-static const ProtobufCFieldDescriptor server_announce__field_descriptors[7] =
+static const ProtobufCFieldDescriptor server_announce__field_descriptors[8] =
 {
   {
     "registry_version",
@@ -1404,6 +1404,18 @@ static const ProtobufCFieldDescriptor server_announce__field_descriptors[7] =
     0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
+  {
+    "start_time",
+    8,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_UINT64,
+    0,   /* quantifier_offset */
+    offsetof(ServerAnnounce, start_time),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
 };
 static const unsigned server_announce__field_indices_by_name[] = {
   6,   /* field[6] = in_progress */
@@ -1412,12 +1424,13 @@ static const unsigned server_announce__field_indices_by_name[] = {
   5,   /* field[5] = password_protected */
   3,   /* field[3] = player_count */
   0,   /* field[0] = registry_version */
+  7,   /* field[7] = start_time */
   2,   /* field[2] = tcp_port */
 };
 static const ProtobufCIntRange server_announce__number_ranges[1 + 1] =
 {
   { 1, 0 },
-  { 0, 7 }
+  { 0, 8 }
 };
 const ProtobufCMessageDescriptor server_announce__descriptor =
 {
@@ -1427,14 +1440,14 @@ const ProtobufCMessageDescriptor server_announce__descriptor =
   "ServerAnnounce",
   "",
   sizeof(ServerAnnounce),
-  7,
+  8,
   server_announce__field_descriptors,
   server_announce__field_indices_by_name,
   1,  server_announce__number_ranges,
   (ProtobufCMessageInit) server_announce__init,
   NULL,NULL,NULL    /* reserved[123] */
 };
-static const ProtobufCFieldDescriptor server_entry__field_descriptors[7] =
+static const ProtobufCFieldDescriptor server_entry__field_descriptors[8] =
 {
   {
     "ip",
@@ -1520,6 +1533,18 @@ static const ProtobufCFieldDescriptor server_entry__field_descriptors[7] =
     0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
+  {
+    "start_time",
+    8,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_UINT64,
+    0,   /* quantifier_offset */
+    offsetof(ServerEntry, start_time),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
 };
 static const unsigned server_entry__field_indices_by_name[] = {
   6,   /* field[6] = in_progress */
@@ -1528,12 +1553,13 @@ static const unsigned server_entry__field_indices_by_name[] = {
   2,   /* field[2] = name */
   5,   /* field[5] = password_protected */
   3,   /* field[3] = player_count */
+  7,   /* field[7] = start_time */
   1,   /* field[1] = tcp_port */
 };
 static const ProtobufCIntRange server_entry__number_ranges[1 + 1] =
 {
   { 1, 0 },
-  { 0, 7 }
+  { 0, 8 }
 };
 const ProtobufCMessageDescriptor server_entry__descriptor =
 {
@@ -1543,7 +1569,7 @@ const ProtobufCMessageDescriptor server_entry__descriptor =
   "ServerEntry",
   "",
   sizeof(ServerEntry),
-  7,
+  8,
   server_entry__field_descriptors,
   server_entry__field_indices_by_name,
   1,  server_entry__number_ranges,

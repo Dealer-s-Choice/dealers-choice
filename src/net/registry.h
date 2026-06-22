@@ -60,6 +60,13 @@ typedef struct {
   uint8_t max_players;
   bool password_protected;
   bool in_progress;
+  /* Server process start as unix seconds (wall clock, time(NULL)); 0 means
+   * unknown (e.g. an older server that predates this field). Reported in the
+   * announce and forwarded verbatim; the client derives uptime by subtracting
+   * it from its own time(NULL). Wall clock (not the monotonic dc_get_ticks)
+   * because uptime must survive across the server's reporting interval and the
+   * registry's separate clock, and is meaningful as an absolute instant. */
+  uint64_t start_time;
   char name[REGISTRY_NAME_MAX + 1];
 } RegistryServer_t;
 

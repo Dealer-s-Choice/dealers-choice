@@ -1,6 +1,7 @@
 
 unit_tests = [
   'serialization',
+  'registry',
   'get_next_player',
   'debug_print_cards',
   'layout_cards',

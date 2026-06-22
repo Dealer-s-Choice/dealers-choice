@@ -208,10 +208,14 @@ struct  ServerAnnounce
   uint32_t max_players;
   protobuf_c_boolean password_protected;
   protobuf_c_boolean in_progress;
+  /*
+   * server process start, unix seconds (0 = unknown);
+   */
+  uint64_t start_time;
 };
 #define SERVER_ANNOUNCE__INIT \
  { PROTOBUF_C_MESSAGE_INIT (&server_announce__descriptor) \
-, 0, (char *)protobuf_c_empty_string, 0, 0, 0, 0, 0 }
+, 0, (char *)protobuf_c_empty_string, 0, 0, 0, 0, 0, 0 }
 
 
 /*
@@ -227,10 +231,14 @@ struct  ServerEntry
   uint32_t max_players;
   protobuf_c_boolean password_protected;
   protobuf_c_boolean in_progress;
+  /*
+   * server process start, unix seconds (0 = unknown)
+   */
+  uint64_t start_time;
 };
 #define SERVER_ENTRY__INIT \
  { PROTOBUF_C_MESSAGE_INIT (&server_entry__descriptor) \
-, (char *)protobuf_c_empty_string, 0, (char *)protobuf_c_empty_string, 0, 0, 0, 0 }
+, (char *)protobuf_c_empty_string, 0, (char *)protobuf_c_empty_string, 0, 0, 0, 0, 0 }
 
 
 /*

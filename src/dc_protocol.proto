@@ -84,6 +84,8 @@ message ServerAnnounce {
   uint32 max_players = 5;
   bool password_protected = 6;
   bool in_progress = 7;
+  uint64 start_time = 8; // server process start, unix seconds (0 = unknown);
+                         // registry/client derive uptime from it
 }
 
 // One verified server in the registry's list.
@@ -95,6 +97,7 @@ message ServerEntry {
   uint32 max_players = 5;
   bool password_protected = 6;
   bool in_progress = 7;
+  uint64 start_time = 8; // server process start, unix seconds (0 = unknown)
 }
 
 // A client asks the registry for the current list.
