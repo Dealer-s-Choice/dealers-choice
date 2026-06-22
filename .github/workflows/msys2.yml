@@ -79,8 +79,10 @@ jobs:
       run: |
         mkdir -p _staging/data
         cp _build/dealers-choice.exe _build/dealers-choice-bot.exe _staging/
-        cp -r data/images data/sounds _staging/data/
-        cp data/*.ttf data/*.conf _staging/data/
+        # Ship the whole data/ tree (mirrors meson's install_subdir('data')) so a
+        # new asset or config file can never be left out of the package again
+        # (this is what caused the missing common.conf/layout.conf).
+        cp -r data/. _staging/data/
         bash packaging/windows/collect-dlls.sh _staging/dealers-choice.exe _staging/
 
     - name: Set version
