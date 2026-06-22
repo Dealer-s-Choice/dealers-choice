@@ -54,7 +54,7 @@
 #include "widgets/checkbox.h"
 #include "widgets/image.h"
 #include "widgets/input.h"
-#include "widgets/round_button.h"
+#include "widgets/diamond_button.h"
 #include "widgets/text.h"
 
 enum { LAN_MAX_SHOWN = 6 };
@@ -149,7 +149,12 @@ typedef struct {
 } ServerRow_t;
 
 enum { SERVER_TABLE_COLS = 6 }; /* Name | IP | Port | Players | Uptime | Connect */
-enum { CONNECT_BTN_DIAMETER = 25 };
+/* Connect-cell diamond gem: its bounding box defines the column width and the
+ * row height (it is the tallest widget in the row), so the diamond effectively
+ * fills its cell — left/right points near the side margins, top point near the
+ * top, bottom point at the full cell bottom (#93). Wider than tall reads as a
+ * card-suit diamond sitting in a button slot. */
+enum { CONNECT_BTN_W = 40, CONNECT_BTN_H = 30 };
 
 /* Total laid-out width of a table (sum of column widths plus inter-column gaps). */
 static int server_table_width(const UITable_t *t) {
@@ -171,17 +176,18 @@ static int server_table_bottom(const UITable_t *t) {
 
 /* Build a server-list table whose top is at `y`, horizontally centered on the
  * viewport: a bold header row (Name | IP | Port | Players | Connect), then one
- * row per server with text cells and a small round Connect button in the last
- * column. Every widget is registered in `owner` for one-shot cleanup. The
+ * row per server with text cells and a diamond-gem Connect button filling the
+ * last column. Every widget is registered in `owner` for one-shot cleanup. The
  * per-row Connect buttons are returned in connect_btn[] (parallel to rows[]) so
- * the caller can hit-test them; the button is the only click target. Returns the
- * number of data rows placed.
+ * the caller can hit-test them with diamond_button_hit(); only the diamond
+ * region (not its bounding box) is the click target. Returns the number of data
+ * rows placed.
  *
  * No password indicator: a server password grants admin/bot privileges and does
  * NOT gate joining, so a lock here would mislead. in_progress is informational
  * (observers may still join) and is marked lightly on the Players cell. */
 static int server_table_build(UITable_t *t, UIRegistry_t *owner, Font_t *font, int y,
-                              const ServerRow_t *rows, int n, RoundButtonWidget_t **connect_btn) {
+                              const ServerRow_t *rows, int n, DiamondButtonWidget_t **connect_btn) {
   const SDL_Color connect_green = {40, 175, 75, 255};
 
   ui_table_begin(t, 0, y, SERVER_TABLE_COLS);
@@ -228,7 +234,7 @@ static int server_table_build(UITable_t *t, UIRegistry_t *owner, Font_t *font, i
         ui_table_add(t, row, c, &tw->base);
       }
     }
-    RoundButtonWidget_t *cb = round_button_create(CONNECT_BTN_DIAMETER, connect_green);
+    DiamondButtonWidget_t *cb = diamond_button_create(CONNECT_BTN_W, CONNECT_BTN_H, connect_green);
     if (cb) {
       ui_register(owner, &cb->base);
       ui_table_add(t, row, SERVER_TABLE_COLS - 1, &cb->base);
@@ -492,7 +498,7 @@ int menu_display_connect(PlayerConfig_t *player_config, char *host_str, uint16_t
   uint32_t reg_last_fetch = 0;
   UITable_t reg_table = {0};
   UIRegistry_t reg_tbl_reg = {0};
-  RoundButtonWidget_t *reg_connect[REG_MAX_SHOWN] = {0};
+  DiamondButtonWidget_t *reg_connect[REG_MAX_SHOWN] = {0};
   int reg_connect_count = 0;
   int reg_bottom = servers_top_y; /* visual bottom of the Internet section */
   int prev_reg_bottom = -1;       /* the LAN table relayouts when this moves */
@@ -502,7 +508,7 @@ int menu_display_connect(PlayerConfig_t *player_config, char *host_str, uint16_t
   /* LAN servers (bottom). */
   UITable_t lan_table = {0};
   UIRegistry_t lan_tbl_reg = {0};
-  RoundButtonWidget_t *lan_connect[LAN_MAX_SHOWN] = {0};
+  DiamondButtonWidget_t *lan_connect[LAN_MAX_SHOWN] = {0};
   int lan_connect_count = 0;
 
   bool show_keys_overlay = false; /* F1 "Keys" reference panel */
@@ -523,12 +529,14 @@ int menu_display_connect(PlayerConfig_t *player_config, char *host_str, uint16_t
         btn_quit_connect->base.hovered = SDL_PointInRect(&mouse_pos, &btn_quit_connect->base.rect);
       for (size_t i = 0; i < LINK_DEFS_COUNT; i++)
         links[i]->base.hovered = SDL_PointInRect(&mouse_pos, &links[i]->base.rect);
+      /* Hover uses the diamond region, not the bounding rect, so the empty
+       * triangular corners of the cell don't light the gem (#93). */
       for (int i = 0; i < lan_connect_count; i++)
         if (lan_connect[i])
-          lan_connect[i]->base.hovered = SDL_PointInRect(&mouse_pos, &lan_connect[i]->base.rect);
+          lan_connect[i]->base.hovered = diamond_button_hit(lan_connect[i], mouse_pos.x, mouse_pos.y);
       for (int i = 0; i < reg_connect_count; i++)
         if (reg_connect[i])
-          reg_connect[i]->base.hovered = SDL_PointInRect(&mouse_pos, &reg_connect[i]->base.rect);
+          reg_connect[i]->base.hovered = diamond_button_hit(reg_connect[i], mouse_pos.x, mouse_pos.y);
       if (e.type == SDL_QUIT) {
         running = false;
       } else if (e.type == SDL_MOUSEBUTTONDOWN) {
@@ -568,7 +576,7 @@ int menu_display_connect(PlayerConfig_t *player_config, char *host_str, uint16_t
           focused_inputs[focused_slot]->focused = true;
         } else {
           for (int i = 0; i < lan_connect_count; i++) {
-            if (lan_connect[i] && SDL_PointInRect(&mouse_pos, &lan_connect[i]->base.rect)) {
+            if (lan_connect[i] && diamond_button_hit(lan_connect[i], mouse_pos.x, mouse_pos.y)) {
               input_widget_set_text(host_input, found[i].ip);
               char pbuf[8];
               snprintf(pbuf, sizeof(pbuf), "%u", (unsigned)found[i].tcp_port);
@@ -579,7 +587,7 @@ int menu_display_connect(PlayerConfig_t *player_config, char *host_str, uint16_t
             }
           }
           for (int i = 0; i < reg_connect_count && running; i++) {
-            if (reg_connect[i] && SDL_PointInRect(&mouse_pos, &reg_connect[i]->base.rect)) {
+            if (reg_connect[i] && diamond_button_hit(reg_connect[i], mouse_pos.x, mouse_pos.y)) {
               input_widget_set_text(host_input, reg_found[i].ip);
               char pbuf[8];
               snprintf(pbuf, sizeof(pbuf), "%u", (unsigned)reg_found[i].tcp_port);
