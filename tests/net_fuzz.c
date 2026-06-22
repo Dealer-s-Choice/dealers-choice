@@ -300,6 +300,7 @@ int main(int argc, char **argv) {
     fputs("net_fuzz: tcpme_init failed\n", stderr);
     return 1;
   }
+  DIAG("net_fuzz: DIAG tcpme_init ok\n"); /* TEMPORARY */
 
   /* Malformed input makes the parser log a DC_LOG_ERROR per rejected frame --
    * expected and voluminous at fuzz scale. Route those to a throwaway file so
@@ -312,9 +313,11 @@ int main(int argc, char **argv) {
     dc_log_set_file("/dev/null");
 #endif
   }
+  DIAG("net_fuzz: DIAG dc_log_set_file done\n"); /* TEMPORARY */
 
   fuzz_rng_t frng;
   fuzz_srand(&frng, seed, seed ^ 0x5a5a5a5au);
+  DIAG("net_fuzz: DIAG fuzz_srand done\n"); /* TEMPORARY */
 
   /* A pair is reused across iterations for speed, but rebuilt whenever a frame
    * is rejected (RECV_ERROR), which desyncs the stream -- exactly what the real
