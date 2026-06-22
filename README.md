@@ -25,7 +25,6 @@ file for details.
 * [Development Snapshots](https://github.com/Dealer-s-Choice/dealers-choice/releases/tag/snapshot)
 * [Screenshots](https://dealer-s-choice.github.io/screenshots/)
 * [Game Play](docs/GAME_PLAY.md)
-* [Game Results](https://dealer-s-choice.github.io/game_results.html)
 * [Discussions](https://github.com/Dealer-s-Choice/dealers_choice/discussions)
 * [Bug Reporting](https://github.com/Dealer-s-Choice/dealers_choice/issues)
 
