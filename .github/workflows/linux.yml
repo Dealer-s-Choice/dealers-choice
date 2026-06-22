@@ -45,7 +45,7 @@ jobs:
     - name: Build
       run: meson compile -C _build
     - name: Test
-      run: meson test --no-stdsplit -v -C _build
+      run: meson test --setup=Three_pass --no-stdsplit -v -C _build
     # If the protobuf schema changed, regenerate the .pb-c.* fresh (uncommitted)
     # and build against them. Building (not diffing) tolerates protoc-gen-c
     # version differences and only fails on a real schema/code mismatch.
@@ -84,7 +84,7 @@ jobs:
     - name: Build
       run: meson compile -C _build
     - name: Test
-      run: meson test --setup=One_pass --no-stdsplit -v -C _build
+      run: meson test --setup=Three_pass --no-stdsplit -v -C _build
 
   Ubuntu:
     if: github.event_name != 'workflow_dispatch' && !startsWith(github.ref, 'refs/tags/')
@@ -126,7 +126,7 @@ jobs:
       run: meson compile -C _build
 
     - name: Test
-      run: meson test --no-stdsplit -v -C _build
+      run: meson test --setup=Three_pass --no-stdsplit -v -C _build
 
     - name: Dist test
       if: ${{ contains(matrix.name, 'dist-test') }}
