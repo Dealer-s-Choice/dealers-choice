@@ -46,6 +46,9 @@ typedef struct {
   bool auto_connect;
   bool card_preview;
   bool disable_publish; /* server: don't announce to any registry (#33) */
+  bool disable_lan_discovery; /* server: don't answer LAN discovery probes
+                               * (--disable-lan-discovery / DC_DISABLE_LAN_DISCOVERY;
+                               * server.conf lan_discovery=no does the same) */
   bool disable_registry_browser; /* client: don't query the registry for the server list (#33) */
 } CliArgs_t;
 

@@ -17,6 +17,10 @@ base_env = {
   # line. Without this, every test-launched server would announce to the live
   # registry (and fail its verify, since CI/test hosts aren't reachable).
   'DC_DISABLE_PUBLISH': '1',
+  # Likewise, a test-launched server must not answer LAN discovery probes on the
+  # tester's real network. (test_lan_discovery drives the discovery functions
+  # directly, not via a spawned server reading this env, so it is unaffected.)
+  'DC_DISABLE_LAN_DISCOVERY': '1',
 }
 
 foreach name : unit_tests

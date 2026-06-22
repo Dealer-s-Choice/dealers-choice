@@ -46,6 +46,8 @@ typedef struct ServerConfig_t {
   uint16_t registry_port[MAX_REGISTRIES];
   uint8_t registry_count;
   uint16_t lan_discovery_port; /* from common.conf; default LAN_DISCOVERY_PORT (#33) */
+  bool lan_discovery; /* server.conf: answer LAN discovery probes (default yes);
+                       * --disable-lan-discovery / DC_DISABLE_LAN_DISCOVERY force off */
   uint32_t end_of_game_timeout_ms;
   uint32_t action_timeout_ms;
   uint32_t dealer_timeout_ms;

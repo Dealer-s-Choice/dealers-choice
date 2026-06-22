@@ -1344,8 +1344,15 @@ int run_server(const CliArgs_t *cli_args, Path_t *path) {
    * (limited broadcast) and IPv6 (link-local multicast). Each is optional — if a
    * family's socket can't be opened (port in use, no IPv6), that family is simply
    * disabled and the game still runs. */
-  tcpme_socket_t discovery_sock = lan_discovery_open_responder(config.lan_discovery_port);
-  tcpme_socket_t discovery_sock6 = lan_discovery_open_responder6(config.lan_discovery_port);
+  /* Off via server.conf (lan_discovery=no) or --disable-lan-discovery /
+   * DC_DISABLE_LAN_DISCOVERY. Left on, a test server would answer discovery
+   * probes on the tester's real LAN. */
+  const bool lan_discovery_on = config.lan_discovery && !cli_args->disable_lan_discovery;
+  tcpme_socket_t discovery_sock =
+      lan_discovery_on ? lan_discovery_open_responder(config.lan_discovery_port) : TCPME_INVALID_SOCKET;
+  tcpme_socket_t discovery_sock6 =
+      lan_discovery_on ? lan_discovery_open_responder6(config.lan_discovery_port)
+                       : TCPME_INVALID_SOCKET;
   tcpme_set_t *discovery_set = NULL;
   if (tcpme_socket_valid(discovery_sock) || tcpme_socket_valid(discovery_sock6)) {
     discovery_set = tcpme_alloc_set(2);

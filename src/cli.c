@@ -168,6 +168,7 @@ CliArgs_t parse_server_args(int argc, char *argv[]) {
     OPT_DISABLE_TIMEOUT,
     OPT_AUTODEAL,
     OPT_DISABLE_PUBLISH,
+    OPT_DISABLE_LAN_DISCOVERY,
     OPT_LOG_FILE,
   };
 
@@ -185,6 +186,7 @@ CliArgs_t parse_server_args(int argc, char *argv[]) {
       {"disable-timeout", GLOPT_NO_ARG, OPT_DISABLE_TIMEOUT, 0},
       {"autodeal", GLOPT_NO_ARG, OPT_AUTODEAL, 0},
       {"disable-publish", GLOPT_NO_ARG, OPT_DISABLE_PUBLISH, 0},
+      {"disable-lan-discovery", GLOPT_NO_ARG, OPT_DISABLE_LAN_DISCOVERY, 0},
       {"log-file", GLOPT_REQUIRED_ARG, OPT_LOG_FILE, 0},
       {NULL, 0, 0, 0}};
 
@@ -249,6 +251,9 @@ CliArgs_t parse_server_args(int argc, char *argv[]) {
     case OPT_DISABLE_PUBLISH:
       cli_args.disable_publish = true;
       break;
+    case OPT_DISABLE_LAN_DISCOVERY:
+      cli_args.disable_lan_discovery = true;
+      break;
     case OPT_LOG_FILE:
       dc_log_set_file(parser.optarg);
       break;
@@ -260,6 +265,7 @@ CliArgs_t parse_server_args(int argc, char *argv[]) {
             "  --port [port]\n"
             "  --name [name]              Server name shown to clients (overrides conf)\n"
             "  --discovery-port [port]    LAN discovery UDP port (overrides common.conf)\n"
+            "  --disable-lan-discovery    Do not answer LAN discovery probes\n"
             "  --conf [path]              Alternate server config file\n"
             "  --log-game-results [path]\n"
             "  --verbose\n"
@@ -283,6 +289,12 @@ CliArgs_t parse_server_args(int argc, char *argv[]) {
    * the meson test env sets it for every test. */
   if (getenv("DC_DISABLE_PUBLISH") != NULL)
     cli_args.disable_publish = true;
+
+  /* Same idea for LAN discovery (separate from the registry): a test server must
+   * not answer discovery probes on the tester's real network. Equivalent to
+   * --disable-lan-discovery; the meson test env sets it for every test. */
+  if (getenv("DC_DISABLE_LAN_DISCOVERY") != NULL)
+    cli_args.disable_lan_discovery = true;
 
   return cli_args;
 }

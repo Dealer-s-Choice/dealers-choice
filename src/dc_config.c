@@ -88,6 +88,7 @@ const ConfigEntry server_config_entries[] = {
     {"port", CFG_TYPE_UINT16, DEFAULT_PORT, offsetof(ServerConfig_t, port), sizeof(uint16_t)},
     {"server_name", CFG_TYPE_STRING, "Dealer's Choice server",
      offsetof(ServerConfig_t, server_name), sizeof(((ServerConfig_t *)0)->server_name)},
+    {"lan_discovery", CFG_TYPE_BOOL, "yes", offsetof(ServerConfig_t, lan_discovery), sizeof(bool)},
     {"end_of_game_timeout", CFG_TYPE_UINT32, "15", offsetof(ServerConfig_t, end_of_game_timeout_ms),
      sizeof(uint32_t)},
     {"action_timeout", CFG_TYPE_UINT32, "30", offsetof(ServerConfig_t, action_timeout_ms),
