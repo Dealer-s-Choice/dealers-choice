@@ -60,4 +60,4 @@ jobs:
       run: meson compile -C _build
 
     - name: Test
-      run: meson test --no-stdsplit -v -C _build
+      run: meson test --setup=Three_pass --no-stdsplit -v -C _build
