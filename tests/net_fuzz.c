@@ -108,15 +108,19 @@ static bool make_pair(tcpme_socket_t *client_out, SocketContext_t *ctx) {
     return false;
   }
 
-  /* Bound blocking recvs so a single frame can never hang the run. recv_all_tcp
-   * loops tcpme_recv until it has the requested bytes; if a fuzzed/desynced size
-   * asks for more than will ever arrive, that recv blocks forever with no socket
-   * timeout -- which is why the per-iteration wall-cap never fired and the run
-   * timed out on Windows (the drain occasionally misses a straggler there,
-   * desyncing the next size read). A short SO_RCVTIMEO turns that into a quick
-   * RECV_ERROR -> drain -> resync (loopback delivery is sub-ms, so this never
-   * trips on a legit frame). The real server uses SOCKET_IO_TIMEOUT_MS; the test
-   * wants a much shorter value so recovery is fast. */
+  /* Bound BOTH directions so no single frame can hang the run; tcpme_set_timeout
+   * sets SO_RCVTIMEO + SO_SNDTIMEO. Two blocking calls can otherwise wait forever
+   * with no socket timeout:
+   *   - recv on srv: recv_all_tcp loops until it has the requested bytes, but a
+   *     fuzzed/desynced size asks for more than ever arrives.
+   *   - send on cli: once undrained bytes back up the server's recv buffer, TCP
+   *     flow control blocks the client's send_all_tcp indefinitely.
+   * An earlier fix set only srv, leaving the cli send unbounded -- which is why
+   * the run still hung past the wall-cap on Windows. A short timeout on both
+   * turns either stall into a quick error -> drain/rebuild -> resync (loopback
+   * delivery is sub-ms, so it never trips a legit frame). The real server uses
+   * SOCKET_IO_TIMEOUT_MS; shorter here for fast recovery. */
+  tcpme_set_timeout(cli, 200);
   tcpme_set_timeout(srv, 200);
 
   tcpme_set_t *set = tcpme_alloc_set(1);
