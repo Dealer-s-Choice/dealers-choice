@@ -29,6 +29,7 @@
 #include "hotkeys.h"
 
 #include <stdio.h>
+#include <string.h>
 
 HotkeyConfig_t g_hotkey_cfg;
 
@@ -50,4 +51,28 @@ void init_hotkeys(const PlayerConfig_t *cfg) {
   g_hotkey_cfg.complete = resolve(cfg->hotkey_complete, "hotkey_complete");
   g_hotkey_cfg.discard = resolve(cfg->hotkey_discard, "hotkey_discard");
   g_hotkey_cfg.hand_rank = resolve(cfg->hotkey_hand_rank, "hotkey_hand_rank");
+}
+
+SDL_Keycode hotkey_for_config_key(const char *config_key) {
+  if (!config_key)
+    return SDLK_UNKNOWN;
+  /* Mirrors the field assignments in init_hotkeys; the hotkey_table.h config_key
+   * strings are the join between that table and these live bindings. */
+  if (strcmp(config_key, "hotkey_check") == 0)
+    return g_hotkey_cfg.check;
+  if (strcmp(config_key, "hotkey_bet") == 0)
+    return g_hotkey_cfg.bet;
+  if (strcmp(config_key, "hotkey_fold") == 0)
+    return g_hotkey_cfg.fold;
+  if (strcmp(config_key, "hotkey_call") == 0)
+    return g_hotkey_cfg.call;
+  if (strcmp(config_key, "hotkey_raise") == 0)
+    return g_hotkey_cfg.raise;
+  if (strcmp(config_key, "hotkey_complete") == 0)
+    return g_hotkey_cfg.complete;
+  if (strcmp(config_key, "hotkey_discard") == 0)
+    return g_hotkey_cfg.discard;
+  if (strcmp(config_key, "hotkey_hand_rank") == 0)
+    return g_hotkey_cfg.hand_rank;
+  return SDLK_UNKNOWN;
 }

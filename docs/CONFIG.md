@@ -112,45 +112,16 @@ directory](https://github.com/Dealer-s-Choice/dealers_choice/tree/trunk/po).
 ## Game-play hotkeys
 
 The keys used for in-game actions (check, bet, fold, call, raise, complete,
-discard) and the hand-rank overlay are configured in your `player.conf`.
-Defaults are written on first run, so existing entries can simply be edited:
+discard) and the hand-rank readout are configured in your `player.conf`. You
+can also change them on the Hotkeys screen, reached from Settings.
 
-```
-hotkey_check = c
-hotkey_bet = b
-hotkey_fold = f
-hotkey_call = l
-hotkey_raise = r
-hotkey_complete = o
-hotkey_discard = d
-hotkey_hand_rank = h
-```
+The full key list lives in **[keys.md](keys.md)**. That page is generated from
+the same table the game uses, so it is always up to date. While playing, press
+`F1` to see the same list on screen.
 
-`hotkey_hand_rank` toggles the current best-hand readout in the lower-right
-corner during a game.
+Each action needs its own key. The editor refuses a key that is already bound
+to another action, because one keypress would otherwise trigger two actions at
+once.
 
-Values may be a single letter or an SDL key name (e.g. `Space`, `Up`, `Home`).
-
-Each action needs its own key: the editor refuses a key that is already
-bound to another action, because one keypress would otherwise trigger two
-actions at once.
-
-### Non-configurable keys
-
-These keys are fixed and the hotkey editor will refuse them, because the
-game and menus already use them:
-
-| Key | Use |
-|---|---|
-| `1`–`5` | Select your cards to discard during a draw |
-| `1`–`8` | Choose the bet/raise amount on the betting scale |
-| `Enter` / `Return` | Connect (connect screen); confirm a value (settings) |
-| `Alt`+`Enter`, `F11` | Toggle fullscreen |
-| `Esc` | Go back / quit prompt |
-| `Tab` | Move between input fields |
-| `Ctrl`+`V` | Paste into the focused text field |
-| `F1`–`F12` | Reserved (function-key row) |
-
-The digit keys `1`–`5` serve double duty: they pick cards to discard during
-a draw, and they pick a bet amount during betting (the game only listens for
-one of those at a time, depending on the current action).
+Some menu keys are fixed: `Enter` confirms a value, `Tab` moves between input
+fields, `Ctrl`+`V` pastes into the focused field, and `Esc` goes back.

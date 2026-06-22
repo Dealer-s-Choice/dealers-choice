@@ -48,4 +48,10 @@ extern HotkeyConfig_t g_hotkey_cfg;
 
 void init_hotkeys(const PlayerConfig_t *cfg);
 
+/* Resolve a hotkey table config_key (e.g. "hotkey_check") to the live keycode
+ * currently bound in g_hotkey_cfg.  Returns SDLK_UNKNOWN if the key name is not
+ * one of the configurable actions.  Lets the F1 overlay read the player's actual
+ * bindings from the same shared table the docs use (src/ui/hotkey_table.h). */
+SDL_Keycode hotkey_for_config_key(const char *config_key);
+
 #endif
