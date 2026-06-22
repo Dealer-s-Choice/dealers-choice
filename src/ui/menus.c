@@ -47,6 +47,7 @@
 #include "links.h"
 #include "menus.h"
 #include "net/registry.h"
+#include "ping_probe.h"
 #include "util.h"
 #include "widgets/button.h"
 #include "widgets/card.h"
@@ -146,9 +147,13 @@ typedef struct {
    * value the server reported; LAN discovery has no such field, so LAN rows
    * leave it 0 and the Uptime cell shows "-". */
   uint64_t start_time;
+  /* Connect-RTT latency in ms, or a PING_* sentinel (PING_PENDING while a
+   * measurement is in flight, PING_UNREACHABLE if the probe failed). Filled in
+   * from the background prober at table-build time. */
+  int ping_ms;
 } ServerRow_t;
 
-enum { SERVER_TABLE_COLS = 6 }; /* Name | IP | Port | Players | Uptime | Connect */
+enum { SERVER_TABLE_COLS = 7 }; /* Name | IP | Port | Players | Uptime | Ping | Connect */
 /* Connect-cell diamond gem: its bounding box defines the column width and the
  * row height (it is the tallest widget in the row), so the diamond effectively
  * fills its cell — left/right points near the side margins, top point near the
@@ -194,8 +199,8 @@ static int server_table_build(UITable_t *t, UIRegistry_t *owner, Font_t *font, i
   /* All columns center-justified (col_align default 0): values and headers are
    * centered in their cells, including the Connect column. */
 
-  static const char *const hdr[SERVER_TABLE_COLS] = {"Name",   "IP",     "Port",
-                                                     "Players", "Uptime (days)", "Connect"};
+  static const char *const hdr[SERVER_TABLE_COLS] = {
+      "Name", "IP", "Port", "Players", "Uptime (days)", "Ping", "Connect"};
   for (int c = 0; c < SERVER_TABLE_COLS; c++) {
     TextWidget_t *h = text_widget_create(_(hdr[c]), font->fonts[FONT_DEFAULT_BOLD], DC_TEXT_ON_DARK);
     if (h) {
@@ -211,6 +216,7 @@ static int server_table_build(UITable_t *t, UIRegistry_t *owner, Font_t *font, i
     char portbuf[8];
     char plbuf[16];
     char uptimebuf[16];
+    char pingbuf[16];
     snprintf(portbuf, sizeof(portbuf), "%u", (unsigned)s->port);
     snprintf(plbuf, sizeof(plbuf), "%u/%u%s", (unsigned)s->player_count, (unsigned)s->max_players,
              s->in_progress ? " *" : "");
@@ -225,7 +231,16 @@ static int server_table_build(UITable_t *t, UIRegistry_t *owner, Font_t *font, i
     else
       snprintf(uptimebuf, sizeof(uptimebuf), "-");
 
-    const char *cells[SERVER_TABLE_COLS - 1] = {who, s->ip, portbuf, plbuf, uptimebuf};
+    /* Ping cell: the ms number when measured, "-" while pending (and for LAN
+     * rows before the prober has reached them), "x" when unreachable. */
+    if (s->ping_ms == PING_UNREACHABLE)
+      snprintf(pingbuf, sizeof(pingbuf), "x");
+    else if (s->ping_ms == PING_PENDING)
+      snprintf(pingbuf, sizeof(pingbuf), "-");
+    else
+      snprintf(pingbuf, sizeof(pingbuf), "%d", s->ping_ms);
+
+    const char *cells[SERVER_TABLE_COLS - 1] = {who, s->ip, portbuf, plbuf, uptimebuf, pingbuf};
     int row = i + 1;
     for (int c = 0; c < SERVER_TABLE_COLS - 1; c++) {
       TextWidget_t *tw = text_widget_create(cells[c], font->fonts[FONT_DEFAULT], DC_TEXT_ON_DARK);
@@ -502,6 +517,7 @@ int menu_display_connect(PlayerConfig_t *player_config, char *host_str, uint16_t
   int reg_connect_count = 0;
   int reg_bottom = servers_top_y; /* visual bottom of the Internet section */
   int prev_reg_bottom = -1;       /* the LAN table relayouts when this moves */
+  uint64_t prev_reg_ping_sig = 0; /* rebuild the table when ping values change */
   TextWidget_t *tw_reg_heading =
       text_widget_create(_("Internet servers"), font->fonts[FONT_DEFAULT_BOLD], DC_TEXT_ON_DARK);
 
@@ -512,6 +528,13 @@ int menu_display_connect(PlayerConfig_t *player_config, char *host_str, uint16_t
   int lan_connect_count = 0;
 
   bool show_keys_overlay = false; /* F1 "Keys" reference panel */
+
+  /* Background latency prober for both server tables (#98). It probes off the
+   * UI thread; we feed it the current host:port set whenever a table rebuilds
+   * and read a per-row value back at build time. NULL is fine (no ping data
+   * shown). It is destroyed before we leave this function. */
+  PingProbe_t *ping_probe = ping_probe_create();
+  uint64_t prev_targets_sig = 0; /* host:port set last handed to the prober */
 
   while (running) {
     SDL_Event e;
@@ -676,26 +699,41 @@ int menu_display_connect(PlayerConfig_t *player_config, char *host_str, uint16_t
      * the top of the server-list area (#33). --- */
     if (browse_registry) {
       uint32_t now = SDL_GetTicks();
-      if (reg_dirty || now - reg_last_fetch >= 10000) {
-        reg_found_count = registry_fetch(player_config, reg_found, REG_MAX_SHOWN);
-        reg_last_fetch = now;
-        reg_dirty = false;
-        dc_log(DC_LOG_DEBUG, "registry: fetched %d server(s)", reg_found_count);
-        for (int i = 0; i < reg_found_count; i++)
-          dc_log(DC_LOG_DEBUG, "registry:   [%d] %s:%u \"%s\" %u/%u", i, reg_found[i].ip,
-                 (unsigned)reg_found[i].tcp_port, reg_found[i].name,
-                 (unsigned)reg_found[i].player_count, (unsigned)reg_found[i].max_players);
+      /* Rebuild on a network refresh (every 10s or when forced dirty), and also
+       * when the prober has new latency values for the rows we already show, so
+       * the Ping column updates without waiting for the next registry fetch. */
+      bool reg_fetch_due = (reg_dirty || now - reg_last_fetch >= 10000);
+      uint64_t reg_ping_sig = 0;
+      for (int i = 0; i < reg_found_count; i++)
+        reg_ping_sig = reg_ping_sig * 1099511628211ULL +
+                       (uint64_t)(uint32_t)ping_probe_get(ping_probe, reg_found[i].ip,
+                                                          reg_found[i].tcp_port);
+      bool reg_ping_changed = (reg_ping_sig != prev_reg_ping_sig);
+      if (reg_fetch_due || reg_ping_changed) {
+        if (reg_fetch_due) {
+          reg_found_count = registry_fetch(player_config, reg_found, REG_MAX_SHOWN);
+          reg_last_fetch = now;
+          reg_dirty = false;
+          dc_log(DC_LOG_DEBUG, "registry: fetched %d server(s)", reg_found_count);
+          for (int i = 0; i < reg_found_count; i++)
+            dc_log(DC_LOG_DEBUG, "registry:   [%d] %s:%u \"%s\" %u/%u", i, reg_found[i].ip,
+                   (unsigned)reg_found[i].tcp_port, reg_found[i].name,
+                   (unsigned)reg_found[i].player_count, (unsigned)reg_found[i].max_players);
+        }
+        prev_reg_ping_sig = reg_ping_sig;
 
         const int reg_heading_h = tw_reg_heading ? tw_reg_heading->base.rect.h : 0;
         ui_destroy_all(&reg_tbl_reg);
         reg_connect_count = 0;
         if (reg_found_count > 0) {
           ServerRow_t rows[REG_MAX_SHOWN];
-          for (int i = 0; i < reg_found_count; i++)
+          for (int i = 0; i < reg_found_count; i++) {
             rows[i] = (ServerRow_t){reg_found[i].name,         reg_found[i].ip,
                                     reg_found[i].tcp_port,     reg_found[i].player_count,
                                     reg_found[i].max_players,  reg_found[i].in_progress,
-                                    reg_found[i].start_time};
+                                    reg_found[i].start_time,   PING_PENDING};
+            rows[i].ping_ms = ping_probe_get(ping_probe, reg_found[i].ip, reg_found[i].tcp_port);
+          }
           reg_connect_count = server_table_build(
               &reg_table, &reg_tbl_reg, font,
               servers_top_y + reg_heading_h + g_layout_cfg.input_field_v_gap, rows, reg_found_count,
@@ -744,7 +782,13 @@ int menu_display_connect(PlayerConfig_t *player_config, char *host_str, uint16_t
       }
       found_count = lan_expire(found, found_seen, found_count, now, 6000);
 
+      /* Fold the current ping values into the change signature so the LAN table
+       * rebuilds (and the Ping column updates) when the prober reports new
+       * latencies, not only when the discovered set changes. */
       uint64_t sig = lan_list_sig(found, found_count);
+      for (int i = 0; i < found_count; i++)
+        sig = sig * 1099511628211ULL +
+              (uint64_t)(uint32_t)ping_probe_get(ping_probe, found[i].ip, found[i].tcp_port);
       bool moved = (reg_bottom != prev_reg_bottom);
       if (sig != shown_sig || moved) {
         const int lan_top = (reg_connect_count > 0) ? reg_bottom + section_gap : servers_top_y;
@@ -753,13 +797,15 @@ int menu_display_connect(PlayerConfig_t *player_config, char *host_str, uint16_t
         lan_connect_count = 0;
         if (found_count > 0) {
           ServerRow_t rows[LAN_MAX_SHOWN];
-          for (int i = 0; i < found_count; i++)
+          for (int i = 0; i < found_count; i++) {
             /* LAN discovery carries no start_time, so uptime is unknown (0 ->
              * the table shows "-"). */
             rows[i] = (ServerRow_t){found[i].name,         found[i].ip,
                                     found[i].tcp_port,      found[i].player_count,
                                     found[i].max_players,   found[i].in_progress,
-                                    0};
+                                    0,                      PING_PENDING};
+            rows[i].ping_ms = ping_probe_get(ping_probe, found[i].ip, found[i].tcp_port);
+          }
           lan_connect_count =
               server_table_build(&lan_table, &lan_tbl_reg, font,
                                  lan_top + lan_heading_h + g_layout_cfg.input_field_v_gap, rows,
@@ -771,6 +817,36 @@ int menu_display_connect(PlayerConfig_t *player_config, char *host_str, uint16_t
         }
         shown_sig = sig;
         prev_reg_bottom = reg_bottom;
+      }
+    }
+
+    /* Feed the prober the union of currently-shown registry + LAN servers. Only
+     * push when the host:port set changes (ping_probe_set_targets bumps the
+     * worker's generation, which forces a re-probe), so we don't restart the
+     * probe cycle every frame. The signature is over host:port only. */
+    if (ping_probe) {
+      const char *thosts[REG_MAX_SHOWN + LAN_MAX_SHOWN];
+      uint16_t tports[REG_MAX_SHOWN + LAN_MAX_SHOWN];
+      int tcount = 0;
+      uint64_t tsig = 1469598103934665603ULL;
+      for (int i = 0; i < reg_found_count; i++) {
+        thosts[tcount] = reg_found[i].ip;
+        tports[tcount] = reg_found[i].tcp_port;
+        tcount++;
+      }
+      for (int i = 0; i < found_count; i++) {
+        thosts[tcount] = found[i].ip;
+        tports[tcount] = found[i].tcp_port;
+        tcount++;
+      }
+      for (int i = 0; i < tcount; i++) {
+        for (const char *c = thosts[i]; *c; c++)
+          tsig = (tsig ^ (unsigned char)*c) * 1099511628211ULL;
+        tsig = (tsig ^ tports[i]) * 1099511628211ULL;
+      }
+      if (tsig != prev_targets_sig) {
+        ping_probe_set_targets(ping_probe, thosts, tports, tcount);
+        prev_targets_sig = tsig;
       }
     }
 
@@ -824,6 +900,11 @@ int menu_display_connect(PlayerConfig_t *player_config, char *host_str, uint16_t
   }
 
   SDL_StopTextInput();
+
+  /* Stop and join the background prober before tearing down anything it might
+   * touch. ping_probe_destroy signals the stop flag and waits, so there is no
+   * detached thread left to use the (about-to-be-freed) shared state. */
+  ping_probe_destroy(ping_probe);
 
   /* Copy final values back to the caller's variables */
   const char *final_host = input_widget_get_text(host_input);
