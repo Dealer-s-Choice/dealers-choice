@@ -10,6 +10,7 @@ ui_src = files(
   'hotkeys.c',
   'layout.c',
   'links.c',
+  'ping_probe.c',
   'style.c',
   'ui_widget.c',
 )
