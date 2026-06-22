@@ -30,6 +30,13 @@
 
 #include "tcpme/tcpme.h"
 
+/* Registry/directory protobuf messages (ServerAnnounce, ServerEntry,
+ * ServerListRequest, ServerList). Split out of dc_protocol.proto into its own
+ * schema so the registry protocol versions independently of the game protocol;
+ * the wire format is unchanged (field numbers preserved). All registry
+ * consumers reach these symbols through this header. */
+#include "dc_registry.pb-c.h"
+
 #define REGISTRY_PROTOCOL_VERSION 1
 
 /* Default TCP port for the registry. Well clear of the game port (22777), the

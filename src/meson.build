@@ -11,6 +11,7 @@ if get_option('gen_protobuf')
       '--c_out=' + meson.current_source_dir() / 'protobuf',
       '--proto_path=' + meson.current_source_dir(),
       meson.current_source_dir() / 'dc_protocol.proto',
+      meson.current_source_dir() / 'dc_registry.proto',
     ],
   )
 endif
@@ -23,6 +24,7 @@ core_root_src = files(
   'debug.c',
   'globals.c',
   'protobuf/dc_protocol.pb-c.c',
+  'protobuf/dc_registry.pb-c.c',
   'util.c',
 )
 
