@@ -31,18 +31,79 @@
 #include "registry.h"
 #include "util.h"
 
+/* Threading portability for the verify worker. The callback-verify is a
+ * blocking connect-back, so it runs on a dedicated worker thread instead of the
+ * accept loop (one slow/unreachable announcer would otherwise stall every other
+ * client for the full verify timeout). pthreads elsewhere, Win32 on Windows --
+ * the same split tcpme uses. Only the registry uses threads, so the shim is kept
+ * local rather than promoted to a shared header. */
+#ifdef _WIN32
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <windows.h>
+typedef HANDLE reg_thread_t;
+typedef CRITICAL_SECTION reg_mutex_t;
+typedef CONDITION_VARIABLE reg_cond_t;
+#define REG_THREAD_FN DWORD WINAPI
+#define REG_THREAD_RET 0
+static int reg_thread_create(reg_thread_t *t, LPTHREAD_START_ROUTINE fn, void *arg) {
+  *t = CreateThread(NULL, 0, fn, arg, 0, NULL);
+  return *t ? 0 : -1;
+}
+static void reg_thread_join(reg_thread_t t) {
+  WaitForSingleObject(t, INFINITE);
+  CloseHandle(t);
+}
+static void reg_mutex_init(reg_mutex_t *m) { InitializeCriticalSection(m); }
+static void reg_mutex_destroy(reg_mutex_t *m) { DeleteCriticalSection(m); }
+static void reg_mutex_lock(reg_mutex_t *m) { EnterCriticalSection(m); }
+static void reg_mutex_unlock(reg_mutex_t *m) { LeaveCriticalSection(m); }
+static void reg_cond_init(reg_cond_t *c) { InitializeConditionVariable(c); }
+static void reg_cond_destroy(reg_cond_t *c) { (void)c; }
+static void reg_cond_signal(reg_cond_t *c) { WakeConditionVariable(c); }
+static void reg_cond_wait(reg_cond_t *c, reg_mutex_t *m) {
+  SleepConditionVariableCS(c, m, INFINITE);
+}
+#else
+#include <pthread.h>
+typedef pthread_t reg_thread_t;
+typedef pthread_mutex_t reg_mutex_t;
+typedef pthread_cond_t reg_cond_t;
+#define REG_THREAD_FN void *
+#define REG_THREAD_RET NULL
+static int reg_thread_create(reg_thread_t *t, void *(*fn)(void *), void *arg) {
+  return pthread_create(t, NULL, fn, arg);
+}
+static void reg_thread_join(reg_thread_t t) { pthread_join(t, NULL); }
+static void reg_mutex_init(reg_mutex_t *m) { pthread_mutex_init(m, NULL); }
+static void reg_mutex_destroy(reg_mutex_t *m) { pthread_mutex_destroy(m); }
+static void reg_mutex_lock(reg_mutex_t *m) { pthread_mutex_lock(m); }
+static void reg_mutex_unlock(reg_mutex_t *m) { pthread_mutex_unlock(m); }
+static void reg_cond_init(reg_cond_t *c) { pthread_cond_init(c, NULL); }
+static void reg_cond_destroy(reg_cond_t *c) { pthread_cond_destroy(c); }
+static void reg_cond_signal(reg_cond_t *c) { pthread_cond_signal(c); }
+static void reg_cond_wait(reg_cond_t *c, reg_mutex_t *m) { pthread_cond_wait(c, m); }
+#endif
+
 /* Registry policy (DC-owned; tcpme stays generic). */
 #define REG_TTL_MS 90000u    /* drop a listing not refreshed within this */
 #define REG_PER_IP_MAX 4     /* max distinct listings per source IP */
-/* Verify is a blocking connect-back on this single-threaded loop, so it is kept
- * short: every announce of an unreachable address (scanner, or a real server
- * behind NAT) costs the full timeout, during which no list request is served. */
+/* Verify is a blocking connect-back, so it runs on a worker thread off the
+ * accept loop. The timeout is still kept short: an unreachable address (scanner,
+ * or a real server behind NAT) ties up a worker slot for the full timeout, and
+ * with a single worker that serializes other pending verifies. The accept loop
+ * itself never blocks on it. */
 #define REG_VERIFY_TIMEOUT_MS 500u /* callback-verify connect/handshake timeout */
 #define REG_IO_TIMEOUT_MS 2000u    /* per-connection recv (bounds a slow peer) */
 #define REG_VERIFY_FAIL_BACKOFF_MS 30000u /* skip re-verifying a just-failed IP */
 #define REG_FAIL_TRACK 64                 /* recently-failed source IPs tracked */
 #define REG_JSON_INTERVAL_MS 5000u        /* how often to rewrite servers.json */
 #define REG_TICK_MS 500u                  /* accept-poll tick */
+/* Bound on verify jobs waiting for the worker. A flood that outpaces the worker
+ * is shed here (the announce is dropped, the server retries on its next
+ * heartbeat) rather than letting the queue grow without limit. */
+#define REG_VERIFY_QUEUE_MAX 64
 
 typedef struct {
   RegistryServer_t srv;
@@ -50,23 +111,39 @@ typedef struct {
   bool used;
 } RegEntry_t;
 
+/* Shared between the accept loop and the verify worker: the listing table and
+ * the recently-failed-IP set. g_lock guards both, plus the JSON write. */
 static RegEntry_t g_table[REGISTRY_MAX_SERVERS];
+static reg_mutex_t g_lock;
 static bool g_verbose = false;
 static volatile sig_atomic_t g_running = 1;
 
 /* Recently-failed source IPs. After a verify failure we skip re-verifying that
  * IP for REG_VERIFY_FAIL_BACKOFF_MS, so a host announcing an unreachable address
- * (scanner, or a real server behind NAT) can't make every heartbeat cost a full
- * verify timeout on this single-threaded loop. Keyed on IP only, so a flooder
- * that varies the announced port is still covered; only failures are tracked, so
- * legit servers (which verify fine, even several behind one NAT'd IP) are never
- * throttled. */
+ * (scanner, or a real server behind NAT) can't make every heartbeat tie up a
+ * worker for the full verify timeout. Keyed on IP only, so a flooder that varies
+ * the announced port is still covered; only failures are tracked, so legit
+ * servers (which verify fine, even several behind one NAT'd IP) are never
+ * throttled. Accessed by the accept loop (cheap pre-enqueue check) and the
+ * worker (records/clears results), so guarded by g_lock. */
 typedef struct {
   char ip[TCPME_ADDRSTRLEN];
   uint32_t at;
   bool used;
 } FailIp_t;
 static FailIp_t g_fail[REG_FAIL_TRACK];
+
+/* Verify job queue. The accept loop enqueues a parsed announce (with the source
+ * IP already filled in) and returns immediately; the worker dequeues, does the
+ * blocking callback_verify, and commits to g_table on success. A bounded ring
+ * buffer with a condvar for the worker to wait on. g_qlock guards the ring and
+ * the running flag; g_qcond wakes the worker on a new job or on shutdown. */
+static RegistryServer_t g_queue[REG_VERIFY_QUEUE_MAX];
+static int g_qhead = 0; /* next slot to dequeue */
+static int g_qcount = 0;
+static reg_mutex_t g_qlock;
+static reg_cond_t g_qcond;
+static bool g_worker_run = true; /* cleared under g_qlock to stop the worker */
 
 static void on_signal(int sig) {
   (void)sig;
@@ -95,6 +172,12 @@ static bool callback_verify(const char *ip, uint16_t port) {
   tcpme_close(s);
   return ok;
 }
+
+/* The g_table / g_fail helpers below operate on shared state with no internal
+ * locking; every caller must hold g_lock. Keeping the lock at the call sites
+ * (rather than inside each helper) keeps the critical sections coarse and
+ * visible and avoids accidental recursive locking when one helper calls
+ * another. */
 
 static int count_for_ip(const char *ip) {
   int n = 0;
@@ -156,8 +239,10 @@ static void json_escape(const char *s, char *out, size_t outsz) {
   out[j] = '\0';
 }
 
-/* Atomic write of the current list as a JSON array (temp + rename). */
-static void write_servers_json(const char *path) {
+/* Atomic write of the given list as a JSON array (temp + rename). Takes a
+ * caller-supplied snapshot rather than reading g_table directly, so the file I/O
+ * happens outside g_lock (the snapshot is copied under the lock by the caller). */
+static void write_servers_json(const char *path, const RegistryServer_t *list, int n) {
   char tmp[1024];
   snprintf(tmp, sizeof tmp, "%s.tmp", path);
   FILE *fp = fopen(tmp, "w");
@@ -166,24 +251,20 @@ static void write_servers_json(const char *path) {
     return;
   }
   fputs("[\n", fp);
-  bool first = true;
-  for (int i = 0; i < REGISTRY_MAX_SERVERS; i++) {
-    if (!g_table[i].used)
-      continue;
+  for (int i = 0; i < n; i++) {
     char ename[REGISTRY_NAME_MAX * 2 + 1];
-    json_escape(g_table[i].srv.name, ename, sizeof ename);
+    json_escape(list[i].name, ename, sizeof ename);
     /* start_time is the server's reported wall-clock boot (unix seconds, 0 =
      * unknown). Emit it raw so the website can compute uptime against its own
      * "now" rather than baking a stale value into the file. */
     fprintf(fp,
             "%s  {\"ip\":\"%s\",\"port\":%u,\"name\":\"%s\",\"players\":%u,"
             "\"max\":%u,\"password\":%s,\"in_progress\":%s,\"start_time\":%llu}",
-            first ? "" : ",\n", g_table[i].srv.ip, g_table[i].srv.tcp_port, ename,
-            g_table[i].srv.player_count, g_table[i].srv.max_players,
-            g_table[i].srv.password_protected ? "true" : "false",
-            g_table[i].srv.in_progress ? "true" : "false",
-            (unsigned long long)g_table[i].srv.start_time);
-    first = false;
+            i == 0 ? "" : ",\n", list[i].ip, list[i].tcp_port, ename,
+            list[i].player_count, list[i].max_players,
+            list[i].password_protected ? "true" : "false",
+            list[i].in_progress ? "true" : "false",
+            (unsigned long long)list[i].start_time);
   }
   fputs("\n]\n", fp);
   if (fclose(fp) != 0) {
@@ -202,8 +283,8 @@ static const char *normalize_ip(const char *ip) {
   return ip;
 }
 
-/* True if this IP failed verify within the backoff window — skip the (blocking)
- * re-verify and reject the announce cheaply. */
+/* True if this IP failed verify within the backoff window — skip enqueueing a
+ * re-verify and reject the announce cheaply. Caller holds g_lock. */
 static bool verify_backing_off(const char *ip, uint32_t now) {
   for (int i = 0; i < REG_FAIL_TRACK; i++)
     if (g_fail[i].used && strcmp(g_fail[i].ip, ip) == 0)
@@ -241,6 +322,78 @@ static void clear_verify_fail(const char *ip) {
       g_fail[i].used = false;
 }
 
+/* Enqueue a verify job for the worker. Returns false (and drops the announce) if
+ * the queue is full -- the server retries on its next heartbeat. Wakes the
+ * worker. Holds g_qlock only briefly (a struct copy), never blocks. */
+static bool verify_enqueue(const RegistryServer_t *srv) {
+  bool queued = false;
+  reg_mutex_lock(&g_qlock);
+  if (g_qcount < REG_VERIFY_QUEUE_MAX) {
+    int tail = (g_qhead + g_qcount) % REG_VERIFY_QUEUE_MAX;
+    g_queue[tail] = *srv;
+    g_qcount++;
+    queued = true;
+    reg_cond_signal(&g_qcond);
+  }
+  reg_mutex_unlock(&g_qlock);
+  return queued;
+}
+
+/* Verify worker. Blocks on the queue condvar; for each job does the blocking
+ * callback_verify and, on success, commits to g_table. The backoff check is
+ * repeated here (the IP may have failed since it was enqueued) so re-verifies of
+ * a known-bad host are still cheap. Exits as soon as g_worker_run is cleared --
+ * any jobs still queued are abandoned (they are plain structs in a ring buffer,
+ * not heap, so nothing leaks) rather than drained, keeping shutdown latency to
+ * at most one in-flight verify timeout instead of the whole queue. */
+static REG_THREAD_FN verify_worker(void *arg) {
+  (void)arg;
+  for (;;) {
+    RegistryServer_t srv;
+    reg_mutex_lock(&g_qlock);
+    while (g_worker_run && g_qcount == 0)
+      reg_cond_wait(&g_qcond, &g_qlock);
+    if (!g_worker_run) { /* shutdown requested; abandon any queued jobs */
+      reg_mutex_unlock(&g_qlock);
+      break;
+    }
+    srv = g_queue[g_qhead];
+    g_qhead = (g_qhead + 1) % REG_VERIFY_QUEUE_MAX;
+    g_qcount--;
+    reg_mutex_unlock(&g_qlock);
+
+    uint32_t now = dc_get_ticks();
+    bool backoff;
+    reg_mutex_lock(&g_lock);
+    backoff = verify_backing_off(srv.ip, now);
+    reg_mutex_unlock(&g_lock);
+    if (backoff) {
+      rlog("skip verify (backoff) %s:%u", srv.ip, srv.tcp_port);
+      continue;
+    }
+
+    /* The blocking part -- deliberately outside any lock so a slow peer never
+     * holds up the accept loop's table reads or the JSON write. */
+    bool ok = callback_verify(srv.ip, srv.tcp_port);
+
+    now = dc_get_ticks();
+    reg_mutex_lock(&g_lock);
+    if (ok) {
+      clear_verify_fail(srv.ip);
+      if (table_upsert(&srv, now))
+        rlog("listed %s:%u \"%s\" (%u/%u)", srv.ip, srv.tcp_port, srv.name,
+             srv.player_count, srv.max_players);
+      else
+        rlog("rejected %s:%u (per-IP cap or full)", srv.ip, srv.tcp_port);
+    } else {
+      note_verify_fail(srv.ip, now);
+      rlog("verify failed %s:%u", srv.ip, srv.tcp_port);
+    }
+    reg_mutex_unlock(&g_lock);
+  }
+  return REG_THREAD_RET;
+}
+
 static void handle_connection(tcpme_socket_t client, const char *peer_ip) {
   uint16_t opcode = 0;
   const uint8_t *payload = NULL;
@@ -255,25 +408,27 @@ static void handle_connection(tcpme_socket_t client, const char *peer_ip) {
       /* Trust the connection source for the IP, never the payload. */
       snprintf(srv.ip, sizeof srv.ip, "%s", normalize_ip(peer_ip));
       uint32_t now = dc_get_ticks();
+      bool backoff;
+      reg_mutex_lock(&g_lock);
+      backoff = verify_backing_off(srv.ip, now);
+      reg_mutex_unlock(&g_lock);
       if (srv.tcp_port == 0) {
         /* nothing to verify or list */
-      } else if (verify_backing_off(srv.ip, now)) {
+      } else if (backoff) {
+        /* Reject cheaply without enqueueing -- a known-bad IP would just fail
+         * the re-verify and tie up a worker slot. */
         rlog("skip verify (backoff) %s:%u", srv.ip, srv.tcp_port);
-      } else if (callback_verify(srv.ip, srv.tcp_port)) {
-        clear_verify_fail(srv.ip);
-        if (table_upsert(&srv, now))
-          rlog("listed %s:%u \"%s\" (%u/%u)", srv.ip, srv.tcp_port, srv.name, srv.player_count,
-               srv.max_players);
-        else
-          rlog("rejected %s:%u (per-IP cap or full)", srv.ip, srv.tcp_port);
+      } else if (!verify_enqueue(&srv)) {
+        rlog("verify queue full, dropped %s:%u", srv.ip, srv.tcp_port);
       } else {
-        note_verify_fail(srv.ip, now);
-        rlog("verify failed %s:%u", srv.ip, srv.tcp_port);
+        rlog("queued verify %s:%u", srv.ip, srv.tcp_port);
       }
     }
   } else if (opcode == MSG_REG_LIST_REQUEST) {
     RegistryServer_t list[REGISTRY_MAX_SERVERS];
+    reg_mutex_lock(&g_lock);
     int n = table_snapshot(list, REGISTRY_MAX_SERVERS);
+    reg_mutex_unlock(&g_lock);
     registry_send_list(client, list, n);
     rlog("served list (%d servers) to %s", n, peer_ip);
   }
@@ -300,6 +455,23 @@ static int run_registry(uint16_t port, const char *json_path) {
   }
   tcpme_add_socket(set, server);
 
+  /* Bring up the shared-state lock and the verify worker before accepting. */
+  reg_mutex_init(&g_lock);
+  reg_mutex_init(&g_qlock);
+  reg_cond_init(&g_qcond);
+  g_worker_run = true;
+  reg_thread_t worker;
+  if (reg_thread_create(&worker, verify_worker, NULL) != 0) {
+    fputs("registry: failed to start verify worker\n", stderr);
+    reg_cond_destroy(&g_qcond);
+    reg_mutex_destroy(&g_qlock);
+    reg_mutex_destroy(&g_lock);
+    tcpme_free_set(set);
+    tcpme_close(server);
+    tcpme_quit();
+    return 1;
+  }
+
   printf("Dealer's Choice registry listening on port %u\n", port);
   if (json_path)
     printf("Writing server list to %s\n", json_path);
@@ -319,14 +491,35 @@ static int run_registry(uint16_t port, const char *json_path) {
       }
     }
     uint32_t now = dc_get_ticks();
+    /* Expire and snapshot under g_lock; the file write happens afterwards from
+     * the local snapshot so I/O never holds the lock. */
+    RegistryServer_t snap[REGISTRY_MAX_SERVERS];
+    int n = 0;
+    bool do_json = json_path && now - last_json >= REG_JSON_INTERVAL_MS;
+    reg_mutex_lock(&g_lock);
     table_expire(now);
-    if (json_path && now - last_json >= REG_JSON_INTERVAL_MS) {
-      write_servers_json(json_path);
+    if (do_json)
+      n = table_snapshot(snap, REGISTRY_MAX_SERVERS);
+    reg_mutex_unlock(&g_lock);
+    if (do_json) {
+      write_servers_json(json_path, snap, n);
       last_json = now;
     }
   }
 
   printf("registry: shutting down\n");
+  /* Stop the worker: clear the run flag, wake it, and join. The worker abandons
+   * any still-queued jobs (plain structs in a ring buffer, not heap, so nothing
+   * leaks) and returns after at most one in-flight verify timeout. */
+  reg_mutex_lock(&g_qlock);
+  g_worker_run = false;
+  reg_cond_signal(&g_qcond);
+  reg_mutex_unlock(&g_qlock);
+  reg_thread_join(worker);
+
+  reg_cond_destroy(&g_qcond);
+  reg_mutex_destroy(&g_qlock);
+  reg_mutex_destroy(&g_lock);
   tcpme_free_set(set);
   tcpme_close(server);
   tcpme_quit();
