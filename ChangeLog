@@ -1,33 +1,33 @@
 - (in-progress)
-  + New poker variant: 5-card triple draw (three draw rounds) (#59)
+  + New poker variant: 5-card triple draw (three draw rounds)
   + LAN game discovery: the connect screen now lists DC servers running on
     your local network; click one to join
   + The server is now a separate program, dealers-choice-server.
   * Fix a crash where the GUI client could use a huge amount of memory and
-    be killed soon after joining a game (#334)
+    be killed soon after joining a game
   * Fix the hand ending too early, or declaring the wrong winner, when a
     player who joined a hand already in progress then disconnects
   * Show the current game name and Deuces Wild status to a player who joins a
-    game already in progress (#223)
+    game already in progress
   * Stop showing phantom face-down cards in the slot of an observer who joined
-    a game already in progress (#329)
+    a game already in progress
   + Player action messages (checked, bet, folded, etc.) are now translatable by
-    the client instead of being fixed in the server's language (#74)
+    the client instead of being fixed in the server's language
   * Action timeouts now accumulate across hands, so a player who keeps timing
-    out is disconnected even when the timeouts span different hands (#31)
+    out is disconnected even when the timeouts span different hands
   + During a game, the amount you owe to call is shown next to the bet amount
-    above the step scale (#60)
+    above the step scale
   + Show your current hand's rank in the lower-right corner during a game,
     toggled by a configurable hotkey (default "h"); it stays on until you turn
-    it off (#61)
+    it off
   + In stud and hold.em, your own hidden (hole) cards show a small eye-off icon
-    so you can tell which of your cards opponents cannot see (#64)
+    so you can tell which of your cards opponents cannot see
   + In draw games you can pick discards with the mouse or number keys 1-5,
-    and even before your turn. (#22)
+    and even before your turn.
   + Server registry: the new dealers-choice-registry program tracks internet
     servers; a server publishes itself to it (set "registry" in common.conf,
     or --disable-publish to opt out), and the connect screen shows those
-    servers next to the LAN ones (#33)
+    servers next to the LAN ones
   + Press F1 to show the list of keys; it works during a game, on the connect
     screen, and in the lobby. Press F1 or Esc to close it
   * Fix the draw count not showing when a player draws no cards; it now reads
