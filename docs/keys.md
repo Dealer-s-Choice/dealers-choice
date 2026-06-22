@@ -16,9 +16,9 @@ below. You can also change them from the Settings screen.
 | Check | `c` | Check (pass without betting) |
 | Bet | `b` | Bet (open the betting) |
 | Fold | `f` | Fold (give up the hand) |
-| Call | `l` | Call (match the current bet) |
+| Call | `c` | Call (match the current bet) |
 | Raise | `r` | Raise (increase the bet) |
-| Complete | `o` | Complete (finish a partial bet) |
+| Complete | `r` | Complete (finish a partial bet) |
 | Discard | `d` | Discard (draw new cards) |
 | Hand rank | `h` | Show your current best hand |
 
@@ -28,9 +28,9 @@ To change a key, edit its line in `player.conf`, for example:
 hotkey_check = c
 hotkey_bet = b
 hotkey_fold = f
-hotkey_call = l
+hotkey_call = c
 hotkey_raise = r
-hotkey_complete = o
+hotkey_complete = r
 hotkey_discard = d
 hotkey_hand_rank = h
 ```
