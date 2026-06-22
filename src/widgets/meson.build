@@ -4,6 +4,7 @@ widgets_src = files(
   'card_text_atlas.c',
   'checkbox.c',
   'dealer.c',
+  'diamond_button.c',
   'image.c',
   'indicator.c',
   'input.c',
