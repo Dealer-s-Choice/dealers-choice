@@ -117,6 +117,41 @@ static void close_pair(tcpme_socket_t client, SocketContext_t *ctx) {
   tcpme_close(client);
 }
 
+/* Resync the stream after a rejected frame without tearing down the connection.
+ *
+ * A size-rejected frame leaves its body unread on the server socket (see
+ * feed_frame), desyncing the stream. The original code rebuilt the whole
+ * loopback pair on every rejection, but at 20k iterations that opens thousands
+ * of short-lived TCP connections. Linux recycles ephemeral ports fast enough to
+ * survive it; platforms with a smaller ephemeral range and slower TIME_WAIT
+ * recycling do not -- macOS and the BSDs exhaust local ports (connect() fails,
+ * "reconnect failed") and Windows spends so long in the connect storm the test
+ * times out. Draining the leftover bytes instead keeps a single connection for
+ * the whole run: equivalent resync, no port churn. */
+static void drain_socket(SocketContext_t *ctx) {
+  uint8_t scratch[2048];
+  /* By the time feed_frame reports a rejection it has already polled the size off
+   * the socket, so the body (sent in the same burst) is normally waiting too:
+   * poll with no timeout and read it all. Only if nothing is ready -- the body
+   * hasn't landed yet -- spend one brief wait. A straggler we still miss just
+   * desyncs the next frame, which produces another rejection and another drain,
+   * so it self-corrects; that keeps this loop from adding per-iteration latency
+   * (the slow path that made the old reconnect churn time out under Windows CI). */
+  for (int tries = 0; tries < 2; tries++) {
+    tcpme_check_sockets(ctx->set, tries == 0 ? 0 : 2);
+    bool got = false;
+    while (tcpme_socket_ready(ctx->set, ctx->sock)) {
+      int n = tcpme_recv(ctx->sock, scratch, (int)sizeof scratch);
+      if (n <= 0)
+        return; /* peer closed/error; a later write failure rebuilds the pair */
+      got = true;
+      tcpme_check_sockets(ctx->set, 0);
+    }
+    if (got)
+      return;
+  }
+}
+
 /* Build a [opcode:2 BE][body] payload into buf; returns total length. */
 static size_t build_frame_payload(fuzz_rng_t *r, uint8_t *buf, size_t cap) {
   uint16_t opcode = OPCODES[fuzz_bounded(r, N_OPCODES)];
@@ -272,13 +307,10 @@ int main(int argc, char **argv) {
     framed++;
 
     if (st == RECV_ERROR) {
-      /* Stream is desynced after a rejected frame; reconnect like the real code. */
-      close_pair(client, &ctx);
-      if (!make_pair(&client, &ctx)) {
-        fputs("net_fuzz: reconnect failed\n", stderr);
-        tcpme_quit();
-        return 1;
-      }
+      /* A rejected frame may leave its body unread, desyncing the stream. Drain
+       * it rather than rebuilding the pair -- see drain_socket on why the old
+       * reconnect-per-rejection churn broke macOS/BSD/Windows CI. */
+      drain_socket(&ctx);
     }
   }
 
