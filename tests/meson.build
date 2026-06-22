@@ -122,11 +122,11 @@ test(
 )
 
 add_test_setup(
-  'One_pass',
+  'Three_pass',
   #exe_wrapper: [join_paths(meson.current_source_dir(), '5_card_showdown.sh')],
   env: environment(
     base_env + {
-      'DC_NPASSES': '1',
+      'DC_NPASSES': '3',
       # Suppress third-party libdbus/systemd lock-order inversions under TSan
       # (no-op for non-TSan binaries). See #282 and tsan_suppressions.txt.
       'TSAN_OPTIONS': 'suppressions=' + meson.current_source_dir() / 'tsan_suppressions.txt',
