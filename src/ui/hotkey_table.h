@@ -47,6 +47,7 @@
 #ifndef __HOTKEY_TABLE_H
 #define __HOTKEY_TABLE_H
 
+#include <stdbool.h>
 #include <stddef.h>
 
 /* A configurable action: which player.conf key sets it, its built-in default,
@@ -64,6 +65,9 @@ typedef struct {
 typedef struct {
   const char *keys;        /* key label, e.g. "1-8" or "Esc"                */
   const char *description; /* plain-English description (marked with N_)     */
+  bool in_game_only;       /* true => only meaningful during a hand, so the  */
+                           /* F1 overlay hides it on the connect screen /    */
+                           /* lobby.  keys.md always lists every fixed key.  */
 } FixedKeyDef_t;
 
 extern const HotkeyDef_t g_hotkey_defs[];

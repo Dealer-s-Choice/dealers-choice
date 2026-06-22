@@ -39,6 +39,7 @@
 #include "game.h"
 #include "globals_gui.h"
 #include "graphics.h"
+#include "hotkey_overlay.h"
 #include "hotkeys.h"
 #include "widgets/button.h"
 #include "widgets/dealer.h"
@@ -163,6 +164,8 @@ EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_config,
   static bool was_connected[MAX_PLAYERS] = {0};
 
   EGameSelResult_t result = GAME_SEL_SUCCESS;
+
+  bool show_keys_overlay = false; /* F1 "Keys" reference panel */
 
   char *back_img_path = canfigger_path_join(path->data, "images/arrow_back.png");
   ImageWidget_t *back_img = back_img_path
@@ -391,6 +394,9 @@ EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_config,
 
     SDL_Event e;
     while (SDL_PollEvent(&e)) {
+      /* F1 toggles the read-only key list; while open it swallows other keys. */
+      if (hotkey_overlay_handle_event(&e, &show_keys_overlay))
+        continue;
       switch (e.type) {
 
       case SDL_QUIT:
@@ -504,6 +510,10 @@ EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_config,
       // Show dealing screen immediately after click
       show_loading_screen(sdl_context->renderer, font->fonts[FONT_TITLE], _("Dealing..."));
     }
+
+    if (show_keys_overlay)
+      hotkey_overlay_render(sdl_context->renderer, font, false);
+
     SDL_RenderPresent(sdl_context->renderer);
     SDL_Delay(16);
   }

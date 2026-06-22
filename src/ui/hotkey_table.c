@@ -51,11 +51,11 @@ const size_t g_hotkey_def_count = sizeof(g_hotkey_defs) / sizeof(g_hotkey_defs[0
 /* Fixed keys the player cannot rebind.  Listed so the overlay and the docs show
  * the complete in-game key map, not just the configurable part. */
 const FixedKeyDef_t g_fixed_keys[] = {
-    {"1-5", N_("Pick cards to discard during a draw")},
-    {"1-8", N_("Choose the bet or raise amount")},
-    {"F1", N_("Show or hide this key list")},
-    {"F11", N_("Toggle fullscreen")},
-    {"Esc", N_("Close this list, or quit the game")},
+    {"1-5", N_("Pick cards to discard during a draw"), true},
+    {"1-8", N_("Choose the bet or raise amount"), true},
+    {"F1", N_("Show or hide this key list"), false},
+    {"F11, Alt+Enter", N_("Toggle fullscreen"), false},
+    {"Esc", N_("Close this list, or leave the screen"), false},
 };
 
 const size_t g_fixed_key_count = sizeof(g_fixed_keys) / sizeof(g_fixed_keys[0]);

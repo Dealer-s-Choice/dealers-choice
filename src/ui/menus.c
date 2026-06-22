@@ -39,6 +39,7 @@
 #include "game.h"
 #include "globals_gui.h"
 #include "graphics.h"
+#include "hotkey_overlay.h"
 #include "hotkeys.h"
 #include "lan_discovery.h"
 #include "links.h"
@@ -486,9 +487,15 @@ int menu_display_connect(PlayerConfig_t *player_config, char *host_str, uint16_t
   RoundButtonWidget_t *lan_connect[LAN_MAX_SHOWN] = {0};
   int lan_connect_count = 0;
 
+  bool show_keys_overlay = false; /* F1 "Keys" reference panel */
+
   while (running) {
     SDL_Event e;
     while (SDL_PollEvent(&e)) {
+      /* F1 toggles the read-only key list; while it is open it swallows other
+       * keys (so Esc closes the panel rather than leaving the screen). */
+      if (hotkey_overlay_handle_event(&e, &show_keys_overlay))
+        continue;
       SDL_Point mouse_pos = {e.button.x, e.button.y};
       button_connect->base.hovered = SDL_PointInRect(&mouse_pos, &button_connect->base.rect);
       button_settings->base.hovered = SDL_PointInRect(&mouse_pos, &button_settings->base.rect);
@@ -778,6 +785,9 @@ int menu_display_connect(PlayerConfig_t *player_config, char *host_str, uint16_t
 
     for (size_t i = 0; i < LINK_DEFS_COUNT; i++)
       ui_widget_render(&links[i]->base);
+
+    if (show_keys_overlay)
+      hotkey_overlay_render(sdl_context->renderer, font, false);
 
     SDL_RenderPresent(sdl_context->renderer);
     SDL_Delay(16);

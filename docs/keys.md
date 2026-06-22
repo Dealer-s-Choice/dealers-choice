@@ -48,6 +48,6 @@ use them for an action.
 | `1-5` | Pick cards to discard during a draw |
 | `1-8` | Choose the bet or raise amount |
 | `F1` | Show or hide this key list |
-| `F11` | Toggle fullscreen |
-| `Esc` | Close this list, or quit the game |
+| `F11, Alt+Enter` | Toggle fullscreen |
+| `Esc` | Close this list, or leave the screen |
 

@@ -5,6 +5,7 @@ ui_src = files(
   'menus.c',
   'globals_gui.c',
   'graphics.c',
+  'hotkey_overlay.c',
   'hotkey_table.c',
   'hotkeys.c',
   'layout.c',
