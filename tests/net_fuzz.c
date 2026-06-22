@@ -266,6 +266,11 @@ int main(int argc, char **argv) {
   if (env_ms)
     budget_ms = (uint32_t)strtoul(env_ms, NULL, 10);
 
+  /* TEMPORARY diagnostic: locate the Windows-only 180s hang. Prints to stderr
+   * (not the NUL'd dc_log). Remove once the cause is found. */
+  fprintf(stderr, "net_fuzz: DIAG count=%ld budget_ms=%u\n", count, budget_ms);
+  fflush(stderr);
+
   if (tcpme_init() != 0) {
     fputs("net_fuzz: tcpme_init failed\n", stderr);
     return 1;
@@ -307,8 +312,16 @@ int main(int argc, char **argv) {
   uint32_t t_start = dc_get_ticks();
 
   for (long i = 0; i < count; i++) {
-    if (budget_ms && dc_get_ticks() - t_start >= budget_ms)
+    uint32_t elapsed = dc_get_ticks() - t_start;
+    if (i % 1000 == 0) { /* TEMPORARY diagnostic progress */
+      fprintf(stderr, "net_fuzz: DIAG iter=%ld elapsed=%ums framed=%ld direct=%ld\n", i, elapsed,
+              framed, direct);
+      fflush(stderr);
+    }
+    if (budget_ms && elapsed >= budget_ms) {
+      fprintf(stderr, "net_fuzz: DIAG wall-cap hit at iter=%ld elapsed=%ums\n", i, elapsed);
       break; /* wall-clock cap hit (slow runner); stop cleanly */
+    }
     uint32_t mode = fuzz_bounded(&frng, 4);
     if (mode == 0) {
       /* Direct deserializer fuzz: pure-random buffer (no socket). */
@@ -340,6 +353,8 @@ int main(int argc, char **argv) {
 
     ERecvStatus_t st = RECV_NOTHING;
     if (!feed_frame(client, &ctx, &gs, &cs, payload, len, &st)) {
+      fprintf(stderr, "net_fuzz: DIAG rebuild at iter=%ld\n", i); /* TEMPORARY */
+      fflush(stderr);
       /* Write failed: peer gone. Rebuild and retry the run. */
       close_pair(client, &ctx);
       if (!make_pair(&client, &ctx))
