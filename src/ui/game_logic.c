@@ -62,6 +62,16 @@
 
 static const uint8_t coin_px = 96;
 
+/* Hand-rank overlay toggle (#61, default hotkey "h"): shows your current best
+ * hand rank in the lower-right during a game. File-scope so the on/off state
+ * PERSISTS across hands and across games (#88). handle_game_logic is re-entered
+ * once per game from client.c's lobby loop, and hands cycle within a single
+ * call, so a plain local would reset on both boundaries. This is a client-only
+ * view preference, so it lives here rather than in the SDL-free, wire-protocol
+ * ClientState_t. It is process-global by design: there is only ever one local
+ * player, so a single static is the whole state. */
+static bool g_show_hand_rank = false;
+
 static void make_human_readable_card(DH_Card *card, CardWidget_t *cw) {
   const char *face = DH_get_card_face_str(card->face_val);
   const char *suit = DH_get_card_unicode_suit(*card);
@@ -746,7 +756,8 @@ EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
   int running = 1;
   bool cards_created = false;
   bool winner_highlighted = false;
-  bool show_hand_rank = false;      /* toggled by CTRL-H (#61) */
+  /* g_show_hand_rank (file-scope) holds the hand-rank overlay toggle; it
+   * persists across hands and games (#88), so it is not declared here. */
   bool show_hotkey_overlay = false; /* F1 reference panel; non-blocking */
 
   Player_t *players_array = game_state->player;
@@ -1580,7 +1591,7 @@ EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
     render_text_pot(buffer, g_layout.table_center, font);
 
     /* CTRL-H: show the best rank of your own hand, lower-right corner (#61). */
-    if (show_hand_rank && hand_rank_tw) {
+    if (g_show_hand_rank && hand_rank_tw) {
       const char *rank = local_hand_rank_name(&game_state->player[my_id].hand,
                                               client_state.game_choice, client_state.deuces_wild);
       if (rank) {
@@ -1735,7 +1746,7 @@ EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
          * runtime check against g_hotkey_cfg rather than a fixed switch case. */
         if (g_hotkey_cfg.hand_rank != SDLK_UNKNOWN &&
             event.key.keysym.sym == g_hotkey_cfg.hand_rank)
-          show_hand_rank = !show_hand_rank;
+          g_show_hand_rank = !g_show_hand_rank;
       }
       if (event.type == SDL_MOUSEBUTTONDOWN || event.type == SDL_KEYDOWN) {
         if (my_turn && !client_state.do_discard_draw) {

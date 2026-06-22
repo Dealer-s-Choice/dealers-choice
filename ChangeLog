@@ -18,7 +18,8 @@
   + During a game, the amount you owe to call is shown next to the bet amount
     above the step scale (#60)
   + Show your current hand's rank in the lower-right corner during a game,
-    toggled by a configurable hotkey (default "h") (#61)
+    toggled by a configurable hotkey (default "h"); it stays on until you turn
+    it off (#61, #88)
   + In stud and hold.em, your own hidden (hole) cards show a small eye-off icon
     so you can tell which of your cards opponents cannot see (#64)
   + In draw games you can pick discards with the mouse or number keys 1-5,
