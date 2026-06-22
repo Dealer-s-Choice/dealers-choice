@@ -250,6 +250,41 @@ executable(
   install: false,
 )
 
+# Build-time tool that turns the shared hotkey table (src/ui/hotkey_table.c)
+# into docs/keys.md.  Built as a native tool so it runs on the build machine
+# even when cross-compiling.  It compiles the table directly (no SDL) so the
+# generated docs and the in-game F1 overlay always agree on the key list.
+gen_keys_doc = executable(
+  'gen_keys_doc',
+  ['tools/gen_keys_doc.c', 'src/ui/hotkey_table.c'],
+  include_directories: include_directories('src', 'src/ui'),
+  native: true,
+  install: false,
+)
+
+# Generate docs/keys.md into the build tree at build time.  This is not installed
+# directly: install_subdir('docs') ships the committed docs/keys.md (kept current
+# via the regen-keys-doc target below and committed so raw git-tag builds, which
+# skip dist processing, still ship it).  Building it here verifies the generator
+# compiles and runs on every build, so drift between the table and the docs is
+# caught at build time.
+keys_doc = custom_target(
+  'gen-keys-doc',
+  output: 'keys.md',
+  command: [gen_keys_doc, '@OUTPUT@'],
+  build_by_default: true,
+)
+
+# Convenience target to refresh the committed docs/keys.md in the source tree
+# (so the version in git stays current): `meson compile -C <build> regen-keys-doc`.
+run_target(
+  'regen-keys-doc',
+  command: [
+    gen_keys_doc,
+    join_paths(meson.project_source_root(), 'docs', 'keys.md'),
+  ],
+)
+
 install_subdir(
   'data',
   install_dir: join_paths(get_option('datadir'), meson.project_name()),

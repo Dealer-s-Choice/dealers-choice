@@ -30,6 +30,7 @@
  * card/coin/widget layout + rendering helpers.  Split out of client.c; the
  * cross-file helpers shared with client.c are declared in client_internal.h. */
 
+#include <ctype.h>
 #include <math.h>
 
 #include <deckhandler.h>
@@ -43,6 +44,7 @@
 #include "game.h"
 #include "globals_gui.h"
 #include "graphics.h"
+#include "hotkey_table.h"
 #include "hotkeys.h"
 #include "widgets/button.h"
 #include "widgets/card_text_atlas.h"
@@ -379,6 +381,117 @@ static SDL_Keycode action_hotkey(int action) {
   default:
     return SDLK_UNKNOWN;
   }
+}
+
+/* Action-label string for an overlay row: the config_key minus "hotkey_", first
+ * letter capitalised ("hotkey_check" -> "Check"). */
+static void overlay_action_label(const char *config_key, char *out, size_t out_sz) {
+  const char *p = config_key;
+  if (strncmp(p, "hotkey_", 7) == 0)
+    p += 7;
+  snprintf(out, out_sz, "%s", p);
+  if (out[0])
+    out[0] = (char)toupper((unsigned char)out[0]);
+  for (char *c = out; *c; c++)
+    if (*c == '_')
+      *c = ' '; /* "hand_rank" -> "Hand rank" */
+}
+
+/* render_hotkey_overlay - F1 in-game reference panel (#: F1 hotkeys).
+ *
+ * NON-BLOCKING by design: this draws one frame of a read-only panel over the
+ * live table and returns immediately, so handle_game_logic's loop keeps polling
+ * the socket and the server's action timer is never starved (unlike the blocking
+ * menu_display_hotkeys modal).  Bindings are read live from g_hotkey_cfg via the
+ * shared hotkey_table.h tables, so a key changed in Settings shows correctly
+ * here, and the same tables generate docs/keys.md (single source of truth).
+ *
+ * Textures are created and freed each frame for simplicity; the panel is only
+ * drawn while the player has paused the action to read it, so the cost is
+ * irrelevant.  Lay-out is intentionally simple two-column rows. */
+static void render_hotkey_overlay(SDL_Renderer *renderer, const Font_t *font) {
+  TTF_Font *title_font = font->fonts[FONT_TITLE];
+  TTF_Font *head_font = font->fonts[FONT_BOLD];
+  TTF_Font *row_font = font->fonts[FONT_DEFAULT];
+
+  int line_h = 0;
+  TTF_SizeUTF8(row_font, "Ag", NULL, &line_h);
+  const int row_gap = line_h + 8;
+  const int pad = 30;
+  const int key_col_w = 150; /* width reserved for the key column */
+
+  /* Total rows: title + section head + configurable + blank + head + fixed. */
+  size_t total_rows = 1                        /* title             */
+                      + 1                      /* "Action keys" head */
+                      + g_hotkey_def_count + 1 /* config rows + gap  */
+                      + 1                      /* "Fixed keys" head  */
+                      + g_fixed_key_count;
+  int panel_h = pad * 2 + (int)total_rows * row_gap;
+  int panel_w = 620;
+  int panel_x = g_center.x - panel_w / 2;
+  int panel_y = g_center.y - panel_h / 2;
+
+  /* Dim the whole screen, then draw the opaque panel on top. */
+  SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+  SDL_SetRenderDrawColor(renderer, 0, 0, 0, 160);
+  SDL_RenderFillRect(renderer, &(SDL_Rect){0, 0, g_viewport.w + g_viewport.x * 2,
+                                           g_viewport.h + g_viewport.y * 2});
+
+  SDL_Rect panel = {panel_x, panel_y, panel_w, panel_h};
+  SDL_SetRenderDrawColor(renderer, 25, 40, 30, 245);
+  SDL_RenderFillRect(renderer, &panel);
+  SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);
+  draw_3d_border(renderer, panel, 8);
+
+  int text_x = panel_x + pad;
+  int key_x = panel_x + panel_w - pad - key_col_w;
+  int y = panel_y + pad;
+
+  /* Tiny render-string helper, local to this function. */
+#define OVL_TEXT(fnt, str, color, xx)                                                              \
+  do {                                                                                             \
+    TextWidget_t *_t = text_widget_create((str), (fnt), (color));                                  \
+    if (_t) {                                                                                      \
+      ui_widget_place(&_t->base, (xx), y);                                                         \
+      ui_widget_render(&_t->base);                                                                 \
+      ui_widget_destroy(&_t->base);                                                                \
+    }                                                                                              \
+  } while (0)
+
+  OVL_TEXT(title_font, _("Keys"), DC_TEXT_ON_DARK, text_x);
+  y += row_gap;
+
+  OVL_TEXT(head_font, _("Action keys (set in Settings)"), DC_TEXT_MUTED, text_x);
+  y += row_gap;
+
+  for (size_t i = 0; i < g_hotkey_def_count; i++) {
+    char label[32];
+    overlay_action_label(g_hotkey_defs[i].config_key, label, sizeof(label));
+    /* Live binding from g_hotkey_cfg; fall back to the table default if SDL
+     * could not resolve the configured name (so the panel never shows blank). */
+    SDL_Keycode kc = hotkey_for_config_key(g_hotkey_defs[i].config_key);
+    const char *kn = kc != SDLK_UNKNOWN ? SDL_GetKeyName(kc) : NULL;
+    char keytxt[48];
+    snprintf(keytxt, sizeof(keytxt), "%s", (kn && *kn) ? kn : g_hotkey_defs[i].default_key);
+
+    OVL_TEXT(row_font, _(g_hotkey_defs[i].description), DC_TEXT_ON_DARK, text_x);
+    OVL_TEXT(row_font, keytxt, DC_TEXT_ON_DARK, key_x);
+    y += row_gap;
+    (void)label; /* label kept for future two-column layouts; description carries meaning */
+  }
+
+  y += row_gap; /* blank spacer between sections */
+
+  OVL_TEXT(head_font, _("Fixed keys"), DC_TEXT_MUTED, text_x);
+  y += row_gap;
+
+  for (size_t i = 0; i < g_fixed_key_count; i++) {
+    OVL_TEXT(row_font, _(g_fixed_keys[i].description), DC_TEXT_ON_DARK, text_x);
+    OVL_TEXT(row_font, g_fixed_keys[i].keys, DC_TEXT_ON_DARK, key_x);
+    y += row_gap;
+  }
+
+#undef OVL_TEXT
 }
 
 static void layout_action_buttons(ButtonWidget_t **b) {
@@ -742,7 +855,8 @@ EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
   int running = 1;
   bool cards_created = false;
   bool winner_highlighted = false;
-  bool show_hand_rank = false; /* toggled by CTRL-H (#61) */
+  bool show_hand_rank = false;      /* toggled by CTRL-H (#61) */
+  bool show_hotkey_overlay = false; /* F1 reference panel; non-blocking */
 
   Player_t *players_array = game_state->player;
   Player_t *turn = NULL;
@@ -1589,6 +1703,12 @@ EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
       }
     }
 
+    /* F1 reference overlay: drawn last so it sits on top of everything.  It is a
+     * read-only panel; the loop keeps running and receiving server state beneath
+     * it, so opening it mid-hand does not risk an action timeout. */
+    if (show_hotkey_overlay)
+      render_hotkey_overlay(sdl_context->renderer, font);
+
     SDL_RenderPresent(sdl_context->renderer);
     SDL_Delay(16);
 
@@ -1615,6 +1735,23 @@ EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
 
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
+      /* F1 reference overlay handling, before anything else consumes the event.
+       * F1 toggles it.  While it is open, Esc closes it (instead of opening the
+       * quit prompt) and every other keypress is swallowed, so an action hotkey
+       * pressed while reading the panel does not also fire the action.  SDL_QUIT
+       * still falls through so the window can always be closed. (#: F1 hotkeys) */
+      if (event.type == SDL_KEYDOWN) {
+        if (event.key.keysym.sym == SDLK_F1) {
+          show_hotkey_overlay = !show_hotkey_overlay;
+          continue;
+        }
+        if (show_hotkey_overlay) {
+          if (event.key.keysym.sym == SDLK_ESCAPE)
+            show_hotkey_overlay = false;
+          continue; /* swallow all other keys while the panel is up */
+        }
+      }
+
       if (can_select_discards && event.type == SDL_MOUSEBUTTONDOWN) {
         for (int card_n = 0; card_n < MAX_HAND_SIZE; card_n++) {
           if (DH_is_card_null(game_state->player[my_id].hand.card[card_n]))
