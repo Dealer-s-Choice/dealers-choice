@@ -188,7 +188,7 @@ static int server_table_build(UITable_t *t, UIRegistry_t *owner, Font_t *font, i
     t->col_align[c] = 1; /* left-align the text columns; Connect column centers */
 
   static const char *const hdr[SERVER_TABLE_COLS] = {"Name",   "IP",     "Port",
-                                                     "Players", "Uptime", "Connect"};
+                                                     "Players", "Uptime (days)", "Connect"};
   for (int c = 0; c < SERVER_TABLE_COLS; c++) {
     TextWidget_t *h = text_widget_create(_(hdr[c]), font->fonts[FONT_DEFAULT_BOLD], DC_TEXT_ON_DARK);
     if (h) {
@@ -207,13 +207,14 @@ static int server_table_build(UITable_t *t, UIRegistry_t *owner, Font_t *font, i
     snprintf(portbuf, sizeof(portbuf), "%u", (unsigned)s->port);
     snprintf(plbuf, sizeof(plbuf), "%u/%u%s", (unsigned)s->player_count, (unsigned)s->max_players,
              s->in_progress ? " *" : "");
-    /* Uptime in days to one decimal, derived from the server's reported boot
+    /* Uptime in days to four decimals (~8.6 s resolution, so it visibly ticks
+     * on each ~10 s registry refresh), derived from the server's reported boot
      * instant against our own wall clock. start_time == 0 means unknown (LAN
      * rows, or an older server that predates the field); a future/garbled
      * start_time (now < start_time, e.g. clock skew) is also shown as "-". */
     time_t now = time(NULL);
     if (s->start_time != 0 && (uint64_t)now >= s->start_time)
-      snprintf(uptimebuf, sizeof(uptimebuf), "%.1f", (double)((uint64_t)now - s->start_time) / 86400.0);
+      snprintf(uptimebuf, sizeof(uptimebuf), "%.4f", (double)((uint64_t)now - s->start_time) / 86400.0);
     else
       snprintf(uptimebuf, sizeof(uptimebuf), "-");
 
