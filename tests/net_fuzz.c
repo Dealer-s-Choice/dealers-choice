@@ -108,6 +108,17 @@ static bool make_pair(tcpme_socket_t *client_out, SocketContext_t *ctx) {
     return false;
   }
 
+  /* Bound blocking recvs so a single frame can never hang the run. recv_all_tcp
+   * loops tcpme_recv until it has the requested bytes; if a fuzzed/desynced size
+   * asks for more than will ever arrive, that recv blocks forever with no socket
+   * timeout -- which is why the per-iteration wall-cap never fired and the run
+   * timed out on Windows (the drain occasionally misses a straggler there,
+   * desyncing the next size read). A short SO_RCVTIMEO turns that into a quick
+   * RECV_ERROR -> drain -> resync (loopback delivery is sub-ms, so this never
+   * trips on a legit frame). The real server uses SOCKET_IO_TIMEOUT_MS; the test
+   * wants a much shorter value so recovery is fast. */
+  tcpme_set_timeout(srv, 200);
+
   tcpme_set_t *set = tcpme_alloc_set(1);
   if (!set) {
     tcpme_close(cli);
