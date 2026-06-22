@@ -56,17 +56,18 @@
 
 #define MAX_PAYLOAD 4096
 
-/* TEMPORARY diagnostic for the Windows-only 180s net_fuzz hang. Writes to BOTH
- * stdout and stderr, each flushed, so the trace survives whichever stream the CI
- * runner captures (the prior run showed only the pre-make_pair line, leaving it
- * ambiguous whether the loop never ran or post-startup stderr was simply lost).
- * Remove this macro and its call sites once the cause is found. */
+/* Opt-in progress trace (set DC_FUZZ_DIAG=1). Off by default so normal runs stay
+ * quiet. Flip it on in CI to localize a hang on a platform you can't reproduce
+ * locally: it prints how far the run got, so the dead spot is obvious in one
+ * cycle instead of guess-and-push. (The MSVC dc_log_set_file/_IOLBF hang was
+ * found this way.) The wall-cap (DC_FUZZ_MS) bounds the run regardless. */
+static int g_diag;
 #define DIAG(...)                                                                                  \
   do {                                                                                             \
-    fprintf(stderr, __VA_ARGS__);                                                                  \
-    fflush(stderr);                                                                                \
-    fprintf(stdout, __VA_ARGS__);                                                                  \
-    fflush(stdout);                                                                                \
+    if (g_diag) {                                                                                  \
+      fprintf(stderr, __VA_ARGS__);                                                                \
+      fflush(stderr);                                                                              \
+    }                                                                                              \
   } while (0)
 
 /* All opcodes recv_game_state switches on, so the fuzzer reaches every case
@@ -83,12 +84,9 @@ static const uint16_t OPCODES[] = {
  * fuzzed frames to; ctx wraps the server-side accepted socket recv_game_state
  * reads from. Returns false on setup failure. */
 static bool make_pair(tcpme_socket_t *client_out, SocketContext_t *ctx) {
-  DIAG("net_fuzz: DIAG make_pair: listen\n"); /* TEMPORARY */
   tcpme_socket_t listener = tcpme_listen("127.0.0.1", 0);
-  if (!tcpme_socket_valid(listener)) {
-    DIAG("net_fuzz: DIAG make_pair: listen failed\n"); /* TEMPORARY */
+  if (!tcpme_socket_valid(listener))
     return false;
-  }
 
   char addr[TCPME_ADDRPORTSTRLEN];
   if (!tcpme_get_local_addr(listener, addr, sizeof(addr))) {
@@ -102,17 +100,11 @@ static bool make_pair(tcpme_socket_t *client_out, SocketContext_t *ctx) {
   }
   uint16_t port = (uint16_t)atoi(colon + 1);
 
-  /* TEMPORARY: log the address and port to see what we're connecting to. */
-  DIAG("net_fuzz: DIAG make_pair: connecting to addr=%s port=%u\n", addr, port);
-
-  /* Use tcpme_connect_timeout instead of the plain blocking tcpme_connect.
-   * The blocking variant can hang indefinitely on Windows CI even on loopback:
-   * the SYN is issued but no SYN-ACK ever arrives, holding connect() for the
-   * full TCP retransmit timeout (~180s).  A 5s non-blocking select-based
-   * connect bounds the wait to a clean failure if the pair can't be set up,
-   * vs. silently holding the test runner for meson's full per-test timeout. */
+  /* Use tcpme_connect_timeout instead of the plain blocking tcpme_connect so a
+   * setup that can't complete fails cleanly instead of holding the test runner
+   * to meson's per-test timeout. (loopback connect is sub-ms, so the 5s bound is
+   * never reached in normal operation.) */
   tcpme_socket_t cli = tcpme_connect_timeout("127.0.0.1", port, 5000);
-  DIAG("net_fuzz: DIAG make_pair: connect done valid=%d\n", tcpme_socket_valid(cli)); /* TEMPORARY */
   if (!tcpme_socket_valid(cli)) {
     tcpme_close(listener);
     return false;
@@ -128,7 +120,6 @@ static bool make_pair(tcpme_socket_t *client_out, SocketContext_t *ctx) {
     dc_sleep_ms(1);
     srv = tcpme_accept(listener);
   }
-  DIAG("net_fuzz: DIAG make_pair: accept done valid=%d\n", tcpme_socket_valid(srv)); /* TEMPORARY */
   tcpme_close(listener);
   if (!tcpme_socket_valid(srv)) {
     tcpme_close(cli);
@@ -293,14 +284,13 @@ int main(int argc, char **argv) {
   if (env_ms)
     budget_ms = (uint32_t)strtoul(env_ms, NULL, 10);
 
-  /* TEMPORARY diagnostic: locate the Windows-only 180s hang. See the DIAG macro. */
-  DIAG("net_fuzz: DIAG start count=%ld budget_ms=%u\n", count, budget_ms);
+  g_diag = getenv("DC_FUZZ_DIAG") != NULL; /* opt-in progress trace; see DIAG */
+  DIAG("net_fuzz: start count=%ld budget_ms=%u\n", count, budget_ms);
 
   if (tcpme_init() != 0) {
     fputs("net_fuzz: tcpme_init failed\n", stderr);
     return 1;
   }
-  DIAG("net_fuzz: DIAG tcpme_init ok\n"); /* TEMPORARY */
 
   /* Malformed input makes the parser log a DC_LOG_ERROR per rejected frame --
    * expected and voluminous at fuzz scale. Route those to a throwaway file so
@@ -313,11 +303,9 @@ int main(int argc, char **argv) {
     dc_log_set_file("/dev/null");
 #endif
   }
-  DIAG("net_fuzz: DIAG dc_log_set_file done\n"); /* TEMPORARY */
 
   fuzz_rng_t frng;
   fuzz_srand(&frng, seed, seed ^ 0x5a5a5a5au);
-  DIAG("net_fuzz: DIAG fuzz_srand done\n"); /* TEMPORARY */
 
   /* A pair is reused across iterations for speed, but rebuilt whenever a frame
    * is rejected (RECV_ERROR), which desyncs the stream -- exactly what the real
@@ -329,7 +317,6 @@ int main(int argc, char **argv) {
     tcpme_quit();
     return 1;
   }
-  DIAG("net_fuzz: DIAG make_pair returned, entering loop\n"); /* TEMPORARY */
 
   GameState_t gs;
   ClientState_t cs;
@@ -342,11 +329,10 @@ int main(int argc, char **argv) {
 
   for (long i = 0; i < count; i++) {
     uint32_t elapsed = dc_get_ticks() - t_start;
-    if (i % 1000 == 0) /* TEMPORARY diagnostic progress */
-      DIAG("net_fuzz: DIAG iter=%ld elapsed=%ums framed=%ld direct=%ld\n", i, elapsed, framed,
-           direct);
+    if (i % 1000 == 0)
+      DIAG("net_fuzz: iter=%ld elapsed=%ums framed=%ld direct=%ld\n", i, elapsed, framed, direct);
     if (budget_ms && elapsed >= budget_ms) {
-      DIAG("net_fuzz: DIAG wall-cap hit at iter=%ld elapsed=%ums\n", i, elapsed); /* TEMPORARY */
+      DIAG("net_fuzz: wall-cap hit at iter=%ld elapsed=%ums\n", i, elapsed);
       break; /* wall-clock cap hit (slow runner); stop cleanly */
     }
     uint32_t mode = fuzz_bounded(&frng, 4);
@@ -380,7 +366,7 @@ int main(int argc, char **argv) {
 
     ERecvStatus_t st = RECV_NOTHING;
     if (!feed_frame(client, &ctx, &gs, &cs, payload, len, &st)) {
-      DIAG("net_fuzz: DIAG rebuild at iter=%ld\n", i); /* TEMPORARY */
+      DIAG("net_fuzz: rebuild at iter=%ld\n", i);
       /* Write failed: peer gone. Rebuild and retry the run. */
       close_pair(client, &ctx);
       if (!make_pair(&client, &ctx))
