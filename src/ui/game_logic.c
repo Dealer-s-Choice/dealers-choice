@@ -1651,7 +1651,9 @@ EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
           if (SDL_PointInRect(&mouse_pos, &card_context[my_id][card_n].base.rect)) {
             card_context[my_id][card_n].base.selected =
                 !card_context[my_id][card_n].base.selected;
-            break;
+            break; /* exits the card-scan for loop, NOT the SDL_PollEvent drain
+                    * (that distinction was the #85 bug; see the step-scale
+                    * continue below) */
           }
         }
       }
@@ -1696,7 +1698,7 @@ EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
               selected_nick = i;
             if (selected_nick >= 0)
               game_nick_widgets[selected_nick]->base.selected = true;
-            break;
+            break; /* exits the nick-scan for loop, NOT the SDL_PollEvent drain */
           }
         }
         if (selected_nick >= 0) {
