@@ -47,6 +47,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "dc_time.h" /* dc_get_ticks / dc_sleep_ms */
 #include "fuzz_util.h"
 #include "game.h" /* GameSelectPayload_t, get_game_select_payload */
 #include "net.h"
@@ -90,7 +91,17 @@ static bool make_pair(tcpme_socket_t *client_out, SocketContext_t *ctx) {
     tcpme_close(listener);
     return false;
   }
+  /* tcpme_accept polls with a zero-timeout select, so on platforms where the
+   * just-connected client isn't in the listener's accept queue the instant
+   * connect() returns (OpenBSD, notably) a single poll finds nothing and
+   * make_pair would wrongly fail ("could not set up loopback pair"). The real
+   * server never hits this because its accept loop polls repeatedly; mirror that
+   * with a brief retry. */
   tcpme_socket_t srv = tcpme_accept(listener);
+  for (int tries = 0; tries < 1000 && !tcpme_socket_valid(srv); tries++) {
+    dc_sleep_ms(1);
+    srv = tcpme_accept(listener);
+  }
   tcpme_close(listener);
   if (!tcpme_socket_valid(srv)) {
     tcpme_close(cli);
@@ -175,17 +186,22 @@ static bool feed_frame(tcpme_socket_t client, SocketContext_t *ctx, GameState_t 
   if (payload_len > 0 && send_all_tcp(client, payload, payload_len) != 0)
     return false;
 
-  /* recv_game_state polls with a 0 timeout and may not see the bytes on its
-   * first call. Block until the socket is readable instead of polling with a
-   * sleep: select returns the instant the bytes land, so a frame costs
-   * microseconds. The old 2ms poll was fine on Linux but Windows' ~15ms timer
-   * granularity inflated each wait into a per-frame stall that timed the whole
-   * run out; the 100ms cap here only bites if no data arrives at all. A valid
-   * frame is fully read (stays in sync); a rejected one returns RECV_ERROR. */
+  /* Wait (bounded) for the just-sent frame to reach the server socket, then let
+   * recv_game_state process it exactly once. Three normal outcomes:
+   *   - a parsed frame (success) or a rejected one (RECV_ERROR);
+   *   - RECV_NOTHING *after* delivery, which means the opcode was a ping:
+   *     recv_game_state consumes pings transparently and then finds nothing
+   *     after, so RECV_NOTHING here is "frame handled", not "keep waiting".
+   * The earlier loop kept polling until a non-NOTHING status, so a fuzzed ping
+   * burned the full per-poll timeout x50 -- seconds per such frame, which is
+   * what timed the run out on slow CI. Process once on readiness instead. */
   *st = RECV_NOTHING;
-  for (int spin = 0; spin < 50 && *st == RECV_NOTHING; spin++) {
-    tcpme_check_sockets(ctx->set, 100); /* wait for readiness, returns on data */
-    *st = recv_game_state(ctx, gs, cs, 0);
+  for (int spin = 0; spin < 10; spin++) {
+    tcpme_check_sockets(ctx->set, 2); /* returns immediately once readable */
+    if (tcpme_socket_ready(ctx->set, ctx->sock)) {
+      *st = recv_game_state(ctx, gs, cs, 0);
+      break;
+    }
   }
   return true;
 }
@@ -225,6 +241,16 @@ int main(int argc, char **argv) {
   if (count <= 0)
     count = 20000;
 
+  /* DC_FUZZ_MS: optional wall-clock cap in ms (0 = none). Bounds the run on slow
+   * CI runners (Windows, the QEMU BSD VMs) so the socket loop can't trip the
+   * meson per-test timeout no matter the per-iteration speed; it stops early
+   * having fuzzed as many frames as fit. Manual count-based runs ignore it
+   * unless it is set. */
+  uint32_t budget_ms = 0;
+  const char *env_ms = getenv("DC_FUZZ_MS");
+  if (env_ms)
+    budget_ms = (uint32_t)strtoul(env_ms, NULL, 10);
+
   if (tcpme_init() != 0) {
     fputs("net_fuzz: tcpme_init failed\n", stderr);
     return 1;
@@ -263,8 +289,11 @@ int main(int argc, char **argv) {
 
   static uint8_t payload[MAX_PAYLOAD];
   long framed = 0, direct = 0;
+  uint32_t t_start = dc_get_ticks();
 
   for (long i = 0; i < count; i++) {
+    if (budget_ms && dc_get_ticks() - t_start >= budget_ms)
+      break; /* wall-clock cap hit (slow runner); stop cleanly */
     uint32_t mode = fuzz_bounded(&frng, 4);
     if (mode == 0) {
       /* Direct deserializer fuzz: pure-random buffer (no socket). */
@@ -315,7 +344,8 @@ int main(int argc, char **argv) {
   close_pair(client, &ctx);
   tcpme_quit();
 
-  printf("net_fuzz: %ld iterations (%ld framed, %ld direct), seed %llu, OK\n", count, framed, direct,
+  printf("net_fuzz: %ld iterations (%ld framed, %ld direct), seed %llu, OK\n", framed + direct, framed,
+         direct,
          (unsigned long long)seed);
   return 0;
 }
