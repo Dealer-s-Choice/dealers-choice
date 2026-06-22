@@ -47,6 +47,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "dc_time.h" /* dc_get_ticks / dc_sleep_ms */
 #include "fuzz_util.h"
 #include "game.h" /* GameSelectPayload_t, get_game_select_payload */
 #include "net.h"
@@ -54,6 +55,20 @@
 #include "util.h" /* dc_log_set_file */
 
 #define MAX_PAYLOAD 4096
+
+/* Opt-in progress trace (set DC_FUZZ_DIAG=1). Off by default so normal runs stay
+ * quiet. Flip it on in CI to localize a hang on a platform you can't reproduce
+ * locally: it prints how far the run got, so the dead spot is obvious in one
+ * cycle instead of guess-and-push. (The MSVC dc_log_set_file/_IOLBF hang was
+ * found this way.) The wall-cap (DC_FUZZ_MS) bounds the run regardless. */
+static int g_diag;
+#define DIAG(...)                                                                                  \
+  do {                                                                                             \
+    if (g_diag) {                                                                                  \
+      fprintf(stderr, __VA_ARGS__);                                                                \
+      fflush(stderr);                                                                              \
+    }                                                                                              \
+  } while (0)
 
 /* All opcodes recv_game_state switches on, so the fuzzer reaches every case
  * (including the protobuf-unpacking ones) rather than only the default. */
@@ -85,17 +100,46 @@ static bool make_pair(tcpme_socket_t *client_out, SocketContext_t *ctx) {
   }
   uint16_t port = (uint16_t)atoi(colon + 1);
 
-  tcpme_socket_t cli = tcpme_connect("127.0.0.1", port);
+  /* Use tcpme_connect_timeout instead of the plain blocking tcpme_connect so a
+   * setup that can't complete fails cleanly instead of holding the test runner
+   * to meson's per-test timeout. (loopback connect is sub-ms, so the 5s bound is
+   * never reached in normal operation.) */
+  tcpme_socket_t cli = tcpme_connect_timeout("127.0.0.1", port, 5000);
   if (!tcpme_socket_valid(cli)) {
     tcpme_close(listener);
     return false;
   }
+  /* tcpme_accept polls with a zero-timeout select, so on platforms where the
+   * just-connected client isn't in the listener's accept queue the instant
+   * connect() returns (OpenBSD, notably) a single poll finds nothing and
+   * make_pair would wrongly fail ("could not set up loopback pair"). The real
+   * server never hits this because its accept loop polls repeatedly; mirror that
+   * with a brief retry. */
   tcpme_socket_t srv = tcpme_accept(listener);
+  for (int tries = 0; tries < 1000 && !tcpme_socket_valid(srv); tries++) {
+    dc_sleep_ms(1);
+    srv = tcpme_accept(listener);
+  }
   tcpme_close(listener);
   if (!tcpme_socket_valid(srv)) {
     tcpme_close(cli);
     return false;
   }
+
+  /* Bound BOTH directions so no single frame can hang the run; tcpme_set_timeout
+   * sets SO_RCVTIMEO + SO_SNDTIMEO. Two blocking calls can otherwise wait forever
+   * with no socket timeout:
+   *   - recv on srv: recv_all_tcp loops until it has the requested bytes, but a
+   *     fuzzed/desynced size asks for more than ever arrives.
+   *   - send on cli: once undrained bytes back up the server's recv buffer, TCP
+   *     flow control blocks the client's send_all_tcp indefinitely.
+   * An earlier fix set only srv, leaving the cli send unbounded -- which is why
+   * the run still hung past the wall-cap on Windows. A short timeout on both
+   * turns either stall into a quick error -> drain/rebuild -> resync (loopback
+   * delivery is sub-ms, so it never trips a legit frame). The real server uses
+   * SOCKET_IO_TIMEOUT_MS; shorter here for fast recovery. */
+  tcpme_set_timeout(cli, 200);
+  tcpme_set_timeout(srv, 200);
 
   tcpme_set_t *set = tcpme_alloc_set(1);
   if (!set) {
@@ -175,17 +219,22 @@ static bool feed_frame(tcpme_socket_t client, SocketContext_t *ctx, GameState_t 
   if (payload_len > 0 && send_all_tcp(client, payload, payload_len) != 0)
     return false;
 
-  /* recv_game_state polls with a 0 timeout and may not see the bytes on its
-   * first call. Block until the socket is readable instead of polling with a
-   * sleep: select returns the instant the bytes land, so a frame costs
-   * microseconds. The old 2ms poll was fine on Linux but Windows' ~15ms timer
-   * granularity inflated each wait into a per-frame stall that timed the whole
-   * run out; the 100ms cap here only bites if no data arrives at all. A valid
-   * frame is fully read (stays in sync); a rejected one returns RECV_ERROR. */
+  /* Wait (bounded) for the just-sent frame to reach the server socket, then let
+   * recv_game_state process it exactly once. Three normal outcomes:
+   *   - a parsed frame (success) or a rejected one (RECV_ERROR);
+   *   - RECV_NOTHING *after* delivery, which means the opcode was a ping:
+   *     recv_game_state consumes pings transparently and then finds nothing
+   *     after, so RECV_NOTHING here is "frame handled", not "keep waiting".
+   * The earlier loop kept polling until a non-NOTHING status, so a fuzzed ping
+   * burned the full per-poll timeout x50 -- seconds per such frame, which is
+   * what timed the run out on slow CI. Process once on readiness instead. */
   *st = RECV_NOTHING;
-  for (int spin = 0; spin < 50 && *st == RECV_NOTHING; spin++) {
-    tcpme_check_sockets(ctx->set, 100); /* wait for readiness, returns on data */
-    *st = recv_game_state(ctx, gs, cs, 0);
+  for (int spin = 0; spin < 10; spin++) {
+    tcpme_check_sockets(ctx->set, 2); /* returns immediately once readable */
+    if (tcpme_socket_ready(ctx->set, ctx->sock)) {
+      *st = recv_game_state(ctx, gs, cs, 0);
+      break;
+    }
   }
   return true;
 }
@@ -225,6 +274,19 @@ int main(int argc, char **argv) {
   if (count <= 0)
     count = 20000;
 
+  /* DC_FUZZ_MS: optional wall-clock cap in ms (0 = none). Bounds the run on slow
+   * CI runners (Windows, the QEMU BSD VMs) so the socket loop can't trip the
+   * meson per-test timeout no matter the per-iteration speed; it stops early
+   * having fuzzed as many frames as fit. Manual count-based runs ignore it
+   * unless it is set. */
+  uint32_t budget_ms = 0;
+  const char *env_ms = getenv("DC_FUZZ_MS");
+  if (env_ms)
+    budget_ms = (uint32_t)strtoul(env_ms, NULL, 10);
+
+  g_diag = getenv("DC_FUZZ_DIAG") != NULL; /* opt-in progress trace; see DIAG */
+  DIAG("net_fuzz: start count=%ld budget_ms=%u\n", count, budget_ms);
+
   if (tcpme_init() != 0) {
     fputs("net_fuzz: tcpme_init failed\n", stderr);
     return 1;
@@ -263,8 +325,16 @@ int main(int argc, char **argv) {
 
   static uint8_t payload[MAX_PAYLOAD];
   long framed = 0, direct = 0;
+  uint32_t t_start = dc_get_ticks();
 
   for (long i = 0; i < count; i++) {
+    uint32_t elapsed = dc_get_ticks() - t_start;
+    if (i % 1000 == 0)
+      DIAG("net_fuzz: iter=%ld elapsed=%ums framed=%ld direct=%ld\n", i, elapsed, framed, direct);
+    if (budget_ms && elapsed >= budget_ms) {
+      DIAG("net_fuzz: wall-cap hit at iter=%ld elapsed=%ums\n", i, elapsed);
+      break; /* wall-clock cap hit (slow runner); stop cleanly */
+    }
     uint32_t mode = fuzz_bounded(&frng, 4);
     if (mode == 0) {
       /* Direct deserializer fuzz: pure-random buffer (no socket). */
@@ -296,6 +366,7 @@ int main(int argc, char **argv) {
 
     ERecvStatus_t st = RECV_NOTHING;
     if (!feed_frame(client, &ctx, &gs, &cs, payload, len, &st)) {
+      DIAG("net_fuzz: rebuild at iter=%ld\n", i);
       /* Write failed: peer gone. Rebuild and retry the run. */
       close_pair(client, &ctx);
       if (!make_pair(&client, &ctx))
@@ -315,7 +386,8 @@ int main(int argc, char **argv) {
   close_pair(client, &ctx);
   tcpme_quit();
 
-  printf("net_fuzz: %ld iterations (%ld framed, %ld direct), seed %llu, OK\n", count, framed, direct,
+  printf("net_fuzz: %ld iterations (%ld framed, %ld direct), seed %llu, OK\n", framed + direct, framed,
+         direct,
          (unsigned long long)seed);
   return 0;
 }

@@ -212,7 +212,13 @@ void dc_log_set_file(const char *path) {
     fprintf(stderr, "dc_log: cannot open log file %s: %s\n", path, strerror(errno));
     return;
   }
-  setvbuf(f, NULL, _IOLBF, 0); /* line-buffered so a crash still leaves the log */
+  /* Unbuffered so a crash still leaves the full log. Was _IOLBF with size 0,
+   * but a NULL buffer with size 0 is invalid on MSVC's CRT (size must be > 0),
+   * where it trips the invalid-parameter handler; _IONBF ignores buf/size and is
+   * valid everywhere. (On Windows _IOLBF was full-buffering anyway -- MSVC maps
+   * _IOLBF to _IOFBF -- so unbuffered is the better match for the crash-safety
+   * intent regardless.) */
+  setvbuf(f, NULL, _IONBF, 0);
   dc_log_fp = f;
   atexit(dc_log_close); /* flush + checked close at normal exit */
 }

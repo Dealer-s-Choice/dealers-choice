@@ -151,10 +151,19 @@ foreach name : fuzz_parsers
     dependencies: game_dep,
     override_options: ['b_lto=false'],
   )
+  fuzz_env = base_env
+  # net_fuzz drives a real loopback socket, so on slow CI runners (Windows, the
+  # QEMU BSD VMs) the full iteration count can blow the test timeout. Cap its
+  # wall-clock time instead: fast hosts still finish the whole count well under
+  # the cap; slow ones stop early having fuzzed as many frames as fit. The
+  # in-memory fuzzers (registry/lan) are fast everywhere and need no cap.
+  if name == 'net_fuzz'
+    fuzz_env += {'DC_FUZZ_MS': '60000'}
+  endif
   test(
     'test_' + name,
     exe,
-    env: environment(base_env),
+    env: environment(fuzz_env),
     timeout: 180,
   )
 endforeach
