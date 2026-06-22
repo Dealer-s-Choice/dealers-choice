@@ -24,3 +24,6 @@ __pycache__/
 
 # Claude Code per-user settings (hooks etc.)
 .claude/settings.local.json
+
+# Claude Code agent worktrees (transient, per-session; never committed)
+.claude/worktrees/
