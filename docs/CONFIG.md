@@ -111,17 +111,5 @@ directory](https://github.com/Dealer-s-Choice/dealers_choice/tree/trunk/po).
 
 ## Game-play hotkeys
 
-The keys used for in-game actions (check, bet, fold, call, raise, complete,
-discard) and the hand-rank readout are configured in your `player.conf`. You
-can also change them on the Hotkeys screen, reached from Settings.
-
-The full key list lives in **[keys.md](keys.md)**. That page is generated from
-the same table the game uses, so it is always up to date. While playing, press
-`F1` to see the same list on screen.
-
-Each action needs its own key. The editor refuses a key that is already bound
-to another action, because one keypress would otherwise trigger two actions at
-once.
-
-Some menu keys are fixed: `Enter` confirms a value, `Tab` moves between input
-fields, `Ctrl`+`V` pastes into the focused field, and `Esc` goes back.
+In-game keys are set in your `player.conf`; see **[keys.md](keys.md)** for the
+full list and how to change them.

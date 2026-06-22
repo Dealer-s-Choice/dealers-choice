@@ -27,34 +27,8 @@ to disable; see `action_timeout_max` in server.conf).
 
 ## Hotkeys
 
-| Key | Action                  |
-|-----|-------------------------|
-| c   | call/check              |
-| r   | raise/complete          |
-| f   | fold                    |
-| d   | discard                 |
-| b   | bet                     |
-| x   | exchange (wild cards)   |
-
-
-The bet amount hotkeys correspond to the amounts configured in `bet_amounts`
-in server.conf, in order, starting from key `1`. Up to 8 amounts are
-supported (keys `1`–`8`). With the default configuration:
-
-|      |   Amount   |
-|------|------------|
-| 1    |    100     |
-| 2    |    250     |
-| 3    |    500     |
-
-|             Full Screen / Navigation                        |
-|-------------------------------------------------------------|
-| F11 or Alt+Enter  | toggle full-screen                      |
-| ESC               | quit (with confirmation)                |
-
-Hotkeys are not implemented for everything yet, but they are planned, as well
-as [making them
-configurable](https://github.com/Dealer-s-Choice/dealers-choice/issues/102).
+See **[keys.md](keys.md)** for the keys used during a game, or press `F1`
+while playing to see them on screen.
 
 ## Stud Games (5-card, 6-card, 7-card stud)
 
