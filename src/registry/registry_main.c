@@ -128,7 +128,18 @@ static reg_mutex_t g_lock;
 /* Next "Server-NN" to hand out. Bumped per newly-listed server and wraps 99->1;
  * a number in use by a listed server is skipped (see next_free_seq), so an
  * offline server's number is never silently inherited by a different machine.
- * Guarded by g_lock. */
+ * Guarded by g_lock.
+ *
+ * Multi-registry note: each registry runs its own counter, so the same server
+ * can be numbered differently on two independent registries. The client dedups
+ * the merged list by ip:port and keeps the first-listed registry's entry, so all
+ * clients agree (they ship the same common.conf order); the number only shifts,
+ * uniformly, during a first-registry outage. A deterministic identity-based name
+ * (so registries agree) was considered and rejected: no registry-derivable
+ * identity is at once non-forgeable, stable across a home server's dynamic IP,
+ * and equal across registries (the registry only trusts what it observes -- the
+ * source IP and verified port). The counter trades cross-registry agreement for
+ * being non-forgeable and stable-while-listed, which is the better deal. */
 static uint8_t g_next_seq = 1;
 static bool g_verbose = false;
 static volatile sig_atomic_t g_running = 1;
