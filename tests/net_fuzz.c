@@ -56,6 +56,19 @@
 
 #define MAX_PAYLOAD 4096
 
+/* TEMPORARY diagnostic for the Windows-only 180s net_fuzz hang. Writes to BOTH
+ * stdout and stderr, each flushed, so the trace survives whichever stream the CI
+ * runner captures (the prior run showed only the pre-make_pair line, leaving it
+ * ambiguous whether the loop never ran or post-startup stderr was simply lost).
+ * Remove this macro and its call sites once the cause is found. */
+#define DIAG(...)                                                                                  \
+  do {                                                                                             \
+    fprintf(stderr, __VA_ARGS__);                                                                  \
+    fflush(stderr);                                                                                \
+    fprintf(stdout, __VA_ARGS__);                                                                  \
+    fflush(stdout);                                                                                \
+  } while (0)
+
 /* All opcodes recv_game_state switches on, so the fuzzer reaches every case
  * (including the protobuf-unpacking ones) rather than only the default. */
 static const uint16_t OPCODES[] = {
@@ -70,9 +83,12 @@ static const uint16_t OPCODES[] = {
  * fuzzed frames to; ctx wraps the server-side accepted socket recv_game_state
  * reads from. Returns false on setup failure. */
 static bool make_pair(tcpme_socket_t *client_out, SocketContext_t *ctx) {
+  DIAG("net_fuzz: DIAG make_pair: listen\n"); /* TEMPORARY */
   tcpme_socket_t listener = tcpme_listen("127.0.0.1", 0);
-  if (!tcpme_socket_valid(listener))
+  if (!tcpme_socket_valid(listener)) {
+    DIAG("net_fuzz: DIAG make_pair: listen failed\n"); /* TEMPORARY */
     return false;
+  }
 
   char addr[TCPME_ADDRPORTSTRLEN];
   if (!tcpme_get_local_addr(listener, addr, sizeof(addr))) {
@@ -86,7 +102,17 @@ static bool make_pair(tcpme_socket_t *client_out, SocketContext_t *ctx) {
   }
   uint16_t port = (uint16_t)atoi(colon + 1);
 
-  tcpme_socket_t cli = tcpme_connect("127.0.0.1", port);
+  /* TEMPORARY: log the address and port to see what we're connecting to. */
+  DIAG("net_fuzz: DIAG make_pair: connecting to addr=%s port=%u\n", addr, port);
+
+  /* Use tcpme_connect_timeout instead of the plain blocking tcpme_connect.
+   * The blocking variant can hang indefinitely on Windows CI even on loopback:
+   * the SYN is issued but no SYN-ACK ever arrives, holding connect() for the
+   * full TCP retransmit timeout (~180s).  A 5s non-blocking select-based
+   * connect bounds the wait to a clean failure if the pair can't be set up,
+   * vs. silently holding the test runner for meson's full per-test timeout. */
+  tcpme_socket_t cli = tcpme_connect_timeout("127.0.0.1", port, 5000);
+  DIAG("net_fuzz: DIAG make_pair: connect done valid=%d\n", tcpme_socket_valid(cli)); /* TEMPORARY */
   if (!tcpme_socket_valid(cli)) {
     tcpme_close(listener);
     return false;
@@ -102,6 +128,7 @@ static bool make_pair(tcpme_socket_t *client_out, SocketContext_t *ctx) {
     dc_sleep_ms(1);
     srv = tcpme_accept(listener);
   }
+  DIAG("net_fuzz: DIAG make_pair: accept done valid=%d\n", tcpme_socket_valid(srv)); /* TEMPORARY */
   tcpme_close(listener);
   if (!tcpme_socket_valid(srv)) {
     tcpme_close(cli);
@@ -266,10 +293,8 @@ int main(int argc, char **argv) {
   if (env_ms)
     budget_ms = (uint32_t)strtoul(env_ms, NULL, 10);
 
-  /* TEMPORARY diagnostic: locate the Windows-only 180s hang. Prints to stderr
-   * (not the NUL'd dc_log). Remove once the cause is found. */
-  fprintf(stderr, "net_fuzz: DIAG count=%ld budget_ms=%u\n", count, budget_ms);
-  fflush(stderr);
+  /* TEMPORARY diagnostic: locate the Windows-only 180s hang. See the DIAG macro. */
+  DIAG("net_fuzz: DIAG start count=%ld budget_ms=%u\n", count, budget_ms);
 
   if (tcpme_init() != 0) {
     fputs("net_fuzz: tcpme_init failed\n", stderr);
@@ -301,6 +326,7 @@ int main(int argc, char **argv) {
     tcpme_quit();
     return 1;
   }
+  DIAG("net_fuzz: DIAG make_pair returned, entering loop\n"); /* TEMPORARY */
 
   GameState_t gs;
   ClientState_t cs;
@@ -313,13 +339,11 @@ int main(int argc, char **argv) {
 
   for (long i = 0; i < count; i++) {
     uint32_t elapsed = dc_get_ticks() - t_start;
-    if (i % 1000 == 0) { /* TEMPORARY diagnostic progress */
-      fprintf(stderr, "net_fuzz: DIAG iter=%ld elapsed=%ums framed=%ld direct=%ld\n", i, elapsed,
-              framed, direct);
-      fflush(stderr);
-    }
+    if (i % 1000 == 0) /* TEMPORARY diagnostic progress */
+      DIAG("net_fuzz: DIAG iter=%ld elapsed=%ums framed=%ld direct=%ld\n", i, elapsed, framed,
+           direct);
     if (budget_ms && elapsed >= budget_ms) {
-      fprintf(stderr, "net_fuzz: DIAG wall-cap hit at iter=%ld elapsed=%ums\n", i, elapsed);
+      DIAG("net_fuzz: DIAG wall-cap hit at iter=%ld elapsed=%ums\n", i, elapsed); /* TEMPORARY */
       break; /* wall-clock cap hit (slow runner); stop cleanly */
     }
     uint32_t mode = fuzz_bounded(&frng, 4);
@@ -353,8 +377,7 @@ int main(int argc, char **argv) {
 
     ERecvStatus_t st = RECV_NOTHING;
     if (!feed_frame(client, &ctx, &gs, &cs, payload, len, &st)) {
-      fprintf(stderr, "net_fuzz: DIAG rebuild at iter=%ld\n", i); /* TEMPORARY */
-      fflush(stderr);
+      DIAG("net_fuzz: DIAG rebuild at iter=%ld\n", i); /* TEMPORARY */
       /* Write failed: peer gone. Rebuild and retry the run. */
       close_pair(client, &ctx);
       if (!make_pair(&client, &ctx))
