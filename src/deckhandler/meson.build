@@ -1,30 +1,19 @@
 
 src = files('deckhandler.c')
 
-pcg_dep = dependency('pcg-c', required: false)
-have_system_pcg = pcg_dep.found()
-
-if not have_system_pcg
-  subdir('pcg')
-endif
-
+# pcg_dep is resolved once at the top level (system pcg-c or the bundled
+# subprojects/pcg fallback) and already carries -DHAVE_PCG when the system lib
+# is used, so deckhandler.h picks the right header here and in every consumer.
 libname = 'deckhandler'
-
-deckhandler_c_args = []
-if have_system_pcg
-  deckhandler_c_args += '-DHAVE_PCG'
-endif
 
 buildtarget = static_library(
   libname,
   src,
-  c_args: deckhandler_c_args,
   dependencies: pcg_dep,
 )
 
 deckhandler_dep = declare_dependency(
   link_with: buildtarget,
-  compile_args: deckhandler_c_args,
   dependencies: pcg_dep,
   include_directories: '.',
 )

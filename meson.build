@@ -169,6 +169,24 @@ conf.set_quoted(
   join_paths(get_option('prefix'), get_option('datadir'), meson.project_name()),
 )
 
+# pcg-c PRNG: prefer a system install (full pcg-c, <pcg_variants.h>); otherwise
+# fall back to the bundled minimal copy in subprojects/pcg (<pcg_basic.h>). The
+# -DHAVE_PCG flag is set only for the system lib and selects the header in
+# deckhandler.h, so it must reach every translation unit that includes
+# deckhandler.h -- it is attached to pcg_dep here and added to shared_dep, which
+# makes DC's direct use of pcg explicit instead of leaking transitively through
+# deckhandler_dep (#92). deckhandler also lists pcg_dep for its own .c.
+pcg_dep = dependency('pcg-c', required: false)
+if pcg_dep.found()
+  pcg_dep = declare_dependency(
+    dependencies: pcg_dep,
+    compile_args: ['-DHAVE_PCG'],
+  )
+else
+  pcg_dep = subproject('pcg').get_variable('pcg_dep')
+endif
+shared_dep += pcg_dep
+
 subdir('src')
 
 configure_file(output: 'config.h', configuration: conf)
