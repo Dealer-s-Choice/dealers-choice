@@ -346,25 +346,41 @@ static int action_button_for_verb(int verb) {
  * than 5 cards are dealt yet. Drives the CTRL-H rank readout (#61). */
 static const char *local_hand_rank_name(const POKEVAL_Hand_9 *hand, const GameChoice_t *choice,
                                         bool deuces_wild) {
-  size_t n = 0;
-  while (n < 9 && !DH_is_card_null(hand->card[n]))
-    n++;
-
   short r;
   if (choice && choice->g == OMAHA) {
     /* Omaha uses exactly 2 hole + 3 board; POKEVAL_hand5_omaha iterates all 5
      * community slots, so only evaluate once the full board (4 hole + 5
-     * community = 9 cards) is dealt — otherwise it would fold null slots in. */
+     * community = 9 cards) is dealt — otherwise it would fold null slots in.
+     * Omaha is a peek game, so the local player knows every one of these cards;
+     * no card-backs appear in its own hand. */
+    size_t n = 0;
+    while (n < 9 && !DH_is_card_null(hand->card[n]))
+      n++;
     if (n < 9)
       return NULL;
     r = POKEVAL_evaluate_hand(POKEVAL_hand5_omaha(hand));
   } else {
+    /* Evaluate only the cards the local player actually knows. In no-peek stud
+     * the player's own un-flipped cards arrive as DH_card_back sentinels (a real,
+     * non-null face value of -1); feeding those to pokeval read as a bogus rank
+     * (several identical backs look like four of a kind) that "corrected" itself
+     * as the player flipped real cards. Compact the known cards into the leading
+     * slots — the layout POKEVAL_hand5_from_hand7 expects (real cards first, then
+     * nulls) — so backs are excluded and only real cards count toward the 5. */
+    POKEVAL_Hand_9 known;
+    size_t n = 0;
+    for (size_t k = 0; k < 9; k++) {
+      if (!DH_is_card_null(hand->card[k]) && !DH_is_card_back(hand->card[k]))
+        known.card[n++] = hand->card[k];
+    }
+    for (size_t k = n; k < 9; k++)
+      known.card[k] = DH_card_null;
     if (n < POKEVAL_HAND_SIZE)
       return NULL;
     if (deuces_wild)
-      r = POKEVAL_evaluate_hand_wild(POKEVAL_hand5_from_hand7_wild(hand, DH_CARD_TWO), DH_CARD_TWO);
+      r = POKEVAL_evaluate_hand_wild(POKEVAL_hand5_from_hand7_wild(&known, DH_CARD_TWO), DH_CARD_TWO);
     else
-      r = POKEVAL_evaluate_hand(POKEVAL_hand5_from_hand7(hand));
+      r = POKEVAL_evaluate_hand(POKEVAL_hand5_from_hand7(&known));
   }
   if (r < 0 || r >= NUM_HAND_RANKS)
     return NULL;
