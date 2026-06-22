@@ -19,27 +19,23 @@
     above the step scale (#60)
   + Show your current hand's rank in the lower-right corner during a game,
     toggled by a configurable hotkey (default "h"); it stays on until you turn
-    it off (#61, #88)
+    it off (#61)
   + In stud and hold.em, your own hidden (hole) cards show a small eye-off icon
     so you can tell which of your cards opponents cannot see (#64)
   + In draw games you can pick discards with the mouse or number keys 1-5,
-    and even before your turn, so on your turn you just press Discard (#22)
-  + Server registry: the new dealers-choice-registry program lists internet
+    and even before your turn. (#22)
+  + Server registry: the new dealers-choice-registry program tracks internet
     servers; a server publishes itself to it (set "registry" in common.conf,
     or --disable-publish to opt out), and the connect screen shows those
     servers next to the LAN ones (#33)
-  + The server list shows how long each internet server has been running, in
-    days (#89)
   + Press F1 to show the list of keys; it works during a game, on the connect
-    screen, and in the lobby. Press F1 or Esc to close it (#86)
+    screen, and in the lobby. Press F1 or Esc to close it
   * Fix the draw count not showing when a player draws no cards; it now reads
-    "drew 0" (#83)
+    "drew 0"
   * Fix some key presses being missed during a game, such as needing to press
-    Call twice (#85)
+    Call twice
   * The Windows package now includes all data files, so the Windows client finds
     internet servers again (a missing config file had hidden them)
-  * The game now stops with a clear message if a required config file
-    (common.conf or layout.conf) is missing, which usually means a broken install
   * Bump GAME_PROTOCOL_VERSION to 11
 
 2026-06-15
