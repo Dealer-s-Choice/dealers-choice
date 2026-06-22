@@ -130,25 +130,20 @@ static void close_pair(tcpme_socket_t client, SocketContext_t *ctx) {
  * the whole run: equivalent resync, no port churn. */
 static void drain_socket(SocketContext_t *ctx) {
   uint8_t scratch[2048];
-  /* By the time feed_frame reports a rejection it has already polled the size off
-   * the socket, so the body (sent in the same burst) is normally waiting too:
-   * poll with no timeout and read it all. Only if nothing is ready -- the body
-   * hasn't landed yet -- spend one brief wait. A straggler we still miss just
-   * desyncs the next frame, which produces another rejection and another drain,
-   * so it self-corrects; that keeps this loop from adding per-iteration latency
-   * (the slow path that made the old reconnect churn time out under Windows CI). */
-  for (int tries = 0; tries < 2; tries++) {
-    tcpme_check_sockets(ctx->set, tries == 0 ? 0 : 2);
-    bool got = false;
-    while (tcpme_socket_ready(ctx->set, ctx->sock)) {
-      int n = tcpme_recv(ctx->sock, scratch, (int)sizeof scratch);
-      if (n <= 0)
-        return; /* peer closed/error; a later write failure rebuilds the pair */
-      got = true;
-      tcpme_check_sockets(ctx->set, 0);
-    }
-    if (got)
-      return;
+  /* Read whatever is waiting, with NO blocking. When a size is rejected the body
+   * was sent in the same burst that delivered the size feed_frame already polled,
+   * so it is already buffered and a zero-timeout poll drains it. When there is
+   * nothing to drain (a zero-body frame, or an unpack failure that consumed the
+   * whole body) the poll finds nothing and returns at once -- never wait, or a
+   * frame with nothing leftover would stall (a per-rejection wait blew up the
+   * run's wall time). A body byte not yet arrived is left behind, but that just
+   * desyncs the next frame into another rejection + drain, so it self-corrects. */
+  tcpme_check_sockets(ctx->set, 0);
+  while (tcpme_socket_ready(ctx->set, ctx->sock)) {
+    int n = tcpme_recv(ctx->sock, scratch, (int)sizeof scratch);
+    if (n <= 0)
+      return; /* peer closed/error; a later write failure rebuilds the pair */
+    tcpme_check_sockets(ctx->set, 0);
   }
 }
 
@@ -180,14 +175,17 @@ static bool feed_frame(tcpme_socket_t client, SocketContext_t *ctx, GameState_t 
   if (payload_len > 0 && send_all_tcp(client, payload, payload_len) != 0)
     return false;
 
-  /* recv_game_state polls with a 0 timeout and may not see the bytes on the
-   * first call; spin (with a tiny block) until it consumes the frame. A valid
+  /* recv_game_state polls with a 0 timeout and may not see the bytes on its
+   * first call. Block until the socket is readable instead of polling with a
+   * sleep: select returns the instant the bytes land, so a frame costs
+   * microseconds. The old 2ms poll was fine on Linux but Windows' ~15ms timer
+   * granularity inflated each wait into a per-frame stall that timed the whole
+   * run out; the 100ms cap here only bites if no data arrives at all. A valid
    * frame is fully read (stays in sync); a rejected one returns RECV_ERROR. */
   *st = RECV_NOTHING;
   for (int spin = 0; spin < 50 && *st == RECV_NOTHING; spin++) {
+    tcpme_check_sockets(ctx->set, 100); /* wait for readiness, returns on data */
     *st = recv_game_state(ctx, gs, cs, 0);
-    if (*st == RECV_NOTHING)
-      tcpme_check_sockets(ctx->set, 2); /* brief wait for the bytes to arrive */
   }
   return true;
 }
