@@ -126,6 +126,39 @@ test(
   depends: [pokeval_fuzz_exe],
 )
 
+# Fuzz harnesses for the three internet-facing wire parsers (#77): the game
+# protocol framing + protobuf (net.c), the registry announce/list parse
+# (net/registry.c), and LAN discovery (net/lan_discovery.c). Each feeds a seeded
+# PRNG's random + mutated bytes at the parser and asserts no crash / OOB / UB.
+# The whole point is to RUN them under the ASan/UBSan build, where any violation
+# aborts. Standalone (own main, no 00_test.c). The net/lan harnesses bind
+# ephemeral UDP/TCP loopback sockets (port 0), so they need no base_port slot.
+#
+# Count is deliberately modest by default (override with DC_FUZZ_N / seed with
+# DC_FUZZ_SEED) so the suite stays fast under QEMU-emulated and BSD-VM CI, which
+# run ~50x slower than native; a deeper offline run is `DC_FUZZ_N=2000000
+# meson test ...`.
+fuzz_parsers = [
+  'net_fuzz',
+  'registry_fuzz',
+  'lan_fuzz',
+]
+
+foreach name : fuzz_parsers
+  exe = executable(
+    'test_' + name,
+    name + '.c',
+    dependencies: game_dep,
+    override_options: ['b_lto=false'],
+  )
+  test(
+    'test_' + name,
+    exe,
+    env: environment(base_env),
+    timeout: 180,
+  )
+endforeach
+
 add_test_setup(
   'Three_pass',
   #exe_wrapper: [join_paths(meson.current_source_dir(), '5_card_showdown.sh')],

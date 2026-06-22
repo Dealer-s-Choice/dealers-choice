@@ -328,7 +328,12 @@ ERecvStatus_t recv_game_state(SocketContext_t *socket_context, GameState_t *game
     }
 
     uint32_t size = tcpme_get_be32((const uint8_t *)&size_net);
-    if (size == 0 || size > 65536) {
+    /* Every frame must carry at least the 2-byte opcode: the opcode read below
+     * (tcpme_get_be16) touches buffer[0..1], so a frame shorter than OPCODE_SIZE
+     * would over-read the malloc'd buffer. A hostile peer can send size == 1
+     * (recv_all_tcp reads exactly 1 byte, the buffer is 1 byte), so guard the
+     * lower bound here -- mirrors registry_recv_frame's check. */
+    if (size < OPCODE_SIZE || size > 65536) {
       dc_log(DC_LOG_WARN, "[recv_game_state] Invalid game state size: %u", size);
       return RECV_ERROR;
     }
@@ -353,6 +358,13 @@ ERecvStatus_t recv_game_state(SocketContext_t *socket_context, GameState_t *game
     bool transparent = false;
     switch (opcode) {
     case MSG_TURN_ID:
+      /* The turn id is one byte past the opcode; a frame that carries only the
+       * opcode (size == OPCODE_SIZE) would over-read the buffer. Require the
+       * payload byte before reading it -- a hostile peer can send size == 2. */
+      if (size < OPCODE_SIZE + 1) {
+        dc_log(DC_LOG_WARN, "[recv_game_state] Invalid size for MSG_TURN_ID: %u", size);
+        break;
+      }
       client_state->turn_id = (int8_t)buffer[2];
       client_state->turn_switch = true;
       break;
