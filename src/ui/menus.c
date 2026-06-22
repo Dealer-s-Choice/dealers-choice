@@ -979,6 +979,78 @@ static bool is_hotkey_entry(size_t i) {
   return strncmp(player_config_entries[i].key, "hotkey_", 7) == 0;
 }
 
+/* Group-aware conflict test for two action hotkeys.
+ *
+ * Two actions may safely share a key only when the in-game dispatch
+ * (src/ui/game_logic.c) never offers them in the same betting mode.  The modes
+ * are mutually exclusive:
+ *   bet_check_fold      -> BET / CHECK / FOLD
+ *   call_raise_fold     -> CALL / RAISE / FOLD
+ *   call_complete_fold  -> CALL / COMPLETE / FOLD
+ *   complete_check_fold -> COMPLETE / CHECK / FOLD
+ * so e.g. CHECK and CALL never coexist (check shares a key with call freely),
+ * and RAISE and COMPLETE never coexist.  Everything that *can* be live together
+ * must stay distinct, or one keypress would fire two actions.
+ *
+ * discard and hand_rank are not betting actions: discard is only active during
+ * the draw phase, but hand_rank is checked unconditionally on every keydown, so
+ * it could fire alongside any betting action.  To stay safe, both conflict with
+ * every other action (the old global-uniqueness rule for them).
+ *
+ * `a` and `b` are the action suffixes (the part after "hotkey_"), e.g. "check".
+ * Returns true if the two actions must NOT share a key. */
+static bool hotkey_action_excludes(const char *a, const char *b) {
+  /* Per-action conflict sets, encoded as NULL-terminated lists of the action
+   * suffixes each action must differ from.  The betting pairs check<->call and
+   * raise<->complete are deliberately omitted.  Every betting action also lists
+   * discard and hand_rank because those two can fire alongside a betting action
+   * in-game (hand_rank on every keydown, discard only during the draw — but the
+   * editor can't know the phase, so keep them globally distinct). */
+  static const char *const check_conflicts[] = {"bet",  "fold",      "complete",
+                                                "discard", "hand_rank", NULL};
+  static const char *const call_conflicts[] = {"raise", "fold",      "complete",
+                                               "discard", "hand_rank", NULL};
+  static const char *const bet_conflicts[] = {"check", "fold", "discard",
+                                              "hand_rank", NULL};
+  static const char *const fold_conflicts[] = {"bet",      "check",     "call",
+                                               "raise",    "complete",  "discard",
+                                               "hand_rank", NULL};
+  static const char *const raise_conflicts[] = {"call", "fold", "discard",
+                                                "hand_rank", NULL};
+  static const char *const complete_conflicts[] = {"call",    "check",     "fold",
+                                                   "discard", "hand_rank", NULL};
+
+  static const struct {
+    const char *name;
+    const char *const *conflicts;
+  } table[] = {
+      {"check", check_conflicts},       {"call", call_conflicts},
+      {"bet", bet_conflicts},           {"fold", fold_conflicts},
+      {"raise", raise_conflicts},       {"complete", complete_conflicts},
+  };
+
+  for (size_t i = 0; i < sizeof(table) / sizeof(table[0]); i++) {
+    if (strcmp(a, table[i].name) != 0)
+      continue;
+    /* `a` is a known betting action: it conflicts only with its listed set. */
+    for (const char *const *c = table[i].conflicts; *c; c++)
+      if (strcmp(b, *c) == 0)
+        return true;
+    return false;
+  }
+
+  /* `a` is discard or hand_rank (or any non-betting action): conflicts with
+   * every other action. */
+  return strcmp(a, b) != 0;
+}
+
+/* Symmetric wrapper: the conflict relation is mutual, so a clash exists if
+ * either action excludes the other.  Checking both directions guards against an
+ * accidentally one-sided table entry. */
+static bool hotkeys_conflict(const char *a, const char *b) {
+  return hotkey_action_excludes(a, b) || hotkey_action_excludes(b, a);
+}
+
 /* Look up the built-in default key name for a hotkey config entry.  The single
  * source of truth for defaults is g_hotkey_defs[] in hotkey_table.c, keyed by
  * the same config_key strings as player_config_entries[] — so the "Load
@@ -1124,15 +1196,23 @@ static void menu_display_hotkeys(PlayerConfig_t *player_config, SdlContext_t *sd
             if (cand[1] == '\0')
               cand[0] = (char)tolower((unsigned char)cand[0]);
           }
-          /* Reject a key already bound to another action: a duplicate binding
-           * makes one keypress fire two actions in-game (e.g. fold + the
-           * hand-rank overlay both on 'h'). */
+          /* Reject a key already bound to a *conflicting* action: a duplicate
+           * binding makes one keypress fire two actions in-game (e.g. fold +
+           * the hand-rank overlay both on 'h').  The check is group-aware —
+           * actions that the betting modes never offer together (check/call,
+           * raise/complete) may share a key, so only same-group collisions are
+           * rejected (hotkeys_conflict). */
+          const char *cap_action = player_config_entries[idx[capturing]].key + 7; /* skip "hotkey_" */
           int clash = -1;
-          for (size_t r = 0; cand[0] && r < n; r++)
-            if ((int)r != capturing && strcmp(keyname[r], cand) == 0) {
+          for (size_t r = 0; cand[0] && r < n; r++) {
+            if ((int)r == capturing || strcmp(keyname[r], cand) != 0)
+              continue;
+            const char *r_action = player_config_entries[idx[r]].key + 7;
+            if (hotkeys_conflict(cap_action, r_action)) {
               clash = (int)r;
               break;
             }
+          }
           if (clash >= 0) {
             if (tw_hint)
               text_widget_set_text(tw_hint, _("That key is already used - pick another"));

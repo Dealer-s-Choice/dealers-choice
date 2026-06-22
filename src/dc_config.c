@@ -71,12 +71,17 @@ const ConfigEntry player_config_entries[] = {
 #define HK(name, def)                                                                              \
   {"hotkey_" #name, CFG_TYPE_STRING, def, offsetof(PlayerConfig_t, hotkey_##name),                 \
    SIZEOF_HOTKEY_NAME}
+    /* call shares "c" with check, and complete shares "r" with raise: the
+     * in-game action dispatch (src/ui/game_logic.c) offers check XOR call and
+     * raise XOR complete depending on the betting mode, so the keys never
+     * collide at runtime.  The hotkey editor's duplicate check is group-aware
+     * to permit these shared bindings (see menu_display_hotkeys). */
     HK(check, "c"),
     HK(bet, "b"),
     HK(fold, "f"),
-    HK(call, "l"),
+    HK(call, "c"),
     HK(raise, "r"),
-    HK(complete, "o"),
+    HK(complete, "r"),
     HK(discard, "d"),
     HK(hand_rank, "h"),
 #undef HK

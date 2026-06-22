@@ -39,9 +39,12 @@ const HotkeyDef_t g_hotkey_defs[] = {
     {"hotkey_check", "c", N_("Check (pass without betting)")},
     {"hotkey_bet", "b", N_("Bet (open the betting)")},
     {"hotkey_fold", "f", N_("Fold (give up the hand)")},
-    {"hotkey_call", "l", N_("Call (match the current bet)")},
+    /* call shares "c" with check and complete shares "r" with raise; this is
+     * safe because the betting modes that offer each pair are mutually
+     * exclusive in game_logic.c.  Keep in sync with src/dc_config.c. */
+    {"hotkey_call", "c", N_("Call (match the current bet)")},
     {"hotkey_raise", "r", N_("Raise (increase the bet)")},
-    {"hotkey_complete", "o", N_("Complete (finish a partial bet)")},
+    {"hotkey_complete", "r", N_("Complete (finish a partial bet)")},
     {"hotkey_discard", "d", N_("Discard (draw new cards)")},
     {"hotkey_hand_rank", "h", N_("Show your current best hand")},
 };
