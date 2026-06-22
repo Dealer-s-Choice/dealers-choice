@@ -449,7 +449,7 @@ ERecvStatus_t recv_game_state(SocketContext_t *socket_context, GameState_t *game
     case MSG_ACTION_ANNOUNCE: {
       ActionAnnounce *aa = action_announce__unpack(NULL, size - OPCODE_SIZE, buffer + OPCODE_SIZE);
       if (!aa) {
-        fputs("Failed to unpack ActionAnnounce protobuf\n", stderr);
+        dc_log(DC_LOG_ERROR, "Failed to unpack ActionAnnounce protobuf");
         break;
       }
       client_state->action_announce_pending = true;
@@ -464,14 +464,14 @@ ERecvStatus_t recv_game_state(SocketContext_t *socket_context, GameState_t *game
 
     case MSG_NEW_HAND: {
       if (size < OPCODE_SIZE + 1) { // minimal valid payload: at least opcode + 1 byte of data
-        fputs("Invalid MSG_NEW_HAND payload (too short)\n", stderr);
+        dc_log(DC_LOG_WARN, "Invalid MSG_NEW_HAND payload (too short)");
         break;
       }
 
       // Unpack protobuf starting after the opcode
       Hand *pb_hand = hand__unpack(NULL, size - OPCODE_SIZE, buffer + OPCODE_SIZE);
       if (!pb_hand) {
-        fputs("Failed to unpack Hand protobuf\n", stderr);
+        dc_log(DC_LOG_ERROR, "Failed to unpack Hand protobuf");
         break;
       }
 
