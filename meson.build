@@ -260,13 +260,8 @@ executable(
   install: true,
 )
 
-# Manual registry test tool (not installed).
-executable(
-  'registry-probe',
-  ['tests/registry_probe.c'],
-  dependencies: dc_core_dep,
-  install: false,
-)
+# Optional diagnostic CLIs (registry-probe, ...). Off by default; -Dtools=true.
+subdir('tools')
 
 # Build-time tool that turns the shared hotkey table (src/ui/hotkey_table.c)
 # into docs/keys.md.  Built as a native tool so it runs on the build machine

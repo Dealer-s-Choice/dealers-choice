@@ -7,3 +7,6 @@ option('docdir', type : 'string', value : 'share/doc/dealers-choice',
 option('nls', type : 'boolean', value : true,
        description : 'include native language support (install translations)')
 
+option('tools', type : 'boolean', value : false,
+       description : 'build optional diagnostic CLIs in tools/ (not installed; off by default so release/package builds skip them)')
+
