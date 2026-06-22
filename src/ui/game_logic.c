@@ -1023,16 +1023,19 @@ EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
                           font->fonts[FONT_CARD], my_id, client_state.deuces_wild);
       layout_cards(card_context, players_array, seat_pos);
 
-      /* Dim the local player's own hole cards (private to opponents), but only
-       * in variants that also have visible cards (stud/holdem), so a pure-draw
-       * hand isn't uniformly shaded (#64). */
+      /* Dim the local player's own hole cards (private to opponents), but only in
+       * stud-type variants where the player also has face-up cards -- i.e. a mix
+       * of their own public and private cards, where marking the private ones is
+       * informative. In hold'em/Omaha the only public cards are community cards
+       * (not the player's), and in draw every card is private, so there all of
+       * the player's cards are private and dimming them conveys nothing (#64). */
       if (client_state.game_choice && my_id >= 0 && my_id < MAX_PLAYERS) {
         const CardSlotType_t *slot = client_state.game_choice->card_slot;
-        bool has_visible = false;
+        bool has_own_face_up = false;
         for (int k = 0; k < MAX_HAND_SIZE; k++)
-          if (slot[k] == CARD_SLOT_FACE_UP || slot[k] == CARD_SLOT_COMMUNITY)
-            has_visible = true;
-        if (has_visible)
+          if (slot[k] == CARD_SLOT_FACE_UP)
+            has_own_face_up = true;
+        if (has_own_face_up)
           for (int k = 0; k < MAX_HAND_SIZE; k++)
             card_context[my_id][k].is_shaded = (slot[k] == CARD_SLOT_HOLE);
       }
