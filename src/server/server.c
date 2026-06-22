@@ -1057,15 +1057,19 @@ static void service_lan_discovery(ArgsBroadcastGameState_t *args, bool in_progre
 
 /* Registry publish policy (DC-owned; tcpme stays generic). */
 #define REG_PUB_HEARTBEAT_MS 30000u     /* normal heartbeat interval */
-#define REG_PUB_BACKOFF_MID_MS 120000u  /* after 3 consecutive failures */
-#define REG_PUB_BACKOFF_LONG_MS 300000u /* after 6 consecutive failures */
+#define REG_PUB_RETRY_FAST_MS 5000u     /* first few retries after a failure */
+#define REG_PUB_BACKOFF_MID_MS 120000u  /* after 6 consecutive failures */
+#define REG_PUB_BACKOFF_LONG_MS 300000u /* after 12 consecutive failures */
+#define REG_PUB_FAST_RETRIES 6          /* fast retries before escalating */
 #define REG_PUB_CONNECT_MS 300u         /* bounded connect — won't stall the game */
 #define REG_PUB_IO_MS 2000u
 
 /* Announce/heartbeat this server to every configured registry. Non-blocking
- * (bounded connect) and rate-limited with exponential backoff (30s normal;
- * 2 min after 3 fails; 5 min after 6) so a down/slow registry never stalls
- * gameplay (#33). */
+ * (bounded connect) and rate-limited so a down/slow registry never stalls
+ * gameplay (#33). Cadence: 30s steady-state heartbeat; after a failure, retry
+ * fast (every 5s for the first ~6 tries) so the server re-appears within seconds
+ * of a registry restart, then back off (2 min after 6 fails, 5 min after 12) so
+ * a registry that stays down isn't hammered (#75). */
 static void service_registry_publish(ArgsBroadcastGameState_t *args) {
   if (args->cli_args->disable_publish || args->config->registry_count == 0)
     return;
@@ -1112,9 +1116,11 @@ static void service_registry_publish(ArgsBroadcastGameState_t *args) {
     interval = REG_PUB_HEARTBEAT_MS;
   } else {
     fail_count++;
-    interval = (fail_count >= 6)   ? REG_PUB_BACKOFF_LONG_MS
-               : (fail_count >= 3) ? REG_PUB_BACKOFF_MID_MS
-                                   : REG_PUB_HEARTBEAT_MS;
+    /* Retry fast at first so a registry restart is picked up within seconds,
+     * then escalate to longer backoffs if it stays unreachable. */
+    interval = (fail_count >= 2 * REG_PUB_FAST_RETRIES) ? REG_PUB_BACKOFF_LONG_MS
+               : (fail_count >= REG_PUB_FAST_RETRIES)   ? REG_PUB_BACKOFF_MID_MS
+                                                        : REG_PUB_RETRY_FAST_MS;
   }
 }
 

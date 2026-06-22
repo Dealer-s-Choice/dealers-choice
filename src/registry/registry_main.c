@@ -104,6 +104,15 @@ static void reg_cond_wait(reg_cond_t *c, reg_mutex_t *m) { pthread_cond_wait(c, 
  * is shed here (the announce is dropped, the server retries on its next
  * heartbeat) rather than letting the queue grow without limit. */
 #define REG_VERIFY_QUEUE_MAX 64
+/* Grace TTL applied to entries reloaded from servers.json on boot. The file the
+ * registry writes carries no per-entry last-seen timestamp (see
+ * write_servers_json), so a reloaded entry's true age is unknown. We seed it a
+ * short way from expiry instead of a full TTL: a server that is still up
+ * re-announces within its own ~30s heartbeat and gets the full TTL refreshed,
+ * while genuinely-dead entries left over from before the restart fall off
+ * quickly rather than lingering a stale 90s. Pick > the server heartbeat
+ * (REG_PUB_HEARTBEAT_MS = 30s) so a live server always refreshes in time. */
+#define REG_RELOAD_GRACE_MS 45000u
 
 typedef struct {
   RegistryServer_t srv;
@@ -273,6 +282,216 @@ static void write_servers_json(const char *path, const RegistryServer_t *list, i
   }
   if (rename(tmp, path) != 0)
     perror("registry: rename servers.json");
+}
+
+/* --- servers.json reload on boot (#75) ---
+ *
+ * A registry restart otherwise starts empty: every server vanishes from the
+ * public list until it next heartbeats. To bridge that gap we reload the
+ * servers.json we last wrote and seed g_table from it, then let the normal TTL
+ * sweep retire entries that don't re-announce.
+ *
+ * This runs once, before the accept loop starts, while the registry is still
+ * single-threaded — so seeding g_table here needs no locking. (If a verify
+ * worker thread is ever added, this must stay strictly before the worker is
+ * spawned, or move under that thread's table lock.)
+ *
+ * The parser is a deliberately small, tolerant scanner tuned to the exact shape
+ * write_servers_json emits (a JSON array of flat objects, one server each). It
+ * is not a general JSON parser: it looks for "key": tokens inside each {...}
+ * object and reads the value that follows. The file is one the registry itself
+ * wrote, so this is enough; anything it can't make sense of (missing/truncated/
+ * garbage file, a malformed object) is skipped, and a completely unparseable
+ * file just yields an empty table — never a crash. */
+
+static const char *normalize_ip(const char *ip); /* defined just below */
+
+/* Find the value text just past "<key>": within [obj, end). Returns a pointer
+ * to the first non-space value char, or NULL if the key isn't present. */
+static const char *json_find_value(const char *obj, const char *end, const char *key) {
+  char pat[32];
+  int n = snprintf(pat, sizeof pat, "\"%s\"", key);
+  if (n < 0 || (size_t)n >= sizeof pat)
+    return NULL;
+  size_t patlen = strlen(pat);
+  for (const char *p = obj; p + patlen <= end; p++) {
+    if (strncmp(p, pat, patlen) != 0)
+      continue;
+    p += patlen;
+    while (p < end && (*p == ' ' || *p == '\t' || *p == '\n' || *p == '\r'))
+      p++;
+    if (p >= end || *p != ':')
+      continue;
+    p++;
+    while (p < end && (*p == ' ' || *p == '\t' || *p == '\n' || *p == '\r'))
+      p++;
+    return (p < end) ? p : NULL;
+  }
+  return NULL;
+}
+
+/* Read a JSON string value at *p (which points at the opening quote) into out,
+ * un-escaping \" and \\ (the only escapes write_servers_json produces). Returns
+ * true on success. */
+static bool json_read_string(const char *p, const char *end, char *out, size_t outsz) {
+  if (p >= end || *p != '"')
+    return false;
+  p++;
+  size_t j = 0;
+  while (p < end && *p != '"') {
+    char c = *p;
+    if (c == '\\' && p + 1 < end) {
+      p++;
+      c = *p;
+    }
+    if (j + 1 < outsz)
+      out[j++] = c;
+    p++;
+  }
+  if (j >= outsz)
+    j = outsz - 1;
+  out[j] = '\0';
+  return (p < end && *p == '"');
+}
+
+/* Read an unsigned integer value at *p into *out. Returns true if at least one
+ * digit was read. */
+static bool json_read_u64(const char *p, const char *end, uint64_t *out) {
+  uint64_t v = 0;
+  bool any = false;
+  while (p < end && *p >= '0' && *p <= '9') {
+    v = v * 10u + (uint64_t)(*p - '0');
+    any = true;
+    p++;
+  }
+  *out = v;
+  return any;
+}
+
+static bool json_read_bool(const char *p, const char *end, bool *out) {
+  if (p + 4 <= end && strncmp(p, "true", 4) == 0) {
+    *out = true;
+    return true;
+  }
+  if (p + 5 <= end && strncmp(p, "false", 5) == 0) {
+    *out = false;
+    return true;
+  }
+  return false;
+}
+
+/* Parse one {...} object [obj, objend) into *srv. Returns true if it carried at
+ * least a usable ip and non-zero port (the minimum to list). Absent optional
+ * fields default to 0/false. */
+static bool parse_server_object(const char *obj, const char *objend, RegistryServer_t *srv) {
+  memset(srv, 0, sizeof *srv);
+
+  const char *v = json_find_value(obj, objend, "ip");
+  if (!v || !json_read_string(v, objend, srv->ip, sizeof srv->ip) || srv->ip[0] == '\0')
+    return false;
+
+  uint64_t u = 0;
+  v = json_find_value(obj, objend, "port");
+  if (!v || !json_read_u64(v, objend, &u) || u == 0 || u > UINT16_MAX)
+    return false;
+  srv->tcp_port = (uint16_t)u;
+
+  v = json_find_value(obj, objend, "name");
+  if (v)
+    json_read_string(v, objend, srv->name, sizeof srv->name);
+
+  v = json_find_value(obj, objend, "players");
+  if (v && json_read_u64(v, objend, &u))
+    srv->player_count = (uint8_t)u;
+
+  v = json_find_value(obj, objend, "max");
+  if (v && json_read_u64(v, objend, &u))
+    srv->max_players = (uint8_t)u;
+
+  v = json_find_value(obj, objend, "start_time");
+  if (v && json_read_u64(v, objend, &u))
+    srv->start_time = u;
+
+  v = json_find_value(obj, objend, "password");
+  if (v)
+    json_read_bool(v, objend, &srv->password_protected);
+
+  v = json_find_value(obj, objend, "in_progress");
+  if (v)
+    json_read_bool(v, objend, &srv->in_progress);
+
+  return true;
+}
+
+/* Reload servers.json into g_table on boot. Entries are seeded as trusted (same
+ * model as a live announce: an entry is just a RegistryServer_t with a
+ * last_seen), but with a short grace clock (REG_RELOAD_GRACE_MS from expiry) so
+ * they expire fast unless the server re-announces. They are NOT re-verified here
+ * — verification is a blocking connect-back, and a still-up server proves itself
+ * on its next heartbeat (which also refreshes the full TTL); a dead one simply
+ * times out of the grace window. Defensive: a missing/garbage file leaves the
+ * table empty and logs via rlog. Returns the number of entries seeded. */
+static int load_servers_json(const char *path, uint32_t now) {
+  FILE *fp = fopen(path, "rb");
+  if (!fp) {
+    rlog("no servers.json to reload (%s); starting empty", path);
+    return 0;
+  }
+  if (fseek(fp, 0, SEEK_END) != 0) {
+    fclose(fp);
+    return 0;
+  }
+  long sz = ftell(fp);
+  if (sz <= 0 || sz > 4 * 1024 * 1024) { /* sane upper bound; the file we write is tiny */
+    fclose(fp);
+    rlog("servers.json empty or implausibly large; starting empty");
+    return 0;
+  }
+  rewind(fp);
+  char *buf = malloc((size_t)sz + 1);
+  if (!buf) {
+    fclose(fp);
+    return 0;
+  }
+  size_t got = fread(buf, 1, (size_t)sz, fp);
+  fclose(fp);
+  buf[got] = '\0';
+  const char *end = buf + got;
+
+  /* The grace clock: pretend these were last seen long enough ago that only
+   * REG_RELOAD_GRACE_MS of TTL remains. Guard the subtraction for tiny TTLs. */
+  uint32_t seeded_seen =
+      (REG_TTL_MS > REG_RELOAD_GRACE_MS) ? now - (REG_TTL_MS - REG_RELOAD_GRACE_MS) : now;
+
+  int loaded = 0;
+  const char *p = buf;
+  while (p < end) {
+    /* Object bounds: from '{' to the next '}'. registry_parse_announce strips
+     * control chars but a printable '}' inside a server name would end the
+     * object early here, so that one entry may fail to reload — acceptable: the
+     * server re-announces on its next heartbeat and is listed normally. */
+    const char *obj = memchr(p, '{', (size_t)(end - p));
+    if (!obj)
+      break;
+    const char *objend = memchr(obj, '}', (size_t)(end - obj));
+    if (!objend)
+      break;
+    RegistryServer_t srv;
+    if (parse_server_object(obj, objend, &srv)) {
+      /* Re-normalize the stored IP for symmetry with the announce path. */
+      const char *nip = normalize_ip(srv.ip);
+      if (nip != srv.ip)
+        memmove(srv.ip, nip, strlen(nip) + 1);
+      if (table_upsert(&srv, seeded_seen)) {
+        loaded++;
+        rlog("reloaded %s:%u \"%s\"", srv.ip, srv.tcp_port, srv.name);
+      }
+    }
+    p = objend + 1;
+  }
+  free(buf);
+  rlog("reloaded %d server(s) from %s", loaded, path);
+  return loaded;
 }
 
 /* Strip the IPv4-mapped IPv6 prefix so a plain IPv4 server shows as "1.2.3.4"
@@ -459,6 +678,11 @@ static int run_registry(uint16_t port, const char *json_path) {
   reg_mutex_init(&g_lock);
   reg_mutex_init(&g_qlock);
   reg_cond_init(&g_qcond);
+  /* Seed g_table from the last-written servers.json so a restart doesn't blank
+   * the public list. Done before starting the verify worker, while still
+   * single-threaded, so no locking is needed. */
+  if (json_path)
+    load_servers_json(json_path, dc_get_ticks());
   g_worker_run = true;
   reg_thread_t worker;
   if (reg_thread_create(&worker, verify_worker, NULL) != 0) {
