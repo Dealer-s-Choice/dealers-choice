@@ -48,6 +48,7 @@
 #include "menus.h"
 #include "net/registry.h"
 #include "ping_probe.h"
+#include "registry_fetch_thread.h"
 #include "util.h"
 #include "widgets/button.h"
 #include "widgets/card.h"
@@ -303,46 +304,10 @@ static void server_table_draw_style(const UITable_t *t, SDL_Renderer *r) {
   SDL_RenderDrawRect(r, &panel);
 }
 
-/* Query every configured registry and merge the results (dedup by ip:port) into
- * out[]. Bounded connect/recv so an unreachable registry can't hang the connect
- * screen; only runs when registries are configured, so LAN-only users pay
- * nothing. Returns the count. */
-/* Timeouts for browsing a registry. These cover a full INTERNET round trip (DNS
- * resolution + TCP handshake to a remote registry), so they must be generous:
- * 300ms was fine on LAN/localhost but timed out for remote users over
- * higher-latency links / first-time DNS lookups. NOTE: this fetch runs
- * synchronously on the connect screen, so a slow/unreachable registry stalls the
- * UI up to these values — the real fix is to move it off the UI thread (#82). */
-#define REG_FETCH_CONNECT_MS 2500
-#define REG_FETCH_IO_MS 2000
-
-static int registry_fetch(const PlayerConfig_t *pc, RegistryServer_t *out, int max) {
-  int count = 0;
-  for (int r = 0; r < pc->registry_count && count < max; r++) {
-    tcpme_socket_t s =
-        tcpme_connect_timeout(pc->registry_host[r], pc->registry_port[r], REG_FETCH_CONNECT_MS);
-    if (!tcpme_socket_valid(s))
-      continue;
-    tcpme_set_timeout(s, REG_FETCH_IO_MS);
-    RegistryServer_t list[REGISTRY_MAX_SERVERS];
-    int n = 0;
-    if (registry_send_list_request(s) == 0 &&
-        registry_recv_list(s, list, REGISTRY_MAX_SERVERS, &n) == 0) {
-      for (int i = 0; i < n && count < max; i++) {
-        bool dup = false;
-        for (int j = 0; j < count; j++)
-          if (out[j].tcp_port == list[i].tcp_port && strcmp(out[j].ip, list[i].ip) == 0) {
-            dup = true;
-            break;
-          }
-        if (!dup)
-          out[count++] = list[i];
-      }
-    }
-    tcpme_close(s);
-  }
-  return count;
-}
+/* The blocking registry query (connect + list round trip per registry) now runs
+ * on a dedicated worker thread in registry_fetch_thread.c, so a slow/unreachable
+ * registry no longer stalls this ~60fps connect screen (#82). The UI thread only
+ * reads the worker's latest published list each frame. */
 
 int menu_display_connect(PlayerConfig_t *player_config, char *host_str, uint16_t *port,
                                 SdlContext_t *sdl_context, Font_t *font, LinkWidget_t **links) {
@@ -509,8 +474,14 @@ int menu_display_connect(PlayerConfig_t *player_config, char *host_str, uint16_t
   const bool browse_registry = (player_config->registry_count > 0 && player_config->registry_browser);
   RegistryServer_t reg_found[REG_MAX_SHOWN];
   int reg_found_count = 0;
-  bool reg_dirty = browse_registry; /* fetch on first frame */
-  uint32_t reg_last_fetch = 0;
+  /* The background fetcher owns the blocking registry query (#82). We poll its
+   * published list every frame; reg_fetch_version tracks the last result we've
+   * folded into reg_found[] so the table rebuilds only on a new fetch. NULL is
+   * fine (no registry rows shown). The fetcher is destroyed before we leave this
+   * function, before the widgets/state it has nothing to do with are torn down,
+   * mirroring the ping prober. */
+  RegistryFetcher_t *reg_fetcher = browse_registry ? registry_fetch_create(player_config) : NULL;
+  uint32_t reg_fetch_version = 0;
   UITable_t reg_table = {0};
   UIRegistry_t reg_tbl_reg = {0};
   DiamondButtonWidget_t *reg_connect[REG_MAX_SHOWN] = {0};
@@ -697,12 +668,17 @@ int menu_display_connect(PlayerConfig_t *player_config, char *host_str, uint16_t
 
     /* --- Internet servers (top): slow-refresh the registry table, anchored at
      * the top of the server-list area (#33). --- */
-    if (browse_registry) {
-      uint32_t now = SDL_GetTicks();
-      /* Rebuild on a network refresh (every 10s or when forced dirty), and also
-       * when the prober has new latency values for the rows we already show, so
-       * the Ping column updates without waiting for the next registry fetch. */
-      bool reg_fetch_due = (reg_dirty || now - reg_last_fetch >= 10000);
+    if (reg_fetcher) {
+      /* Pull the worker's latest published list (a cheap mutex-guarded copy; the
+       * blocking query happens on its thread). A bumped version means a fetch
+       * completed, so re-copy into reg_found[]. Also rebuild when the prober has
+       * new latency values for the rows we already show, so the Ping column
+       * updates without waiting for the next registry fetch. */
+      RegistryServer_t latest[REG_MAX_SHOWN];
+      int latest_count = 0;
+      uint32_t fetch_ver = registry_fetch_get(reg_fetcher, latest, REG_MAX_SHOWN, &latest_count);
+      bool reg_fetch_due = (fetch_ver != reg_fetch_version);
+
       uint64_t reg_ping_sig = 0;
       for (int i = 0; i < reg_found_count; i++)
         reg_ping_sig = reg_ping_sig * 1099511628211ULL +
@@ -711,14 +687,9 @@ int menu_display_connect(PlayerConfig_t *player_config, char *host_str, uint16_t
       bool reg_ping_changed = (reg_ping_sig != prev_reg_ping_sig);
       if (reg_fetch_due || reg_ping_changed) {
         if (reg_fetch_due) {
-          reg_found_count = registry_fetch(player_config, reg_found, REG_MAX_SHOWN);
-          reg_last_fetch = now;
-          reg_dirty = false;
-          dc_log(DC_LOG_DEBUG, "registry: fetched %d server(s)", reg_found_count);
-          for (int i = 0; i < reg_found_count; i++)
-            dc_log(DC_LOG_DEBUG, "registry:   [%d] %s:%u \"%s\" %u/%u", i, reg_found[i].ip,
-                   (unsigned)reg_found[i].tcp_port, reg_found[i].name,
-                   (unsigned)reg_found[i].player_count, (unsigned)reg_found[i].max_players);
+          memcpy(reg_found, latest, sizeof(RegistryServer_t) * (size_t)latest_count);
+          reg_found_count = latest_count;
+          reg_fetch_version = fetch_ver;
         }
         prev_reg_ping_sig = reg_ping_sig;
 
@@ -901,10 +872,12 @@ int menu_display_connect(PlayerConfig_t *player_config, char *host_str, uint16_t
 
   SDL_StopTextInput();
 
-  /* Stop and join the background prober before tearing down anything it might
-   * touch. ping_probe_destroy signals the stop flag and waits, so there is no
-   * detached thread left to use the (about-to-be-freed) shared state. */
+  /* Stop and join the background workers before tearing down anything they might
+   * touch. Each *_destroy signals its stop flag and joins, so no detached thread
+   * is left to use the (about-to-be-freed) shared state. The two workers are
+   * independent (separate mutexes/state); order between them doesn't matter. */
   ping_probe_destroy(ping_probe);
+  registry_fetch_destroy(reg_fetcher);
 
   /* Copy final values back to the caller's variables */
   const char *final_host = input_widget_get_text(host_input);

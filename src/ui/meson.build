@@ -11,6 +11,7 @@ ui_src = files(
   'layout.c',
   'links.c',
   'ping_probe.c',
+  'registry_fetch_thread.c',
   'style.c',
   'ui_widget.c',
 )
