@@ -154,7 +154,7 @@ enum { SERVER_TABLE_COLS = 6 }; /* Name | IP | Port | Players | Uptime | Connect
  * fills its cell — left/right points near the side margins, top point near the
  * top, bottom point at the full cell bottom (#93). Wider than tall reads as a
  * card-suit diamond sitting in a button slot. */
-enum { CONNECT_BTN_W = 40, CONNECT_BTN_H = 30 };
+enum { CONNECT_BTN_W = 80, CONNECT_BTN_H = 30 };
 
 /* Total laid-out width of a table (sum of column widths plus inter-column gaps). */
 static int server_table_width(const UITable_t *t) {
@@ -188,11 +188,11 @@ static int server_table_bottom(const UITable_t *t) {
  * (observers may still join) and is marked lightly on the Players cell. */
 static int server_table_build(UITable_t *t, UIRegistry_t *owner, Font_t *font, int y,
                               const ServerRow_t *rows, int n, DiamondButtonWidget_t **connect_btn) {
-  const SDL_Color connect_green = {40, 175, 75, 255};
+  const SDL_Color connect_gem = {200, 35, 45, 255}; /* ruby red, card-suit diamond */
 
   ui_table_begin(t, 0, y, SERVER_TABLE_COLS);
-  for (int c = 0; c < SERVER_TABLE_COLS - 1; c++)
-    t->col_align[c] = 1; /* left-align the text columns; Connect column centers */
+  /* All columns center-justified (col_align default 0): values and headers are
+   * centered in their cells, including the Connect column. */
 
   static const char *const hdr[SERVER_TABLE_COLS] = {"Name",   "IP",     "Port",
                                                      "Players", "Uptime (days)", "Connect"};
@@ -234,7 +234,7 @@ static int server_table_build(UITable_t *t, UIRegistry_t *owner, Font_t *font, i
         ui_table_add(t, row, c, &tw->base);
       }
     }
-    DiamondButtonWidget_t *cb = diamond_button_create(CONNECT_BTN_W, CONNECT_BTN_H, connect_green);
+    DiamondButtonWidget_t *cb = diamond_button_create(CONNECT_BTN_W, CONNECT_BTN_H, connect_gem);
     if (cb) {
       ui_register(owner, &cb->base);
       ui_table_add(t, row, SERVER_TABLE_COLS - 1, &cb->base);
