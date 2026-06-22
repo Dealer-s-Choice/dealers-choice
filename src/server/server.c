@@ -1072,6 +1072,14 @@ static void service_registry_publish(ArgsBroadcastGameState_t *args) {
   static uint32_t last_attempt = 0;
   static uint32_t interval = 0; /* 0 => attempt on the first call */
   static int fail_count = 0;
+  /* Wall-clock process start, captured on the first publish attempt (which the
+   * zero interval forces to be the first register_new_client call, i.e. boot).
+   * time(NULL), not dc_get_ticks(): uptime is an absolute instant the client
+   * subtracts from its own clock, and must not reset on the monotonic-clock
+   * wrap (~49 days) that dc_get_ticks() is subject to. */
+  static time_t server_start = 0;
+  if (server_start == 0)
+    server_start = time(NULL);
   uint32_t now = dc_get_ticks();
   if (interval != 0 && now - last_attempt < interval)
     return;
@@ -1083,6 +1091,7 @@ static void service_registry_publish(ArgsBroadcastGameState_t *args) {
   info.max_players = MAX_CLIENTS;
   info.password_protected = (args->config->password[0] != '\0');
   info.in_progress = !args->game_state->at_menu;
+  info.start_time = (uint64_t)server_start;
   snprintf(info.name, sizeof info.name, "%.*s", (int)(sizeof info.name - 1),
            args->config->server_name);
 

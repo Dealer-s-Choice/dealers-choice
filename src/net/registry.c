@@ -61,6 +61,7 @@ int registry_send_announce(tcpme_socket_t sock, const RegistryServer_t *info) {
   msg.max_players = info->max_players;
   msg.password_protected = info->password_protected;
   msg.in_progress = info->in_progress;
+  msg.start_time = info->start_time;
 
   size_t len = server_announce__get_packed_size(&msg);
   uint8_t *buf = malloc(len);
@@ -95,6 +96,7 @@ int registry_parse_announce(const uint8_t *payload, size_t len, RegistryServer_t
   out->max_players = (uint8_t)msg->max_players;
   out->password_protected = msg->password_protected;
   out->in_progress = msg->in_progress;
+  out->start_time = msg->start_time;
   sanitize_name(msg->name, out->name, sizeof(out->name));
   server_announce__free_unpacked(msg, NULL);
   return 0;
@@ -123,6 +125,7 @@ int registry_send_list(tcpme_socket_t sock, const RegistryServer_t *servers, int
     entries[i].max_players = servers[i].max_players;
     entries[i].password_protected = servers[i].password_protected;
     entries[i].in_progress = servers[i].in_progress;
+    entries[i].start_time = servers[i].start_time;
     ptrs[i] = &entries[i];
   }
   list.n_servers = (size_t)count;
@@ -169,6 +172,7 @@ int registry_recv_list(tcpme_socket_t sock, RegistryServer_t *out, int max, int 
     d->max_players = (uint8_t)e->max_players;
     d->password_protected = e->password_protected;
     d->in_progress = e->in_progress;
+    d->start_time = e->start_time;
     sanitize_name(e->name, d->name, sizeof(d->name));
   }
   *count = n;

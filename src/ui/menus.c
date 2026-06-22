@@ -33,6 +33,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #include "client.h"
 #include "dc_config.h"
@@ -140,9 +141,13 @@ typedef struct {
   uint8_t player_count;
   uint8_t max_players;
   bool in_progress;
+  /* Server process start, unix seconds (0 = unknown). Registry rows carry the
+   * value the server reported; LAN discovery has no such field, so LAN rows
+   * leave it 0 and the Uptime cell shows "-". */
+  uint64_t start_time;
 } ServerRow_t;
 
-enum { SERVER_TABLE_COLS = 5 }; /* Name | IP | Port | Players | Connect */
+enum { SERVER_TABLE_COLS = 6 }; /* Name | IP | Port | Players | Uptime | Connect */
 enum { CONNECT_BTN_DIAMETER = 25 };
 
 /* Total laid-out width of a table (sum of column widths plus inter-column gaps). */
@@ -182,7 +187,8 @@ static int server_table_build(UITable_t *t, UIRegistry_t *owner, Font_t *font, i
   for (int c = 0; c < SERVER_TABLE_COLS - 1; c++)
     t->col_align[c] = 1; /* left-align the text columns; Connect column centers */
 
-  static const char *const hdr[SERVER_TABLE_COLS] = {"Name", "IP", "Port", "Players", "Connect"};
+  static const char *const hdr[SERVER_TABLE_COLS] = {"Name",   "IP",     "Port",
+                                                     "Players", "Uptime", "Connect"};
   for (int c = 0; c < SERVER_TABLE_COLS; c++) {
     TextWidget_t *h = text_widget_create(_(hdr[c]), font->fonts[FONT_DEFAULT_BOLD], DC_TEXT_ON_DARK);
     if (h) {
@@ -197,11 +203,21 @@ static int server_table_build(UITable_t *t, UIRegistry_t *owner, Font_t *font, i
     const char *who = (s->name && s->name[0] != '\0') ? s->name : s->ip;
     char portbuf[8];
     char plbuf[16];
+    char uptimebuf[16];
     snprintf(portbuf, sizeof(portbuf), "%u", (unsigned)s->port);
     snprintf(plbuf, sizeof(plbuf), "%u/%u%s", (unsigned)s->player_count, (unsigned)s->max_players,
              s->in_progress ? " *" : "");
+    /* Uptime in days to one decimal, derived from the server's reported boot
+     * instant against our own wall clock. start_time == 0 means unknown (LAN
+     * rows, or an older server that predates the field); a future/garbled
+     * start_time (now < start_time, e.g. clock skew) is also shown as "-". */
+    time_t now = time(NULL);
+    if (s->start_time != 0 && (uint64_t)now >= s->start_time)
+      snprintf(uptimebuf, sizeof(uptimebuf), "%.1f", (double)((uint64_t)now - s->start_time) / 86400.0);
+    else
+      snprintf(uptimebuf, sizeof(uptimebuf), "-");
 
-    const char *cells[SERVER_TABLE_COLS - 1] = {who, s->ip, portbuf, plbuf};
+    const char *cells[SERVER_TABLE_COLS - 1] = {who, s->ip, portbuf, plbuf, uptimebuf};
     int row = i + 1;
     for (int c = 0; c < SERVER_TABLE_COLS - 1; c++) {
       TextWidget_t *tw = text_widget_create(cells[c], font->fonts[FONT_DEFAULT], DC_TEXT_ON_DARK);
@@ -666,9 +682,10 @@ int menu_display_connect(PlayerConfig_t *player_config, char *host_str, uint16_t
         if (reg_found_count > 0) {
           ServerRow_t rows[REG_MAX_SHOWN];
           for (int i = 0; i < reg_found_count; i++)
-            rows[i] = (ServerRow_t){reg_found[i].name,        reg_found[i].ip,
-                                    reg_found[i].tcp_port,    reg_found[i].player_count,
-                                    reg_found[i].max_players, reg_found[i].in_progress};
+            rows[i] = (ServerRow_t){reg_found[i].name,         reg_found[i].ip,
+                                    reg_found[i].tcp_port,     reg_found[i].player_count,
+                                    reg_found[i].max_players,  reg_found[i].in_progress,
+                                    reg_found[i].start_time};
           reg_connect_count = server_table_build(
               &reg_table, &reg_tbl_reg, font,
               servers_top_y + reg_heading_h + g_layout_cfg.input_field_v_gap, rows, reg_found_count,
@@ -727,9 +744,12 @@ int menu_display_connect(PlayerConfig_t *player_config, char *host_str, uint16_t
         if (found_count > 0) {
           ServerRow_t rows[LAN_MAX_SHOWN];
           for (int i = 0; i < found_count; i++)
-            rows[i] = (ServerRow_t){found[i].name,        found[i].ip,
-                                    found[i].tcp_port,    found[i].player_count,
-                                    found[i].max_players, found[i].in_progress};
+            /* LAN discovery carries no start_time, so uptime is unknown (0 ->
+             * the table shows "-"). */
+            rows[i] = (ServerRow_t){found[i].name,         found[i].ip,
+                                    found[i].tcp_port,      found[i].player_count,
+                                    found[i].max_players,   found[i].in_progress,
+                                    0};
           lan_connect_count =
               server_table_build(&lan_table, &lan_tbl_reg, font,
                                  lan_top + lan_heading_h + g_layout_cfg.input_field_v_gap, rows,

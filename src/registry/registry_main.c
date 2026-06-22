@@ -172,13 +172,17 @@ static void write_servers_json(const char *path) {
       continue;
     char ename[REGISTRY_NAME_MAX * 2 + 1];
     json_escape(g_table[i].srv.name, ename, sizeof ename);
+    /* start_time is the server's reported wall-clock boot (unix seconds, 0 =
+     * unknown). Emit it raw so the website can compute uptime against its own
+     * "now" rather than baking a stale value into the file. */
     fprintf(fp,
             "%s  {\"ip\":\"%s\",\"port\":%u,\"name\":\"%s\",\"players\":%u,"
-            "\"max\":%u,\"password\":%s,\"in_progress\":%s}",
+            "\"max\":%u,\"password\":%s,\"in_progress\":%s,\"start_time\":%llu}",
             first ? "" : ",\n", g_table[i].srv.ip, g_table[i].srv.tcp_port, ename,
             g_table[i].srv.player_count, g_table[i].srv.max_players,
             g_table[i].srv.password_protected ? "true" : "false",
-            g_table[i].srv.in_progress ? "true" : "false");
+            g_table[i].srv.in_progress ? "true" : "false",
+            (unsigned long long)g_table[i].srv.start_time);
     first = false;
   }
   fputs("\n]\n", fp);
