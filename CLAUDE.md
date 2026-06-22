@@ -211,7 +211,28 @@ The parser uses a static `style_fields[]` table (key, `FieldType_t`, `offsetof`,
 - **String duplication:** use `dc_strdup()` (`src/util.c`) in files that don't already include SDL headers. Use `SDL_strdup` only where SDL is already included. Never use POSIX `strdup` — it's unavailable on MSVC.
 - **C standard:** C11 (`-std=c11`), warning level 3, with `-Werror` on aliasing, ODR, LTO type mismatches, and int conversion.
 - **Portability:** code runs on Linux, macOS, Windows (MSVC), and BSD. Platform guards use `host_sys` / `_WIN32`.
-- **i18n:** user-visible strings go through gettext macros (see `src/translate.h`). Translation `.po` files live in `po/`.
+- **i18n:** user-visible strings go through gettext macros (see `src/translate.h`:
+  `_()` for translate-now, `N_()` to mark a string for extraction that is
+  translated later at the point of use — the pattern used by the hotkey tables in
+  `src/ui/hotkey_table.c`, rendered through `_()` in `src/ui/hotkey_overlay.c`).
+  Translation `.po` files live in `po/`.
+    - **A new `.c` with `_()`/`N_()` strings must be added to `po/POTFILES`** or
+      its strings are silently never extracted (they compile and display in
+      English but can't be translated). This bites whenever a file is split out
+      or added — check `po/POTFILES` whenever you introduce marked strings in a
+      new file.
+    - **Follow GNU gettext's "Preparing Strings" advice**
+      (<https://www.gnu.org/software/gettext/manual/html_node/Preparing-Strings.html>):
+      mark complete self-contained units (no runtime concatenation of
+      fragments into a sentence), never pass a computed/runtime value through
+      `_()` (e.g. an SDL key name stays un-translated), and add a
+      `// TRANSLATORS:` comment above short or ambiguous strings for context
+      (xgettext is run with `--add-comments=TRANSLATORS`; use `//` line comments,
+      not `/* */`, so a stray `*` doesn't leak into the `.po`). Key-cap tokens
+      ("F1", "Esc", "Alt+Enter", "1-5") are intentionally left un-marked.
+    - **Don't commit a regenerated `.pot`/`.po` as a side effect** — Andy commits
+      `po/` updates in their own dedicated commits; the build regenerates the
+      `.pot` on demand.
 - **Comments are welcome on this project.** Andy maintains Dealer's Choice and wants explanatory comments kept — including ones written to orient a future AI session, not just human readers. Favour comments that capture the *why* (a hidden constraint, a prior bug, a surprising invariant, why an approach was chosen) over ones that merely restate the code. Don't pad with noise, but don't strip useful context to hit a "rare and short" bar — that bar applies to other people's projects, not this one. **Public API docs** — doxygen/header docblocks on public functions, parameters, and return codes — can be as long as needed; that's contract documentation for callers.
 
 ## Working style & contributions

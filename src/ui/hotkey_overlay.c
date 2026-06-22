@@ -79,8 +79,12 @@ void hotkey_overlay_render(SDL_Renderer *renderer, const Font_t *font, bool in_g
   const int gap = 8;      /* vertical space after each line          */
   const int col_gap = 48; /* horizontal space between the columns    */
 
+  // TRANSLATORS: Title of the F1 panel that lists keyboard shortcuts.
   const char *title = _("Keys");
+  // TRANSLATORS: Section heading. "Settings" is the name of the Settings menu
+  // button/screen; translate it the same way it is translated there.
   const char *act_head = _("Action keys (set in Settings)");
+  // TRANSLATORS: Section heading for keys the player cannot change.
   const char *fixed_head = _("Fixed keys");
 
   /* Resolve the live key name for each configurable action (in-game only). */

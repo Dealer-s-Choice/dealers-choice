@@ -37,6 +37,16 @@
  * tool writes to a path given on argv[1] (the build-dir copy) and also to argv[2]
  * if a second path is given (used by the regenerate-keys-doc run_target to
  * refresh the in-tree docs/keys.md).  With no arguments it writes to stdout.
+ *
+ * Why a C tool and not a shell/python script?  The source of truth is C data
+ * (g_hotkey_defs[] / g_fixed_keys[] in hotkey_table.c), because the running game
+ * needs it as C at runtime anyway.  This tool *links* hotkey_table.c and reads
+ * those structs directly, so it consumes the exact data the game compiles -- no
+ * text-parsing of the C source, so the docs can never drift from the code.  A
+ * script would have to regex the array initialisers, which breaks the moment the
+ * table is reformatted or gains a field (e.g. when FixedKeyDef_t.in_game_only was
+ * added, this tool needed zero changes).  In meson it is `native: true` so a
+ * cross-build produces a generator that runs on the build host, not the target.
  */
 
 #include <ctype.h>
