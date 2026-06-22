@@ -41,6 +41,7 @@
 #include "globals_gui.h"
 #include "graphics.h"
 #include "hotkey_overlay.h"
+#include "hotkey_table.h"
 #include "hotkeys.h"
 #include "lan_discovery.h"
 #include "links.h"
@@ -889,6 +890,18 @@ static bool is_hotkey_entry(size_t i) {
   return strncmp(player_config_entries[i].key, "hotkey_", 7) == 0;
 }
 
+/* Look up the built-in default key name for a hotkey config entry.  The single
+ * source of truth for defaults is g_hotkey_defs[] in hotkey_table.c, keyed by
+ * the same config_key strings as player_config_entries[] — so the "Load
+ * defaults" button reads from there instead of re-listing the defaults here.
+ * Returns NULL if the key isn't a known configurable hotkey. */
+static const char *hotkey_default_for_key(const char *config_key) {
+  for (size_t i = 0; i < g_hotkey_def_count; i++)
+    if (strcmp(g_hotkey_defs[i].config_key, config_key) == 0)
+      return g_hotkey_defs[i].default_key;
+  return NULL;
+}
+
 /* Press-to-bind editor for the hotkey entries.  Each row shows an action and
  * its current key; clicking a row captures the next keypress.  Card-selection
  * and bet-amount digit keys are intentionally not editable. */
@@ -971,6 +984,16 @@ static void menu_display_hotkeys(PlayerConfig_t *player_config, SdlContext_t *sd
     ui_register(&reg, &btn_save->base);
   }
 
+  ButtonWidget_t *btn_defaults =
+      button_widget_create_styled(_("Load defaults"), &ROLE_PRIMARY, font->fonts, (SDL_Keycode)0);
+  if (btn_defaults) {
+    /* Placed to the right of Save, on the same row. */
+    btn_defaults->base.rect.x =
+        label_x + (btn_save ? btn_save->base.rect.w + 20 : 0);
+    btn_defaults->base.rect.y = first_row_y + (int)n * row_h + 20;
+    ui_register(&reg, &btn_defaults->base);
+  }
+
   int capturing = -1; /* row index being bound, or -1 */
   bool running = true;
   Uint32 anim_start = SDL_GetTicks();
@@ -981,6 +1004,8 @@ static void menu_display_hotkeys(PlayerConfig_t *player_config, SdlContext_t *sd
       SDL_Point mouse_pos = {e.button.x, e.button.y};
       if (btn_save)
         btn_save->base.hovered = SDL_PointInRect(&mouse_pos, &btn_save->base.rect);
+      if (btn_defaults)
+        btn_defaults->base.hovered = SDL_PointInRect(&mouse_pos, &btn_defaults->base.rect);
       if (back_img)
         back_img->base.hovered = SDL_PointInRect(&mouse_pos, &back_img->base.rect);
 
@@ -1043,6 +1068,25 @@ static void menu_display_hotkeys(PlayerConfig_t *player_config, SdlContext_t *sd
           save_player_config(player_config);
           init_hotkeys(player_config);
           running = false;
+        } else if (btn_defaults &&
+                   SDL_PointInRect(&mouse_pos, &btn_defaults->base.rect)) {
+          btn_defaults->click.start_time = SDL_GetTicks();
+          /* Reset every action to its built-in default (from g_hotkey_defs[]),
+           * then persist immediately so the reset survives a restart even if
+           * the user backs out without clicking Save. */
+          capturing = -1;
+          for (size_t r = 0; r < n; r++) {
+            const char *def = hotkey_default_for_key(player_config_entries[idx[r]].key);
+            if (def)
+              snprintf(keyname[r], sizeof(keyname[r]), "%s", def);
+            if (tw_value[r])
+              text_widget_set_text(tw_value[r], keyname[r]);
+            player_config_set_field(player_config, idx[r], keyname[r]);
+          }
+          save_player_config(player_config);
+          init_hotkeys(player_config);
+          if (tw_hint)
+            text_widget_set_text(tw_hint, _("Defaults restored"));
         } else if (back_img && SDL_PointInRect(&mouse_pos, &back_img->base.rect)) {
           running = false;
         } else {

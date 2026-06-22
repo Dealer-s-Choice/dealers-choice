@@ -30,6 +30,8 @@
     servers next to the LAN ones
   + Press F1 to show the list of keys; it works during a game, on the connect
     screen, and in the lobby. Press F1 or Esc to close it
+  + The Hotkeys screen has a "Load defaults" button that resets all action keys
+    to their built-in defaults
   * Fix the draw count not showing when a player draws no cards; it now reads
     "drew 0"
   * Fix some key presses being missed during a game, such as needing to press
