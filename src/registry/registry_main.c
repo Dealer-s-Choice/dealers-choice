@@ -117,6 +117,7 @@ static void reg_cond_wait(reg_cond_t *c, reg_mutex_t *m) { pthread_cond_wait(c, 
 typedef struct {
   RegistryServer_t srv;
   uint32_t last_seen;
+  uint8_t seq; /* 1..99 display number, assigned once when first listed */
   bool used;
 } RegEntry_t;
 
@@ -124,6 +125,11 @@ typedef struct {
  * the recently-failed-IP set. g_lock guards both, plus the JSON write. */
 static RegEntry_t g_table[REGISTRY_MAX_SERVERS];
 static reg_mutex_t g_lock;
+/* Next "Server-NN" to hand out. Bumped per newly-listed server and wraps 99->1;
+ * a number in use by a listed server is skipped (see next_free_seq), so an
+ * offline server's number is never silently inherited by a different machine.
+ * Guarded by g_lock. */
+static uint8_t g_next_seq = 1;
 static bool g_verbose = false;
 static volatile sig_atomic_t g_running = 1;
 
@@ -196,14 +202,53 @@ static int count_for_ip(const char *ip) {
   return n;
 }
 
+/* Parse the NN out of a "Server-NN" label. Returns 1..99, or 0 if the name is
+ * not in that form (empty, or a legacy / foreign label). */
+static uint8_t seq_from_name(const char *name) {
+  if (strncmp(name, "Server-", 7) != 0 || name[7] < '0' || name[7] > '9')
+    return 0;
+  int v = atoi(name + 7);
+  return (v >= 1 && v <= 99) ? (uint8_t)v : 0;
+}
+
+/* Pick the next free display number starting at g_next_seq, skipping any number
+ * a listed server still holds, and advance g_next_seq past it (wrapping 99->1).
+ * Caller holds g_lock. If all of 1..99 were somehow in use (>99 live servers --
+ * not reachable under the per-IP and global listing caps) it returns g_next_seq
+ * anyway, accepting a duplicate rather than looping forever. */
+static uint8_t next_free_seq(void) {
+  for (int tries = 0; tries < 99; tries++) {
+    uint8_t cand = g_next_seq;
+    g_next_seq = (uint8_t)(g_next_seq % 99 + 1);
+    bool taken = false;
+    for (int i = 0; i < REGISTRY_MAX_SERVERS; i++)
+      if (g_table[i].used && g_table[i].seq == cand) {
+        taken = true;
+        break;
+      }
+    if (!taken)
+      return cand;
+  }
+  return g_next_seq;
+}
+
 /* Insert or refresh, keyed on ip+port. Returns false if a per-IP cap or the
- * table capacity is hit (refreshing an existing entry always succeeds). */
-static bool table_upsert(const RegistryServer_t *srv, uint32_t now) {
+ * table capacity is hit (refreshing an existing entry always succeeds).
+ *
+ * The display name is the registry's to assign: a refresh keeps the entry's
+ * existing "Server-NN"; a fresh insert gets the next free number, except a name
+ * carried in by the servers.json reload is honoured so a server that was up
+ * across a restart keeps its old number. The chosen name is written back into
+ * *srv so the caller can log it. */
+static bool table_upsert(RegistryServer_t *srv, uint32_t now) {
   for (int i = 0; i < REGISTRY_MAX_SERVERS; i++) {
     if (g_table[i].used && g_table[i].srv.tcp_port == srv->tcp_port &&
         strcmp(g_table[i].srv.ip, srv->ip) == 0) {
-      g_table[i].srv = *srv;
+      uint8_t s = g_table[i].seq;
+      g_table[i].srv = *srv; /* refresh stats; the announce carries no name */
+      snprintf(g_table[i].srv.name, sizeof g_table[i].srv.name, "Server-%02u", (unsigned)s);
       g_table[i].last_seen = now;
+      snprintf(srv->name, sizeof srv->name, "Server-%02u", (unsigned)s);
       return true;
     }
   }
@@ -211,9 +256,15 @@ static bool table_upsert(const RegistryServer_t *srv, uint32_t now) {
     return false;
   for (int i = 0; i < REGISTRY_MAX_SERVERS; i++) {
     if (!g_table[i].used) {
+      uint8_t s = seq_from_name(srv->name); /* nonzero only on a json reload */
+      if (s == 0)
+        s = next_free_seq();
       g_table[i].srv = *srv;
+      snprintf(g_table[i].srv.name, sizeof g_table[i].srv.name, "Server-%02u", (unsigned)s);
+      g_table[i].seq = s;
       g_table[i].last_seen = now;
       g_table[i].used = true;
+      snprintf(srv->name, sizeof srv->name, "Server-%02u", (unsigned)s);
       return true;
     }
   }
@@ -613,6 +664,32 @@ static REG_THREAD_FN verify_worker(void *arg) {
   return REG_THREAD_RET;
 }
 
+static int cmp_name(const void *a, const void *b) {
+  const RegistryServer_t *x = a, *y = b;
+  return strcmp(x->name, y->name);
+}
+
+/* Order a snapshot by display name for a stable, numeric list order. Names are
+ * zero-padded ("Server-07"), so a plain strcmp sorts them 01..99 numerically.
+ * The numbers themselves are assigned once when a server is first listed (see
+ * table_upsert) and persist via servers.json -- this only orders the output, it
+ * does not renumber. Call on a snapshot, never on g_table.
+ *
+ * Operators do not name servers: it prevents abusive names with no filter list,
+ * and a stable registry-assigned number means "let's go to Server-02" can't be
+ * confused with a different machine that later takes a freed slot. There is no
+ * "Official"/endorsed label -- the registry cannot verify one. A private source
+ * IP only means "co-located with this registry" (any process on the registry
+ * host qualifies), not "run by the project", and common.conf is client-shared
+ * and editable so it can't be the source of truth either. An endorsed badge, if
+ * ever wanted, has to be an operator-controlled allowlist matched against the
+ * connect-back-verified source IP -- a registry-side decision, not anything the
+ * announcer can assert. */
+static void sort_servers(RegistryServer_t *list, int n) {
+  if (n > 1)
+    qsort(list, (size_t)n, sizeof *list, cmp_name);
+}
+
 static void handle_connection(tcpme_socket_t client, const char *peer_ip) {
   uint16_t opcode = 0;
   const uint8_t *payload = NULL;
@@ -648,6 +725,7 @@ static void handle_connection(tcpme_socket_t client, const char *peer_ip) {
     reg_mutex_lock(&g_lock);
     int n = table_snapshot(list, REGISTRY_MAX_SERVERS);
     reg_mutex_unlock(&g_lock);
+    sort_servers(list, n); /* names are assigned at listing time; just order them */
     registry_send_list(client, list, n);
     rlog("served list (%d servers) to %s", n, peer_ip);
   }
@@ -681,8 +759,21 @@ static int run_registry(uint16_t port, const char *json_path) {
   /* Seed g_table from the last-written servers.json so a restart doesn't blank
    * the public list. Done before starting the verify worker, while still
    * single-threaded, so no locking is needed. */
-  if (json_path)
+  if (json_path) {
     load_servers_json(json_path, dc_get_ticks());
+    /* Resume numbering past the highest reloaded "Server-NN" so a fresh server
+     * isn't handed a number a reloaded one still holds. A server that stayed up
+     * across the restart keeps its own number via the refresh path; this only
+     * affects newly-listed servers afterwards. The exact counter isn't persisted,
+     * so across a full 99-wrap this is approximate -- but the per-IP and capacity
+     * limits keep the live set far below 99. */
+    uint8_t max_seq = 0;
+    for (int i = 0; i < REGISTRY_MAX_SERVERS; i++)
+      if (g_table[i].used && g_table[i].seq > max_seq)
+        max_seq = g_table[i].seq;
+    if (max_seq > 0)
+      g_next_seq = (uint8_t)(max_seq % 99 + 1);
+  }
   g_worker_run = true;
   reg_thread_t worker;
   if (reg_thread_create(&worker, verify_worker, NULL) != 0) {
@@ -726,6 +817,7 @@ static int run_registry(uint16_t port, const char *json_path) {
       n = table_snapshot(snap, REGISTRY_MAX_SERVERS);
     reg_mutex_unlock(&g_lock);
     if (do_json) {
+      sort_servers(snap, n); /* names are assigned at listing time; just order them */
       write_servers_json(json_path, snap, n);
       last_json = now;
     }

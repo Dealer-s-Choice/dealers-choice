@@ -1044,8 +1044,8 @@ static void service_lan_discovery(ArgsBroadcastGameState_t *args, bool in_progre
   info.password_protected = (args->config->password[0] != '\0');
   info.in_progress = in_progress;
   info.instance_id = args->lan_instance_id;
-  snprintf(info.name, sizeof info.name, "%.*s", (int)(sizeof info.name - 1),
-           args->config->server_name);
+  /* No operator-set name: LAN clients have no registry to assign one, so they
+   * fall back to showing the IP. info is {0}, so name stays empty. */
 
   if (tcpme_socket_valid(args->lan_discovery_sock) &&
       tcpme_socket_ready(args->lan_discovery_set, args->lan_discovery_sock))
@@ -1096,8 +1096,8 @@ static void service_registry_publish(ArgsBroadcastGameState_t *args) {
   info.password_protected = (args->config->password[0] != '\0');
   info.in_progress = !args->game_state->at_menu;
   info.start_time = (uint64_t)server_start;
-  snprintf(info.name, sizeof info.name, "%.*s", (int)(sizeof info.name - 1),
-           args->config->server_name);
+  /* No operator-set name: the registry assigns the displayed name (Server-NN),
+   * so leave info.name empty (info is {0}). */
 
   bool any_ok = false;
   for (int i = 0; i < args->config->registry_count; i++) {
@@ -1315,8 +1315,6 @@ ELoop_t register_new_client(ArgsBroadcastGameState_t *args) {
 int run_server(const CliArgs_t *cli_args, Path_t *path) {
   GameState_t game_state = {0};
   ServerConfig_t config = init_game_state(&game_state, path, cli_args);
-  if (cli_args->server_name)
-    snprintf(config.server_name, sizeof(config.server_name), "%s", cli_args->server_name);
   GameSettings_t game_settings = init_game_settings(&config);
   game_state.pot = 0;
 

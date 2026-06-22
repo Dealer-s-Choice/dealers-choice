@@ -160,7 +160,6 @@ CliArgs_t parse_server_args(int argc, char *argv[]) {
     OPT_CONF,
     OPT_BIND,
     OPT_PORT,
-    OPT_NAME,
     OPT_DISCOVERY_PORT,
     OPT_VERSION,
     OPT_VERBOSE,
@@ -178,7 +177,6 @@ CliArgs_t parse_server_args(int argc, char *argv[]) {
       {"conf", GLOPT_REQUIRED_ARG, OPT_CONF, 0},
       {"bind-address", GLOPT_REQUIRED_ARG, OPT_BIND, 0},
       {"port", GLOPT_REQUIRED_ARG, OPT_PORT, 0},
-      {"name", GLOPT_REQUIRED_ARG, OPT_NAME, 0},
       {"discovery-port", GLOPT_REQUIRED_ARG, OPT_DISCOVERY_PORT, 0},
       {"version", GLOPT_NO_ARG, OPT_VERSION, 0},
       {"verbose", GLOPT_NO_ARG, OPT_VERBOSE, 0},
@@ -221,9 +219,6 @@ CliArgs_t parse_server_args(int argc, char *argv[]) {
       cli_args.port = (uint16_t)port_val;
       break;
     }
-    case OPT_NAME:
-      cli_args.server_name = parser.optarg;
-      break;
     case OPT_DISCOVERY_PORT: {
       unsigned long dp;
       parse_unsigned(parser.optarg, UINT16_MAX, &dp);
@@ -263,7 +258,6 @@ CliArgs_t parse_server_args(int argc, char *argv[]) {
       fputs("Usage: " DEALERSCHOICE_NAME "-server [options]\n"
             "  --bind-address [IP]        Address to bind to (default: all interfaces)\n"
             "  --port [port]\n"
-            "  --name [name]              Server name shown to clients (overrides conf)\n"
             "  --discovery-port [port]    LAN discovery UDP port (overrides common.conf)\n"
             "  --disable-lan-discovery    Do not answer LAN discovery probes\n"
             "  --conf [path]              Alternate server config file\n"

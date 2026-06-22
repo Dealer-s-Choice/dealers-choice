@@ -35,6 +35,9 @@
     --disable-lan-discovery (for an internet-only server)
   * Fix two out-of-bounds reads in the game-protocol parser that a malformed
     network message could trigger (found by fuzzing)
+  * Internet server names are now assigned by the registry (Server-NN); operators
+    no longer set a name (the --name option and server.conf server_name were
+    removed)
   + Press F1 to show the list of keys; it works during a game, on the connect
     screen, and in the lobby. Press F1 or Esc to close it
   + The Hotkeys screen has a "Load defaults" button that resets all action keys
