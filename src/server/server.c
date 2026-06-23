@@ -1101,8 +1101,11 @@ static void service_registry_publish(ArgsBroadcastGameState_t *args) {
 
   bool any_ok = false;
   for (int i = 0; i < args->config->registry_count; i++) {
-    tcpme_socket_t s = tcpme_connect_timeout(args->config->registry_host[i],
-                                             args->config->registry_port[i], REG_PUB_CONNECT_MS);
+    /* Prefer IPv4 for the announce: the registry records the announce's source
+     * address, and IPv4 is reachable by the most clients (a v6-only listing is
+     * dead to a v4-only client). Falls back to IPv6 if there is no v4 route. */
+    tcpme_socket_t s = tcpme_connect_timeout_pref4(
+        args->config->registry_host[i], args->config->registry_port[i], REG_PUB_CONNECT_MS);
     if (!tcpme_socket_valid(s))
       continue;
     tcpme_set_timeout(s, REG_PUB_IO_MS);

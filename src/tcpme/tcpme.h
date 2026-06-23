@@ -124,6 +124,11 @@ tcpme_socket_t tcpme_connect(const char *host, uint16_t port);
 // Returns TCPME_INVALID_SOCKET on failure or timeout.
 tcpme_socket_t tcpme_connect_timeout(const char *host, uint16_t port, uint32_t timeout_ms);
 
+// Like tcpme_connect_timeout, but tries the host's IPv4 addresses before its
+// IPv6 ones (falling back to IPv6 only if no IPv4 address connects). Useful when
+// the caller wants the connection's source address to be IPv4 where possible.
+tcpme_socket_t tcpme_connect_timeout_pref4(const char *host, uint16_t port, uint32_t timeout_ms);
+
 // Close a socket.
 void tcpme_close(tcpme_socket_t sock);
 
