@@ -31,6 +31,15 @@ static void sanitize_name(const char *src, char *dst, size_t dstsz) {
   dst[j] = '\0';
 }
 
+void registry_format_addr(char *buf, size_t buflen, const char *ip, uint16_t port) {
+  /* An IPv6 literal contains colons, which collide with the host:port separator;
+   * bracket it ("[addr]:port") as URLs/getaddrinfo do. IPv4 has no colons. */
+  if (strchr(ip, ':'))
+    snprintf(buf, buflen, "[%s]:%u", ip, (unsigned)port);
+  else
+    snprintf(buf, buflen, "%s:%u", ip, (unsigned)port);
+}
+
 uint8_t *registry_recv_frame(tcpme_socket_t sock, uint16_t *opcode, const uint8_t **payload,
                             size_t *payload_len) {
   uint32_t size_net = 0;

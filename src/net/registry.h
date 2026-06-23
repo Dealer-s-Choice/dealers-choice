@@ -77,6 +77,11 @@ typedef struct {
   char name[REGISTRY_NAME_MAX + 1];
 } RegistryServer_t;
 
+/* Format an address + port for display, bracketing IPv6 literals so the colons
+ * aren't ambiguous: "1.2.3.4:22777" for IPv4, "[2a0a:...::]:22777" for IPv6.
+ * buf should be at least TCPME_ADDRSTRLEN + 8. */
+void registry_format_addr(char *buf, size_t buflen, const char *ip, uint16_t port);
+
 /* Read one framed message ([size:4 BE][opcode:2 BE][payload]). Returns the
  * malloc'd buffer (caller frees) and sets *opcode, *payload (into the buffer,
  * just past the opcode) and *payload_len. NULL on error/disconnect. Shared by

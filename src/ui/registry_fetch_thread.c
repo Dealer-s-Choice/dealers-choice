@@ -124,10 +124,12 @@ static int registry_thread_fn(void *data) {
     SDL_UnlockMutex(f->lock);
 
     dc_log(DC_LOG_DEBUG, "registry: fetched %d server(s)", n);
-    for (int i = 0; i < n; i++)
-      dc_log(DC_LOG_DEBUG, "registry:   [%d] %s:%u \"%s\" %u/%u", i, local[i].ip,
-             (unsigned)local[i].tcp_port, local[i].name, (unsigned)local[i].player_count,
-             (unsigned)local[i].max_players);
+    for (int i = 0; i < n; i++) {
+      char addr[TCPME_ADDRSTRLEN + 8];
+      registry_format_addr(addr, sizeof addr, local[i].ip, local[i].tcp_port);
+      dc_log(DC_LOG_DEBUG, "registry:   [%d] %s \"%s\" %u/%u", i, addr, local[i].name,
+             (unsigned)local[i].player_count, (unsigned)local[i].max_players);
+    }
 
     /* Sleep until the next cycle, in slices, breaking early on a stop request so
      * the join in registry_fetch_destroy() returns promptly. */

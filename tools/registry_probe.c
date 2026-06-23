@@ -70,10 +70,13 @@ int main(int argc, char *argv[]) {
         int n = 0;
         if (registry_recv_list(s, out, REGISTRY_MAX_SERVERS, &n) == 0) {
           printf("%d server(s):\n", n);
-          for (int i = 0; i < n; i++)
-            printf("  %s:%u  \"%s\"  %u/%u  %s%s\n", out[i].ip, out[i].tcp_port, out[i].name,
-                   out[i].player_count, out[i].max_players,
-                   out[i].password_protected ? "[pw]" : "", out[i].in_progress ? "[playing]" : "");
+          for (int i = 0; i < n; i++) {
+            char addr[TCPME_ADDRSTRLEN + 8];
+            registry_format_addr(addr, sizeof addr, out[i].ip, out[i].tcp_port);
+            printf("  %s  \"%s\"  %u/%u  %s%s\n", addr, out[i].name, out[i].player_count,
+                   out[i].max_players, out[i].password_protected ? "[pw]" : "",
+                   out[i].in_progress ? "[playing]" : "");
+          }
           rc = 0;
         } else {
           fputs("failed to receive list\n", stderr);
