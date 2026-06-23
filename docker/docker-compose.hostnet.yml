@@ -1,0 +1,28 @@
+# Host-networking override — layer on top of docker-compose.yml for a direct-IP
+# VPS (e.g. BitFolk) whose PUBLIC IP is on its own NIC. Needed so a co-located
+# registry records the server's real public IP instead of the docker gateway
+# (172.x). Apply it as a second -f:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.hostnet.yml \
+#     --profile server --profile registry [--profile bot] up -d
+#
+# Notes:
+#  - Under host mode the published `ports:` from the base file are ignored (a
+#    harmless compose warning); the server binds the host's ports directly.
+#  - Service-name DNS does NOT span the host network stack, so the bot reaches
+#    the server on localhost here, not "dealers-choice-server".
+#  - Do NOT use this where the cloud NATs the public IP externally (Oracle/OCI):
+#    the base project-network setup works there and keeps container isolation.
+services:
+  dealers-choice-server:
+    network_mode: host
+
+  dealers-choice-registry:
+    network_mode: host
+
+  dealers-choice-bot:
+    network_mode: host
+    environment:
+      # On the host stack the bot can't resolve the service name; reach the
+      # co-located server on localhost (still overridable via DC_BOT_HOST).
+      - DC_BOT_HOST=${DC_BOT_HOST:-127.0.0.1}

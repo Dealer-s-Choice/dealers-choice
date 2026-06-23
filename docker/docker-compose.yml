@@ -37,16 +37,14 @@ services:
     volumes:
       - "${DC_CONFIG_DIR:-dc_config}:/dc_config"
       - "${DC_OUTPUT_DIR:-dc_output}:/dc_output"
-    # Network mode. Default "bridge" (with the published ports below). Set
-    # DC_NET_MODE=host in .env on a host whose PUBLIC IP is on its own NIC (a
-    # plain VPS, e.g. BitFolk): on bridge there, the server's own announce to a
-    # co-located registry hairpins through docker-proxy and the registry records
-    # the docker gateway (172.x) instead of the public IP. Host mode removes the
-    # bridge so the announce carries the real public IP. NOT needed where the
-    # cloud NATs the public IP externally (e.g. Oracle/OCI) -- bridge works there
-    # and keeps container netns isolation, so leave DC_NET_MODE unset on those.
-    # Under host mode the ports: list below is ignored (a harmless compose warning).
-    network_mode: "${DC_NET_MODE:-bridge}"
+    # No network_mode: the server joins the Compose PROJECT network, so the bot
+    # and a co-located registry reach it by service name (dealers-choice-server).
+    # Do NOT set `network_mode: bridge` here — that attaches the container to the
+    # default docker0 bridge, OFF the project network, where service-name DNS does
+    # not work, and the bot can no longer resolve the server. For a direct-IP VPS
+    # that needs host networking (so a co-located registry records the real public
+    # IP, not the docker gateway), layer the override file:
+    #   docker compose -f docker-compose.yml -f docker-compose.hostnet.yml ...
     # Publish the same port inside and out so the advertised port (= listen port,
     # set by --port above) is the one clients actually reach.
     ports:
@@ -126,9 +124,9 @@ services:
       # Set DC_REGISTRY_DIR to a host path to serve servers.json from there (e.g.
       # a website) — then match DC_UID to that path's owner.
       - "${DC_REGISTRY_DIR:-dc_registry}:/dc_registry"
-    # See dealers-choice-server for DC_NET_MODE; keep it the same as the server on
-    # the same host (host mode on a direct-IP VPS, bridge where the cloud NATs).
-    network_mode: "${DC_NET_MODE:-bridge}"
+    # No network_mode (joins the project network) — see dealers-choice-server.
+    # For host networking on a direct-IP VPS, use the docker-compose.hostnet.yml
+    # override; keep server and registry in the same mode on the same host.
     ports:
       - "${DC_REGISTRY_PORT:-22070}:22070"
     user: "${DC_UID:-1000}:${DC_GID:-1000}"
