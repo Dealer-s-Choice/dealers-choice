@@ -71,13 +71,17 @@ struct RegistryFetcher {
   uint32_t version;
 };
 
-/* Query every snapshotted registry and merge the results (dedup by ip:port)
- * into out[]. Bounded connect/recv so an unreachable registry can't hang.
- * Returns the count. Runs on the worker thread with the lock NOT held (this is
- * the slow part). */
+/* Read the FIRST reachable registry and return its list; do NOT merge across
+ * registries. Servers announce to every registry in common.conf (see the publish
+ * loop in server.c), so any single registry already holds the complete list --
+ * reading just one gives the full picture with no cross-registry duplicates. (If
+ * we merged, a dual-stack server would appear once per registry under its IPv4
+ * and IPv6 addresses, since each registry records the family that server
+ * announced to it over.) On failover the next reachable registry is read instead,
+ * and it also has everything. Bounded connect/recv so an unreachable registry
+ * can't hang. Runs on the worker thread with the lock NOT held (the slow part). */
 static int registry_fetch_blocking(RegistryFetcher_t *f, RegistryServer_t *out, int max) {
-  int count = 0;
-  for (int r = 0; r < f->registry_count && count < max; r++) {
+  for (int r = 0; r < f->registry_count; r++) {
     if (SDL_AtomicGet(&f->stop))
       break;
     tcpme_socket_t s =
@@ -85,24 +89,14 @@ static int registry_fetch_blocking(RegistryFetcher_t *f, RegistryServer_t *out, 
     if (!tcpme_socket_valid(s))
       continue;
     tcpme_set_timeout(s, REG_FETCH_IO_MS);
-    RegistryServer_t list[REGISTRY_MAX_SERVERS];
     int n = 0;
-    if (registry_send_list_request(s) == 0 &&
-        registry_recv_list(s, list, REGISTRY_MAX_SERVERS, &n) == 0) {
-      for (int i = 0; i < n && count < max; i++) {
-        bool dup = false;
-        for (int j = 0; j < count; j++)
-          if (out[j].tcp_port == list[i].tcp_port && strcmp(out[j].ip, list[i].ip) == 0) {
-            dup = true;
-            break;
-          }
-        if (!dup)
-          out[count++] = list[i];
-      }
+    if (registry_send_list_request(s) == 0 && registry_recv_list(s, out, max, &n) == 0) {
+      tcpme_close(s);
+      return n; /* first reachable registry's complete list */
     }
     tcpme_close(s);
   }
-  return count;
+  return 0;
 }
 
 static int registry_thread_fn(void *data) {
