@@ -32,6 +32,7 @@
 #include <string.h>
 
 #include "dc_time.h"
+#include "net.h"
 #include "ping_probe.h"
 #include "tcpme/tcpme.h"
 #include "util.h"
@@ -57,7 +58,8 @@ enum { PING_SLEEP_SLICE_MS = 50 };
 typedef struct {
   char host[TCPME_ADDRSTRLEN];
   uint16_t port;
-  int ms; /* latency, or a PING_* sentinel */
+  int ms;                    /* latency, or a PING_* sentinel */
+  uint32_t last_probe_ticks; /* dc_get_ticks() when last probed; 0 = never */
 } PingTarget_t;
 
 struct PingProbe {
@@ -91,6 +93,13 @@ static int probe_one(const char *host, uint16_t port) {
   uint32_t elapsed = dc_get_ticks() - t0;
   if (!tcpme_socket_valid(s))
     return PING_UNREACHABLE;
+  /* Identify as a probe (same framing the registry's callback-verify uses) so
+   * the server recognizes the connection, completes the handshake, and closes
+   * without logging "Failed to receive protocol header" — a browsed server's
+   * log shouldn't fill with errors just because clients are measuring latency.
+   * The connect RTT is the measurement; a failed send doesn't change it, so the
+   * return value is ignored. */
+  send_protocol_header(s, PROTO_FLAG_PROBE);
   tcpme_close(s);
   /* Connect-RTT can round to 0 on loopback; report at least 1ms so the cell
    * never shows a misleading "0" that looks like "no data". */
@@ -116,15 +125,30 @@ static int ping_thread_fn(void *data) {
     for (int i = 0; i < n; i++) {
       if (SDL_AtomicGet(&p->stop))
         return 0;
+
+      /* Per-target cooldown: never re-probe a target measured within the last
+       * cycle. The UI thread bumps `generation` whenever it rebuilds the list,
+       * which can happen many times a second (the connect screen reshuffles the
+       * shown set). Without this gate, each bump would re-probe every server
+       * immediately and hammer it — spamming its log and tripping its connection
+       * rate limit. The cooldown caps each server at one probe per PING_CYCLE_MS
+       * no matter how often we're nudged. */
+      if (snap[i].last_probe_ticks != 0 &&
+          (dc_get_ticks() - snap[i].last_probe_ticks) < PING_CYCLE_MS)
+        continue;
+
       int ms = probe_one(snap[i].host, snap[i].port);
+      uint32_t now = dc_get_ticks();
 
       /* Write the result back, but only if this exact target still exists
        * (the UI thread may have replaced the list while we were connecting).
        * Match by host:port rather than index, since the list can reorder. */
       SDL_LockMutex(p->lock);
       int idx = find_target(p, snap[i].host, snap[i].port);
-      if (idx >= 0)
+      if (idx >= 0) {
         p->targets[idx].ms = ms;
+        p->targets[idx].last_probe_ticks = now ? now : 1; /* 0 reserved for "never" */
+      }
       SDL_UnlockMutex(p->lock);
     }
 
@@ -137,8 +161,20 @@ static int ping_thread_fn(void *data) {
         return 0;
       SDL_LockMutex(p->lock);
       bool changed = (p->generation != gen);
-      SDL_UnlockMutex(p->lock);
+      gen = p->generation; /* adopt, so a reshuffle wakes us once, not forever */
+      bool has_new = false;
       if (changed)
+        for (int i = 0; i < p->count; i++)
+          if (p->targets[i].last_probe_ticks == 0) {
+            has_new = true;
+            break;
+          }
+      SDL_UnlockMutex(p->lock);
+      /* Wake early only for a never-probed target (a freshly listed server that
+       * should get a first ping quickly). A reshuffle that adds nothing new is
+       * absorbed without restarting the cycle, so already-measured servers keep
+       * their once-per-cycle cadence instead of being re-probed on every nudge. */
+      if (has_new)
         break;
       dc_sleep_ms(PING_SLEEP_SLICE_MS);
       slept += PING_SLEEP_SLICE_MS;
@@ -197,6 +233,10 @@ void ping_probe_set_targets(PingProbe_t *p, const char *const *hosts, const uint
     snprintf(next[nc].host, sizeof(next[nc].host), "%s", hosts[i]);
     next[nc].port = ports[i];
     next[nc].ms = (prev >= 0) ? p->targets[prev].ms : PING_PENDING;
+    /* Carry the cooldown timestamp too, so rebuilding the list (which happens
+     * constantly) can't reset a server's cooldown and let it be re-probed early.
+     * A genuinely new target keeps 0 ("never"), so it gets a prompt first ping. */
+    next[nc].last_probe_ticks = (prev >= 0) ? p->targets[prev].last_probe_ticks : 0;
     nc++;
   }
   memcpy(p->targets, next, sizeof(PingTarget_t) * (size_t)nc);
