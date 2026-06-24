@@ -16,9 +16,10 @@ ARCH="$(uname -m)"
 # VERSION is exported by CI (tag name or "snapshot"); fall back for local runs.
 VERSION="${VERSION:-snapshot}"
 
-# quick-sharun is fetched from pkgforge-dev rather than vendored, so we always
-# track the upstream bundling logic.
+# quick-sharun and get-debloated-pkgs are fetched from pkgforge-dev rather than
+# vendored, so we always track the upstream bundling logic.
 SHARUN="https://raw.githubusercontent.com/pkgforge-dev/Anylinux-AppImages/refs/heads/main/useful-tools/quick-sharun.sh"
+DEBLOAT_PKGS="https://raw.githubusercontent.com/pkgforge-dev/Anylinux-AppImages/refs/heads/main/useful-tools/get-debloated-pkgs.sh"
 
 # Source root is two levels up from this script (packaging/anylinux-appimage/).
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
@@ -45,12 +46,20 @@ ninja -C "$BUILD_DIR"
 meson test -C "$BUILD_DIR" -v
 meson install -C "$BUILD_DIR" --destdir="$APPDIR" --skip-subprojects
 
-# --- relocatability: point DC at its bundled data and locale ---------------
+# --- place data and locale where the bundled binary will look --------------
 # DC's data/locale lookup is env-var driven (DEALERSCHOICE_DATADIR /
-# DEALERSCHOICE_LOCALEDIR), NOT XDG_DATA_DIRS aware (see README.md). sharun
-# expands ${SHARUN_DIR} in this .env to the AppImage mountpoint at runtime, so
-# the bundled binary finds share/dealers-choice and share/locale on any host.
-mkdir -p "$APPDIR"
+# DEALERSCHOICE_LOCALEDIR), NOT XDG_DATA_DIRS aware (see README.md). The .env
+# below points those at ${SHARUN_DIR}/share/..., which sharun expands to the
+# AppImage mountpoint at runtime. quick-sharun's own datadir auto-detection
+# only scans the host /usr, but DC is installed into the AppDir (not the host),
+# so we copy the data and locale into the AppDir's top-level share/ ourselves
+# and turn that auto-detection off.
+mkdir -p "$APPDIR/share"
+cp -a "$APPDIR/usr/share/dealers-choice" "$APPDIR/share/dealers-choice"
+if [ -d "$APPDIR/usr/share/locale" ]; then
+  cp -a "$APPDIR/usr/share/locale" "$APPDIR/share/locale"
+fi
+
 cat > "$APPDIR/.env" <<'EOF'
 DEALERSCHOICE_DATADIR=${SHARUN_DIR}/share/dealers-choice
 DEALERSCHOICE_LOCALEDIR=${SHARUN_DIR}/share/locale
@@ -65,6 +74,9 @@ export OUTNAME="dealers_choice-$VERSION-anylinux-$ARCH.AppImage"
 export VERSION
 export MAIN_BIN=dealers-choice
 export DEPLOY_OPENGL=1
+# We populate share/ ourselves above; quick-sharun's host-/usr datadir scan
+# would find nothing for DC and is not needed.
+export DEPLOY_DATADIR=0
 
 # Update info for gh-releases-zsync. Tagged builds track the "latest" release,
 # snapshot builds track the rolling "snapshot" prerelease (matches appimage.yml).
@@ -75,10 +87,20 @@ else
 fi
 export UPINFO="gh-releases-zsync|dealer-s-choice|dealers_choice|$TAG|*$ARCH.AppImage.zsync"
 
+cd "$WORKDIR"
+
+# Replace the stock Arch mesa/LLVM/icu with pkgforge-dev's debloated builds
+# BEFORE bundling. DC needs accelerated rendering (SDL_RENDERER_ACCELERATED),
+# so OpenGL stays, but stock mesa drags in a 164 MiB libLLVM, a 52 MiB
+# libgallium and a 32 MiB libicudata. --add-common (implies --add-mesa) swaps
+# in the nano mesa/LLVM and the icu stub, which quick-sharun then bundles
+# instead. This is what keeps the AppImage small.
+wget --retry-connrefused --tries=30 "$DEBLOAT_PKGS" -O "$WORKDIR/get-debloated-pkgs"
+chmod +x "$WORKDIR/get-debloated-pkgs"
+./get-debloated-pkgs --add-common --prefer-nano
+
 wget --retry-connrefused --tries=30 "$SHARUN" -O "$WORKDIR/quick-sharun"
 chmod +x "$WORKDIR/quick-sharun"
-
-cd "$WORKDIR"
 
 # Deploy the installed binary, then turn the AppDir into a DwarFS AppImage.
 ./quick-sharun "$APPDIR/usr/bin/dealers-choice"
