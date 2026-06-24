@@ -39,7 +39,12 @@ static int accept_thread(void *unused) {
   return 0;
 }
 
-int main(void) {
+/* int main(int, char**) — not (void): on Windows SDL's SDL_main.h does
+ * `#define main SDL_main` and declares SDL_main(int, char**), so a (void) main
+ * conflicts. Matches the signature the _MAIN_HEAD_ test harness uses. */
+int main(int argc, char *argv[]) {
+  (void)argc;
+  (void)argv;
   if (tcpme_init() != 0) {
     fprintf(stderr, "tcpme_init failed\n");
     return 1;

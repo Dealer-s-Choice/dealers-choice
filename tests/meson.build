@@ -44,16 +44,19 @@ lan_discovery_exe = executable(
 )
 test('test_lan_discovery', lan_discovery_exe, env: environment(base_env))
 
-# Manual verification harness (not registered as a test: it runs ~12s by design,
-# longer than the ping-probe cooldown). Build with `meson compile` and run the
-# binary directly. A fast, time-injected unit test is the permanent CI form.
-ping_probe_flood_exe = executable(
-  'test_ping_probe_flood',
-  'ping_probe_flood.c',
-  dependencies: game_dep,
-  install: false,
-  override_options: ['b_lto=false'],
-)
+# Manual verification harness (NOT a registered test: runs ~12s by design,
+# longer than the ping-probe cooldown). Gated behind -Dtools so default/CI builds
+# skip it — the fast, time-injected test_ping_probe_cooldown is the CI guard.
+# With -Dtools: `meson compile` then run the binary directly.
+if get_option('tools')
+  ping_probe_flood_exe = executable(
+    'test_ping_probe_flood',
+    'ping_probe_flood.c',
+    dependencies: game_dep,
+    install: false,
+    override_options: ['b_lto=false'],
+  )
+endif
 
 # All tests that bind a TCP socket get a unique port derived from base_port so
 # they can run in parallel without colliding.  Add new entries to game_logic
