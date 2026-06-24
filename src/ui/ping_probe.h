@@ -80,4 +80,12 @@ void ping_probe_set_targets(PingProbe_t *p, const char *const *hosts, const uint
  * the PING_* sentinels. Unknown targets return PING_PENDING. */
 int ping_probe_get(PingProbe_t *p, const char *host, uint16_t port);
 
+/* True if a target last probed at last_probe_ticks (0 = never probed) is due to
+ * be probed again at now_ticks, given a cooldown of interval_ms. This is the
+ * per-target rate cap that stops a flapping UI list from re-probing — and
+ * flooding — a server faster than once per cooldown. Pure and time-injected so
+ * the cap is unit-testable without spinning the worker thread; the worker calls
+ * it with dc_get_ticks() and the internal cycle interval. */
+bool ping_probe_due_at(uint32_t last_probe_ticks, uint32_t now_ticks, uint32_t interval_ms);
+
 #endif

@@ -85,6 +85,18 @@ static int find_target(const PingProbe_t *p, const char *host, uint16_t port) {
   return -1;
 }
 
+/* True if a target last probed at last_probe_ticks (0 = never) is due to be
+ * probed again at now_ticks, given a cooldown of interval_ms. Pure and
+ * time-injected so the per-target cap is unit-testable
+ * (tests/ping_probe_cooldown.c) without spinning the worker thread. Unsigned
+ * subtraction makes the elapsed compare wrap correctly across the tick
+ * counter's rollover (same trick as dc_rate_limit_check_at). */
+bool ping_probe_due_at(uint32_t last_probe_ticks, uint32_t now_ticks, uint32_t interval_ms) {
+  if (last_probe_ticks == 0)
+    return true; /* never probed */
+  return (now_ticks - last_probe_ticks) >= interval_ms;
+}
+
 /* Probe one host:port: time a connect, then close. Returns ms or a sentinel.
  * Runs on the worker thread with the lock NOT held (this is the slow part). */
 static int probe_one(const char *host, uint16_t port) {
@@ -133,8 +145,7 @@ static int ping_thread_fn(void *data) {
        * immediately and hammer it — spamming its log and tripping its connection
        * rate limit. The cooldown caps each server at one probe per PING_CYCLE_MS
        * no matter how often we're nudged. */
-      if (snap[i].last_probe_ticks != 0 &&
-          (dc_get_ticks() - snap[i].last_probe_ticks) < PING_CYCLE_MS)
+      if (!ping_probe_due_at(snap[i].last_probe_ticks, dc_get_ticks(), PING_CYCLE_MS))
         continue;
 
       int ms = probe_one(snap[i].host, snap[i].port);
