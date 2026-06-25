@@ -26,6 +26,44 @@ and the JSON share an origin here, **no CORS header is needed**.
 The rest of this README covers the page on its own (any web server, or a
 different origin), where the CORS note below applies.
 
+## Testing changes locally
+
+You don't need a domain, a certificate, or the registry to work on the page.
+
+**Fastest loop — a plain static server, no Docker:**
+
+```sh
+cd web
+# a sample list of two servers to render against (uptime is from start_time):
+cat > servers.json <<EOF
+[
+  {"ip":"127.0.0.1","port":22777,"name":"Test Table","players":2,"max":5,"in_progress":false,"start_time":$(($(date +%s)-9000))},
+  {"ip":"127.0.0.1","port":22778,"name":"High Rollers","players":5,"max":5,"in_progress":true,"start_time":$(($(date +%s)-360000))}
+]
+EOF
+python3 -m http.server 8000
+# open http://localhost:8000/server-list.html
+```
+
+Edit `server-list.html` (or `felt.png`) and **refresh the browser** — that is the
+whole loop. The page re-fetches `servers.json` on its own every 30 seconds.
+Delete the throwaway `servers.json` when you're done (it is git-ignored).
+
+**Testing the real serving setup (Docker + Caddy):**
+
+```sh
+cd web   # keep the sample servers.json from above
+DC_WEB_DOMAIN=localhost DC_WEB_ROOT="$PWD" docker compose up -d
+# open https://localhost (accept the self-signed cert), or: curl -k https://localhost/
+docker compose down
+```
+
+`DC_WEB_DOMAIN=localhost` makes Caddy use its built-in local CA, so it does not
+call Let's Encrypt. The HTML, `felt.png`, and `servers.json` are bind-mounted, so
+**editing them shows up on a browser refresh — no restart needed.** Only a change
+to `Caddyfile` needs `docker compose restart`, and a change to
+`docker-compose.yml` needs `docker compose up -d`.
+
 ## How it fits together
 
 1. The registry writes `servers.json` (a JSON array of verified servers).

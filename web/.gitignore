@@ -1,0 +1,4 @@
+# Local test data (see "Testing changes locally" in README.md) and local config
+# copied from .env.example — never committed.
+servers.json
+.env
