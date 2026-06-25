@@ -4,6 +4,28 @@
 active Dealer's Choice servers a registry knows about. It reads the
 `servers.json` that `dealers-choice-registry --json <path>` writes.
 
+## Serving it (Docker, auto-HTTPS)
+
+`docker-compose.yml` here is a standalone stack: it runs Caddy to serve this
+page **and** the registry's `servers.json` from one origin over HTTPS, fetching
+a Let's Encrypt cert automatically (no port 80 needed). Run it on the same host
+as the registry:
+
+```sh
+cd web
+cp .env.example .env        # set DC_WEB_DOMAIN (and DC_WEB_ROOT if not /srv/www)
+docker compose up -d
+docker compose logs -f      # watch the cert get issued
+```
+
+Point the registry at a host path (`DC_REGISTRY_DIR=/srv/www`) and set
+`DC_WEB_ROOT` to that same path so Caddy can read `servers.json`. Needs a DNS A
+record for `DC_WEB_DOMAIN` → this host and TCP 443 reachable. Because the page
+and the JSON share an origin here, **no CORS header is needed**.
+
+The rest of this README covers the page on its own (any web server, or a
+different origin), where the CORS note below applies.
+
 ## How it fits together
 
 1. The registry writes `servers.json` (a JSON array of verified servers).

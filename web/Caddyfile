@@ -1,0 +1,12 @@
+# Auto-HTTPS frontend for the Dealer's Choice server-list widget.
+#
+# Caddy obtains and renews a Let's Encrypt certificate for $DC_WEB_DOMAIN
+# automatically. With only port 443 open it uses the TLS-ALPN-01 challenge, so
+# no port 80 is required. The served root holds the registry's servers.json plus
+# the widget (mounted as index.html) -- one origin, so the page needs no CORS.
+#
+# Requirements: DC_WEB_DOMAIN set, and a DNS A record pointing it at this host.
+{$DC_WEB_DOMAIN} {
+	root * /srv/www
+	file_server
+}

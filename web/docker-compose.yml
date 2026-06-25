@@ -1,0 +1,49 @@
+# Standalone web frontend for the Dealer's Choice server-list widget.
+#
+# Serves the registry's servers.json AND server-list.html over HTTPS from ONE
+# origin (no CORS). Caddy auto-obtains and renews a Let's Encrypt cert for
+# DC_WEB_DOMAIN (TLS-ALPN-01 on 443 -- no port 80 needed).
+#
+# Run on the SAME host as the registry. Point DC_WEB_ROOT at the directory the
+# registry writes servers.json to -- i.e. its DC_REGISTRY_DIR, which must be a
+# host PATH (not the default named volume) so this separate stack can read it:
+#
+#   cd web
+#   cp .env.example .env        # set DC_WEB_DOMAIN (and DC_WEB_ROOT if not /srv/www)
+#   docker compose up -d
+#   docker compose logs -f      # watch the cert get issued
+#
+# Requires: a DNS A record for DC_WEB_DOMAIN -> this host, and TCP 443 reachable
+# (on Oracle: open it in BOTH the console ingress AND the host iptables).
+name: dc-web
+
+services:
+  caddy:
+    image: caddy:alpine
+    environment:
+      - DC_WEB_DOMAIN=${DC_WEB_DOMAIN:?set DC_WEB_DOMAIN to the public HTTPS hostname}
+    volumes:
+      - "./Caddyfile:/etc/caddy/Caddyfile:ro"
+      - "${DC_WEB_ROOT:-/srv/www}:/srv/www:ro"          # the registry's servers.json
+      - "./server-list.html:/srv/www/index.html:ro"     # the widget, as index.html
+      - "caddy_data:/data"     # PERSISTS the issued cert -- keep this volume
+      - "caddy_config:/config"
+    ports:
+      - "443:443"
+      # - "443:443/udp"   # HTTP/3 (QUIC): also open UDP 443 in both firewall layers
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE       # bind 443; root's other powers are dropped
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    restart: unless-stopped
+
+volumes:
+  caddy_data:
+  caddy_config:
