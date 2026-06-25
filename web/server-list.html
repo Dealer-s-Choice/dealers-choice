@@ -47,6 +47,7 @@
     background:#08321e url("felt.png") repeat;
     padding:clamp(1rem,4vw,2.5rem); display:flex; justify-content:center;
     -webkit-font-smoothing:antialiased;
+    -webkit-text-size-adjust:100%; text-size-adjust:100%;  /* no Android font-boosting */
   }
   /* edge vignette over the felt, content rides above it */
   body::after { content:""; position:fixed; inset:0; pointer-events:none; z-index:0;
@@ -122,13 +123,14 @@
        inline after it. (NOT display:flex on the td: overriding table-cell to
        flex with a ::before flex-item renders inconsistently on mobile Blink —
        the value can vanish on Android — while Firefox is fine.) */
-    tbody td { display:block; border-bottom:0; padding:.3rem .6rem; }
-    tbody td::before { content:attr(data-label); display:inline-block; min-width:6.5em;
-      color:var(--gold); font-size:.64rem; text-transform:uppercase; letter-spacing:.13em; }
-    td.name-cell { padding-bottom:.25rem; }
+    tbody td { display:block; border-bottom:0; padding:.1rem .6rem .45rem; }
+    /* label on its OWN line, value as normal block flow beneath it — no
+       inline-block label + inline value, which dropped the value on Android. */
+    tbody td::before { content:attr(data-label); display:block; margin-bottom:.05rem;
+      color:var(--gold); font-size:.6rem; text-transform:uppercase; letter-spacing:.13em; }
     td.name-cell::before { content:none; }
-    .name { font-size:1.12rem; }
-    .addr { font-size:.8rem; overflow-wrap:anywhere; }  /* shrink + let long IPv6 wrap, never clip */
+    .name { font-size:1.15rem; }
+    .addr { font-size:.85rem; overflow-wrap:anywhere; }  /* let long IPv6 wrap, never clip */
   }
 </style>
 </head>
