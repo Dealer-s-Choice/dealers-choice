@@ -116,13 +116,17 @@
     thead { position:absolute; left:-9999px; }
     tbody tr { display:block; padding:.65rem .15rem; border-bottom:1px solid var(--line); }
     tbody tr:last-child { border-bottom:0; }
-    tbody td { display:flex; align-items:center; justify-content:space-between;
-      gap:1rem; border-bottom:0; padding:.32rem .6rem; }
-    tbody td::before { content:attr(data-label); color:var(--gold); font-size:.64rem;
-      text-transform:uppercase; letter-spacing:.13em; }
-    td.name-cell { padding-bottom:.2rem; }
-    td.name-cell::before { display:none; }
+    /* Stacked "LABEL value" rows. Block cell + inline-block label, value flows
+       inline after it. (NOT display:flex on the td: overriding table-cell to
+       flex with a ::before flex-item renders inconsistently on mobile Blink —
+       the value can vanish on Android — while Firefox is fine.) */
+    tbody td { display:block; border-bottom:0; padding:.3rem .6rem; }
+    tbody td::before { content:attr(data-label); display:inline-block; min-width:6.5em;
+      color:var(--gold); font-size:.64rem; text-transform:uppercase; letter-spacing:.13em; }
+    td.name-cell { padding-bottom:.25rem; }
+    td.name-cell::before { content:none; }
     .name { font-size:1.12rem; }
+    .addr { font-size:.8rem; overflow-wrap:anywhere; }  /* shrink + let long IPv6 wrap, never clip */
   }
 </style>
 </head>
