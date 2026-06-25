@@ -24,8 +24,10 @@ services:
       - DC_WEB_DOMAIN=${DC_WEB_DOMAIN:?set DC_WEB_DOMAIN to the public HTTPS hostname}
     volumes:
       - "./Caddyfile:/etc/caddy/Caddyfile:ro"
-      - "${DC_WEB_ROOT:-/srv/www}:/srv/www:ro"          # the registry's servers.json
-      - "./server-list.html:/srv/www/index.html:ro"     # the widget, as index.html
+      # Two separate mounts (a file can't be mounted inside a read-only dir
+      # mount): the widget at /site, the registry's servers.json dir at /json.
+      - "./server-list.html:/site/index.html:ro"        # the widget
+      - "${DC_WEB_ROOT:-/srv/www}:/json:ro"             # the registry's servers.json
       - "caddy_data:/data"     # PERSISTS the issued cert -- keep this volume
       - "caddy_config:/config"
     ports:
