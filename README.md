@@ -121,8 +121,9 @@ current development version, so a client from the
 **will not connect**. To join it, use a current build: a
 [development snapshot](https://github.com/Dealer-s-Choice/dealers-choice/releases/tag/snapshot)
 (Linux AppImage or Windows), or a build from `trunk`. The test server appears on
-its own in the connect screen's internet server list. It may be reset or taken
-offline at any time.
+its own in the connect screen's internet server list. You can also see the live
+list of running servers on the web at <https://dealers-choice-foss.dev>. It may
+be reset or taken offline at any time.
 
 ## Building
 
