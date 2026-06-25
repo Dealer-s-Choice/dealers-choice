@@ -3,7 +3,7 @@
   Dealer's Choice active-server list — a self-contained, framework-free widget.
 
   It fetches a registry's servers.json and renders it as a table, refreshing
-  periodically. The registry (dealers-choice-registry --json …) writes that
+  periodically. The registry (dealers-choice-registry) writes that
   file; serve it with CORS (Access-Control-Allow-Origin) only if the page is on
   a different origin than the JSON (same origin needs no header).
 
@@ -25,6 +25,15 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Dealer's Choice — active tables</title>
+<meta name="description" content="Live list of active Dealer's Choice poker servers.">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#08321e">
+<link rel="icon" type="image/svg+xml" href="dealers-choice.svg">
+<link rel="alternate" type="application/atom+xml" title="Dealer's Choice releases" href="https://github.com/Dealer-s-Choice/dealers-choice/releases.atom">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Dealer's Choice — active tables">
+<meta property="og:description" content="Live list of active Dealer's Choice poker servers.">
+<meta property="og:url" content="https://dealers-choice-foss.dev/">
 <style>
   :root {
     --gold:#e9c46a; --gold-dim:#b98f3e; --parch:#f1ece0;
