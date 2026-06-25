@@ -93,9 +93,11 @@
   .name { font-weight:600; font-size:1.03rem; color:#fff; }
   .addr { font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
           font-size:.85rem; color:var(--muted); }
-  .players { font-variant-numeric:tabular-nums; }
+  /* No font-variant-numeric: on some Android system fonts, requesting the
+     tabular-figures feature shapes the whole run with a font that renders it
+     invisibly — the Players/Uptime values vanished on mobile. */
   .players .max { color:var(--muted); }
-  .uptime { font-variant-numeric:tabular-nums; color:var(--parch); }
+  .uptime { color:var(--parch); }
 
   .state { padding:2.4rem 1rem; text-align:center; }
   .state .big { font-size:1.05rem; color:var(--parch); margin:0 0 .35rem; }
