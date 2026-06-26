@@ -27,6 +27,7 @@ services:
       # Two separate mounts (a file can't be mounted inside a read-only dir
       # mount): the widget at /site, the registry's servers.json dir at /json.
       - "./server-list.html:/site/index.html:ro"        # the widget
+      - "./diag.html:/site/diag.html:ro"                # TEMP render diagnostic (remove with the file)
       - "./dealers-choice.svg:/site/dealers-choice.svg:ro"  # favicon (project icon)
       - "./felt.png:/site/felt.png:ro"                  # background tile (same as the game)
       - "${DC_WEB_ROOT:-/srv/www}:/json:ro"             # the registry's servers.json

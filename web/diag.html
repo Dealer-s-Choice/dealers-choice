@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<!--
+  TEMPORARY diagnostic for the "Players/Uptime values invisible / not laid out on
+  Android" bug (Firefox + DuckDuckGo, but fine in Chrome and on desktop).
+
+  It reproduces the exact CSS pattern the real widget uses (felt background, the
+  same CSS custom properties, the stacked "label / value" mobile layout) and then
+  renders a MATRIX of value-styling variants plus, for each, the browser's own
+  computed style and laid-out box size. The report text itself is drawn in gold
+  monospace — a combination already proven to render on the affected phones — so
+  even if every test value is invisible, the report that describes WHY is still
+  readable.
+
+  Load this on the phone in each failing browser and screenshot it:
+    https://dealers-choice-foss.dev/diag.html
+  Delete this file once the bug is fixed.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DC widget render diagnostic</title>
+<style>
+  :root { --gold:#e9c46a; --parch:#f1ece0; --muted:#9fb6a6; }
+  * { box-sizing:border-box; }
+  html, body { margin:0; }
+  body {
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    color:var(--parch); min-height:100vh;
+    background:#08321e url("felt.png") repeat;
+    padding:1rem;
+    -webkit-text-size-adjust:100%; text-size-adjust:100%;
+  }
+  /* The report is drawn in this known-good style (explicit monospace + explicit
+     size + gold) so it is readable no matter what breaks in the test cases. */
+  .report, h1 { font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    color:var(--gold); font-size:13px; line-height:1.5; }
+  h1 { font-size:15px; margin:0 0 .5rem; }
+  .case { border:1px solid rgba(233,196,106,.3); border-radius:8px;
+    padding:.5rem .6rem; margin:0 0 .7rem; }
+  .case .desc { display:block; color:var(--gold); font-size:11px;
+    text-transform:uppercase; letter-spacing:.1em; margin-bottom:.25rem;
+    font-family:ui-monospace,monospace; }
+  .case .rpt { display:block; color:var(--gold); font-size:11px;
+    font-family:ui-monospace,monospace; margin-top:.3rem; opacity:.85;
+    overflow-wrap:anywhere; }
+
+  /* The variants under test. Each renders the same value "2 / 5". */
+  .v-inherit-sys   { }                                              /* == current .players: no color, inherited system-ui */
+  .v-white-sys     { color:#fff; }
+  .v-parch-sys     { color:var(--parch); }
+  .v-white-sans    { color:#fff; font-family:Roboto,"Helvetica Neue",Arial,sans-serif; }
+  .v-white-mono    { color:#fff; font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace; }
+  .v-white-sized   { color:#fff; font-size:16px; display:block; }
+  .v-white-block   { color:#fff; display:block; font-size:.95rem; }  /* == the committed fix */
+</style>
+</head>
+<body>
+<h1>DC render diagnostic &mdash; screenshot this</h1>
+<div id="cases" class="report"></div>
+
+<script>
+(function () {
+  var box = document.getElementById("cases");
+  // The value string the real widget uses for Players ("2 / 5"); a digit run.
+  var VAL = '2 <span style="color:var(--muted)">/ 5</span>';
+
+  var variants = [
+    ["A: inherited color, system-ui (the broken one)", "v-inherit-sys"],
+    ["B: color #fff, system-ui",                       "v-white-sys"],
+    ["C: color var(--parch), system-ui",               "v-parch-sys"],
+    ["D: color #fff, explicit sans stack",             "v-white-sans"],
+    ["E: color #fff, monospace stack",                 "v-white-mono"],
+    ["F: color #fff, font-size:16px, display:block",   "v-white-sized"],
+    ["G: committed fix (display:block; .95rem; inherited color)", "v-white-block"],
+  ];
+
+  variants.forEach(function (def, i) {
+    var desc = def[0], cls = def[1];
+    var card = document.createElement("div");
+    card.className = "case";
+    card.innerHTML =
+      '<span class="desc">' + desc + '</span>' +
+      '<span class="' + cls + '" id="val' + i + '">' + VAL + '</span>' +
+      '<span class="rpt" id="rpt' + i + '"></span>';
+    box.appendChild(card);
+
+    var el = card.querySelector("#val" + i);
+    var cs = getComputedStyle(el);
+    var rpt = card.querySelector("#rpt" + i);
+    rpt.textContent =
+      "color=" + cs.color +
+      " | font-size=" + cs.fontSize +
+      " | display=" + cs.display +
+      " | visibility=" + cs.visibility +
+      " | opacity=" + cs.opacity +
+      " | box=" + el.offsetWidth + "x" + el.offsetHeight +
+      " | family=" + cs.fontFamily;
+  });
+
+  // Also report a couple of environment facts.
+  var env = document.createElement("div");
+  env.className = "case";
+  env.innerHTML = '<span class="desc">ENV</span><span class="rpt">' +
+    "ua=" + navigator.userAgent + "<br>dpr=" + window.devicePixelRatio +
+    " | innerWidth=" + window.innerWidth +
+    "</span>";
+  box.appendChild(env);
+})();
+</script>
+</body>
+</html>
