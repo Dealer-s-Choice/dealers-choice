@@ -10,4 +10,5 @@ src/ui/game_select.c
 src/ui/graphics.c
 src/ui/hotkey_overlay.c
 src/ui/hotkey_table.c
+src/ui/links.c
 src/ui/menus.c

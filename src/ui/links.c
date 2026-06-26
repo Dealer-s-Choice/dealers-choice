@@ -8,7 +8,8 @@ const LinkDef_t LINK_DEFS[] = {
     /* TRANSLATORS: "Discord", "Lazarus Project" should not be translated */
     {N_("Discord Channel (on Lazarus Project Server)"),
      "https://discord.com/channels/1295630985429516299/1385298664192217138"},
-    {"Matrix", "https://matrix.to/#/#dealers-choice:matrix.org"},
+    /* TRANSLATORS: "Zulip" is a brand name; do not translate it */
+    {N_("Zulip Chat"), "https://dealers-choice.zulipchat.com/join/umudnu5xxwcsnfevjpym4bfj/"},
     {N_("Website"), DEALERSCHOICE_URL}};
 
 void layout_links(LinkWidget_t **links, size_t count) {
