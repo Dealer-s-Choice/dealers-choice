@@ -16,14 +16,12 @@ dependencies with `pacman` and then runs `build-appimage.sh`.
 The script:
 
 1. Builds Dealer's Choice from source with Meson.
-2. Installs it into an `AppDir` under `/usr`.
-3. Copies the installed game data and locale into the AppDir's top-level
-   `share/` (see "Data file lookup" below for why).
-4. Downloads `get-debloated-pkgs` from pkgforge-dev (not vendored here) and
+2. Installs it into the system `/usr` (see "Data file lookup" below).
+3. Downloads `get-debloated-pkgs` from pkgforge-dev (not vendored here) and
    swaps the stock mesa/LLVM/icu for the smaller debloated builds (see "Size"
    below).
-5. Downloads `quick-sharun` from pkgforge-dev (not vendored here).
-6. Bundles the installed binary and packs the AppImage and `.zsync` file.
+4. Downloads `quick-sharun` from pkgforge-dev (not vendored here).
+5. Bundles the installed binary and packs the AppImage and `.zsync` file.
 
 The AppImage and its `.zsync` file are written to `out/` at the repository
 root.
@@ -59,26 +57,27 @@ lookup in `src/main.c`):
 3. The path compiled in at build time, for example
    `/usr/share/dealers-choice`.
 
-`sharun` sets `XDG_DATA_DIRS` and leaves the working directory at the launch
-location, so neither the compiled-in `/usr/share/...` path nor `../data` will
-exist on the user's machine. Without help the bundled binary would not find
-its data.
+This works with `sharun` without any source change, env-var seam, or manual
+copy, as long as DC is installed into the real `/usr` before bundling (the
+build script does a plain `meson install`, not a `DESTDIR` install). The reason
+is how `quick-sharun` handles hardcoded paths:
 
-We do not patch the source for this. DC already has the environment-variable
-seam we need. The build script writes a `.env` file next to `sharun` in the
-AppDir:
+- It scans the host `/usr/share`, finds `dealers-choice` (matched against the
+  binary name) and `locale`, and bundles them into the AppDir.
+- It then patches the binary in place, rewriting the literal `/usr/share` to
+  `/tmp/<token>` (an equal-length string, so the patch fits), and records a
+  path mapping.
+- At runtime its `uruntime`/`bwrap` launcher bind-mounts the bundled data onto
+  `/tmp/<token>`, so the binary's now-`/tmp/<token>/dealers-choice` path is a
+  real directory.
 
-```
-DEALERSCHOICE_DATADIR=${SHARUN_DIR}/share/dealers-choice
-DEALERSCHOICE_LOCALEDIR=${SHARUN_DIR}/share/locale
-```
+DC bakes `DEALERSCHOICE_DATADIR` and `DEALERSCHOICE_LOCALEDIR` in as
+`/usr/share/dealers-choice` and `/usr/share/locale` (`meson.build`), and
+`get_data_dir()` only `stat()`s that compiled-in path. Because `quick-sharun`
+makes the patched path resolve, lookup step 3 succeeds with no help from us.
+(Step 1's env var is unset and step 2's `../data` does not exist at runtime, so
+step 3 is the one that fires.)
 
-`sharun` expands `${SHARUN_DIR}` to the AppImage mount point at runtime.
-
-For this to work the data must actually live at `share/dealers-choice` inside
-the AppDir. `quick-sharun` has its own data-directory deployment, but it only
-scans the host's `/usr/share`, and DC is installed into the AppDir, not onto
-the host. So the build script copies the data and locale from the AppDir's
-`usr/share` into the AppDir's top-level `share/` itself, and sets
-`DEPLOY_DATADIR=0` to turn off the host scan. Skipping this step produces an
-AppImage that starts but then fails to find its fonts and config files.
+If DC were installed with `--destdir=$APPDIR` instead, the host `/usr/share`
+scan would find nothing and the data would not be bundled — that was the cause
+of an earlier, more convoluted version of this script.

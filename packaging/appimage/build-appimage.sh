@@ -6,7 +6,8 @@
 #
 # Meant to run on an Arch base (see ../../.github/workflows/appimage.yml).
 # Build deps are installed by the workflow via pacman; this script builds DC
-# from source, installs it to a DESTDIR, then bundles the installed binary.
+# from source, installs it into the system /usr, then bundles the installed
+# binary with quick-sharun.
 
 set -eux
 
@@ -34,7 +35,15 @@ WORKDIR="$SOURCE_ROOT/packaging/appimage"
 rm -rf "$APPDIR" "$BUILD_DIR"
 mkdir -p "$APPDIR" "$OUTPATH"
 
-# --- build DC from source and install into the AppDir under /usr -----------
+# --- build DC and install into the system /usr -----------------------------
+# Install to the real /usr (no DESTDIR). quick-sharun then deploys DC the way
+# it deploys any normal /usr-prefixed app: its datadir auto-detection scans the
+# host /usr/share and bundles /usr/share/dealers-choice + /usr/share/locale,
+# and its path patcher rewrites the binary's hardcoded /usr/share/... strings
+# (equal-length, to /tmp/<token>) and bind-mounts the bundled data there at
+# runtime. DC bakes its lookup dirs in as /usr/share/dealers-choice and
+# /usr/share/locale (DEALERSCHOICE_DATADIR/LOCALEDIR in meson.build), so this
+# patching makes its compiled-in lookup resolve with no env seam or manual copy.
 meson setup "$BUILD_DIR" \
   -Dbuildtype=release \
   -Dstrip=true \
@@ -43,26 +52,7 @@ meson setup "$BUILD_DIR" \
 
 ninja -C "$BUILD_DIR"
 meson test -C "$BUILD_DIR" -v
-meson install -C "$BUILD_DIR" --destdir="$APPDIR" --skip-subprojects
-
-# --- place data and locale where the bundled binary will look --------------
-# DC's data/locale lookup is env-var driven (DEALERSCHOICE_DATADIR /
-# DEALERSCHOICE_LOCALEDIR), NOT XDG_DATA_DIRS aware (see README.md). The .env
-# below points those at ${SHARUN_DIR}/share/..., which sharun expands to the
-# AppImage mountpoint at runtime. quick-sharun's own datadir auto-detection
-# only scans the host /usr, but DC is installed into the AppDir (not the host),
-# so we copy the data and locale into the AppDir's top-level share/ ourselves
-# and turn that auto-detection off.
-mkdir -p "$APPDIR/share"
-cp -a "$APPDIR/usr/share/dealers-choice" "$APPDIR/share/dealers-choice"
-if [ -d "$APPDIR/usr/share/locale" ]; then
-  cp -a "$APPDIR/usr/share/locale" "$APPDIR/share/locale"
-fi
-
-cat > "$APPDIR/.env" <<'EOF'
-DEALERSCHOICE_DATADIR=${SHARUN_DIR}/share/dealers-choice
-DEALERSCHOICE_LOCALEDIR=${SHARUN_DIR}/share/locale
-EOF
+meson install -C "$BUILD_DIR" --skip-subprojects
 
 # --- bundle with sharun and pack the AppImage ------------------------------
 export APPDIR
@@ -71,11 +61,7 @@ export DESKTOP="$SOURCE_ROOT/dealers-choice.desktop"
 export OUTPATH
 export OUTNAME="dealers_choice-$VERSION-$ARCH.AppImage"
 export VERSION
-export MAIN_BIN=dealers-choice
 export DEPLOY_OPENGL=1
-# We populate share/ ourselves above; quick-sharun's host-/usr datadir scan
-# would find nothing for DC and is not needed.
-export DEPLOY_DATADIR=0
 
 # Update info for gh-releases-zsync. Tagged builds track the "latest" release,
 # snapshot builds track the rolling "snapshot" prerelease (matches appimage.yml).
@@ -101,8 +87,10 @@ chmod +x "$WORKDIR/get-debloated-pkgs"
 wget --retry-connrefused --tries=30 "$SHARUN" -O "$WORKDIR/quick-sharun"
 chmod +x "$WORKDIR/quick-sharun"
 
-# Deploy the installed binary, then turn the AppDir into a DwarFS AppImage.
-./quick-sharun "$APPDIR/usr/bin/dealers-choice"
+# Deploy the installed binary -- quick-sharun auto-bundles the data and locale
+# and patches the hardcoded /usr paths -- then turn the AppDir into a DwarFS
+# AppImage.
+./quick-sharun /usr/bin/dealers-choice
 ./quick-sharun --make-appimage
 
 ls -lh "$OUTPATH"
