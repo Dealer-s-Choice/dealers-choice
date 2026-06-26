@@ -62,12 +62,23 @@ typedef struct {
 bool dc_identity_load_or_create(const char *path, DcIdentity_t *out);
 
 /*
- Resolve the default identity-file path (caller frees with free()). Uses the XDG
- data dir via canfigger — e.g. ~/.local/share/dealers-choice/identity.key on
- Linux, the platform equivalent elsewhere. Returns NULL on error. SDL-free, so
- it is usable from the headless bot and server as well as the GUI client.
+ Resolve the default identity-file path (caller frees with free()). If the
+ DC_IDENTITY_FILE environment variable is set and non-empty, that path is used
+ verbatim (handy for tests and for running several identities on one machine);
+ otherwise the XDG data dir via canfigger — e.g.
+ ~/.local/share/dealers-choice/identity.key on Linux, the platform equivalent
+ elsewhere. Returns NULL on error. SDL-free, so it is usable from the headless
+ bot and server as well as the GUI client.
 */
 char *dc_identity_default_path(void);
+
+/*
+ Return this process's identity, loading (or creating) it from the default path
+ on first call and caching it for subsequent calls. Returns NULL if the identity
+ cannot be loaded/created. The returned pointer is owned by the module — do not
+ free it. Used by the client and bot connect paths.
+*/
+const DcIdentity_t *dc_identity_get(void);
 
 /*
  Sign `len` bytes of `msg` with the identity's secret key, writing a detached

@@ -1289,6 +1289,16 @@ ELoop_t register_new_client(ArgsBroadcastGameState_t *args) {
         player->nick[len] = '\0';
         verbose_printf("received nick: %s\n", player->nick);
         ensure_unique_nick(args->game_state, player, slot);
+
+        /* Identity challenge-response (#67): authenticate the client's keypair
+           and bind this slot to its public key (used to key persistent state in
+           a later stage). A failed/forged signature rejects the connection. */
+        if (identity_handshake_server(new_client, player->identity_pk) != 0) {
+          dc_log(DC_LOG_WARN, "Identity handshake failed; rejecting client");
+          do_socket_cleanup(new_client, args->socket_set, args->slot_taken, slot, player,
+                            &args->clients[slot]);
+          return LOOP_CONTINUE;
+        }
       } else {
         /* In test mode all clients are granted admin so that kick/ban
          * functionality can be exercised from any position in the test suite. */
