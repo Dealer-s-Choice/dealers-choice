@@ -119,18 +119,22 @@
     thead { position:absolute; left:-9999px; }
     tbody tr { display:block; padding:.65rem .15rem; border-bottom:1px solid var(--line); }
     tbody tr:last-child { border-bottom:0; }
-    /* Stacked "LABEL value" rows. Block cell + inline-block label, value flows
-       inline after it. (NOT display:flex on the td: overriding table-cell to
-       flex with a ::before flex-item renders inconsistently on mobile Blink —
-       the value can vanish on Android — while Firefox is fine.) */
+    /* Stacked "LABEL / value" rows: each cell a block, the data-label as a block
+       ::before, the value below it. (Avoid display:flex on the td — overriding
+       table-cell to flex with a ::before flex-item renders inconsistently on
+       mobile Blink.) See the font-size note below for the Firefox-Android fix. */
     tbody td { display:block; border-bottom:0; padding:.1rem .6rem .45rem; }
-    /* label on its OWN line, value as normal block flow beneath it — no
-       inline-block label + inline value, which dropped the value on Android. */
     tbody td::before { content:attr(data-label); display:block; margin-bottom:.05rem;
       color:var(--gold); font-size:.6rem; text-transform:uppercase; letter-spacing:.13em; }
     td.name-cell::before { content:none; }
+    /* EVERY value gets an explicit font-size on mobile. Firefox Android's font
+       inflation (text autosizing) drops un-sized value spans entirely — the text
+       isn't laid out at all (it isn't even selectable). The cells that always
+       rendered (name, addr) were the ones that happened to have a size; players
+       and uptime did not. An explicit size opts each element out of inflation. */
     .name { font-size:1.15rem; }
     .addr { font-size:.85rem; overflow-wrap:anywhere; }  /* let long IPv6 wrap, never clip */
+    .players, .uptime { display:block; font-size:.95rem; }
   }
 </style>
 </head>
