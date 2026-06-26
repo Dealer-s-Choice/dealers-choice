@@ -5,7 +5,6 @@
  MIT License
 
  Copyright (c) 2026 Andy Alt
- This file was written by Claude (Opus 4.8) at Andy's direction.
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
