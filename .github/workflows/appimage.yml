@@ -49,6 +49,14 @@ jobs:
     steps:
       - name: Install build dependencies
         run: |
+          # pacman 7.0's download sandbox (Landlock + the 'alpm' DownloadUser)
+          # can't be applied inside the arm64 container, so any pacman call that
+          # actually retrieves packages aborts ("switching to sandbox user
+          # 'alpm' failed"). This first -Syu mostly hits already-present
+          # packages, but the get-debloated-pkgs / quick-sharun pacman calls
+          # during the build do real downloads and hit it. Disable the sandbox
+          # job-wide (the container persists across steps).
+          sed -i '/^\[options\]/a DisableSandbox' /etc/pacman.conf
           pacman -Syu --noconfirm \
             base-devel \
             git \
