@@ -1,19 +1,17 @@
-# Anylinux AppImage
+# AppImage
 
-This directory builds a truly portable "Anylinux" AppImage of Dealer's Choice.
+This directory builds a truly portable AppImage of Dealer's Choice.
 
 It uses the [pkgforge-dev](https://github.com/pkgforge-dev/Anylinux-AppImages)
 method: `sharun` + `uruntime` + DwarFS. This bundles the C library and the
 dynamic linker inside the AppImage. The result runs on any Linux distro,
-including musl systems (Alpine) and very old glibc systems. The traditional
-AppImage in `../appimage` (built with linuxdeploy) does not do this, so it
-needs a recent enough glibc on the host.
+including musl systems (Alpine) and very old glibc systems.
 
 ## How to build
 
 The build runs on an Arch Linux base. The GitHub Actions workflow
-`../../.github/workflows/anylinux-appimage.yml` installs the build
-dependencies with `pacman` and then runs `build-anylinux-appimage.sh`.
+`../../.github/workflows/appimage.yml` installs the build
+dependencies with `pacman` and then runs `build-appimage.sh`.
 
 The script:
 
@@ -28,7 +26,7 @@ The script:
 6. Bundles the installed binary and packs the AppImage and `.zsync` file.
 
 The AppImage and its `.zsync` file are written to `out/` at the repository
-root, the same place the traditional AppImage uses.
+root.
 
 ## Size
 
@@ -75,9 +73,7 @@ DEALERSCHOICE_DATADIR=${SHARUN_DIR}/share/dealers-choice
 DEALERSCHOICE_LOCALEDIR=${SHARUN_DIR}/share/locale
 ```
 
-`sharun` expands `${SHARUN_DIR}` to the AppImage mount point at runtime. This
-is the same approach the traditional `../appimage/AppRun` uses with its `$HERE`
-variable, so behaviour matches between the two AppImage variants.
+`sharun` expands `${SHARUN_DIR}` to the AppImage mount point at runtime.
 
 For this to work the data must actually live at `share/dealers-choice` inside
 the AppDir. `quick-sharun` has its own data-directory deployment, but it only
