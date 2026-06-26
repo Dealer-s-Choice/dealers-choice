@@ -42,7 +42,11 @@
   * { box-sizing:border-box; }
   html, body { margin:0; }
   body {
-    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    /* No `system-ui` keyword: on the Galaxy A15 (Android 16), Firefox and
+       DuckDuckGo silently fail to resolve `system-ui`, so text that inherits it
+       falls back to a font that paints invisibly / does not lay out. Explicit
+       named families render everywhere (verified on-device via diag.html). */
+    font-family:-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
     color:var(--parch); min-height:100vh;
     background:#08321e url("felt.png") repeat;
     padding:clamp(1rem,4vw,2.5rem); display:flex; justify-content:center;
@@ -97,6 +101,9 @@
   /* No font-variant-numeric: on some Android system fonts, requesting the
      tabular-figures feature shapes the whole run with a font that renders it
      invisibly — the Players/Uptime values vanished on mobile. */
+  /* Explicit family on the numeric values (not just inherited): the proven-good
+     stack from on-device testing. See the body font-family note re: system-ui. */
+  .players, .uptime { font-family:Roboto,"Helvetica Neue",Arial,sans-serif; }
   .players .max { color:var(--muted); }
   .uptime { color:var(--parch); }
 
