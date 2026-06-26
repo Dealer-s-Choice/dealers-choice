@@ -9,6 +9,7 @@ unit_tests = [
   'rate_limit',
   'ping_probe_cooldown',
   'identity',
+  'registry_ledger',
 ]
 
 base_env = {
