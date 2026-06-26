@@ -28,18 +28,51 @@ on:
 
 jobs:
   build-appimage:
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.runner }}
     permissions:
       contents: write
+    # Official Arch is x86_64-only, so the arm64 leg uses the community
+    # Arch Linux ARM image (digest-pinned).
+    container:
+      image: ${{ matrix.image }}
     env:
       VERSION: ${{ inputs.version }}
     strategy:
+      fail-fast: false
       matrix:
-        os:
-          - ubuntu-24.04-arm
-          - ubuntu-24.04
+        include:
+          - runner: ubuntu-24.04
+            image: archlinux:latest
+          - runner: ubuntu-24.04-arm
+            image: lopsided/archlinux@sha256:bb1e4b4a564126c7d91c63813a3d3afe34334ec5dd15285ed8b574c88e23fbde
 
     steps:
+      - name: Install build dependencies
+        run: |
+          # pacman 7.0's download sandbox (Landlock + the 'alpm' DownloadUser)
+          # can't be applied inside the arm64 container, so any pacman call that
+          # actually retrieves packages aborts ("switching to sandbox user
+          # 'alpm' failed"). This first -Syu mostly hits already-present
+          # packages, but the get-debloated-pkgs / quick-sharun pacman calls
+          # during the build do real downloads and hit it. Disable the sandbox
+          # job-wide (the container persists across steps).
+          sed -i '/^\[options\]/a DisableSandbox' /etc/pacman.conf
+          pacman -Syu --noconfirm \
+            base-devel \
+            git \
+            meson \
+            ninja \
+            gettext \
+            protobuf-c \
+            sdl2 \
+            sdl2_image \
+            sdl2_ttf \
+            libsodium \
+            patchelf \
+            wget \
+            xorg-server-xvfb \
+            zsync
+
       - name: Checkout
         uses: actions/checkout@v7
 
@@ -52,13 +85,11 @@ jobs:
             else
               VERSION=snapshot
             fi
-            echo "VERSION=$VERSION" >> $GITHUB_ENV
           fi
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
 
       - name: Build AppImage
-        run: |
-          export HOSTUID=$(id -u) HOSTGID=$(id -g)
-          docker compose -f packaging/appimage/docker-compose.yml run --rm build
+        run: packaging/appimage/build-appimage.sh
 
       - name: Create sha256sum
         run: |
