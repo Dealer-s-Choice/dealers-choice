@@ -53,6 +53,10 @@
 #define DC_ID_FILE_LEN                                                                              \
   (DC_ID_HEADER_LEN + crypto_sign_PUBLICKEYBYTES + crypto_sign_SECRETKEYBYTES)
 
+/* Player_t stores the public key as a plain 32-byte array (types.h, which must
+   stay free of the sodium header). Keep that literal honest. */
+_Static_assert(crypto_sign_PUBLICKEYBYTES == 32, "ed25519 public key must be 32 bytes");
+
 /* Create the directory that will contain `path`, if it does not already exist. */
 static bool ensure_parent_dir(const char *path) {
   const char *slash = strrchr(path, '/');
@@ -201,6 +205,10 @@ bool dc_identity_load_or_create(const char *path, DcIdentity_t *out) {
 }
 
 char *dc_identity_default_path(void) {
+  const char *override = getenv("DC_IDENTITY_FILE");
+  if (override && *override)
+    return dc_strdup(override);
+
   char *dir = canfigger_data_dir(DEALERSCHOICE_NAME);
   if (!dir) {
     dc_log(DC_LOG_ERROR, "identity: cannot determine data directory");
@@ -226,4 +234,21 @@ bool dc_identity_verify(const unsigned char public_key[crypto_sign_PUBLICKEYBYTE
   if (!public_key || (!msg && len) || !sig)
     return false;
   return crypto_sign_verify_detached(sig, msg, (unsigned long long)len, public_key) == 0;
+}
+
+const DcIdentity_t *dc_identity_get(void) {
+  static DcIdentity_t identity;
+  static bool loaded = false;
+  if (loaded)
+    return &identity;
+
+  char *path = dc_identity_default_path();
+  if (!path)
+    return NULL;
+  bool ok = dc_identity_load_or_create(path, &identity);
+  free(path);
+  if (!ok)
+    return NULL;
+  loaded = true;
+  return &identity;
 }

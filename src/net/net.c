@@ -639,6 +639,65 @@ int authenticate_with_server(tcpme_socket_t sock, const char *password) {
   return 0;
 }
 
+int identity_handshake_client(tcpme_socket_t sock, const DcIdentity_t *id) {
+  if (!id)
+    return -1;
+
+  /* Send our public key (the identity). */
+  if (send_all_tcp(sock, id->public_key, crypto_sign_PUBLICKEYBYTES) != 0) {
+    dc_log(DC_LOG_ERROR, "identity: failed to send public key");
+    return -1;
+  }
+
+  /* Receive the server's challenge nonce (32 bytes). */
+  unsigned char nonce[NONCE_SIZE];
+  if (recv_all_tcp(sock, nonce, sizeof(nonce)) < 0) {
+    dc_log(DC_LOG_ERROR, "identity: failed to receive challenge");
+    return -1;
+  }
+
+  /* Sign the nonce and return the signature. */
+  unsigned char sig[crypto_sign_BYTES];
+  if (!dc_identity_sign(id, nonce, sizeof(nonce), sig)) {
+    dc_log(DC_LOG_ERROR, "identity: signing failed");
+    return -1;
+  }
+  if (send_all_tcp(sock, sig, sizeof(sig)) != 0) {
+    dc_log(DC_LOG_ERROR, "identity: failed to send signature");
+    return -1;
+  }
+  return 0;
+}
+
+int identity_handshake_server(tcpme_socket_t sock,
+                              unsigned char out_pubkey[crypto_sign_PUBLICKEYBYTES]) {
+  unsigned char pubkey[crypto_sign_PUBLICKEYBYTES];
+  if (recv_all_tcp(sock, pubkey, sizeof(pubkey)) < 0) {
+    dc_log(DC_LOG_ERROR, "identity: failed to receive client public key");
+    return -1;
+  }
+
+  unsigned char nonce[NONCE_SIZE];
+  randombytes_buf(nonce, sizeof(nonce));
+  if (send_all_tcp(sock, nonce, sizeof(nonce)) != 0) {
+    dc_log(DC_LOG_ERROR, "identity: failed to send challenge");
+    return -1;
+  }
+
+  unsigned char sig[crypto_sign_BYTES];
+  if (recv_all_tcp(sock, sig, sizeof(sig)) < 0) {
+    dc_log(DC_LOG_ERROR, "identity: failed to receive signature");
+    return -1;
+  }
+
+  if (!dc_identity_verify(pubkey, nonce, sizeof(nonce), sig)) {
+    dc_log(DC_LOG_WARN, "identity: signature verification failed");
+    return -1;
+  }
+  memcpy(out_pubkey, pubkey, sizeof(pubkey));
+  return 0;
+}
+
 bool bot_connect(const char *host_str, uint16_t port, const char *nick, const char *password,
                  SocketContext_t *out) {
   tcpme_socket_t sock = tcpme_connect(host_str, port);
@@ -671,6 +730,11 @@ bool bot_connect(const char *host_str, uint16_t port, const char *nick, const ch
       dc_log(DC_LOG_ERROR, "Failed to send nick");
       goto fail;
     }
+  }
+
+  if (identity_handshake_client(sock, dc_identity_get()) != 0) {
+    dc_log(DC_LOG_ERROR, "Identity handshake failed");
+    goto fail;
   }
 
   out->sock = sock;
