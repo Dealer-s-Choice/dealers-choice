@@ -8,6 +8,7 @@ unit_tests = [
   'no_peek',
   'rate_limit',
   'ping_probe_cooldown',
+  'identity',
 ]
 
 base_env = {

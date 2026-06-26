@@ -20,6 +20,7 @@ endif
 core_root_src = files(
   'cli.c',
   'dc_config.c',
+  'dc_identity.c',
   'dc_time.c',
   'debug.c',
   'globals.c',
