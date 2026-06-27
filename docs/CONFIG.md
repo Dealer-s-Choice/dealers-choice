@@ -62,6 +62,28 @@ When you run the client from a terminal, you'll see the path to your config
 file. You can edit settings from the Settings menu on the startup screen, or
 by editing the file directly.
 
+## Your identity key
+
+When you connect to a server, Dealer's Choice makes a small file:
+
+```
+~/.local/share/dealers-choice/identity.key
+```
+
+(the matching per-user app-data folder on macOS and Windows).
+
+This file is your identity. It is private, like a password. Keep it, and do not
+share it.
+
+For now the server only uses it to recognise you. It does not change how you
+play yet. Later features, such as saved chip balances, will use it.
+
+The key belongs to this computer. If you play on another computer, you get a new
+key and are a different player there. A way to move your key between computers is
+planned.
+
+If you delete the file, the next connection makes a new key.
+
 ## Sound
 
 ```
