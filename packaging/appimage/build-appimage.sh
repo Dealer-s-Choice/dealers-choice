@@ -88,10 +88,16 @@ chmod +x "$WORKDIR/get-debloated-pkgs"
 wget --retry-connrefused --tries=30 "$SHARUN" -O "$WORKDIR/quick-sharun"
 chmod +x "$WORKDIR/quick-sharun"
 
-# Deploy the installed binary -- quick-sharun auto-bundles the data and locale
-# and patches the hardcoded /usr paths -- then turn the AppDir into a DwarFS
-# AppImage.
-./quick-sharun /usr/bin/dealers-choice
+# Deploy all four installed binaries -- the GUI client plus the headless
+# server, bot, and registry -- so one AppImage can host/join/bot a game. The
+# GUI stays the default launch (the bundled .desktop's Exec=dealers-choice);
+# the others run via sharun's argv0 dispatch. quick-sharun auto-bundles the
+# data and locale and patches the hardcoded /usr paths. Then turn the AppDir
+# into a DwarFS AppImage.
+./quick-sharun /usr/bin/dealers-choice \
+  /usr/bin/dealers-choice-server \
+  /usr/bin/dealers-choice-bot \
+  /usr/bin/dealers-choice-registry
 ./quick-sharun --make-appimage
 
 ls -lh "$OUTPATH"
