@@ -1,0 +1,37 @@
+# Build-environment image for the AppImage build (packaging/appimage/build-appimage.sh).
+#
+# Parameterized by BASE so one Dockerfile produces both arches:
+#   amd64 <- archlinux:latest   (official Arch, x86_64 only)
+#   arm64 <- lopsided/archlinux (community Arch Linux ARM)
+# The appimage.yml workflow passes the matching BASE per matrix leg.
+ARG BASE=archlinux:latest
+FROM ${BASE}
+
+# pacman 7.0's download sandbox (Landlock + the 'alpm' DownloadUser) cannot be
+# applied inside the CI container, so any pacman call that actually retrieves
+# packages aborts ("switching to sandbox user 'alpm' failed"). Disable it for
+# every pacman invocation -- including the get-debloated-pkgs / quick-sharun
+# calls that run at AppImage build time.
+RUN sed -i '/^\[options\]/a DisableSandbox' /etc/pacman.conf
+
+# Build dependencies for build-appimage.sh. Kept in sync with the package list
+# the script needs (meson/ninja toolchain, SDL2 stack, libsodium, plus the
+# AppImage-bundling tools patchelf/zsync and xvfb for the headless test step).
+RUN pacman -Syu --noconfirm --needed \
+      base-devel \
+      git \
+      meson \
+      ninja \
+      gettext \
+      protobuf-c \
+      sdl2 \
+      sdl2_image \
+      sdl2_ttf \
+      libsodium \
+      patchelf \
+      wget \
+      xorg-server-xvfb \
+      zsync \
+  && rm -rf /var/cache/pacman/pkg/*
+
+CMD ["/bin/bash", "-l"]
