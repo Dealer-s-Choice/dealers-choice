@@ -67,9 +67,10 @@ is how `quick-sharun` handles hardcoded paths:
 - It then patches the binary in place, rewriting the literal `/usr/share` to
   `/tmp/<token>` (an equal-length string, so the patch fits), and records a
   path mapping.
-- At runtime its `uruntime`/`bwrap` launcher bind-mounts the bundled data onto
-  `/tmp/<token>`, so the binary's now-`/tmp/<token>/dealers-choice` path is a
-  real directory.
+- At runtime a path-mapping hook creates a symlink at `/tmp/<token>` pointing at
+  the bundled data, so the binary's now-`/tmp/<token>/dealers-choice` path
+  resolves. This is a plain symlink, not a bind-mount — sharun avoids `bwrap`
+  here so it imposes no FUSE or user-namespace requirement on the host.
 
 DC bakes `DEALERSCHOICE_DATADIR` and `DEALERSCHOICE_LOCALEDIR` in as
 `/usr/share/dealers-choice` and `/usr/share/locale` (`meson.build`), and

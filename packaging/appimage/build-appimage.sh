@@ -40,8 +40,9 @@ mkdir -p "$APPDIR" "$OUTPATH"
 # it deploys any normal /usr-prefixed app: its datadir auto-detection scans the
 # host /usr/share and bundles /usr/share/dealers-choice + /usr/share/locale,
 # and its path patcher rewrites the binary's hardcoded /usr/share/... strings
-# (equal-length, to /tmp/<token>) and bind-mounts the bundled data there at
-# runtime. DC bakes its lookup dirs in as /usr/share/dealers-choice and
+# (equal-length, to /tmp/<token>) and symlinks the bundled data there at
+# runtime (a plain symlink, not a bind-mount -- no FUSE/userns needed). DC
+# bakes its lookup dirs in as /usr/share/dealers-choice and
 # /usr/share/locale (DEALERSCHOICE_DATADIR/LOCALEDIR in meson.build), so this
 # patching makes its compiled-in lookup resolve with no env seam or manual copy.
 meson setup "$BUILD_DIR" \
