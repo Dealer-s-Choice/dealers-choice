@@ -75,6 +75,14 @@ export UPINFO="gh-releases-zsync|dealer-s-choice|dealers_choice|$TAG|*$ARCH.AppI
 
 cd "$WORKDIR"
 
+# Refresh the package DB (and upgrade) before the debloat step. The build-env
+# image bakes in a pacman sync DB, but Arch is rolling, so by the time this runs
+# the mirrors have pruned versions the stale DB still references. get-debloated-
+# pkgs then resolves its `pacman -U` dependencies against that DB and 404s on a
+# deleted package (seen on the arm64 leg: libva-2.23.0-1). -Syu makes the DB
+# match the mirrors so dependency downloads point at versions that still exist.
+pacman -Syu --noconfirm
+
 # Replace the stock Arch mesa/LLVM/icu with pkgforge-dev's debloated builds
 # BEFORE bundling. DC needs accelerated rendering (SDL_RENDERER_ACCELERATED),
 # so OpenGL stays, but stock mesa drags in a 164 MiB libLLVM, a 52 MiB
