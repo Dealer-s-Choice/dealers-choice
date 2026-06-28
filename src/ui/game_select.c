@@ -82,18 +82,48 @@ EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_config,
     ui_register(&registry, &game_choice_button[i]->base);
   }
 
-  UITable_t gc_table = {0};
-  ui_table_begin(&gc_table, 0, g_viewport.y + g_layout_cfg.margin, 2);
-  for (int i = 0; i < MAX_CHOICES; i++)
-    ui_table_add(&gc_table, i / 2, i % 2, &game_choice_button[i]->base);
-  int gc_total_w = gc_table.col_width[0] + gc_table.col_width[1] + gc_table.col_spacing;
-  gc_table.x = (g_viewport.w - gc_total_w) / 2;
-  ui_table_layout(&gc_table);
+  /* Lay the variants out as labeled family columns spread across the width,
+     instead of a flat 2-column grid. Presentational grouping only, keyed off the
+     menu-option enum (game_choice_button[opt] is the button for option opt, since
+     game_choices[] is in enum order). A new variant just slots into a family. */
+  static const struct {
+    const char *heading;
+    EMenuOption_t members[5];
+    int count;
+  } groups[] = {
+      {N_("Draw"),
+       {FIVE_CARD_DRAW, FIVE_CARD_DOUBLE_DRAW, FIVE_CARD_TRIPLE_DRAW, CALIFORNIA_LOWBALL},
+       4},
+      {N_("Stud"), {FIVE_CARD_STUD, SIX_CARD_STUD, SEVEN_CARD_STUD, SEVEN_CARD_NO_PEEK}, 4},
+      {N_("Community"), {TEXAS_HOLDEM, OMAHA}, 2},
+      {N_("Showdown"), {FIVE_CARD_SHOWDOWN}, 1},
+  };
+  const int n_groups = (int)(sizeof(groups) / sizeof(groups[0]));
 
-  int gc_bottom = gc_table.y;
-  for (int r = 0; r < gc_table.rows; r++)
-    gc_bottom += gc_table.row_height[r] + gc_table.row_spacing;
-  gc_bottom -= gc_table.row_spacing;
+  const int row_gap = 12;
+  const int top_y = g_viewport.y + g_layout_cfg.margin;
+  const int col_w = g_viewport.w / n_groups;
+
+  TextWidget_t *group_heading[8] = {0};
+  int gc_bottom = top_y;
+  for (int gi = 0; gi < n_groups; gi++) {
+    const int col_cx = g_viewport.x + col_w * gi + col_w / 2;
+    group_heading[gi] =
+        text_widget_create(_(groups[gi].heading), font->fonts[FONT_BOLD], DC_TEXT_ON_DARK);
+    ui_register(&registry, &group_heading[gi]->base);
+    group_heading[gi]->base.rect.x = col_cx - group_heading[gi]->base.rect.w / 2;
+    group_heading[gi]->base.rect.y = top_y;
+
+    int y = top_y + group_heading[gi]->base.rect.h + row_gap;
+    for (int m = 0; m < groups[gi].count; m++) {
+      ButtonWidget_t *b = game_choice_button[groups[gi].members[m]];
+      b->base.rect.x = col_cx - b->base.rect.w / 2;
+      b->base.rect.y = y;
+      y += b->base.rect.h + row_gap;
+    }
+    if (y > gc_bottom)
+      gc_bottom = y;
+  }
 
   button_deuces_wild->base.rect.x = (g_viewport.w - button_deuces_wild->base.rect.w) / 2;
   button_deuces_wild->base.rect.y = gc_bottom + g_layout_cfg.margin;
