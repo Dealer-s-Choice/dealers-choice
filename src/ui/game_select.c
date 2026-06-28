@@ -426,6 +426,21 @@ EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_config,
     waiting_players_tw->base.enabled = dealing && (n_clients == 1);
     waiting_dealer_tw->base.enabled = dealing && (n_clients > 1 && game_state->dealer_id != my_id);
 
+    /* Translucent rounded panel framing the player list, so it reads as one
+       grouped "at the table" block rather than floating text on the felt. Drawn
+       before the widgets so the names/ping render on top. */
+    if (table.rows > 0) {
+      const int pad = 14;
+      int total_h = 0;
+      for (int r = 0; r < table.rows; r++)
+        total_h += table.row_height[r] + table.row_spacing;
+      total_h -= table.row_spacing;
+      const int panel_left = table.x - pad;
+      const int panel_right = g_center.x + table.col_width[2] + pad;
+      SDL_Rect panel = {panel_left, table.y - pad, panel_right - panel_left, total_h + 2 * pad};
+      draw_nameplate(sdl_context->renderer, panel, 130);
+    }
+
     ui_render_all(&registry);
     ui_table_draw_row_separators(&table, sdl_context->renderer);
 
