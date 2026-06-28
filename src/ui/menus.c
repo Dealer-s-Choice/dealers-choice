@@ -268,40 +268,8 @@ static int server_table_build(UITable_t *t, UIRegistry_t *owner, Font_t *font, i
  * header band, faint zebra striping, a header underline, and a border. Call
  * before rendering the cells so the text and buttons land on top. */
 static void server_table_draw_style(const UITable_t *t, SDL_Renderer *r) {
-  if (t->rows < 1)
-    return;
-  const int pad = 10;
-  const SDL_Rect panel = {
-      t->x - pad,
-      t->y - pad,
-      server_table_width(t) + pad * 2,
-      (server_table_bottom(t) - t->row_spacing - t->y) + pad * 2,
-  };
-
-  SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_BLEND);
-  SDL_SetRenderDrawColor(r, 0, 0, 0, 110);
-  SDL_RenderFillRect(r, &panel);
-
-  int y = t->y;
-  for (int row = 0; row < t->rows; row++) {
-    SDL_Rect band = {panel.x, y - t->row_spacing / 2, panel.w, t->row_height[row] + t->row_spacing};
-    if (row == 0)
-      SDL_SetRenderDrawColor(r, 0, 0, 0, 130); /* header band */
-    else if ((row & 1) == 0)
-      SDL_SetRenderDrawColor(r, 255, 255, 255, 16); /* zebra */
-    else {
-      y += t->row_height[row] + t->row_spacing;
-      continue;
-    }
-    SDL_RenderFillRect(r, &band);
-    y += t->row_height[row] + t->row_spacing;
-  }
-
-  SDL_SetRenderDrawColor(r, 255, 255, 255, 90); /* header underline */
-  SDL_RenderFillRect(r, &(SDL_Rect){panel.x, t->y + t->row_height[0] + t->row_spacing / 2, panel.w, 2});
-
-  SDL_SetRenderDrawColor(r, 0, 0, 0, 200); /* border */
-  SDL_RenderDrawRect(r, &panel);
+  /* Shared with the lobby player list; see ui_table_draw_styled_backdrop. */
+  ui_table_draw_styled_backdrop(t, r);
 }
 
 /* The blocking registry query (connect + list round trip per registry) now runs

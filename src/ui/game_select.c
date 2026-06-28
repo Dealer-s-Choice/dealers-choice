@@ -158,15 +158,15 @@ EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_config,
   bool table_needs_rebuild = true;
 
   TextWidget_t *connected_tw =
-      text_widget_create(_("Players"), font->fonts[FONT_BOLD], DC_TEXT_ON_LIGHT);
+      text_widget_create(_("Players"), font->fonts[FONT_DEFAULT_BOLD], DC_TEXT_ON_DARK);
   ui_register(&registry, &connected_tw->base);
 
   TextWidget_t *dealer_label_tw =
-      text_widget_create(_("Dealer"), font->fonts[FONT_BOLD], DC_TEXT_ON_LIGHT);
+      text_widget_create(_("Dealer"), font->fonts[FONT_DEFAULT_BOLD], DC_TEXT_ON_DARK);
   ui_register(&registry, &dealer_label_tw->base);
 
   TextWidget_t *ping_label_tw =
-      text_widget_create(_("Ping"), font->fonts[FONT_BOLD], DC_TEXT_ON_LIGHT);
+      text_widget_create(_("Ping"), font->fonts[FONT_DEFAULT_BOLD], DC_TEXT_ON_DARK);
   ui_register(&registry, &ping_label_tw->base);
 
   char version_str[64] = {0};
@@ -412,13 +412,6 @@ EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_config,
 
     if (table.dirty) {
       ui_table_layout(&table);
-      // shift ping column (col 2) to center x
-      int ping_x = g_center.x;
-      for (int r = 0; r < table.rows; r++) {
-        UIWidget_t *w = table.cells[r][2];
-        if (w)
-          w->rect.x = ping_x;
-      }
       table.dirty = false;
       table_needs_rebuild = false;
     }
@@ -426,23 +419,10 @@ EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_config,
     waiting_players_tw->base.enabled = dealing && (n_clients == 1);
     waiting_dealer_tw->base.enabled = dealing && (n_clients > 1 && game_state->dealer_id != my_id);
 
-    /* Translucent rounded panel framing the player list, so it reads as one
-       grouped "at the table" block rather than floating text on the felt. Drawn
-       before the widgets so the names/ping render on top. */
-    if (table.rows > 0) {
-      const int pad = 14;
-      int total_h = 0;
-      for (int r = 0; r < table.rows; r++)
-        total_h += table.row_height[r] + table.row_spacing;
-      total_h -= table.row_spacing;
-      const int panel_left = table.x - pad;
-      const int panel_right = g_center.x + table.col_width[2] + pad;
-      SDL_Rect panel = {panel_left, table.y - pad, panel_right - panel_left, total_h + 2 * pad};
-      draw_nameplate(sdl_context->renderer, panel, 130);
-    }
-
+    /* Frame the player list the same way as the connect-screen server list:
+       header band, zebra striping, header underline, border. */
+    ui_table_draw_styled_backdrop(&table, sdl_context->renderer);
     ui_render_all(&registry);
-    ui_table_draw_row_separators(&table, sdl_context->renderer);
 
     // int wx, wy, rx, ry;
     // SDL_GetWindowSize(sdl_context->window, &wx, &wy);
