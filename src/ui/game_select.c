@@ -84,7 +84,7 @@ EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_config,
 
   /* Screen title, centered up top; the variant columns sit beneath it. */
   TextWidget_t *title_tw =
-      text_widget_create(_("Choose a Game"), font->fonts[FONT_TITLE], DC_TEXT_ON_DARK);
+      text_widget_create(_("Choose a Game"), font->fonts[FONT_TITLE], get_color(COLOR_GOLD));
   ui_register(&registry, &title_tw->base);
   title_tw->base.rect.x = (g_viewport.w - title_tw->base.rect.w) / 2;
   title_tw->base.rect.y = g_viewport.y + g_layout_cfg.margin;
@@ -116,7 +116,7 @@ EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_config,
   for (int gi = 0; gi < n_groups; gi++) {
     const int col_cx = g_viewport.x + col_w * gi + col_w / 2;
     group_heading[gi] =
-        text_widget_create(_(groups[gi].heading), font->fonts[FONT_BOLD], DC_TEXT_ON_DARK);
+        text_widget_create(_(groups[gi].heading), font->fonts[FONT_BOLD], get_color(COLOR_GOLD));
     ui_register(&registry, &group_heading[gi]->base);
     group_heading[gi]->base.rect.x = col_cx - group_heading[gi]->base.rect.w / 2;
     group_heading[gi]->base.rect.y = top_y;

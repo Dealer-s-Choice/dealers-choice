@@ -166,6 +166,14 @@ void ui_table_draw_styled_backdrop(const UITable_t *t, SDL_Renderer *r) {
   SDL_RenderFillRect(r,
                      &(SDL_Rect){panel.x, t->y + t->row_height[0] + t->row_spacing / 2, panel.w, 2});
 
+  /* Faint vertical separators between columns. */
+  SDL_SetRenderDrawColor(r, 255, 255, 255, 40);
+  int sep_x = t->x;
+  for (int c = 0; c < t->cols - 1; c++) {
+    sep_x += t->col_width[c] + t->col_spacing;
+    SDL_RenderFillRect(r, &(SDL_Rect){sep_x - t->col_spacing / 2, panel.y, 1, panel.h});
+  }
+
   SDL_SetRenderDrawColor(r, 0, 0, 0, 200); /* border */
   SDL_RenderDrawRect(r, &panel);
 }

@@ -63,6 +63,7 @@ typedef enum {
   COLOR_BROWN,
   COLOR_PINK,
   COLOR_TEAL,
+  COLOR_GOLD, // soft gold accent for headings on the felt (matches the web widget)
   COLOR_COUNT // keep this last
 } EColorName_t;
 

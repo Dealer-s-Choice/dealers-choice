@@ -59,12 +59,12 @@ static const SDL_Color color_table[COLOR_COUNT] = {
     [COLOR_CYAN] = {0, 255, 255, 255},    [COLOR_MAGENTA] = {255, 0, 255, 255},
     [COLOR_ORANGE] = {255, 165, 0, 255},  [COLOR_PURPLE] = {128, 0, 128, 255},
     [COLOR_BROWN] = {165, 42, 42, 255},   [COLOR_PINK] = {255, 192, 203, 255},
-    [COLOR_TEAL] = {0, 128, 128, 255},
+    [COLOR_TEAL] = {0, 128, 128, 255},   [COLOR_GOLD] = {233, 196, 106, 255},
 };
 
 static const char *color_names[COLOR_COUNT] = {
     "white",  "lightgray", "gray",    "darkgray", "black",  "red",   "green", "green_one", "blue",
-    "yellow", "cyan",      "magenta", "orange",   "purple", "brown", "pink",  "teal"};
+    "yellow", "cyan",      "magenta", "orange",   "purple", "brown", "pink",  "teal", "gold"};
 
 SDL_Color get_color(EColorName_t name) {
   if (name < 0 || name >= COLOR_COUNT)
