@@ -82,12 +82,21 @@ EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_config,
     ui_register(&registry, &game_choice_button[i]->base);
   }
 
-  /* Screen title, centered up top; the variant columns sit beneath it. */
+  /* Screen title, centered up top, with a drop shadow: a dark copy registered
+     first (so it draws behind), then the gold title nudged up-left over it. The
+     columns sit beneath it. */
+  const char *title_str = _("Choose a Game");
+  TextWidget_t *title_shadow_tw =
+      text_widget_create(title_str, font->fonts[FONT_TITLE], get_color(COLOR_BLACK));
+  ui_register(&registry, &title_shadow_tw->base);
   TextWidget_t *title_tw =
-      text_widget_create(_("Choose a Game"), font->fonts[FONT_TITLE], get_color(COLOR_GOLD));
+      text_widget_create(title_str, font->fonts[FONT_TITLE], get_color(COLOR_GOLD));
   ui_register(&registry, &title_tw->base);
   title_tw->base.rect.x = (g_viewport.w - title_tw->base.rect.w) / 2;
   title_tw->base.rect.y = g_viewport.y + g_layout_cfg.margin;
+  const int title_shadow_off = 3;
+  title_shadow_tw->base.rect.x = title_tw->base.rect.x + title_shadow_off;
+  title_shadow_tw->base.rect.y = title_tw->base.rect.y + title_shadow_off;
 
   /* Lay the variants out as labeled family columns spread across the width,
      instead of a flat 2-column grid. Presentational grouping only, keyed off the
@@ -112,14 +121,21 @@ EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_config,
   const int col_w = g_viewport.w / n_groups;
 
   TextWidget_t *group_heading[8] = {0};
+  TextWidget_t *group_heading_shadow[8] = {0};
+  const int heading_shadow_off = 2;
   int gc_bottom = top_y;
   for (int gi = 0; gi < n_groups; gi++) {
     const int col_cx = g_viewport.x + col_w * gi + col_w / 2;
-    group_heading[gi] =
-        text_widget_create(_(groups[gi].heading), font->fonts[FONT_BOLD], get_color(COLOR_GOLD));
+    const char *hd = _(groups[gi].heading);
+    /* Drop shadow behind each gold column heading (registered first → drawn behind). */
+    group_heading_shadow[gi] = text_widget_create(hd, font->fonts[FONT_BOLD], get_color(COLOR_BLACK));
+    ui_register(&registry, &group_heading_shadow[gi]->base);
+    group_heading[gi] = text_widget_create(hd, font->fonts[FONT_BOLD], get_color(COLOR_GOLD));
     ui_register(&registry, &group_heading[gi]->base);
     group_heading[gi]->base.rect.x = col_cx - group_heading[gi]->base.rect.w / 2;
     group_heading[gi]->base.rect.y = top_y;
+    group_heading_shadow[gi]->base.rect.x = group_heading[gi]->base.rect.x + heading_shadow_off;
+    group_heading_shadow[gi]->base.rect.y = top_y + heading_shadow_off;
 
     int y = top_y + group_heading[gi]->base.rect.h + row_gap;
     for (int m = 0; m < groups[gi].count; m++) {
