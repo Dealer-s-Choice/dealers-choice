@@ -83,14 +83,14 @@ EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_config,
   }
 
   /* Screen title, centered up top, with a drop shadow: a dark copy registered
-     first (so it draws behind), then the gold title nudged up-left over it. The
-     columns sit beneath it. */
+     first (so it draws behind), then the bright title over it. The columns sit
+     beneath it. */
   const char *title_str = _("Choose a Game");
   TextWidget_t *title_shadow_tw =
       text_widget_create(title_str, font->fonts[FONT_TITLE], get_color(COLOR_BLACK));
   ui_register(&registry, &title_shadow_tw->base);
   TextWidget_t *title_tw =
-      text_widget_create(title_str, font->fonts[FONT_TITLE], get_color(COLOR_GOLD));
+      text_widget_create(title_str, font->fonts[FONT_TITLE], get_color(COLOR_YELLOW));
   ui_register(&registry, &title_tw->base);
   title_tw->base.rect.x = (g_viewport.w - title_tw->base.rect.w) / 2;
   title_tw->base.rect.y = g_viewport.y + g_layout_cfg.margin;
@@ -121,21 +121,17 @@ EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_config,
   const int col_w = g_viewport.w / n_groups;
 
   TextWidget_t *group_heading[8] = {0};
-  TextWidget_t *group_heading_shadow[8] = {0};
-  const int heading_shadow_off = 2;
   int gc_bottom = top_y;
   for (int gi = 0; gi < n_groups; gi++) {
     const int col_cx = g_viewport.x + col_w * gi + col_w / 2;
     const char *hd = _(groups[gi].heading);
-    /* Drop shadow behind each gold column heading (registered first → drawn behind). */
-    group_heading_shadow[gi] = text_widget_create(hd, font->fonts[FONT_BOLD], get_color(COLOR_BLACK));
-    ui_register(&registry, &group_heading_shadow[gi]->base);
-    group_heading[gi] = text_widget_create(hd, font->fonts[FONT_BOLD], get_color(COLOR_GOLD));
+    /* A rounded translucent plate is drawn behind each heading in the render
+       loop (see draw_nameplate below); that provides the contrast, so no
+       per-heading drop shadow here. */
+    group_heading[gi] = text_widget_create(hd, font->fonts[FONT_BOLD], get_color(COLOR_YELLOW));
     ui_register(&registry, &group_heading[gi]->base);
     group_heading[gi]->base.rect.x = col_cx - group_heading[gi]->base.rect.w / 2;
     group_heading[gi]->base.rect.y = top_y;
-    group_heading_shadow[gi]->base.rect.x = group_heading[gi]->base.rect.x + heading_shadow_off;
-    group_heading_shadow[gi]->base.rect.y = top_y + heading_shadow_off;
 
     int y = top_y + group_heading[gi]->base.rect.h + row_gap;
     for (int m = 0; m < groups[gi].count; m++) {
@@ -441,6 +437,16 @@ EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_config,
 
     waiting_players_tw->base.enabled = dealing && (n_clients == 1);
     waiting_dealer_tw->base.enabled = dealing && (n_clients > 1 && game_state->dealer_id != my_id);
+
+    /* Rounded translucent plate (~50% black) behind each group heading. */
+    for (int gi = 0; gi < n_groups; gi++) {
+      if (!group_heading[gi])
+        continue;
+      SDL_Rect hr = group_heading[gi]->base.rect;
+      const int padx = 14, pady = 5;
+      draw_nameplate(sdl_context->renderer,
+                     (SDL_Rect){hr.x - padx, hr.y - pady, hr.w + 2 * padx, hr.h + 2 * pady}, 128);
+    }
 
     /* Frame the player list the same way as the connect-screen server list:
        header band, zebra striping, header underline, border. */
