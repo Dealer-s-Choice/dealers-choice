@@ -1,4 +1,6 @@
 - (in-progress)
+  + Redesigned the menus: a felt card-room look across the connect, lobby,
+    settings, and hotkeys screens
   + New poker variant: 5-card triple draw (three draw rounds)
   + LAN game discovery: the connect screen now lists DC servers running on
     your local network; click one to join

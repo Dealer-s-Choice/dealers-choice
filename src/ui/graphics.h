@@ -63,6 +63,7 @@ typedef enum {
   COLOR_BROWN,
   COLOR_PINK,
   COLOR_TEAL,
+  COLOR_GOLD, // soft gold accent for headings on the felt (matches the web widget)
   COLOR_COUNT // keep this last
 } EColorName_t;
 
@@ -102,9 +103,24 @@ typedef struct {
 TTF_Font *open_font(const FontArgs_t *args);
 
 void clear_screen(SDL_Renderer *renderer);
-void draw_felt_background(SDL_Renderer *renderer, SDL_Texture *felt_tile);
+
+/* Load / free the shared felt background (data/images/felt.png) once for the
+   whole GUI. Once loaded, clear_screen() stretches it over every screen, so no
+   screen needs to load or draw its own felt. */
+void felt_init(SDL_Renderer *renderer, const char *base_path);
+void felt_destroy(void);
+
+/* Load / free the shared app logo (data/images/dealers-choice_128x128.png) once.
+   draw_logo() blits it into dst (a no-op if the logo failed to load), letting any
+   screen show it without loading its own copy. */
+void logo_init(SDL_Renderer *renderer, const char *base_path);
+void logo_destroy(void);
+void draw_logo(SDL_Renderer *renderer, SDL_Rect dst);
 bool confirm_quit(TTF_Font *const *fonts);
 void draw_nameplate(SDL_Renderer *r, SDL_Rect rect, uint8_t alpha);
+/* Filled rounded rectangle in `color` (honors color.a). radius is clamped to half
+   the smaller side, so passing rect.h/2 yields a pill/oval. */
+void draw_round_rect(SDL_Renderer *r, SDL_Rect rect, int radius, SDL_Color color);
 SDL_Texture *create_vignette_texture(SDL_Renderer *renderer);
 
 void mark_selected(SDL_Renderer *renderer, const SDL_Rect *rect);

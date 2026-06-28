@@ -587,7 +587,7 @@ bool get_socket_context_and_run_client(PlayerConfig_t *player_config, const CliA
         }
 
         EGameLogicResult_t result = handle_game_logic(
-            player_config, &socket_context, &game_settings, &game_state, sdl_context, font, path,
+            player_config, &socket_context, &game_settings, &game_state, sdl_context, font,
             &sound_context, coin_textures, n_coin_images);
         if (result == GAME_LOGIC_DISCONNECTED)
           went_back = true;
@@ -634,9 +634,11 @@ cleanup:
 }
 
 void do_sdl_cleanup(SdlContext_t *sdl_context) {
-  /* Atlas textures are tied to sdl_context->renderer — must be freed
+  /* Atlas + felt textures are tied to sdl_context->renderer — must be freed
    * before the renderer they were created with. */
   card_text_atlas_destroy();
+  felt_destroy();
+  logo_destroy();
   SDL_DestroyRenderer(sdl_context->renderer);
   SDL_DestroyWindow(sdl_context->window);
   SDL_Quit();

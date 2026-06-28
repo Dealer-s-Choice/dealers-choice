@@ -125,6 +125,59 @@ void ui_table_draw_row_separators(const UITable_t *t, SDL_Renderer *renderer) {
   }
 }
 
+void ui_table_draw_styled_backdrop(const UITable_t *t, SDL_Renderer *r) {
+  if (!t || !r || t->rows < 1)
+    return;
+
+  int width = 0;
+  for (int c = 0; c < t->cols; c++)
+    width += t->col_width[c];
+  if (t->cols > 1)
+    width += t->col_spacing * (t->cols - 1);
+
+  int height = 0;
+  for (int row = 0; row < t->rows; row++)
+    height += t->row_height[row] + t->row_spacing;
+  height -= t->row_spacing;
+
+  const int pad = 10;
+  const SDL_Rect panel = {t->x - pad, t->y - pad, width + pad * 2, height + pad * 2};
+
+  SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_BLEND);
+  SDL_SetRenderDrawColor(r, 0, 0, 0, 110);
+  SDL_RenderFillRect(r, &panel);
+
+  int y = t->y;
+  for (int row = 0; row < t->rows; row++) {
+    SDL_Rect band = {panel.x, y - t->row_spacing / 2, panel.w, t->row_height[row] + t->row_spacing};
+    if (row == 0)
+      SDL_SetRenderDrawColor(r, 0, 0, 0, 130); /* header band */
+    else if ((row & 1) == 0)
+      SDL_SetRenderDrawColor(r, 255, 255, 255, 16); /* zebra */
+    else {
+      y += t->row_height[row] + t->row_spacing;
+      continue;
+    }
+    SDL_RenderFillRect(r, &band);
+    y += t->row_height[row] + t->row_spacing;
+  }
+
+  SDL_SetRenderDrawColor(r, 255, 255, 255, 90); /* header underline */
+  SDL_RenderFillRect(r,
+                     &(SDL_Rect){panel.x, t->y + t->row_height[0] + t->row_spacing / 2, panel.w, 2});
+
+  /* Faint vertical separators between columns. */
+  SDL_SetRenderDrawColor(r, 255, 255, 255, 40);
+  int sep_x = t->x;
+  for (int c = 0; c < t->cols - 1; c++) {
+    sep_x += t->col_width[c] + t->col_spacing;
+    SDL_RenderFillRect(r, &(SDL_Rect){sep_x - t->col_spacing / 2, panel.y, 1, panel.h});
+  }
+
+  SDL_SetRenderDrawColor(r, 0, 0, 0, 200); /* border */
+  SDL_RenderDrawRect(r, &panel);
+}
+
 void ui_table_layout(UITable_t *t) {
   int y = t->y;
 

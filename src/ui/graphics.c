@@ -59,12 +59,12 @@ static const SDL_Color color_table[COLOR_COUNT] = {
     [COLOR_CYAN] = {0, 255, 255, 255},    [COLOR_MAGENTA] = {255, 0, 255, 255},
     [COLOR_ORANGE] = {255, 165, 0, 255},  [COLOR_PURPLE] = {128, 0, 128, 255},
     [COLOR_BROWN] = {165, 42, 42, 255},   [COLOR_PINK] = {255, 192, 203, 255},
-    [COLOR_TEAL] = {0, 128, 128, 255},
+    [COLOR_TEAL] = {0, 128, 128, 255},   [COLOR_GOLD] = {233, 196, 106, 255},
 };
 
 static const char *color_names[COLOR_COUNT] = {
     "white",  "lightgray", "gray",    "darkgray", "black",  "red",   "green", "green_one", "blue",
-    "yellow", "cyan",      "magenta", "orange",   "purple", "brown", "pink",  "teal"};
+    "yellow", "cyan",      "magenta", "orange",   "purple", "brown", "pink",  "teal", "gold"};
 
 SDL_Color get_color(EColorName_t name) {
   if (name < 0 || name >= COLOR_COUNT)
@@ -78,10 +78,60 @@ const char *get_color_name(EColorName_t name) {
   return color_names[name];
 }
 
+/* Shared felt background, loaded once by felt_init(). When present, clear_screen
+   stretches it over the whole logical area so every screen shows felt without
+   loading its own. */
+static SDL_Texture *g_felt_tex = NULL;
+
+void felt_init(SDL_Renderer *renderer, const char *base_path) {
+  char felt_path[4096];
+  snprintf(felt_path, sizeof(felt_path), "%s/images/felt.png", base_path);
+  g_felt_tex = load_texture(renderer, felt_path);
+}
+
+void felt_destroy(void) {
+  if (g_felt_tex) {
+    SDL_DestroyTexture(g_felt_tex);
+    g_felt_tex = NULL;
+  }
+}
+
+/* Shared app logo, loaded once by logo_init() and drawn by draw_logo(). */
+static SDL_Texture *g_logo_tex = NULL;
+
+void logo_init(SDL_Renderer *renderer, const char *base_path) {
+  char logo_path[4096];
+  snprintf(logo_path, sizeof(logo_path), "%s/images/dealers-choice_logo.png", base_path);
+  g_logo_tex = load_texture(renderer, logo_path);
+}
+
+void logo_destroy(void) {
+  if (g_logo_tex) {
+    SDL_DestroyTexture(g_logo_tex);
+    g_logo_tex = NULL;
+  }
+}
+
+void draw_logo(SDL_Renderer *renderer, SDL_Rect dst) {
+  if (!g_logo_tex)
+    return;
+  /* Dark rounded "coaster" behind the logo: the emblem's table is green, close to
+     the felt, so without this it melts into the background. The badge frames it as
+     a deliberate mark. */
+  const int pad = dst.w / 8;
+  const SDL_Rect badge = {dst.x - pad, dst.y - pad, dst.w + 2 * pad, dst.h + 2 * pad};
+  draw_round_rect(renderer, badge, badge.w * 22 / 100, (SDL_Color){0, 0, 0, 130});
+  SDL_RenderCopy(renderer, g_logo_tex, NULL, &dst);
+}
+
 void clear_screen(SDL_Renderer *renderer) {
   SDL_SetRenderDrawColor(renderer, get_color(COLOR_TABLE_GREEN).r, get_color(COLOR_TABLE_GREEN).g,
                          get_color(COLOR_TABLE_GREEN).b, get_color(COLOR_TABLE_GREEN).a);
   SDL_RenderClear(renderer);
+  /* Stretch the felt over the flat-green clear; NULL dst fills the logical area.
+     The clear color still shows in any aspect-ratio letterbox bars. */
+  if (g_felt_tex)
+    SDL_RenderCopy(renderer, g_felt_tex, NULL, NULL);
 }
 
 bool confirm_quit(TTF_Font *const *fonts) {
@@ -182,10 +232,14 @@ bool confirm_quit(TTF_Font *const *fonts) {
   return result;
 }
 
-void draw_nameplate(SDL_Renderer *r, SDL_Rect rect, uint8_t alpha) {
-  const int radius = g_layout_cfg.nameplate_radius;
+void draw_round_rect(SDL_Renderer *r, SDL_Rect rect, int radius, SDL_Color color) {
+  const int maxr = (rect.w < rect.h ? rect.w : rect.h) / 2;
+  if (radius > maxr)
+    radius = maxr;
+  if (radius < 0)
+    radius = 0;
   SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_BLEND);
-  SDL_SetRenderDrawColor(r, 0, 0, 0, alpha);
+  SDL_SetRenderDrawColor(r, color.r, color.g, color.b, color.a);
 
   // Center horizontal strip + left/right side strips
   SDL_RenderFillRect(r, &(SDL_Rect){rect.x + radius, rect.y, rect.w - 2 * radius, rect.h});
@@ -205,6 +259,10 @@ void draw_nameplate(SDL_Renderer *r, SDL_Rect rect, uint8_t alpha) {
   }
 
   SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_NONE);
+}
+
+void draw_nameplate(SDL_Renderer *r, SDL_Rect rect, uint8_t alpha) {
+  draw_round_rect(r, rect, g_layout_cfg.nameplate_radius, (SDL_Color){0, 0, 0, alpha});
 }
 
 SDL_Texture *create_vignette_texture(SDL_Renderer *renderer) {
@@ -243,15 +301,11 @@ SDL_Texture *create_vignette_texture(SDL_Renderer *renderer) {
   return tex;
 }
 
-void draw_felt_background(SDL_Renderer *renderer, SDL_Texture *felt_tile) {
-  const int tile_w = 100;
-  const int tile_h = 100;
-  for (int y = 0; y < LOGICAL_HEIGHT; y += tile_h) {
-    for (int x = 0; x < LOGICAL_WIDTH; x += tile_w) {
-      SDL_Rect dst = {x, y, tile_w, tile_h};
-      SDL_RenderCopy(renderer, felt_tile, NULL, &dst);
-    }
-  }
+void draw_felt_background(SDL_Renderer *renderer, SDL_Texture *felt) {
+  /* Stretch a single full felt image over the whole screen. A tiled small
+     texture shows a visible repeat across this wide layout; one stretched
+     image (data/images/felt.png) has none. NULL dst fills the logical area. */
+  SDL_RenderCopy(renderer, felt, NULL, NULL);
 }
 
 TTF_Font *open_font(const FontArgs_t *args) {

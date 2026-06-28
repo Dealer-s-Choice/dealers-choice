@@ -57,6 +57,12 @@ void ui_table_layout(UITable_t *t);
 
 void ui_table_draw_row_separators(const UITable_t *t, SDL_Renderer *renderer);
 
+/* Draw a styled backdrop for a laid-out table: a translucent panel, a darker
+ * header band, faint zebra striping, a header underline, and a border. Call
+ * before rendering the cells so the text/buttons land on top. Used by the
+ * connect-screen server list and the lobby player list. */
+void ui_table_draw_styled_backdrop(const UITable_t *t, SDL_Renderer *r);
+
 void ui_register(UIRegistry_t *reg, UIWidget_t *w);
 
 void ui_unregister(UIRegistry_t *reg, UIWidget_t *w);

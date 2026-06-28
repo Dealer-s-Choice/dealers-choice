@@ -82,21 +82,86 @@ EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_config,
     ui_register(&registry, &game_choice_button[i]->base);
   }
 
-  UITable_t gc_table = {0};
-  ui_table_begin(&gc_table, 0, g_viewport.y + g_layout_cfg.margin, 2);
-  for (int i = 0; i < MAX_CHOICES; i++)
-    ui_table_add(&gc_table, i / 2, i % 2, &game_choice_button[i]->base);
-  int gc_total_w = gc_table.col_width[0] + gc_table.col_width[1] + gc_table.col_spacing;
-  gc_table.x = (g_viewport.w - gc_total_w) / 2;
-  ui_table_layout(&gc_table);
+  /* Screen title, centered up top. Yellow text on a translucent black pill
+     (drawn in the render loop) for contrast against the felt. */
+  const char *title_str = _("Choose a Game");
+  TextWidget_t *title_tw =
+      text_widget_create(title_str, font->fonts[FONT_TITLE], get_color(COLOR_YELLOW));
+  ui_register(&registry, &title_tw->base);
+  title_tw->base.rect.x = (g_viewport.w - title_tw->base.rect.w) / 2;
+  title_tw->base.rect.y = g_viewport.y + g_layout_cfg.margin;
 
-  int gc_bottom = gc_table.y;
-  for (int r = 0; r < gc_table.rows; r++)
-    gc_bottom += gc_table.row_height[r] + gc_table.row_spacing;
-  gc_bottom -= gc_table.row_spacing;
+  /* App logo to the left of the title, vertically centered on it. Smaller than
+     the connect screen's copy (this screen is busier). */
+  const int lobby_logo_sz = 56;
+  /* Gap clears the title's black pill (padx 22) plus breathing room. */
+  const SDL_Rect lobby_logo_dst = {title_tw->base.rect.x - lobby_logo_sz - 44,
+                                   title_tw->base.rect.y +
+                                       (title_tw->base.rect.h - lobby_logo_sz) / 2,
+                                   lobby_logo_sz, lobby_logo_sz};
 
-  button_deuces_wild->base.rect.x = (g_viewport.w - button_deuces_wild->base.rect.w) / 2;
-  button_deuces_wild->base.rect.y = gc_bottom + g_layout_cfg.margin;
+  /* Lay the variants out as labeled family columns spread across the width,
+     instead of a flat 2-column grid. Presentational grouping only, keyed off the
+     menu-option enum (game_choice_button[opt] is the button for option opt, since
+     game_choices[] is in enum order). A new variant just slots into a family. */
+  static const struct {
+    const char *heading;
+    EMenuOption_t members[5];
+    int count;
+  } groups[] = {
+      {N_("Draw"),
+       {FIVE_CARD_DRAW, FIVE_CARD_DOUBLE_DRAW, FIVE_CARD_TRIPLE_DRAW, CALIFORNIA_LOWBALL},
+       4},
+      {N_("Stud"), {FIVE_CARD_STUD, SIX_CARD_STUD, SEVEN_CARD_STUD, SEVEN_CARD_NO_PEEK}, 4},
+      {N_("Community"), {TEXAS_HOLDEM, OMAHA}, 2},
+      {N_("Showdown"), {FIVE_CARD_SHOWDOWN}, 1},
+  };
+  const int n_groups = (int)(sizeof(groups) / sizeof(groups[0]));
+
+  const int row_gap = 12;
+  const int top_y = title_tw->base.rect.y + title_tw->base.rect.h + g_layout_cfg.margin;
+  const int col_w = g_viewport.w / n_groups;
+
+  TextWidget_t *group_heading[8] = {0};
+  int gc_bottom = top_y;
+  for (int gi = 0; gi < n_groups; gi++) {
+    const int col_cx = g_viewport.x + col_w * gi + col_w / 2;
+    const char *hd = _(groups[gi].heading);
+    /* Black text on a translucent orange plate (drawn in the render loop below);
+       the plate provides the contrast, so no per-heading drop shadow here. */
+    group_heading[gi] = text_widget_create(hd, font->fonts[FONT_BOLD], get_color(COLOR_BLACK));
+    ui_register(&registry, &group_heading[gi]->base);
+    group_heading[gi]->base.rect.x = col_cx - group_heading[gi]->base.rect.w / 2;
+    group_heading[gi]->base.rect.y = top_y;
+
+    int y = top_y + group_heading[gi]->base.rect.h + row_gap;
+    for (int m = 0; m < groups[gi].count; m++) {
+      ButtonWidget_t *b = game_choice_button[groups[gi].members[m]];
+      b->base.rect.x = col_cx - b->base.rect.w / 2;
+      b->base.rect.y = y;
+      y += b->base.rect.h + row_gap;
+    }
+    if (y > gc_bottom)
+      gc_bottom = y;
+  }
+
+  /* Present Deuces Wild as a modifier: a "Wild card:" label beside the toggle,
+     the two centered as one unit below the variant columns. */
+  TextWidget_t *wild_label_tw =
+      text_widget_create(_("Wild card:"), font->fonts[FONT_BOLD], DC_TEXT_ON_DARK);
+  ui_register(&registry, &wild_label_tw->base);
+  {
+    const int gap = g_layout_cfg.margin / 2;
+    const int combined =
+        wild_label_tw->base.rect.w + gap + button_deuces_wild->base.rect.w;
+    const int sx = g_viewport.x + (g_viewport.w - combined) / 2;
+    const int row_y = gc_bottom + g_layout_cfg.margin;
+    wild_label_tw->base.rect.x = sx;
+    button_deuces_wild->base.rect.x = sx + wild_label_tw->base.rect.w + gap;
+    button_deuces_wild->base.rect.y = row_y;
+    wild_label_tw->base.rect.y =
+        row_y + (button_deuces_wild->base.rect.h - wild_label_tw->base.rect.h) / 2;
+  }
 
   NickWidget_t *nick_widgets[MAX_PLAYERS] = {0};
   DealerWidget_t *dealer_widgets[MAX_PLAYERS] = {0};
@@ -106,15 +171,15 @@ EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_config,
   bool table_needs_rebuild = true;
 
   TextWidget_t *connected_tw =
-      text_widget_create(_("Players"), font->fonts[FONT_BOLD], DC_TEXT_ON_LIGHT);
+      text_widget_create(_("Players"), font->fonts[FONT_DEFAULT_BOLD], DC_TEXT_ON_DARK);
   ui_register(&registry, &connected_tw->base);
 
   TextWidget_t *dealer_label_tw =
-      text_widget_create(_("Dealer"), font->fonts[FONT_BOLD], DC_TEXT_ON_LIGHT);
+      text_widget_create(_("Dealer"), font->fonts[FONT_DEFAULT_BOLD], DC_TEXT_ON_DARK);
   ui_register(&registry, &dealer_label_tw->base);
 
   TextWidget_t *ping_label_tw =
-      text_widget_create(_("Ping"), font->fonts[FONT_BOLD], DC_TEXT_ON_LIGHT);
+      text_widget_create(_("Ping"), font->fonts[FONT_DEFAULT_BOLD], DC_TEXT_ON_DARK);
   ui_register(&registry, &ping_label_tw->base);
 
   char version_str[64] = {0};
@@ -189,6 +254,15 @@ EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_config,
     }
 
     clear_screen(sdl_context->renderer);
+    draw_logo(sdl_context->renderer, lobby_logo_dst);
+    {
+      SDL_Color title_pill = get_color(COLOR_BLACK);
+      title_pill.a = 128;
+      SDL_Rect tr = title_tw->base.rect;
+      draw_round_rect(sdl_context->renderer,
+                      (SDL_Rect){tr.x - 22, tr.y - 8, tr.w + 44, tr.h + 16}, (tr.h + 16) / 2,
+                      title_pill);
+    }
 
     int mx, my;
     SDL_GetMouseState(&mx, &my);
@@ -353,14 +427,14 @@ EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_config,
     button_deuces_wild->base.enabled = dealing;
 
     if (table.dirty) {
+      /* Fixed column widths + left-justified player names, so the table keeps a
+         steady size and the names don't jump around as players with different
+         name lengths join and leave. Widths are sized for the SIZEOF_NICK cap. */
+      table.col_align[0] = 1; /* Players column: left-justified */
+      table.col_width[0] = 300;
+      table.col_width[1] = 120;
+      table.col_width[2] = 120;
       ui_table_layout(&table);
-      // shift ping column (col 2) to center x
-      int ping_x = g_center.x;
-      for (int r = 0; r < table.rows; r++) {
-        UIWidget_t *w = table.cells[r][2];
-        if (w)
-          w->rect.x = ping_x;
-      }
       table.dirty = false;
       table_needs_rebuild = false;
     }
@@ -368,8 +442,23 @@ EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_config,
     waiting_players_tw->base.enabled = dealing && (n_clients == 1);
     waiting_dealer_tw->base.enabled = dealing && (n_clients > 1 && game_state->dealer_id != my_id);
 
+    /* Rounded translucent plate (~50% black) behind each group heading. */
+    for (int gi = 0; gi < n_groups; gi++) {
+      if (!group_heading[gi])
+        continue;
+      SDL_Rect hr = group_heading[gi]->base.rect;
+      const int padx = 14, pady = 5;
+      SDL_Color plate = get_color(COLOR_ORANGE);
+      plate.a = 64;
+      draw_round_rect(sdl_context->renderer,
+                      (SDL_Rect){hr.x - padx, hr.y - pady, hr.w + 2 * padx, hr.h + 2 * pady},
+                      g_layout_cfg.nameplate_radius, plate);
+    }
+
+    /* Frame the player list the same way as the connect-screen server list:
+       header band, zebra striping, header underline, border. */
+    ui_table_draw_styled_backdrop(&table, sdl_context->renderer);
     ui_render_all(&registry);
-    ui_table_draw_row_separators(&table, sdl_context->renderer);
 
     // int wx, wy, rx, ry;
     // SDL_GetWindowSize(sdl_context->window, &wx, &wy);
