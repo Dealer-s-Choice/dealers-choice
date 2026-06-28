@@ -664,7 +664,7 @@ static void render_text_pot(const char *text, const SDL_Point center, const Font
 EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
                                      SocketContext_t *socket_context,
                                      const GameSettings_t *game_settings, GameState_t *game_state,
-                                     SdlContext_t *sdl_context, const Font_t *font, Path_t *path,
+                                     SdlContext_t *sdl_context, const Font_t *font,
                                      const SoundContext_t *sound_context,
                                      SDL_Texture **coin_textures, size_t n_coin_images) {
   card_widget_select_back_for_game();
@@ -783,8 +783,6 @@ EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
   const size_t which_coin = n_coin_images > 0 ? pcg32_boundedrand_r(&rng, n_coin_images) : 0;
   SDL_Texture *coin_tex_front = n_coin_images > 0 ? coin_textures[which_coin] : NULL;
 
-  SDL_Texture *felt_tex =
-      load_coin_texture(sdl_context->renderer, path->data, "100x100-green-felt-seamless-tile.png");
   SDL_Texture *vignette_tex = create_vignette_texture(sdl_context->renderer);
 
   TextWidget_t *open_seat_tw[MAX_PLAYERS] = {0};
@@ -1052,7 +1050,6 @@ EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
     }
 
     clear_screen(sdl_context->renderer);
-    draw_felt_background(sdl_context->renderer, felt_tex);
     if (vignette_tex)
       SDL_RenderCopy(sdl_context->renderer, vignette_tex, NULL, NULL);
 
@@ -1849,7 +1846,6 @@ EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
       if (card_context[my_id][k].base.selected)
         client_state.n_cards_selected++;
   }
-  SDL_DestroyTexture(felt_tex);
   SDL_DestroyTexture(vignette_tex);
   for (int i = 0; i < MAX_PLAYERS; i++)
     if (open_seat_tw[i])

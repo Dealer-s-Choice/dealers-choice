@@ -80,7 +80,7 @@ SDL_Texture *load_coin_texture(SDL_Renderer *renderer, const char *base_path, co
 EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
                                      SocketContext_t *socket_context,
                                      const GameSettings_t *game_settings, GameState_t *game_state,
-                                     SdlContext_t *sdl_context, const Font_t *font, Path_t *path,
+                                     SdlContext_t *sdl_context, const Font_t *font,
                                      const SoundContext_t *sound_context,
                                      SDL_Texture **coin_textures, size_t n_coin_images);
 

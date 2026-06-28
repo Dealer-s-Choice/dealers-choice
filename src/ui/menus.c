@@ -277,6 +277,12 @@ static void server_table_draw_style(const UITable_t *t, SDL_Renderer *r) {
  * registry no longer stalls this ~60fps connect screen (#82). The UI thread only
  * reads the worker's latest published list each frame. */
 
+/* Translucent rounded pill behind a text widget so it reads on the felt. */
+static void draw_pill_behind(SDL_Renderer *r, SDL_Rect wr, int padx, int pady, SDL_Color c) {
+  const SDL_Rect plate = {wr.x - padx, wr.y - pady, wr.w + 2 * padx, wr.h + 2 * pady};
+  draw_round_rect(r, plate, plate.h / 2, c);
+}
+
 int menu_display_connect(PlayerConfig_t *player_config, char *host_str, uint16_t *port,
                                 SdlContext_t *sdl_context, Font_t *font, LinkWidget_t **links) {
   ButtonWidget_t *button_connect =
@@ -285,25 +291,44 @@ int menu_display_connect(PlayerConfig_t *player_config, char *host_str, uint16_t
       button_widget_create_styled(_("Settings"), &ROLE_PRIMARY, font->fonts, (SDL_Keycode)0);
   UIRegistry_t reg = {0};
 
-  button_connect->base.rect.x = g_layout.menu.margin_x;
-  button_connect->base.rect.y = g_layout.menu.connect_btn_y;
+  /* Settings button: right margin (top area). */
   button_settings->base.rect.x =
-      g_layout.menu.margin_x + button_connect->base.rect.w + g_layout_cfg.connect_settings_btn_gap;
+      g_viewport.x + g_viewport.w - button_settings->base.rect.w - g_layout_cfg.margin;
   button_settings->base.rect.y = g_layout.menu.connect_btn_y;
 
   int input_w;
   if (TTF_SizeUTF8(font->fonts[FONT_DEFAULT], "255.255.255.255", &input_w, NULL) != 0)
     input_w = 150;
   input_w += g_layout_cfg.connect_input_w_pad;
+  /* The full IPv4 width was wider than needed in practice; trim ~20%. Text still
+     scrolls within the field if a longer host is typed. */
+  input_w = input_w * 4 / 5;
+  /* Hostnames are often longer than an IPv4 literal; give the host field ~2x. */
+  const int host_w = input_w * 2;
+
+  const int lbl_pad = g_layout_cfg.connect_input_w_pad;
+
+  /* Manual-entry table (settings style): a dark panel with a "nick" row and a
+     "host" + "port" row. Light labels read on the dark panel. */
+  TextWidget_t *tw_nick = text_widget_create(_("nick:"), font->fonts[FONT_DEFAULT], DC_TEXT_ON_DARK);
+  TextWidget_t *tw_host = text_widget_create(_("host:"), font->fonts[FONT_DEFAULT], DC_TEXT_ON_DARK);
+  TextWidget_t *tw_port = text_widget_create(_("port:"), font->fonts[FONT_DEFAULT], DC_TEXT_ON_DARK);
+  const int nick_lw = tw_nick ? tw_nick->base.rect.w : 0;
+  const int host_lw = tw_host ? tw_host->base.rect.w : 0;
+  const int port_lw = tw_port ? tw_port->base.rect.w : 0;
+  const int col_lw = (nick_lw > host_lw) ? nick_lw : host_lw; /* nick & host share a column */
+
+  InputWidget_t *nick_input =
+      input_widget_create(player_config->nick, font->fonts[FONT_DEFAULT], input_w, CFG_TYPE_STRING);
+  if (!nick_input)
+    goto err;
+  nick_input->max_len = SIZEOF_NICK - 1;
 
   InputWidget_t *host_input =
-      input_widget_create(host_str, font->fonts[FONT_DEFAULT], input_w, CFG_TYPE_STRING);
+      input_widget_create(host_str, font->fonts[FONT_DEFAULT], host_w, CFG_TYPE_STRING);
   if (!host_input)
     goto err;
-  host_input->base.rect.x = g_layout.menu.margin_x;
-  host_input->base.rect.y = g_layout.menu.connect_host_y;
   host_input->focused = true;
-  ui_register(&reg, &host_input->base);
 
   char port_init[16] = {0};
   snprintf(port_init, sizeof(port_init), "%u", (unsigned)*port);
@@ -311,32 +336,66 @@ int menu_display_connect(PlayerConfig_t *player_config, char *host_str, uint16_t
       input_widget_create(port_init, font->fonts[FONT_DEFAULT], input_w, CFG_TYPE_UINT16);
   if (!port_input)
     goto err;
-  port_input->base.rect.x = g_layout.menu.margin_x;
-  port_input->base.rect.y =
-      host_input->base.rect.y + host_input->base.rect.h + g_layout_cfg.input_field_v_gap;
+
+  const int panel_pad = 18;
+  const int row_h = host_input->base.rect.h;
+  const int row_gap = g_layout_cfg.input_field_v_gap;
+  const int panel_x = g_layout.menu.margin_x;
+  const int content_x = panel_x + panel_pad;
+  const int field_x = content_x + col_lw + lbl_pad;
+  const int port_label_x = field_x + host_w + 40;
+  const int port_field_x = port_label_x + port_lw + lbl_pad;
+  const int row0_y = g_layout.menu.connect_host_y;        /* nick row */
+  const int row1_y = row0_y + row_h + row_gap;            /* host + port row */
+
+  if (tw_nick)
+    ui_widget_place(&tw_nick->base, content_x, row0_y + 4);
+  nick_input->base.rect.x = field_x;
+  nick_input->base.rect.y = row0_y;
+  ui_register(&reg, &nick_input->base);
+
+  if (tw_host)
+    ui_widget_place(&tw_host->base, content_x, row1_y + 4);
+  host_input->base.rect.x = field_x;
+  host_input->base.rect.y = row1_y;
+  ui_register(&reg, &host_input->base);
+
+  if (tw_port)
+    ui_widget_place(&tw_port->base, port_label_x, row1_y + 4);
+  port_input->base.rect.x = port_field_x;
+  port_input->base.rect.y = row1_y;
   ui_register(&reg, &port_input->base);
+
+  /* Panel rect behind the rows (drawn in the render loop). */
+  const SDL_Rect input_panel = {panel_x, row0_y - panel_pad,
+                                (port_field_x + input_w + panel_pad) - panel_x,
+                                (row1_y + row_h + panel_pad) - (row0_y - panel_pad)};
+
+  /* Action buttons to the right of the table, vertically centered on it:
+     Connect, then Save / Load Defaults. */
+  const int action_x = input_panel.x + input_panel.w + 30;
+  const int action_y = input_panel.y + (input_panel.h - button_connect->base.rect.h) / 2;
+  button_connect->base.rect.x = action_x;
+  button_connect->base.rect.y = action_y;
 
   ButtonWidget_t *button_save =
       button_widget_create_styled(_("Save"), &ROLE_PRIMARY, font->fonts, (SDL_Keycode)0);
   if (!button_save)
     goto err;
   button_save->interactive = false;
+  button_save->base.rect.x =
+      button_connect->base.rect.x + button_connect->base.rect.w + g_layout_cfg.connect_save_btn_gap;
+  button_save->base.rect.y = action_y;
   ui_register(&reg, &button_save->base);
 
   ButtonWidget_t *button_defaults =
       button_widget_create_styled(_("Load Defaults"), &ROLE_PRIMARY, font->fonts, (SDL_Keycode)0);
   if (!button_defaults)
     goto err;
-  ui_register(&reg, &button_defaults->base);
-  button_save->base.rect.x = g_layout.menu.margin_x + input_w + g_layout_cfg.connect_save_btn_gap;
-  {
-    int span_top = host_input->base.rect.y;
-    int span_bot = port_input->base.rect.y + port_input->base.rect.h;
-    button_save->base.rect.y = (span_top + span_bot) / 2 - button_save->base.rect.h / 2;
-  }
   button_defaults->base.rect.x =
       button_save->base.rect.x + button_save->base.rect.w + g_layout_cfg.connect_save_btn_gap;
-  button_defaults->base.rect.y = button_save->base.rect.y;
+  button_defaults->base.rect.y = action_y;
+  ui_register(&reg, &button_defaults->base);
 
   ButtonWidget_t *btn_quit_connect =
       button_widget_create_styled("X", &ROLE_DANGER, font->fonts, (SDL_Keycode)0);
@@ -347,26 +406,6 @@ int menu_display_connect(PlayerConfig_t *player_config, char *host_str, uint16_t
     ui_register(&reg, &btn_quit_connect->base);
   }
 
-  SDL_Rect input_nick_pos = {
-      g_layout.menu.margin_x,
-      port_input->base.rect.y + port_input->base.rect.h + g_layout_cfg.input_field_v_gap, 0, 0};
-
-  /* Nick is inline-editable here (a "nick:" label + input), so it can be set
-   * right before connecting without opening Settings. */
-  TextWidget_t *tw_nick = text_widget_create(_("nick:"), font->fonts[FONT_DEFAULT], DC_TEXT_ON_LIGHT);
-  if (tw_nick)
-    ui_widget_place(&tw_nick->base, input_nick_pos.x, input_nick_pos.y);
-  const int nick_label_w = tw_nick ? tw_nick->base.rect.w : 0;
-
-  InputWidget_t *nick_input =
-      input_widget_create(player_config->nick, font->fonts[FONT_DEFAULT], input_w, CFG_TYPE_STRING);
-  if (!nick_input)
-    goto err;
-  nick_input->max_len = SIZEOF_NICK - 1;
-  nick_input->base.rect.x = input_nick_pos.x + nick_label_w + g_layout_cfg.connect_input_w_pad;
-  nick_input->base.rect.y = input_nick_pos.y;
-  ui_register(&reg, &nick_input->base);
-
   InputWidget_t *focused_inputs[3] = {host_input, port_input, nick_input};
   int focused_slot = 0;
 
@@ -374,10 +413,20 @@ int menu_display_connect(PlayerConfig_t *player_config, char *host_str, uint16_t
 
   layout_links(links, LINK_DEFS_COUNT);
 
+  /* Black title on a translucent orange pill (drawn in the render loop) so it
+     reads on the felt. */
   TextWidget_t *tw_title =
-      text_widget_create(DEALERSCHOICE_FORMAL_NAME, font->fonts[FONT_TITLE], DC_TEXT_ON_LIGHT);
+      text_widget_create(DEALERSCHOICE_FORMAL_NAME, font->fonts[FONT_TITLE], get_color(COLOR_BLACK));
   if (tw_title)
     ui_widget_place(&tw_title->base, g_layout.menu.title_x, g_layout.menu.title_y);
+
+  /* App logo to the left of the title, vertically centered on it. */
+  const int connect_logo_sz = 96;
+  /* Gap clears the title's orange pill (padx 22) plus breathing room. */
+  SDL_Rect connect_logo_dst = {g_layout.menu.title_x - connect_logo_sz - 46,
+                               g_layout.menu.title_y, connect_logo_sz, connect_logo_sz};
+  if (tw_title)
+    connect_logo_dst.y = tw_title->base.rect.y + (tw_title->base.rect.h - connect_logo_sz) / 2;
 
   char version[64] = {0};
   snprintf(version, sizeof(version), "Version " DEALERSCHOICE_VERSION);
@@ -390,8 +439,7 @@ int menu_display_connect(PlayerConfig_t *player_config, char *host_str, uint16_t
 
   /* Heading above the discovered-server rows; only drawn when at least one
    * server is found. */
-  int lan_heading_y =
-      input_nick_pos.y + TTF_FontHeight(font->fonts[FONT_DEFAULT]) + g_layout_cfg.input_field_v_gap;
+  int lan_heading_y = input_panel.y + input_panel.h + g_layout_cfg.input_field_v_gap;
   TextWidget_t *tw_lan_heading =
       text_widget_create(_("Servers on LAN"), font->fonts[FONT_DEFAULT_BOLD], DC_TEXT_ON_DARK);
   if (tw_lan_heading)
@@ -578,12 +626,11 @@ int menu_display_connect(PlayerConfig_t *player_config, char *host_str, uint16_t
           break;
 
         case SDLK_RETURN:
+          /* Plain Enter does NOT connect: it would fire accidentally while
+             editing a field (e.g. after typing a nick). Use the Connect button.
+             Alt+Enter still toggles fullscreen. */
           if (e.key.keysym.mod & KMOD_ALT)
             toggle_fullscreen(sdl_context);
-          else {
-            run_client = true;
-            running = false;
-          }
           break;
 
         case SDLK_F11:
@@ -795,6 +842,8 @@ int menu_display_connect(PlayerConfig_t *player_config, char *host_str, uint16_t
         (uint16_t)strtoul(input_widget_get_text(port_input), NULL, 10) != player_config->port;
 
     clear_screen(sdl_context->renderer);
+    /* Dark table panel behind the nick/host/port rows. */
+    draw_round_rect(sdl_context->renderer, input_panel, 18, (SDL_Color){0, 0, 0, 150});
     ui_widget_render(&button_connect->base);
     ui_widget_render(&button_settings->base);
     ui_render_all(&reg);
@@ -824,7 +873,18 @@ int menu_display_connect(PlayerConfig_t *player_config, char *host_str, uint16_t
       SDL_RenderFillRect(sdl_context->renderer, &sep);
     }
 
-    ui_widget_render(&tw_nick->base);
+    draw_logo(sdl_context->renderer, connect_logo_dst);
+    if (tw_nick)
+      ui_widget_render(&tw_nick->base);
+    if (tw_host)
+      ui_widget_render(&tw_host->base);
+    if (tw_port)
+      ui_widget_render(&tw_port->base);
+    {
+      SDL_Color title_pill = get_color(COLOR_ORANGE);
+      title_pill.a = 64;
+      draw_pill_behind(sdl_context->renderer, tw_title->base.rect, 22, 8, title_pill);
+    }
     ui_widget_render(&tw_title->base);
     ui_widget_render(&tw_version->base);
 
@@ -868,6 +928,10 @@ int menu_display_connect(PlayerConfig_t *player_config, char *host_str, uint16_t
     ui_widget_destroy(&tw_version->base);
   if (tw_nick)
     ui_widget_destroy(&tw_nick->base);
+  if (tw_host)
+    ui_widget_destroy(&tw_host->base);
+  if (tw_port)
+    ui_widget_destroy(&tw_port->base);
   if (tw_lan_heading)
     ui_widget_destroy(&tw_lan_heading->base);
   if (tw_reg_heading)
@@ -1009,29 +1073,14 @@ static const char *hotkey_default_for_key(const char *config_key) {
  * and bet-amount digit keys are intentionally not editable. */
 static void menu_display_hotkeys(PlayerConfig_t *player_config, SdlContext_t *sdl_context,
                                  Font_t *font, const Path_t *path) {
-  const int label_x = g_layout.menu.margin_x;
-  const int box_x = label_x + 300;
-  const int box_w = 240;
-  const int row_h = 70;
-  int box_h;
-  TTF_SizeUTF8(font->fonts[FONT_DEFAULT], "Ag", NULL, &box_h);
-  box_h += g_layout_cfg.checkbox_pad;
-  const int first_row_y = g_layout.menu.title_y + 130;
-
-  /* Collect the hotkey entries (indices into player_config_entries). */
-  size_t idx[MAX_PLAYER_CONFIG_ENTRIES];
-  size_t n = 0;
-  for (size_t i = 0; i < player_config_entry_count; i++)
-    if (is_hotkey_entry(i))
-      idx[n++] = i;
-
   UIRegistry_t reg = {0};
 
+  /* Back arrow (top-left). */
   char *back_img_path = canfigger_path_join(path->data, "images/arrow_back.png");
-  ImageWidget_t *back_img = back_img_path
-                                ? image_widget_create(back_img_path, g_layout_cfg.back_btn_size,
-                                                      g_layout_cfg.back_btn_size)
-                                : NULL;
+  ImageWidget_t *back_img = back_img_path ? image_widget_create(back_img_path,
+                                                                g_layout_cfg.back_btn_size,
+                                                                g_layout_cfg.back_btn_size)
+                                          : NULL;
   free(back_img_path);
   if (back_img) {
     back_img->base.rect.x = g_layout.menu.back_img_x;
@@ -1039,26 +1088,26 @@ static void menu_display_hotkeys(PlayerConfig_t *player_config, SdlContext_t *sd
     ui_register(&reg, &back_img->base);
   }
 
-  TextWidget_t *tw_title =
-      text_widget_create(_("Hotkeys"), font->fonts[FONT_TITLE], DC_TEXT_ON_LIGHT);
-  if (tw_title)
-    ui_widget_place(&tw_title->base, g_layout.menu.title_x, g_layout.menu.title_y);
+  /* One row per hotkey action: a label plus a clickable key-box (press-to-bind).
+     Same dark table + pagination shell as the settings screen. */
+  typedef struct {
+    size_t cfg_idx;
+    TextWidget_t *label;
+    TextWidget_t *value;
+    char keyname[SIZEOF_HOTKEY_NAME];
+  } HotkeyRow_t;
 
-  TextWidget_t *tw_hint = text_widget_create(_("Click an action, then press a key"),
-                                             font->fonts[FONT_DEFAULT], DC_TEXT_ON_LIGHT);
-  if (tw_hint)
-    ui_widget_place(&tw_hint->base, label_x, first_row_y - 50);
+  HotkeyRow_t rows[MAX_PLAYER_CONFIG_ENTRIES];
+  size_t n_rows = 0;
 
-  /* Working copies of each key name, edited until Save. */
-  char keyname[MAX_PLAYER_CONFIG_ENTRIES][SIZEOF_HOTKEY_NAME];
-  TextWidget_t *tw_label[MAX_PLAYER_CONFIG_ENTRIES] = {0};
-  TextWidget_t *tw_value[MAX_PLAYER_CONFIG_ENTRIES] = {0};
-  SDL_Rect box[MAX_PLAYER_CONFIG_ENTRIES];
-
-  for (size_t r = 0; r < n; r++) {
-    const ConfigEntry *e = &player_config_entries[idx[r]];
+  for (size_t i = 0; i < player_config_entry_count; i++) {
+    if (!is_hotkey_entry(i))
+      continue;
+    const ConfigEntry *e = &player_config_entries[i];
+    HotkeyRow_t *row = &rows[n_rows];
+    row->cfg_idx = i;
     const char *field = (const char *)((const uint8_t *)player_config + e->offset);
-    snprintf(keyname[r], sizeof(keyname[r]), "%s", field);
+    snprintf(row->keyname, sizeof(row->keyname), "%s", field);
 
     char label[32];
     const char *suffix = strncmp(e->key, "hotkey_", 7) == 0 ? e->key + 7 : e->key;
@@ -1066,41 +1115,98 @@ static void menu_display_hotkeys(PlayerConfig_t *player_config, SdlContext_t *sd
     if (label[0])
       label[0] = (char)toupper((unsigned char)label[0]);
 
-    int ry = first_row_y + (int)r * row_h;
-    box[r] = (SDL_Rect){box_x, ry, box_w, box_h};
+    row->label = text_widget_create(label, font->fonts[FONT_DEFAULT], DC_TEXT_ON_DARK);
+    if (row->label)
+      ui_register(&reg, &row->label->base);
+    row->value = text_widget_create(row->keyname, font->fonts[FONT_DEFAULT], DC_TEXT_ON_DARK);
+    if (row->value)
+      ui_register(&reg, &row->value->base);
+    n_rows++;
+  }
 
-    tw_label[r] = text_widget_create(label, font->fonts[FONT_DEFAULT], DC_TEXT_ON_LIGHT);
-    if (tw_label[r])
-      ui_widget_place(&tw_label[r]->base, label_x, ry + 4);
-    tw_value[r] = text_widget_create(keyname[r], font->fonts[FONT_DEFAULT], DC_TEXT_ON_DARK);
-    if (tw_value[r])
-      ui_widget_place(&tw_value[r]->base, box_x + 10, ry + 4);
+  /* Pagination (page size exceeds the fixed action count, so the pager stays
+     hidden today; kept consistent with the settings screen for when it grows). */
+  const int rows_per_page = 8;
+  const int n_pages =
+      n_rows ? (int)((n_rows + (size_t)rows_per_page - 1) / (size_t)rows_per_page) : 1;
+  int page = 0;
+
+  const int rows_shown = (n_rows < (size_t)rows_per_page) ? (int)n_rows : rows_per_page;
+  const int panel_w = 1000;
+  const int panel_x = g_viewport.x + (g_viewport.w - panel_w) / 2;
+  const int panel_top = g_viewport.y + 200;
+  const int row_h = 64;
+  const int panel_h = (rows_shown > 0 ? rows_shown : 1) * row_h;
+  const int label_x = panel_x + 40;
+  const int box_w = 220;
+  int box_h;
+  TTF_SizeUTF8(font->fonts[FONT_DEFAULT], "Ag", NULL, &box_h);
+  box_h += g_layout_cfg.checkbox_pad;
+  const int box_x = panel_x + panel_w - box_w - 60;
+  const int pager_y = panel_top + panel_h + 24;
+  const int buttons_y = pager_y + 64;
+
+  /* Pager controls. */
+  ButtonWidget_t *btn_prev =
+      button_widget_create_styled(_("Prev"), &ROLE_PRIMARY, font->fonts, (SDL_Keycode)0);
+  ButtonWidget_t *btn_next =
+      button_widget_create_styled(_("Next"), &ROLE_PRIMARY, font->fonts, (SDL_Keycode)0);
+  if (btn_prev) {
+    btn_prev->base.rect.x = panel_x;
+    btn_prev->base.rect.y = pager_y;
+    ui_register(&reg, &btn_prev->base);
+  }
+  if (btn_next) {
+    btn_next->base.rect.x = panel_x + panel_w - btn_next->base.rect.w;
+    btn_next->base.rect.y = pager_y;
+    ui_register(&reg, &btn_next->base);
   }
 
   ButtonWidget_t *btn_save =
       button_widget_create_styled(_("Save"), &ROLE_PRIMARY, font->fonts, (SDL_Keycode)0);
+  ButtonWidget_t *btn_defaults =
+      button_widget_create_styled(_("Load defaults"), &ROLE_PRIMARY, font->fonts, (SDL_Keycode)0);
   if (btn_save) {
-    btn_save->base.rect.x = label_x;
-    btn_save->base.rect.y = first_row_y + (int)n * row_h + 20;
+    btn_save->base.rect.x = panel_x;
+    btn_save->base.rect.y = buttons_y;
     btn_save->interactive = false;
     ui_register(&reg, &btn_save->base);
   }
-
-  ButtonWidget_t *btn_defaults =
-      button_widget_create_styled(_("Load defaults"), &ROLE_PRIMARY, font->fonts, (SDL_Keycode)0);
   if (btn_defaults) {
-    /* Placed to the right of Save, on the same row. */
     btn_defaults->base.rect.x =
-        label_x + (btn_save ? btn_save->base.rect.w + 20 : 0);
-    btn_defaults->base.rect.y = first_row_y + (int)n * row_h + 20;
+        (btn_save ? btn_save->base.rect.x + btn_save->base.rect.w + g_layout_cfg.settings_save_btn_gap
+                  : panel_x);
+    btn_defaults->base.rect.y = buttons_y;
     ui_register(&reg, &btn_defaults->base);
   }
 
-  int capturing = -1; /* row index being bound, or -1 */
+  TextWidget_t *tw_page = text_widget_create("", font->fonts[FONT_DEFAULT], DC_TEXT_ON_DARK);
+  if (tw_page)
+    ui_register(&reg, &tw_page->base);
+
+  /* Hint above the table (registered so it auto-renders/destroys). */
+  TextWidget_t *tw_hint = text_widget_create(_("Click an action, then press a key"),
+                                             font->fonts[FONT_DEFAULT], DC_TEXT_ON_DARK);
+  if (tw_hint) {
+    ui_widget_place(&tw_hint->base, panel_x, panel_top - 44);
+    ui_register(&reg, &tw_hint->base);
+  }
+
+  /* Title: black on a translucent orange pill, matching the other menus. */
+  TextWidget_t *tw_title =
+      text_widget_create(_("Hotkeys"), font->fonts[FONT_TITLE], get_color(COLOR_BLACK));
+  if (tw_title)
+    ui_widget_place(&tw_title->base, g_layout.menu.title_x, g_layout.menu.title_y);
+
+  int capturing = -1; /* index into rows[] being bound, or -1 */
   bool running = true;
   Uint32 anim_start = SDL_GetTicks();
 
   while (running) {
+    int page_start = page * rows_per_page;
+    int page_end =
+        (page_start + rows_per_page < (int)n_rows) ? page_start + rows_per_page : (int)n_rows;
+
     SDL_Event e;
     while (SDL_PollEvent(&e)) {
       SDL_Point mouse_pos = {e.button.x, e.button.y};
@@ -1108,6 +1214,10 @@ static void menu_display_hotkeys(PlayerConfig_t *player_config, SdlContext_t *sd
         btn_save->base.hovered = SDL_PointInRect(&mouse_pos, &btn_save->base.rect);
       if (btn_defaults)
         btn_defaults->base.hovered = SDL_PointInRect(&mouse_pos, &btn_defaults->base.rect);
+      if (btn_prev)
+        btn_prev->base.hovered = SDL_PointInRect(&mouse_pos, &btn_prev->base.rect);
+      if (btn_next)
+        btn_next->base.hovered = SDL_PointInRect(&mouse_pos, &btn_next->base.rect);
       if (back_img)
         back_img->base.hovered = SDL_PointInRect(&mouse_pos, &back_img->base.rect);
 
@@ -1117,11 +1227,10 @@ static void menu_display_hotkeys(PlayerConfig_t *player_config, SdlContext_t *sd
       } else if (capturing >= 0 && e.type == SDL_KEYDOWN) {
         SDL_Keycode sym = e.key.keysym.sym;
         if (sym == SDLK_ESCAPE) {
-          if (tw_value[capturing])
-            text_widget_set_text(tw_value[capturing], keyname[capturing]);
+          if (rows[capturing].value)
+            text_widget_set_text(rows[capturing].value, rows[capturing].keyname);
           capturing = -1;
         } else if (is_reserved_hotkey(sym)) {
-          /* Stay in capture mode so the user can pick a different key. */
           if (tw_hint)
             text_widget_set_text(tw_hint, _("That key is reserved - pick another"));
         } else {
@@ -1133,22 +1242,18 @@ static void menu_display_hotkeys(PlayerConfig_t *player_config, SdlContext_t *sd
           if (kn && *kn) {
             snprintf(cand, sizeof(cand), "%s", kn);
             /* SDL names single keys uppercase ("C"); store lowercase to match
-             * the lowercase defaults.  Multi-char names (Space) untouched. */
+             * the lowercase defaults. Multi-char names (Space) untouched. */
             if (cand[1] == '\0')
               cand[0] = (char)tolower((unsigned char)cand[0]);
           }
-          /* Reject a key already bound to a *conflicting* action: a duplicate
-           * binding makes one keypress fire two actions in-game (e.g. fold +
-           * the hand-rank overlay both on 'h').  The check is group-aware —
-           * actions that the betting modes never offer together (check/call,
-           * raise/complete) may share a key, so only same-group collisions are
-           * rejected (hotkeys_conflict). */
-          const char *cap_action = player_config_entries[idx[capturing]].key + 7; /* skip "hotkey_" */
+          /* Reject a key already bound to a *conflicting* action (group-aware:
+           * check/call and raise/complete may share a key — see hotkeys_conflict). */
+          const char *cap_action = player_config_entries[rows[capturing].cfg_idx].key + 7;
           int clash = -1;
-          for (size_t r = 0; cand[0] && r < n; r++) {
-            if ((int)r == capturing || strcmp(keyname[r], cand) != 0)
+          for (size_t r = 0; cand[0] && r < n_rows; r++) {
+            if ((int)r == capturing || strcmp(rows[r].keyname, cand) != 0)
               continue;
-            const char *r_action = player_config_entries[idx[r]].key + 7;
+            const char *r_action = player_config_entries[rows[r].cfg_idx].key + 7;
             if (hotkeys_conflict(cap_action, r_action)) {
               clash = (int)r;
               break;
@@ -1157,12 +1262,11 @@ static void menu_display_hotkeys(PlayerConfig_t *player_config, SdlContext_t *sd
           if (clash >= 0) {
             if (tw_hint)
               text_widget_set_text(tw_hint, _("That key is already used - pick another"));
-            /* stay in capture mode so the user can pick a different key */
           } else {
             if (cand[0])
-              snprintf(keyname[capturing], sizeof(keyname[capturing]), "%s", cand);
-            if (tw_value[capturing])
-              text_widget_set_text(tw_value[capturing], keyname[capturing]);
+              snprintf(rows[capturing].keyname, sizeof(rows[capturing].keyname), "%s", cand);
+            if (rows[capturing].value)
+              text_widget_set_text(rows[capturing].value, rows[capturing].keyname);
             capturing = -1;
           }
         }
@@ -1173,25 +1277,21 @@ static void menu_display_hotkeys(PlayerConfig_t *player_config, SdlContext_t *sd
         if (btn_save && btn_save->interactive &&
             SDL_PointInRect(&mouse_pos, &btn_save->base.rect)) {
           btn_save->click.start_time = SDL_GetTicks();
-          for (size_t r = 0; r < n; r++)
-            player_config_set_field(player_config, idx[r], keyname[r]);
+          for (size_t r = 0; r < n_rows; r++)
+            player_config_set_field(player_config, rows[r].cfg_idx, rows[r].keyname);
           save_player_config(player_config);
           init_hotkeys(player_config);
           running = false;
-        } else if (btn_defaults &&
-                   SDL_PointInRect(&mouse_pos, &btn_defaults->base.rect)) {
+        } else if (btn_defaults && SDL_PointInRect(&mouse_pos, &btn_defaults->base.rect)) {
           btn_defaults->click.start_time = SDL_GetTicks();
-          /* Reset every action to its built-in default (from g_hotkey_defs[]),
-           * then persist immediately so the reset survives a restart even if
-           * the user backs out without clicking Save. */
           capturing = -1;
-          for (size_t r = 0; r < n; r++) {
-            const char *def = hotkey_default_for_key(player_config_entries[idx[r]].key);
+          for (size_t r = 0; r < n_rows; r++) {
+            const char *def = hotkey_default_for_key(player_config_entries[rows[r].cfg_idx].key);
             if (def)
-              snprintf(keyname[r], sizeof(keyname[r]), "%s", def);
-            if (tw_value[r])
-              text_widget_set_text(tw_value[r], keyname[r]);
-            player_config_set_field(player_config, idx[r], keyname[r]);
+              snprintf(rows[r].keyname, sizeof(rows[r].keyname), "%s", def);
+            if (rows[r].value)
+              text_widget_set_text(rows[r].value, rows[r].keyname);
+            player_config_set_field(player_config, rows[r].cfg_idx, rows[r].keyname);
           }
           save_player_config(player_config);
           init_hotkeys(player_config);
@@ -1199,12 +1299,23 @@ static void menu_display_hotkeys(PlayerConfig_t *player_config, SdlContext_t *sd
             text_widget_set_text(tw_hint, _("Defaults restored"));
         } else if (back_img && SDL_PointInRect(&mouse_pos, &back_img->base.rect)) {
           running = false;
+        } else if (btn_prev && SDL_PointInRect(&mouse_pos, &btn_prev->base.rect) && page > 0) {
+          btn_prev->click.start_time = SDL_GetTicks();
+          page--;
+          capturing = -1;
+        } else if (btn_next && SDL_PointInRect(&mouse_pos, &btn_next->base.rect) &&
+                   page < n_pages - 1) {
+          btn_next->click.start_time = SDL_GetTicks();
+          page++;
+          capturing = -1;
         } else {
-          for (size_t r = 0; r < n; r++) {
-            if (SDL_PointInRect(&mouse_pos, &box[r])) {
-              capturing = (int)r;
-              if (tw_value[r])
-                text_widget_set_text(tw_value[r], _("press a key..."));
+          for (int r = page_start; r < page_end; r++) {
+            SDL_Rect b = {box_x, panel_top + (r - page_start) * row_h + (row_h - box_h) / 2, box_w,
+                          box_h};
+            if (SDL_PointInRect(&mouse_pos, &b)) {
+              capturing = r;
+              if (rows[r].value)
+                text_widget_set_text(rows[r].value, _("press a key..."));
               if (tw_hint)
                 text_widget_set_text(tw_hint, _("Click an action, then press a key"));
               break;
@@ -1214,41 +1325,54 @@ static void menu_display_hotkeys(PlayerConfig_t *player_config, SdlContext_t *sd
       }
     }
 
+    page_start = page * rows_per_page;
+    page_end =
+        (page_start + rows_per_page < (int)n_rows) ? page_start + rows_per_page : (int)n_rows;
+
     if (btn_save) {
       bool dirty = false;
-      for (size_t r = 0; r < n && !dirty; r++) {
+      for (size_t r = 0; r < n_rows && !dirty; r++) {
         const char *field =
-            (const char *)((const uint8_t *)player_config + player_config_entries[idx[r]].offset);
-        if (strcmp(keyname[r], field) != 0)
+            (const char *)((const uint8_t *)player_config + player_config_entries[rows[r].cfg_idx].offset);
+        if (strcmp(rows[r].keyname, field) != 0)
           dirty = true;
       }
       btn_save->interactive = dirty;
     }
 
-    clear_screen(sdl_context->renderer);
-    if (tw_title)
-      ui_widget_render(&tw_title->base);
-    if (tw_hint)
-      ui_widget_render(&tw_hint->base);
+    /* Position + enable current-page rows; hide the rest. Value text is centered
+       in its key-box (drawn below). */
+    for (int r = 0; r < (int)n_rows; r++) {
+      bool on = (r >= page_start && r < page_end);
+      int ry = panel_top + (r - page_start) * row_h;
+      if (rows[r].label) {
+        rows[r].label->base.enabled = on;
+        if (on) {
+          rows[r].label->base.rect.x = label_x;
+          rows[r].label->base.rect.y = ry + (row_h - rows[r].label->base.rect.h) / 2;
+        }
+      }
+      if (rows[r].value) {
+        rows[r].value->base.enabled = on;
+        if (on) {
+          rows[r].value->base.rect.x = box_x + (box_w - rows[r].value->base.rect.w) / 2;
+          rows[r].value->base.rect.y = ry + (row_h - rows[r].value->base.rect.h) / 2;
+        }
+      }
+    }
 
-    SDL_Point mp;
-    SDL_GetMouseState(&mp.x, &mp.y);
-    for (size_t r = 0; r < n; r++) {
-      bool active = (capturing == (int)r);
-      bool hover = SDL_PointInRect(&mp, &box[r]);
-      SDL_SetRenderDrawColor(sdl_context->renderer, 25, 25, 25, 255);
-      SDL_RenderFillRect(sdl_context->renderer, &box[r]);
-      if (active)
-        SDL_SetRenderDrawColor(sdl_context->renderer, 240, 204, 48, 255);
-      else if (hover)
-        SDL_SetRenderDrawColor(sdl_context->renderer, 200, 200, 200, 255);
-      else
-        SDL_SetRenderDrawColor(sdl_context->renderer, 110, 110, 110, 255);
-      SDL_RenderDrawRect(sdl_context->renderer, &box[r]);
-      if (tw_label[r])
-        ui_widget_render(&tw_label[r]->base);
-      if (tw_value[r])
-        ui_widget_render(&tw_value[r]->base);
+    if (btn_prev)
+      btn_prev->base.enabled = (n_pages > 1);
+    if (btn_next)
+      btn_next->base.enabled = (n_pages > 1);
+    if (tw_page) {
+      tw_page->base.enabled = (n_pages > 1);
+      char pbuf[32];
+      snprintf(pbuf, sizeof(pbuf), "Page %d / %d", page + 1, n_pages);
+      text_widget_set_text(tw_page, pbuf);
+      tw_page->base.rect.x = panel_x + (panel_w - tw_page->base.rect.w) / 2;
+      tw_page->base.rect.y =
+          pager_y + (btn_prev ? (btn_prev->base.rect.h - tw_page->base.rect.h) / 2 : 0);
     }
 
     if (back_img) {
@@ -1260,41 +1384,60 @@ static void menu_display_hotkeys(PlayerConfig_t *player_config, SdlContext_t *sd
       back_img->base.rect.y = start_y + (int)(t * (end_y - start_y));
     }
 
+    clear_screen(sdl_context->renderer);
+
+    /* Dark table panel. */
+    draw_round_rect(sdl_context->renderer,
+                    (SDL_Rect){panel_x - 16, panel_top - 16, panel_w + 32, panel_h + 32}, 24,
+                    (SDL_Color){0, 0, 0, 150});
+
+    if (tw_title) {
+      SDL_Color title_pill = get_color(COLOR_ORANGE);
+      title_pill.a = 64;
+      draw_pill_behind(sdl_context->renderer, tw_title->base.rect, 22, 8, title_pill);
+      ui_widget_render(&tw_title->base);
+    }
+
+    /* Key-boxes for the on-page rows (filled dark, bordered; gold while capturing). */
+    SDL_Point mp;
+    SDL_GetMouseState(&mp.x, &mp.y);
+    for (int r = page_start; r < page_end; r++) {
+      SDL_Rect b = {box_x, panel_top + (r - page_start) * row_h + (row_h - box_h) / 2, box_w, box_h};
+      bool active = (capturing == r);
+      bool hover = SDL_PointInRect(&mp, &b);
+      SDL_SetRenderDrawColor(sdl_context->renderer, 25, 25, 25, 255);
+      SDL_RenderFillRect(sdl_context->renderer, &b);
+      if (active)
+        SDL_SetRenderDrawColor(sdl_context->renderer, 240, 204, 48, 255);
+      else if (hover)
+        SDL_SetRenderDrawColor(sdl_context->renderer, 200, 200, 200, 255);
+      else
+        SDL_SetRenderDrawColor(sdl_context->renderer, 110, 110, 110, 255);
+      SDL_RenderDrawRect(sdl_context->renderer, &b);
+    }
+
     ui_render_all(&reg);
     SDL_RenderPresent(sdl_context->renderer);
     SDL_Delay(16);
   }
 
-  for (size_t r = 0; r < n; r++) {
-    if (tw_label[r])
-      ui_widget_destroy(&tw_label[r]->base);
-    if (tw_value[r])
-      ui_widget_destroy(&tw_value[r]->base);
-  }
   if (tw_title)
     ui_widget_destroy(&tw_title->base);
-  if (tw_hint)
-    ui_widget_destroy(&tw_hint->base);
   ui_destroy_all(&reg);
 }
 
 void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *sdl_context,
                                   Font_t *font, const Path_t *path) {
-  /* Two-column layout for nick, language, volume, turn_notify (host/port on startup screen) */
-  const int x_left = g_layout.menu.margin_x;
-  const int x_right = g_layout.menu.settings_x_right;
-  const int *row_y = g_layout.menu.settings_row_y;
-  const int input_y_offset = g_layout_cfg.settings_input_y_offset;
   const int input_w = g_layout_cfg.settings_input_w;
 
   UIRegistry_t reg = {0};
 
-  /* Back arrow image (top-left) */
+  /* Back arrow (top-left). */
   char *back_img_path = canfigger_path_join(path->data, "images/arrow_back.png");
-  ImageWidget_t *back_img = back_img_path
-                                ? image_widget_create(back_img_path, g_layout_cfg.back_btn_size,
-                                                      g_layout_cfg.back_btn_size)
-                                : NULL;
+  ImageWidget_t *back_img = back_img_path ? image_widget_create(back_img_path,
+                                                                g_layout_cfg.back_btn_size,
+                                                                g_layout_cfg.back_btn_size)
+                                          : NULL;
   free(back_img_path);
   if (back_img) {
     back_img->base.rect.x = g_layout.menu.back_img_x;
@@ -1302,157 +1445,157 @@ void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *sdl_cont
     ui_register(&reg, &back_img->base);
   }
 
-  /* Build input widgets; host(1) and port(2) are on the startup screen, not here.
-   * BOOL entries get a CheckboxWidget_t instead of an InputWidget_t. */
-  const size_t bool_idx = 5;
-  const size_t password_idx = 7;
-  /* registry_browser renders as a standalone checkbox in the third column (the
-   * two-column grid is already full), so it is excluded from the grid loops. */
-  size_t reg_browse_idx = player_config_entry_count;
-  for (size_t i = 0; i < player_config_entry_count; i++)
-    if (strcmp(player_config_entries[i].key, "registry_browser") == 0) {
-      reg_browse_idx = i;
-      break;
-    }
+  /* One row per editable config entry. host/port (startup screen) and the
+     hotkey_* entries (their own sub-screen) are skipped. Bool entries get a
+     checkbox; everything else a text input (password masked). Driven entirely by
+     player_config_entries[] so the screen scales as entries are added (#76). */
+  typedef struct {
+    size_t cfg_idx;
+    TextWidget_t *label;
+    InputWidget_t *input;       /* NULL for bool/action rows */
+    CheckboxWidget_t *checkbox; /* NULL for non-bool rows */
+    ButtonWidget_t *button;     /* action rows (e.g. Hotkeys); not a config value */
+    char init_str[MAX_INPUT_LENGTH];
+    bool init_checked;
+  } SettingsRow_t;
 
-  /* Checkbox for the bool entry */
-  const bool init_checked =
-      *(const bool *)((const uint8_t *)player_config + player_config_entries[bool_idx].offset);
+  SettingsRow_t rows[MAX_PLAYER_CONFIG_ENTRIES];
+  size_t n_rows = 0;
+
   int checkbox_size;
   TTF_SizeUTF8(font->fonts[FONT_DEFAULT], "Ag", NULL, &checkbox_size);
   checkbox_size += g_layout_cfg.checkbox_pad;
-  CheckboxWidget_t *turn_cb = checkbox_widget_create(init_checked, checkbox_size);
-  if (turn_cb)
-    ui_register(&reg, &turn_cb->base);
 
-  /* Standalone registry_browser checkbox + label in the third column, below the
-   * Hotkeys button (row 1). Kept out of the auto-grid above. */
-  const bool reg_init_checked =
-      (reg_browse_idx < player_config_entry_count) &&
-      *(const bool *)((const uint8_t *)player_config + player_config_entries[reg_browse_idx].offset);
-  CheckboxWidget_t *reg_cb =
-      (reg_browse_idx < player_config_entry_count)
-          ? checkbox_widget_create(reg_init_checked, checkbox_size)
-          : NULL;
-  TextWidget_t *tw_reg_label = NULL;
-  if (reg_cb) {
-    reg_cb->base.rect.x = g_layout.menu.settings_x_third;
-    reg_cb->base.rect.y = row_y[1] + input_y_offset;
-    ui_register(&reg, &reg_cb->base);
-    tw_reg_label =
-        text_widget_create("registry_browser", font->fonts[FONT_DEFAULT], DC_TEXT_ON_LIGHT);
-    if (tw_reg_label)
-      ui_widget_place(&tw_reg_label->base, g_layout.menu.settings_x_third, row_y[1]);
-  }
-
-  /* Text inputs for displayed non-bool entries (skip host=1, port=2) */
-  char init_str[MAX_PLAYER_CONFIG_ENTRIES][MAX_INPUT_LENGTH];
-  InputWidget_t *inputs[MAX_PLAYER_CONFIG_ENTRIES];
-  size_t n_text_inputs = 0;
-  size_t display_pos = 0;
   for (size_t i = 0; i < player_config_entry_count; i++) {
-    if (is_hotkey_entry(i)) {
-      inputs[i] = NULL;
+    /* nick(0) is edited on the connect screen; host(1)/port(2) on startup. */
+    if (is_hotkey_entry(i) || i == 0 || i == 1 || i == 2)
       continue;
-    }
-    if (i == 1 || i == 2) {
-      inputs[i] = NULL;
-      continue;
-    }
-    if (i == reg_browse_idx) {
-      inputs[i] = NULL; /* standalone checkbox in the third column, not the grid */
-      continue;
-    }
-    if (i == bool_idx) {
-      if (turn_cb) {
-        int col = (int)(display_pos % 2);
-        int row = (int)(display_pos / 2);
-        turn_cb->base.rect.x = (col == 0) ? x_left : x_right;
-        turn_cb->base.rect.y = row_y[row] + input_y_offset;
-      }
-      inputs[i] = NULL;
-      display_pos++;
-      continue;
-    }
+    SettingsRow_t *row = &rows[n_rows];
+    row->cfg_idx = i;
+    row->input = NULL;
+    row->checkbox = NULL;
+    row->button = NULL;
+    row->init_str[0] = '\0';
+    row->init_checked = false;
+
+    row->label = text_widget_create(player_config_entries[i].key, font->fonts[FONT_DEFAULT],
+                                    DC_TEXT_ON_DARK);
+    if (row->label)
+      ui_register(&reg, &row->label->base);
+
     const void *field = (const uint8_t *)player_config + player_config_entries[i].offset;
-    switch (player_config_entries[i].type) {
-    case CFG_TYPE_STRING:
-      snprintf(init_str[i], sizeof(init_str[i]), "%s", (const char *)field);
-      break;
-    case CFG_TYPE_INT:
-      snprintf(init_str[i], sizeof(init_str[i]), "%d", *(const int *)field);
-      break;
-    case CFG_TYPE_UINT8:
-      snprintf(init_str[i], sizeof(init_str[i]), "%u", (unsigned)*(const uint8_t *)field);
-      break;
-    case CFG_TYPE_UINT16:
-      snprintf(init_str[i], sizeof(init_str[i]), "%u", (unsigned)*(const uint16_t *)field);
-      break;
-    default:
-      snprintf(init_str[i], sizeof(init_str[i]), "%s", player_config_entries[i].default_value);
-      break;
+    if (player_config_entries[i].type == CFG_TYPE_BOOL) {
+      row->init_checked = *(const bool *)field;
+      row->checkbox = checkbox_widget_create(row->init_checked, checkbox_size);
+      if (row->checkbox)
+        ui_register(&reg, &row->checkbox->base);
+    } else {
+      switch (player_config_entries[i].type) {
+      case CFG_TYPE_INT:
+        snprintf(row->init_str, sizeof(row->init_str), "%d", *(const int *)field);
+        break;
+      case CFG_TYPE_UINT8:
+        snprintf(row->init_str, sizeof(row->init_str), "%u", (unsigned)*(const uint8_t *)field);
+        break;
+      case CFG_TYPE_UINT16:
+        snprintf(row->init_str, sizeof(row->init_str), "%u", (unsigned)*(const uint16_t *)field);
+        break;
+      case CFG_TYPE_UINT32:
+        snprintf(row->init_str, sizeof(row->init_str), "%u", (unsigned)*(const uint32_t *)field);
+        break;
+      default: /* CFG_TYPE_STRING */
+        snprintf(row->init_str, sizeof(row->init_str), "%s", (const char *)field);
+        break;
+      }
+      row->input = input_widget_create(row->init_str, font->fonts[FONT_DEFAULT], input_w,
+                                       player_config_entries[i].type);
+      if (!row->input) {
+        ui_destroy_all(&reg);
+        return;
+      }
+      if (player_config_entries[i].type == CFG_TYPE_STRING && player_config_entries[i].size > 1)
+        row->input->max_len = player_config_entries[i].size - 1;
+      if (player_config_entries[i].type == CFG_TYPE_INT)
+        row->input->max_val = 10;
+      if (strcmp(player_config_entries[i].key, "password") == 0)
+        row->input->masked = true;
+      ui_register(&reg, &row->input->base);
     }
-    inputs[i] = input_widget_create(init_str[i], font->fonts[FONT_DEFAULT], input_w,
-                                    player_config_entries[i].type);
-    if (!inputs[i]) {
-      ui_destroy_all(&reg);
-      return;
-    }
-    if (player_config_entries[i].type == CFG_TYPE_STRING && player_config_entries[i].size > 1)
-      inputs[i]->max_len = player_config_entries[i].size - 1;
-    ui_register(&reg, &inputs[i]->base);
-    int col = (int)(display_pos % 2);
-    int row = (int)(display_pos / 2);
-    inputs[i]->base.rect.x = (col == 0) ? x_left : x_right;
-    inputs[i]->base.rect.y = row_y[row] + input_y_offset;
-    inputs[i]->focused = (n_text_inputs == 0);
-    if (player_config_entries[i].type == CFG_TYPE_INT)
-      inputs[i]->max_val = 10;
-    if (i == password_idx)
-      inputs[i]->masked = true;
-    n_text_inputs++;
-    display_pos++;
+    n_rows++;
   }
 
-  /* focused_slot indexes only the text input slots (skips host, port, bool_idx) */
-  size_t text_input_indices[MAX_PLAYER_CONFIG_ENTRIES];
-  size_t n_ti = 0;
-  for (size_t i = 0; i < player_config_entry_count; i++)
-    if (!is_hotkey_entry(i) && i != bool_idx && i != reg_browse_idx && i != 1 && i != 2)
-      text_input_indices[n_ti++] = i;
-  int focused_slot = 0; /* index into text_input_indices */
+  /* Action row: opens the Hotkeys sub-screen. Not a config value, so it's skipped
+     by the dirty/save/defaults logic (which only touches input/checkbox rows). */
+  {
+    SettingsRow_t *row = &rows[n_rows];
+    row->cfg_idx = (size_t)-1;
+    row->input = NULL;
+    row->checkbox = NULL;
+    row->init_str[0] = '\0';
+    row->init_checked = false;
+    row->label = text_widget_create("hotkeys", font->fonts[FONT_DEFAULT], DC_TEXT_ON_DARK);
+    if (row->label)
+      ui_register(&reg, &row->label->base);
+    row->button = button_widget_create_styled(_("Edit"), &ROLE_PRIMARY, font->fonts, (SDL_Keycode)0);
+    if (row->button)
+      ui_register(&reg, &row->button->base);
+    n_rows++;
+  }
+
+  /* Paginate the rows. The page size is deliberately larger than the current
+     entry count, so today everything fits on one page and the pager stays
+     hidden; the pagination code is here for when more settings are added (#76). */
+  const int rows_per_page = 8;
+  const int n_pages =
+      n_rows ? (int)((n_rows + (size_t)rows_per_page - 1) / (size_t)rows_per_page) : 1;
+  int page = 0;
+
+  /* Table geometry (a dark panel; white labels left, controls right). The panel
+     is sized to the rows on a full page (or fewer if that's all there is) so a
+     single short page has no empty space. */
+  const int rows_shown = (n_rows < (size_t)rows_per_page) ? (int)n_rows : rows_per_page;
+  const int panel_w = 1000;
+  const int panel_x = g_viewport.x + (g_viewport.w - panel_w) / 2;
+  const int panel_top = g_viewport.y + 180;
+  const int row_h = 64;
+  const int panel_h = (rows_shown > 0 ? rows_shown : 1) * row_h;
+  const int label_x = panel_x + 40;
+  const int control_x = panel_x + panel_w - input_w - 60;
+  const int pager_y = panel_top + panel_h + 24;
+  const int buttons_y = pager_y + 64;
+
+  /* Pagination controls. */
+  ButtonWidget_t *btn_prev =
+      button_widget_create_styled(_("Prev"), &ROLE_PRIMARY, font->fonts, (SDL_Keycode)0);
+  ButtonWidget_t *btn_next =
+      button_widget_create_styled(_("Next"), &ROLE_PRIMARY, font->fonts, (SDL_Keycode)0);
+  if (btn_prev) {
+    btn_prev->base.rect.x = panel_x;
+    btn_prev->base.rect.y = pager_y;
+    ui_register(&reg, &btn_prev->base);
+  }
+  if (btn_next) {
+    btn_next->base.rect.x = panel_x + panel_w - btn_next->base.rect.w;
+    btn_next->base.rect.y = pager_y;
+    ui_register(&reg, &btn_next->base);
+  }
 
   ButtonWidget_t *btn_save =
       button_widget_create_styled(_("Save"), &ROLE_PRIMARY, font->fonts, (SDL_Keycode)0);
-  if (!btn_save) {
-    ui_destroy_all(&reg);
-    return;
-  }
-  btn_save->base.rect.x = x_left;
-  btn_save->base.rect.y = g_layout.menu.settings_save_y;
-  btn_save->interactive = false;
-  ui_register(&reg, &btn_save->base);
-
   ButtonWidget_t *btn_defaults =
       button_widget_create_styled(_("Load Defaults"), &ROLE_PRIMARY, font->fonts, (SDL_Keycode)0);
-  if (!btn_defaults) {
+  if (!btn_save || !btn_defaults) {
     ui_destroy_all(&reg);
     return;
   }
+  btn_save->base.rect.x = panel_x;
+  btn_save->base.rect.y = buttons_y;
+  btn_save->interactive = false;
+  ui_register(&reg, &btn_save->base);
   btn_defaults->base.rect.x =
       btn_save->base.rect.x + btn_save->base.rect.w + g_layout_cfg.settings_save_btn_gap;
-  btn_defaults->base.rect.y = btn_save->base.rect.y;
+  btn_defaults->base.rect.y = buttons_y;
   ui_register(&reg, &btn_defaults->base);
-
-  ButtonWidget_t *btn_hotkeys =
-      button_widget_create_styled(_("Hotkeys"), &ROLE_PRIMARY, font->fonts, (SDL_Keycode)0);
-  if (!btn_hotkeys) {
-    ui_destroy_all(&reg);
-    return;
-  }
-  btn_hotkeys->base.rect.x = g_layout.menu.settings_x_third;
-  btn_hotkeys->base.rect.y = row_y[0];
-  ui_register(&reg, &btn_hotkeys->base);
 
   ButtonWidget_t *btn_quit_settings =
       button_widget_create_styled("X", &ROLE_DANGER, font->fonts, (SDL_Keycode)0);
@@ -1463,57 +1606,59 @@ void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *sdl_cont
     ui_register(&reg, &btn_quit_settings->base);
   }
 
-  Uint32 anim_start = SDL_GetTicks();
+  /* Page indicator (positioned/updated each frame); registered last so it draws
+     on top. */
+  TextWidget_t *tw_page = text_widget_create("", font->fonts[FONT_DEFAULT], DC_TEXT_ON_DARK);
+  if (tw_page)
+    ui_register(&reg, &tw_page->base);
 
+  /* Title: black text on a translucent orange pill (drawn in the loop), matching
+     the connect screen so it reads on the felt. */
   TextWidget_t *tw_settings_title =
-      text_widget_create(_("Settings"), font->fonts[FONT_TITLE], DC_TEXT_ON_LIGHT);
+      text_widget_create(_("Settings"), font->fonts[FONT_TITLE], get_color(COLOR_BLACK));
   if (tw_settings_title)
     ui_widget_place(&tw_settings_title->base, g_layout.menu.title_x, g_layout.menu.title_y);
 
-  TextWidget_t *tw_labels[MAX_PLAYER_CONFIG_ENTRIES];
-  for (size_t i = 0; i < player_config_entry_count; i++)
-    tw_labels[i] = NULL;
-  {
-    size_t rpos = 0;
-    for (size_t i = 0; i < player_config_entry_count; i++) {
-      if (is_hotkey_entry(i))
-        continue;
-      if (i == 1 || i == 2)
-        continue;
-      if (i == reg_browse_idx)
-        continue;
-      int col = (int)(rpos % 2);
-      int row = (int)(rpos / 2);
-      int lx = (col == 0) ? x_left : x_right;
-      tw_labels[i] = text_widget_create(player_config_entries[i].key, font->fonts[FONT_DEFAULT],
-                                        DC_TEXT_ON_LIGHT);
-      if (tw_labels[i])
-        ui_widget_place(&tw_labels[i]->base, lx, row_y[row]);
-      rpos++;
+  /* Focus the first text input on the current page. */
+  int focused_row = -1;
+  for (int r = page * rows_per_page; r < (int)n_rows && r < (page + 1) * rows_per_page; r++)
+    if (rows[r].input) {
+      focused_row = r;
+      rows[r].input->focused = true;
+      break;
     }
-  }
 
+  Uint32 anim_start = SDL_GetTicks();
   SDL_StartTextInput();
   bool running = true;
   bool saved = false;
   bool dirty = false;
 
   while (running) {
+    int page_start = page * rows_per_page;
+    int page_end =
+        (page_start + rows_per_page < (int)n_rows) ? page_start + rows_per_page : (int)n_rows;
+
     SDL_Event e;
     while (SDL_PollEvent(&e)) {
       SDL_Point mouse_pos = {e.button.x, e.button.y};
       btn_save->base.hovered = SDL_PointInRect(&mouse_pos, &btn_save->base.rect);
       btn_defaults->base.hovered = SDL_PointInRect(&mouse_pos, &btn_defaults->base.rect);
-      btn_hotkeys->base.hovered = SDL_PointInRect(&mouse_pos, &btn_hotkeys->base.rect);
+      if (btn_prev)
+        btn_prev->base.hovered = SDL_PointInRect(&mouse_pos, &btn_prev->base.rect);
+      if (btn_next)
+        btn_next->base.hovered = SDL_PointInRect(&mouse_pos, &btn_next->base.rect);
       if (back_img)
         back_img->base.hovered = SDL_PointInRect(&mouse_pos, &back_img->base.rect);
       if (btn_quit_settings)
         btn_quit_settings->base.hovered =
             SDL_PointInRect(&mouse_pos, &btn_quit_settings->base.rect);
-      if (turn_cb)
-        turn_cb->base.hovered = SDL_PointInRect(&mouse_pos, &turn_cb->base.rect);
-      if (reg_cb)
-        reg_cb->base.hovered = SDL_PointInRect(&mouse_pos, &reg_cb->base.rect);
+      for (int r = page_start; r < page_end; r++) {
+        if (rows[r].checkbox)
+          rows[r].checkbox->base.hovered = SDL_PointInRect(&mouse_pos, &rows[r].checkbox->base.rect);
+        if (rows[r].button)
+          rows[r].button->base.hovered = SDL_PointInRect(&mouse_pos, &rows[r].button->base.rect);
+      }
 
       if (e.type == SDL_QUIT) {
         SDL_PushEvent(&e);
@@ -1526,105 +1671,139 @@ void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *sdl_cont
           running = false;
         } else if (btn_save->interactive && SDL_PointInRect(&mouse_pos, &btn_save->base.rect)) {
           btn_save->click.start_time = SDL_GetTicks();
-          for (size_t i = 0; i < player_config_entry_count; i++) {
-            if (i == bool_idx)
-              player_config_set_field(player_config, i, turn_cb && turn_cb->checked ? "yes" : "no");
-            else if (i == reg_browse_idx)
-              player_config_set_field(player_config, i, reg_cb && reg_cb->checked ? "yes" : "no");
-            else if (inputs[i])
-              player_config_set_field(player_config, i, input_widget_get_text(inputs[i]));
+          for (size_t r = 0; r < n_rows; r++) {
+            if (rows[r].checkbox)
+              player_config_set_field(player_config, rows[r].cfg_idx,
+                                      rows[r].checkbox->checked ? "yes" : "no");
+            else if (rows[r].input)
+              player_config_set_field(player_config, rows[r].cfg_idx,
+                                      input_widget_get_text(rows[r].input));
           }
           save_player_config(player_config);
           running = false;
         } else if (SDL_PointInRect(&mouse_pos, &btn_defaults->base.rect)) {
           btn_defaults->click.start_time = SDL_GetTicks();
-          for (size_t i = 0; i < player_config_entry_count; i++) {
-            if (i == 0 || i == 1 || i == 2)
-              continue;
-            if (i == bool_idx) {
-              if (turn_cb)
-                turn_cb->checked =
-                    strcmp(player_config_entries[bool_idx].default_value, "yes") == 0;
-            } else if (i == reg_browse_idx) {
-              if (reg_cb)
-                reg_cb->checked =
-                    strcmp(player_config_entries[reg_browse_idx].default_value, "yes") == 0;
-            } else if (inputs[i]) {
-              input_widget_set_text(inputs[i], player_config_entries[i].default_value);
-            }
+          for (size_t r = 0; r < n_rows; r++) {
+            if (!rows[r].input && !rows[r].checkbox)
+              continue; /* action rows (e.g. Hotkeys) have no config value */
+            if (rows[r].cfg_idx == 0)
+              continue; /* keep the player's nick */
+            const char *def = player_config_entries[rows[r].cfg_idx].default_value;
+            if (rows[r].checkbox)
+              rows[r].checkbox->checked = strcmp(def, "yes") == 0;
+            else if (rows[r].input)
+              input_widget_set_text(rows[r].input, def);
           }
-        } else if (SDL_PointInRect(&mouse_pos, &btn_hotkeys->base.rect)) {
-          btn_hotkeys->click.start_time = SDL_GetTicks();
-          menu_display_hotkeys(player_config, sdl_context, font, path);
         } else if (back_img && SDL_PointInRect(&mouse_pos, &back_img->base.rect)) {
           running = false;
-        } else if (turn_cb && SDL_PointInRect(&mouse_pos, &turn_cb->base.rect)) {
-          turn_cb->checked = !turn_cb->checked;
-        } else if (reg_cb && SDL_PointInRect(&mouse_pos, &reg_cb->base.rect)) {
-          reg_cb->checked = !reg_cb->checked;
+        } else if (btn_prev && SDL_PointInRect(&mouse_pos, &btn_prev->base.rect) && page > 0) {
+          btn_prev->click.start_time = SDL_GetTicks();
+          if (focused_row >= 0 && rows[focused_row].input)
+            rows[focused_row].input->focused = false;
+          page--;
+          focused_row = -1;
+          for (int r = page * rows_per_page; r < (int)n_rows && r < (page + 1) * rows_per_page; r++)
+            if (rows[r].input) {
+              focused_row = r;
+              rows[r].input->focused = true;
+              break;
+            }
+        } else if (btn_next && SDL_PointInRect(&mouse_pos, &btn_next->base.rect) &&
+                   page < n_pages - 1) {
+          btn_next->click.start_time = SDL_GetTicks();
+          if (focused_row >= 0 && rows[focused_row].input)
+            rows[focused_row].input->focused = false;
+          page++;
+          focused_row = -1;
+          for (int r = page * rows_per_page; r < (int)n_rows && r < (page + 1) * rows_per_page; r++)
+            if (rows[r].input) {
+              focused_row = r;
+              rows[r].input->focused = true;
+              break;
+            }
         } else {
-          for (size_t s = 0; s < n_ti; s++) {
-            size_t i = text_input_indices[s];
-            if (SDL_PointInRect(&mouse_pos, &inputs[i]->base.rect)) {
-              inputs[text_input_indices[focused_slot]]->focused = false;
-              focused_slot = (int)s;
-              inputs[text_input_indices[focused_slot]]->focused = true;
+          for (int r = page_start; r < page_end; r++) {
+            if (rows[r].checkbox && SDL_PointInRect(&mouse_pos, &rows[r].checkbox->base.rect)) {
+              rows[r].checkbox->checked = !rows[r].checkbox->checked;
+              break;
+            }
+            if (rows[r].input && SDL_PointInRect(&mouse_pos, &rows[r].input->base.rect)) {
+              if (focused_row >= 0 && rows[focused_row].input)
+                rows[focused_row].input->focused = false;
+              focused_row = r;
+              rows[r].input->focused = true;
+              break;
+            }
+            if (rows[r].button && SDL_PointInRect(&mouse_pos, &rows[r].button->base.rect)) {
+              rows[r].button->click.start_time = SDL_GetTicks();
+              menu_display_hotkeys(player_config, sdl_context, font, path);
               break;
             }
           }
         }
       } else if (e.type == SDL_TEXTINPUT) {
-        input_widget_append(inputs[text_input_indices[focused_slot]], e.text.text);
+        if (focused_row >= 0 && rows[focused_row].input)
+          input_widget_append(rows[focused_row].input, e.text.text);
       } else if (e.type == SDL_KEYDOWN) {
+        InputWidget_t *fin = (focused_row >= 0) ? rows[focused_row].input : NULL;
         switch (e.key.keysym.sym) {
         case SDLK_RETURN:
           saved = true;
           running = false;
           break;
         case SDLK_ESCAPE:
-          /* Esc backs out to the connect screen (same as the corner arrow), not
-           * a quit prompt; the X button is for quitting. */
           running = false;
           break;
         case SDLK_TAB: {
-          if (n_ti == 0)
+          /* Cycle focus through the text inputs on the current page. */
+          int order[MAX_PLAYER_CONFIG_ENTRIES];
+          int n_ord = 0;
+          for (int r = page_start; r < page_end; r++)
+            if (rows[r].input)
+              order[n_ord++] = r;
+          if (n_ord == 0)
             break;
-          inputs[text_input_indices[focused_slot]]->focused = false;
+          int cur = 0;
+          for (int k = 0; k < n_ord; k++)
+            if (order[k] == focused_row)
+              cur = k;
+          if (fin)
+            fin->focused = false;
           int dir = (e.key.keysym.mod & KMOD_SHIFT) ? -1 : 1;
-          focused_slot = (int)((focused_slot + dir + (int)n_ti) % (int)n_ti);
-          inputs[text_input_indices[focused_slot]]->focused = true;
+          cur = (cur + dir + n_ord) % n_ord;
+          focused_row = order[cur];
+          rows[focused_row].input->focused = true;
           break;
         }
         case SDLK_BACKSPACE:
-          input_widget_backspace(inputs[text_input_indices[focused_slot]]);
+          if (fin)
+            input_widget_backspace(fin);
           break;
-
         case SDLK_LEFT:
-          input_widget_cursor_left(inputs[text_input_indices[focused_slot]]);
+          if (fin)
+            input_widget_cursor_left(fin);
           break;
-
         case SDLK_RIGHT:
-          input_widget_cursor_right(inputs[text_input_indices[focused_slot]]);
+          if (fin)
+            input_widget_cursor_right(fin);
           break;
-
         case SDLK_HOME:
-          input_widget_cursor_home(inputs[text_input_indices[focused_slot]]);
+          if (fin)
+            input_widget_cursor_home(fin);
           break;
-
         case SDLK_END:
-          input_widget_cursor_end(inputs[text_input_indices[focused_slot]]);
+          if (fin)
+            input_widget_cursor_end(fin);
           break;
-
         case SDLK_v:
-          if (e.key.keysym.mod & KMOD_CTRL) {
+          if ((e.key.keysym.mod & KMOD_CTRL) && fin) {
             char *clip = SDL_GetClipboardText();
             if (clip) {
-              input_widget_append(inputs[text_input_indices[focused_slot]], clip);
+              input_widget_append(fin, clip);
               SDL_free(clip);
             }
           }
           break;
-
         case SDLK_F11:
           toggle_fullscreen(sdl_context);
           break;
@@ -1634,22 +1813,72 @@ void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *sdl_cont
       }
     }
 
-    dirty = (turn_cb && turn_cb->checked != init_checked) ||
-            (reg_cb && reg_cb->checked != reg_init_checked);
-    for (size_t i = 0; i < player_config_entry_count && !dirty; i++)
-      if (inputs[i] && strcmp(input_widget_get_text(inputs[i]), init_str[i]) != 0)
+    /* page may have changed above; recompute the visible range. */
+    page_start = page * rows_per_page;
+    page_end =
+        (page_start + rows_per_page < (int)n_rows) ? page_start + rows_per_page : (int)n_rows;
+
+    dirty = false;
+    for (size_t r = 0; r < n_rows && !dirty; r++) {
+      if (rows[r].checkbox && rows[r].checkbox->checked != rows[r].init_checked)
         dirty = true;
+      else if (rows[r].input && strcmp(input_widget_get_text(rows[r].input), rows[r].init_str) != 0)
+        dirty = true;
+    }
     btn_save->interactive = dirty;
 
-    clear_screen(sdl_context->renderer);
+    /* Position + enable the current page's widgets; hide the rest. */
+    for (int r = 0; r < (int)n_rows; r++) {
+      bool on = (r >= page_start && r < page_end);
+      int slot = r - page_start;
+      if (rows[r].label) {
+        rows[r].label->base.enabled = on;
+        if (on) {
+          rows[r].label->base.rect.x = label_x;
+          rows[r].label->base.rect.y =
+              panel_top + slot * row_h + (row_h - rows[r].label->base.rect.h) / 2;
+        }
+      }
+      if (rows[r].input) {
+        rows[r].input->base.enabled = on;
+        if (on) {
+          rows[r].input->base.rect.x = control_x;
+          rows[r].input->base.rect.y =
+              panel_top + slot * row_h + (row_h - rows[r].input->base.rect.h) / 2;
+        }
+      }
+      if (rows[r].checkbox) {
+        rows[r].checkbox->base.enabled = on;
+        if (on) {
+          rows[r].checkbox->base.rect.x = control_x;
+          rows[r].checkbox->base.rect.y =
+              panel_top + slot * row_h + (row_h - rows[r].checkbox->base.rect.h) / 2;
+        }
+      }
+      if (rows[r].button) {
+        rows[r].button->base.enabled = on;
+        if (on) {
+          rows[r].button->base.rect.x = control_x;
+          rows[r].button->base.rect.y =
+              panel_top + slot * row_h + (row_h - rows[r].button->base.rect.h) / 2;
+        }
+      }
+    }
 
-    ui_widget_render(&tw_settings_title->base);
-
-    for (size_t i = 0; i < player_config_entry_count; i++)
-      if (tw_labels[i])
-        ui_widget_render(&tw_labels[i]->base);
-    if (tw_reg_label)
-      ui_widget_render(&tw_reg_label->base);
+    /* Pager only matters with more than one page. */
+    if (btn_prev)
+      btn_prev->base.enabled = (n_pages > 1);
+    if (btn_next)
+      btn_next->base.enabled = (n_pages > 1);
+    if (tw_page) {
+      tw_page->base.enabled = (n_pages > 1);
+      char pbuf[32];
+      snprintf(pbuf, sizeof(pbuf), "Page %d / %d", page + 1, n_pages);
+      text_widget_set_text(tw_page, pbuf);
+      tw_page->base.rect.x = panel_x + (panel_w - tw_page->base.rect.w) / 2;
+      tw_page->base.rect.y =
+          pager_y + (btn_prev ? (btn_prev->base.rect.h - tw_page->base.rect.h) / 2 : 0);
+    }
 
     if (back_img) {
       float t = (SDL_GetTicks() - anim_start) / 1000.0f;
@@ -1658,6 +1887,20 @@ void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *sdl_cont
       int start_y = g_viewport.y + g_viewport.h * 2 / 3;
       int end_y = g_viewport.y + g_viewport.h - g_layout_cfg.back_btn_size - 20;
       back_img->base.rect.y = start_y + (int)(t * (end_y - start_y));
+    }
+
+    clear_screen(sdl_context->renderer);
+
+    /* Dark table panel behind the rows. */
+    draw_round_rect(sdl_context->renderer,
+                    (SDL_Rect){panel_x - 16, panel_top - 16, panel_w + 32, panel_h + 32}, 24,
+                    (SDL_Color){0, 0, 0, 150});
+
+    if (tw_settings_title) {
+      SDL_Color title_pill = get_color(COLOR_ORANGE);
+      title_pill.a = 64;
+      draw_pill_behind(sdl_context->renderer, tw_settings_title->base.rect, 22, 8, title_pill);
+      ui_widget_render(&tw_settings_title->base);
     }
 
     ui_render_all(&reg);
@@ -1669,23 +1912,18 @@ void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *sdl_cont
   SDL_StopTextInput();
 
   if (saved && dirty) {
-    for (size_t i = 0; i < player_config_entry_count; i++) {
-      if (i == bool_idx)
-        player_config_set_field(player_config, i, turn_cb && turn_cb->checked ? "yes" : "no");
-      else if (i == reg_browse_idx)
-        player_config_set_field(player_config, i, reg_cb && reg_cb->checked ? "yes" : "no");
-      else if (inputs[i])
-        player_config_set_field(player_config, i, input_widget_get_text(inputs[i]));
+    for (size_t r = 0; r < n_rows; r++) {
+      if (rows[r].checkbox)
+        player_config_set_field(player_config, rows[r].cfg_idx,
+                                rows[r].checkbox->checked ? "yes" : "no");
+      else if (rows[r].input)
+        player_config_set_field(player_config, rows[r].cfg_idx,
+                                input_widget_get_text(rows[r].input));
     }
     save_player_config(player_config);
   }
 
   if (tw_settings_title)
     ui_widget_destroy(&tw_settings_title->base);
-  if (tw_reg_label)
-    ui_widget_destroy(&tw_reg_label->base);
-  for (size_t i = 0; i < player_config_entry_count; i++)
-    if (tw_labels[i])
-      ui_widget_destroy(&tw_labels[i]->base);
   ui_destroy_all(&reg);
 }

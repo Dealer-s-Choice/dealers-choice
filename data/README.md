@@ -43,6 +43,14 @@ Adapted from [File:Arrow_curved_left.png](https://commons.wikimedia.org/wiki/Fil
 Public domain (PD-user — own work by original uploader), via Wikimedia Commons
 
 
+* felt.png
+
+Adapted (recolored from gray to green) from
+[Photo by Emmanuel Correia from Pexels](https://www.pexels.com/photo/full-shot-of-grey-felt-14535314/)
+
+License: [Pexels License](https://www.pexels.com/license/) (free to use)
+
+
 ## Fonts
 
 * LiberationSans-Bold.ttf

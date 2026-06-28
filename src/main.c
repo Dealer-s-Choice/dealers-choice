@@ -59,11 +59,7 @@
  * close.  Lets you iterate on suit size, position, and font without
  * spinning up a server and a bot for every visual check. */
 static int run_card_preview(SdlContext_t *sdl_context, Font_t *font, Path_t *path) {
-  char felt_path[4096];
-  snprintf(felt_path, sizeof(felt_path), "%s/images/100x100-green-felt-seamless-tile.png",
-           path->data);
-  SDL_Texture *felt_tex = load_texture(sdl_context->renderer, felt_path);
-
+  (void)path;
   static const struct {
     int face;
     int suit;
@@ -104,10 +100,7 @@ static int run_card_preview(SdlContext_t *sdl_context, Font_t *font, Path_t *pat
         running = false;
     }
 
-    SDL_SetRenderDrawColor(sdl_context->renderer, 0, 100, 0, 255);
-    SDL_RenderClear(sdl_context->renderer);
-    if (felt_tex)
-      draw_felt_background(sdl_context->renderer, felt_tex);
+    clear_screen(sdl_context->renderer);
 
     for (int i = 0; i < 8; i++)
       cards[i].base.render(&cards[i].base);
@@ -116,8 +109,6 @@ static int run_card_preview(SdlContext_t *sdl_context, Font_t *font, Path_t *pat
     SDL_Delay(16);
   }
 
-  if (felt_tex)
-    SDL_DestroyTexture(felt_tex);
   return 0;
 }
 
@@ -237,6 +228,11 @@ int main(int argc, char *argv[]) {
    * for every card (~6M allocations per 4 min of gameplay before this
    * cache landed). */
   card_text_atlas_init(sdl_context.renderer, font.fonts[FONT_CARD], path.data);
+
+  /* Load the shared felt once; clear_screen() then draws it on every screen. */
+  felt_init(sdl_context.renderer, path.data);
+  /* Shared app logo for the connect + lobby screens. */
+  logo_init(sdl_context.renderer, path.data);
 
   if (cli_args.card_preview) {
     int rc = run_card_preview(&sdl_context, &font, &path);

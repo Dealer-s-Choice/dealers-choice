@@ -82,21 +82,23 @@ EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_config,
     ui_register(&registry, &game_choice_button[i]->base);
   }
 
-  /* Screen title, centered up top, with a drop shadow: a dark copy registered
-     first (so it draws behind), then the bright title over it. The columns sit
-     beneath it. */
+  /* Screen title, centered up top. Yellow text on a translucent black pill
+     (drawn in the render loop) for contrast against the felt. */
   const char *title_str = _("Choose a Game");
-  TextWidget_t *title_shadow_tw =
-      text_widget_create(title_str, font->fonts[FONT_TITLE], get_color(COLOR_BLACK));
-  ui_register(&registry, &title_shadow_tw->base);
   TextWidget_t *title_tw =
       text_widget_create(title_str, font->fonts[FONT_TITLE], get_color(COLOR_YELLOW));
   ui_register(&registry, &title_tw->base);
   title_tw->base.rect.x = (g_viewport.w - title_tw->base.rect.w) / 2;
   title_tw->base.rect.y = g_viewport.y + g_layout_cfg.margin;
-  const int title_shadow_off = 3;
-  title_shadow_tw->base.rect.x = title_tw->base.rect.x + title_shadow_off;
-  title_shadow_tw->base.rect.y = title_tw->base.rect.y + title_shadow_off;
+
+  /* App logo to the left of the title, vertically centered on it. Smaller than
+     the connect screen's copy (this screen is busier). */
+  const int lobby_logo_sz = 56;
+  /* Gap clears the title's black pill (padx 22) plus breathing room. */
+  const SDL_Rect lobby_logo_dst = {title_tw->base.rect.x - lobby_logo_sz - 44,
+                                   title_tw->base.rect.y +
+                                       (title_tw->base.rect.h - lobby_logo_sz) / 2,
+                                   lobby_logo_sz, lobby_logo_sz};
 
   /* Lay the variants out as labeled family columns spread across the width,
      instead of a flat 2-column grid. Presentational grouping only, keyed off the
@@ -125,10 +127,9 @@ EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_config,
   for (int gi = 0; gi < n_groups; gi++) {
     const int col_cx = g_viewport.x + col_w * gi + col_w / 2;
     const char *hd = _(groups[gi].heading);
-    /* A rounded translucent plate is drawn behind each heading in the render
-       loop (see draw_nameplate below); that provides the contrast, so no
-       per-heading drop shadow here. */
-    group_heading[gi] = text_widget_create(hd, font->fonts[FONT_BOLD], get_color(COLOR_YELLOW));
+    /* Black text on a translucent orange plate (drawn in the render loop below);
+       the plate provides the contrast, so no per-heading drop shadow here. */
+    group_heading[gi] = text_widget_create(hd, font->fonts[FONT_BOLD], get_color(COLOR_BLACK));
     ui_register(&registry, &group_heading[gi]->base);
     group_heading[gi]->base.rect.x = col_cx - group_heading[gi]->base.rect.w / 2;
     group_heading[gi]->base.rect.y = top_y;
@@ -245,11 +246,6 @@ EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_config,
 
   Uint32 anim_start = SDL_GetTicks();
 
-  /* Card-room background: the seamless felt tile, replacing the flat green this
-     screen used to clear to. No vignette here (lobby stays evenly lit). */
-  SDL_Texture *felt_tex =
-      load_coin_texture(sdl_context->renderer, path->data, "100x100-green-felt-seamless-tile.png");
-
   while (game_state->at_menu) {
     ERecvStatus_t recv_status = recv_game_state(socket_context, game_state, client_state, my_id);
     if (recv_status == RECV_ERROR) {
@@ -258,7 +254,15 @@ EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_config,
     }
 
     clear_screen(sdl_context->renderer);
-    draw_felt_background(sdl_context->renderer, felt_tex);
+    draw_logo(sdl_context->renderer, lobby_logo_dst);
+    {
+      SDL_Color title_pill = get_color(COLOR_BLACK);
+      title_pill.a = 128;
+      SDL_Rect tr = title_tw->base.rect;
+      draw_round_rect(sdl_context->renderer,
+                      (SDL_Rect){tr.x - 22, tr.y - 8, tr.w + 44, tr.h + 16}, (tr.h + 16) / 2,
+                      title_pill);
+    }
 
     int mx, my;
     SDL_GetMouseState(&mx, &my);
@@ -444,8 +448,11 @@ EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_config,
         continue;
       SDL_Rect hr = group_heading[gi]->base.rect;
       const int padx = 14, pady = 5;
-      draw_nameplate(sdl_context->renderer,
-                     (SDL_Rect){hr.x - padx, hr.y - pady, hr.w + 2 * padx, hr.h + 2 * pady}, 128);
+      SDL_Color plate = get_color(COLOR_ORANGE);
+      plate.a = 64;
+      draw_round_rect(sdl_context->renderer,
+                      (SDL_Rect){hr.x - padx, hr.y - pady, hr.w + 2 * padx, hr.h + 2 * pady},
+                      g_layout_cfg.nameplate_radius, plate);
     }
 
     /* Frame the player list the same way as the connect-screen server list:
@@ -601,7 +608,6 @@ EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_config,
   }
 
 cleanup:
-  SDL_DestroyTexture(felt_tex);
   ui_destroy_all(&registry);
   return result;
 }
