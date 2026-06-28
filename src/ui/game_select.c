@@ -181,6 +181,11 @@ EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_config,
 
   Uint32 anim_start = SDL_GetTicks();
 
+  /* Card-room background: the seamless felt tile, replacing the flat green this
+     screen used to clear to. No vignette here (lobby stays evenly lit). */
+  SDL_Texture *felt_tex =
+      load_coin_texture(sdl_context->renderer, path->data, "100x100-green-felt-seamless-tile.png");
+
   while (game_state->at_menu) {
     ERecvStatus_t recv_status = recv_game_state(socket_context, game_state, client_state, my_id);
     if (recv_status == RECV_ERROR) {
@@ -189,6 +194,7 @@ EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_config,
     }
 
     clear_screen(sdl_context->renderer);
+    draw_felt_background(sdl_context->renderer, felt_tex);
 
     int mx, my;
     SDL_GetMouseState(&mx, &my);
@@ -519,6 +525,7 @@ EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_config,
   }
 
 cleanup:
+  SDL_DestroyTexture(felt_tex);
   ui_destroy_all(&registry);
   return result;
 }
