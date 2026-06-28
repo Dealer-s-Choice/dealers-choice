@@ -411,6 +411,13 @@ EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_config,
     button_deuces_wild->base.enabled = dealing;
 
     if (table.dirty) {
+      /* Fixed column widths + left-justified player names, so the table keeps a
+         steady size and the names don't jump around as players with different
+         name lengths join and leave. Widths are sized for the SIZEOF_NICK cap. */
+      table.col_align[0] = 1; /* Players column: left-justified */
+      table.col_width[0] = 300;
+      table.col_width[1] = 120;
+      table.col_width[2] = 120;
       ui_table_layout(&table);
       table.dirty = false;
       table_needs_rebuild = false;
