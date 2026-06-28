@@ -82,6 +82,13 @@ EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_config,
     ui_register(&registry, &game_choice_button[i]->base);
   }
 
+  /* Screen title, centered up top; the variant columns sit beneath it. */
+  TextWidget_t *title_tw =
+      text_widget_create(_("Choose a Game"), font->fonts[FONT_TITLE], DC_TEXT_ON_DARK);
+  ui_register(&registry, &title_tw->base);
+  title_tw->base.rect.x = (g_viewport.w - title_tw->base.rect.w) / 2;
+  title_tw->base.rect.y = g_viewport.y + g_layout_cfg.margin;
+
   /* Lay the variants out as labeled family columns spread across the width,
      instead of a flat 2-column grid. Presentational grouping only, keyed off the
      menu-option enum (game_choice_button[opt] is the button for option opt, since
@@ -101,7 +108,7 @@ EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_config,
   const int n_groups = (int)(sizeof(groups) / sizeof(groups[0]));
 
   const int row_gap = 12;
-  const int top_y = g_viewport.y + g_layout_cfg.margin;
+  const int top_y = title_tw->base.rect.y + title_tw->base.rect.h + g_layout_cfg.margin;
   const int col_w = g_viewport.w / n_groups;
 
   TextWidget_t *group_heading[8] = {0};
@@ -125,8 +132,23 @@ EGameSelResult_t handle_game_selection(const PlayerConfig_t *player_config,
       gc_bottom = y;
   }
 
-  button_deuces_wild->base.rect.x = (g_viewport.w - button_deuces_wild->base.rect.w) / 2;
-  button_deuces_wild->base.rect.y = gc_bottom + g_layout_cfg.margin;
+  /* Present Deuces Wild as a modifier: a "Wild card:" label beside the toggle,
+     the two centered as one unit below the variant columns. */
+  TextWidget_t *wild_label_tw =
+      text_widget_create(_("Wild card:"), font->fonts[FONT_BOLD], DC_TEXT_ON_DARK);
+  ui_register(&registry, &wild_label_tw->base);
+  {
+    const int gap = g_layout_cfg.margin / 2;
+    const int combined =
+        wild_label_tw->base.rect.w + gap + button_deuces_wild->base.rect.w;
+    const int sx = g_viewport.x + (g_viewport.w - combined) / 2;
+    const int row_y = gc_bottom + g_layout_cfg.margin;
+    wild_label_tw->base.rect.x = sx;
+    button_deuces_wild->base.rect.x = sx + wild_label_tw->base.rect.w + gap;
+    button_deuces_wild->base.rect.y = row_y;
+    wild_label_tw->base.rect.y =
+        row_y + (button_deuces_wild->base.rect.h - wild_label_tw->base.rect.h) / 2;
+  }
 
   NickWidget_t *nick_widgets[MAX_PLAYERS] = {0};
   DealerWidget_t *dealer_widgets[MAX_PLAYERS] = {0};
