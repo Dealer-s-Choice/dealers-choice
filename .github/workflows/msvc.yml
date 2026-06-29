@@ -29,7 +29,7 @@ jobs:
     # lets us fall through to a fresh vcpkg install in that case.
     - name: Cache vcpkg installed packages
       id: cache-vcpkg
-      uses: actions/cache@v5
+      uses: actions/cache@v6
       continue-on-error: true
       with:
         path: ${{ github.workspace }}\vcpkg_installed
