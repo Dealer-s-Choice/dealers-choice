@@ -32,6 +32,7 @@ services:
       - "${DC_WEB_ROOT:-/srv/www}:/json:ro"             # the registry's servers.json
       - "caddy_data:/data"     # PERSISTS the issued cert -- keep this volume
       - "caddy_config:/config"
+      - "caddy_logs:/var/log/caddy"   # JSON access log (visitor IPs -- stays off the repo)
     ports:
       - "443:443"
       # - "443:443/udp"   # HTTP/3 (QUIC): also open UDP 443 in both firewall layers
@@ -51,3 +52,4 @@ services:
 volumes:
   caddy_data:
   caddy_config:
+  caddy_logs:

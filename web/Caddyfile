@@ -12,12 +12,47 @@
 #
 # Requirements: DC_WEB_DOMAIN set, and a DNS A record pointing it at this host.
 {$DC_WEB_DOMAIN} {
-	handle /servers.json {
-		root * /json
-		file_server
+	# JSON access log to a file on the caddy_logs volume (outside the repo, so
+	# visitor IPs are never committed). Kept for later analysis or a host CrowdSec
+	# agent reading it (crowdsecurity/caddy). Caddy rotates it itself.
+	log {
+		output file /var/log/caddy/access.log {
+			roll_size 10mb
+			roll_keep 5
+		}
+		format json
 	}
-	handle {
-		root * /site
-		file_server
+
+	# Security headers on every response.
+	header {
+		-Server
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options nosniff
+		Referrer-Policy no-referrer
+	}
+
+	# One route so the guards run in written order, before the handlers. (Bare
+	# abort/respond mixed with handle blocks would be reordered by Caddy.)
+	route {
+		# drop known scanners/scrapers by User-Agent
+		@badbots header_regexp User-Agent (?i)(sqlmap|nikto|nmap|masscan|zgrab|nuclei|wpscan|httrack)
+		abort @badbots
+
+		# nothing here is PHP/WordPress/git -- anything probing for it is hostile
+		@probes path *.php /wp-* /.env /.git* /vendor/* /xmlrpc.php
+		abort @probes
+
+		# static site: only GET/HEAD make sense
+		@notread not method GET HEAD
+		respond @notread "Method Not Allowed" 405
+
+		handle /servers.json {
+			root * /json
+			file_server
+		}
+		handle {
+			root * /site
+			file_server
+		}
 	}
 }
