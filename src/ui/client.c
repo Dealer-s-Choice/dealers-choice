@@ -414,6 +414,14 @@ bool get_socket_context_and_run_client(PlayerConfig_t *player_config, const CliA
     if (send_all_tcp(sock, player_config->nick, len) != 0)
       dc_log(DC_LOG_ERROR, "Failed to send player nick to server");
 
+    /* Identity challenge-response (#67): prove possession of our key so the
+       server can bind this connection to a stable identity. Mandatory in
+       production; the matching server step is also gated on !dc_test_mode. */
+    if (identity_handshake_client(sock, dc_identity_get()) != 0) {
+      dc_log(DC_LOG_ERROR, "Identity handshake failed");
+      goto cleanup;
+    }
+
     const Uint32 timeout = 2000;    // 2 seconds
     const Uint32 retry_delay = 100; // milliseconds per retry
 

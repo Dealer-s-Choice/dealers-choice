@@ -8,6 +8,7 @@ unit_tests = [
   'no_peek',
   'rate_limit',
   'ping_probe_cooldown',
+  'identity',
 ]
 
 base_env = {
@@ -22,6 +23,9 @@ base_env = {
   # tester's real network. (test_lan_discovery drives the discovery functions
   # directly, not via a spawned server reading this env, so it is unaffected.)
   'DC_DISABLE_LAN_DISCOVERY': '1',
+  # Keep the identity keyfile (#67) inside the build tree so tests never read or
+  # create the tester's real ~/.local/share/dealers-choice/identity.key.
+  'DC_IDENTITY_FILE': join_paths(meson.current_build_dir(), 'dc_test_identity.key'),
 }
 
 foreach name : unit_tests
@@ -112,6 +116,19 @@ foreach name : game_logic
 
   port += 1
 endforeach
+
+# Identity challenge-response (#67) over a real loopback socket. Standalone (own
+# main, no 00_test.c). `port` is the next free slot after the game_logic loop.
+identity_handshake_exe = executable(
+  'test_identity_handshake',
+  'identity_handshake.c',
+  dependencies: game_dep,
+  override_options: ['b_lto=false'],
+)
+identity_handshake_env = environment(base_env)
+identity_handshake_env.set('DC_PORT', port.to_string())
+test('test_identity_handshake', identity_handshake_exe, env: identity_handshake_env)
+port += 1
 
 pokeval_fuzz_exe = executable(
   'test_pokeval_fuzz',
