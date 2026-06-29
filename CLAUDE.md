@@ -111,6 +111,34 @@ Binaries: `dealers-choice` = `main.c` + `game_dep`; `dealers-choice-bot` = `bot.
   `docker/README.md`. Open registry work: #74 (non-blocking verify), #75 (reload
   `servers.json` on boot + faster announce retry).
 
+### Website / server-list widget (`web/`)
+
+`web/server-list.html` is a self-contained, framework-free page (inline CSS/JS,
+no external deps) that fetches a registry's `servers.json` and renders a live,
+auto-refreshing table of active servers. The felt theme uses `web/felt.png` (a
+seamless green tile cut from the game's `data/images/felt.png`, kept in sync).
+
+- **Served by Caddy, not Apache/nginx.** `web/docker-compose.yml` runs the
+  official Caddy image; `web/Caddyfile` serves everything from `/site` and
+  `/servers.json` from a separate read-only `/json` mount (same origin, so the
+  page needs no CORS). Auto-HTTPS via Let's Encrypt, TLS-ALPN-01, **port 443
+  only** (no port 80). Config via `.env`: `DC_WEB_DOMAIN`, `DC_WEB_ROOT`.
+  `DC_WEB_DOMAIN=localhost` makes Caddy use its built-in local CA (no LE call).
+- **Local dev loop:** drop a sample `servers.json` (git-ignored) and
+  `python3 -m http.server` — no Docker/cert/registry needed; the page re-fetches
+  every 30s. Validate Caddyfile edits with `caddy validate`.
+- **Hardening = Caddyfile, not `.htaccess`.** Caddy has no `.htaccess`; the
+  Apache/nginx 8G / bad-bot rulesets don't apply. It's a static, no-login site,
+  so the realistic threats (bad-UA scanners, exploit-path probes like
+  `/.env` `*.php`, non-GET methods) are blocked with `@matcher` + `abort` /
+  `respond` directives in the Caddyfile. `robots.txt` is advisory only, not a
+  control.
+- **CrowdSec, if ever needed:** don't rebuild Caddy with the bouncer module for
+  this static site — turn on Caddy JSON access logs to a mounted file, run the
+  CrowdSec agent on the host with the `crowdsecurity/caddy` collection, and a
+  host firewall bouncer. Save heavier IPS for the boxes running attackable
+  services (SSH, the game/registry servers).
+
 ### Audio
 
 miniaudio is used for sound effects. Both `ma_engine_init` and `ma_engine_uninit` can block for several seconds when a sound server (e.g. PulseAudio) is slow or a USB audio device is involved. Both run on background SDL threads (`audio_init_thread_fn` / `audio_uninit_thread_fn` in `src/ui/client.c`) while the main thread pumps events to keep the window responsive. Do not move either call back to the main thread.
