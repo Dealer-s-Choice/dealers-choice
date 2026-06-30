@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: dealers-choice\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-06-20 23:48-0500\n"
+"POT-Creation-Date: 2026-06-30 08:59-0500\n"
 "PO-Revision-Date: 2025-07-02 00:18-0500\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -18,24 +18,24 @@ msgstr ""
 "Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
 "n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
 
-#: src/server/round.c:246 src/ui/game_logic.c:305
+#: src/server/round.c:247 src/ui/game_logic.c:316
 #, fuzzy
 msgid "checked"
 msgstr "Чек"
 
-#: src/server/round.c:262 src/ui/game_logic.c:306
+#: src/server/round.c:263 src/ui/game_logic.c:317
 msgid "folded"
 msgstr ""
 
-#: src/server/round.c:460 src/server/round.c:484
+#: src/server/round.c:461 src/server/round.c:485
 msgid "completed "
 msgstr ""
 
-#: src/server/round.c:460
+#: src/server/round.c:461
 msgid "bet "
 msgstr ""
 
-#: src/server/round.c:476 src/server/round.c:499 src/ui/game_logic.c:306
+#: src/server/round.c:477 src/server/round.c:499 src/ui/game_logic.c:317
 msgid "called"
 msgstr ""
 
@@ -44,37 +44,37 @@ msgstr ""
 msgid "raised "
 msgstr "Рейз"
 
-#: src/server/server.c:676
+#: src/server/server.c:677
 #, c-format
 msgid "%s disconnected"
 msgstr ""
 
-#: src/server/server.c:701
+#: src/server/server.c:702
 #, c-format
 msgid "%s was kicked"
 msgstr ""
 
-#: src/server/server.c:720
+#: src/server/server.c:721
 #, c-format
 msgid "%s was banned"
 msgstr ""
 
-#: src/server/variants.c:185
+#: src/server/variants.c:186
 #, c-format
 msgid "%s brings in for %u"
 msgstr ""
 
-#: src/server/variants.c:381
+#: src/server/variants.c:382
 #, c-format
 msgid "%s ran out of cards"
 msgstr ""
 
-#: src/server/variants.c:481
+#: src/server/variants.c:482
 #, c-format
 msgid "Game: %s%s"
 msgstr ""
 
-#: src/ui/client.c:240 src/ui/graphics.c:95
+#: src/ui/client.c:240 src/ui/graphics.c:146
 msgid "Cancel"
 msgstr ""
 
@@ -83,150 +83,290 @@ msgstr ""
 msgid "Attempting connection to: %s... (%d/%d)"
 msgstr ""
 
-#: src/ui/game_logic.c:305
+#: src/ui/game_logic.c:316
 msgid "Check"
 msgstr "Чек"
 
-#: src/ui/game_logic.c:305
+#: src/ui/game_logic.c:316
 msgid "Bet"
 msgstr "Ставка"
 
-#: src/ui/game_logic.c:305
+#: src/ui/game_logic.c:316
 #, fuzzy
 msgid "bet"
 msgstr "Ставка"
 
-#: src/ui/game_logic.c:306
+#: src/ui/game_logic.c:317
 msgid "Fold"
 msgstr "Пас"
 
-#: src/ui/game_logic.c:306
+#: src/ui/game_logic.c:317
 msgid "Call"
 msgstr "Кол"
 
-#: src/ui/game_logic.c:307
+#: src/ui/game_logic.c:318
 msgid "Raise"
 msgstr "Рейз"
 
-#: src/ui/game_logic.c:307
+#: src/ui/game_logic.c:318
 #, fuzzy
 msgid "raised"
 msgstr "Рейз"
 
-#: src/ui/game_logic.c:307
+#: src/ui/game_logic.c:318
 msgid "Complete"
 msgstr ""
 
-#: src/ui/game_logic.c:307
+#: src/ui/game_logic.c:318
 msgid "completed"
 msgstr ""
 
-#: src/ui/game_logic.c:308
+#: src/ui/game_logic.c:319
 msgid "Discard"
 msgstr "Скинути"
 
-#: src/ui/game_logic.c:308
+#: src/ui/game_logic.c:319
 msgid "drew"
 msgstr ""
 
-#: src/ui/game_logic.c:701 src/ui/game_select.c:143
+#: src/ui/game_logic.c:731 src/ui/game_select.c:209
 msgid "Kick"
 msgstr ""
 
-#: src/ui/game_logic.c:703 src/ui/game_select.c:145
+#: src/ui/game_logic.c:733 src/ui/game_select.c:211
 msgid "Ban"
 msgstr ""
 
-#: src/ui/game_logic.c:721 src/ui/game_select.c:66
+#: src/ui/game_logic.c:751 src/ui/game_select.c:67
 msgid "Deuces Wild"
 msgstr ""
 
-#: src/ui/game_select.c:108
-msgid "Players"
+#. Screen title, centered up top. Yellow text on a translucent black pill
+#. (drawn in the render loop) for contrast against the felt.
+#: src/ui/game_select.c:87
+msgid "Choose a Game"
 msgstr ""
 
 #: src/ui/game_select.c:112
-msgid "Dealer"
+msgid "Draw"
+msgstr ""
+
+#: src/ui/game_select.c:115
+msgid "Stud"
 msgstr ""
 
 #: src/ui/game_select.c:116
+msgid "Community"
+msgstr ""
+
+#: src/ui/game_select.c:117
+msgid "Showdown"
+msgstr ""
+
+#: src/ui/game_select.c:151
+msgid "Wild card:"
+msgstr ""
+
+#: src/ui/game_select.c:174
+msgid "Players"
+msgstr ""
+
+#: src/ui/game_select.c:178
+msgid "Dealer"
+msgstr ""
+
+#: src/ui/game_select.c:182
 msgid "Ping"
 msgstr ""
 
-#: src/ui/game_select.c:130
+#: src/ui/game_select.c:196
 msgid "Waiting for more players..."
 msgstr ""
 
-#: src/ui/game_select.c:136
+#: src/ui/game_select.c:202
 msgid "Waiting for dealer to select game..."
 msgstr ""
 
 #. Show dealing screen immediately after click
-#: src/ui/game_select.c:505
+#: src/ui/game_select.c:600
 msgid "Dealing..."
 msgstr ""
 
-#: src/ui/graphics.c:93
+#: src/ui/graphics.c:144
 msgid "Are you sure you want to quit?"
 msgstr ""
 
-#: src/ui/graphics.c:97
+#: src/ui/graphics.c:148
 msgid "Quit"
 msgstr ""
 
-#: src/ui/menus.c:280
+#. inner padding around the content
+#. vertical space after each line
+#. horizontal space between the columns
+#. TRANSLATORS: Title of the F1 panel that lists keyboard shortcuts.
+#: src/ui/hotkey_overlay.c:83
+msgid "Keys"
+msgstr ""
+
+#. TRANSLATORS: Section heading. "Settings" is the name of the Settings menu
+#. button/screen; translate it the same way it is translated there.
+#: src/ui/hotkey_overlay.c:86
+msgid "Action keys (set in Settings)"
+msgstr ""
+
+#. TRANSLATORS: Section heading for keys the player cannot change.
+#: src/ui/hotkey_overlay.c:88
+msgid "Fixed keys"
+msgstr ""
+
+#: src/ui/hotkey_table.c:39
+msgid "Check (pass without betting)"
+msgstr ""
+
+#: src/ui/hotkey_table.c:40
+msgid "Bet (open the betting)"
+msgstr ""
+
+#: src/ui/hotkey_table.c:41
+msgid "Fold (give up the hand)"
+msgstr ""
+
+#. call shares "c" with check and complete shares "r" with raise; this is
+#. * safe because the betting modes that offer each pair are mutually
+#. * exclusive in game_logic.c.  Keep in sync with src/dc_config.c.
+#: src/ui/hotkey_table.c:45
+msgid "Call (match the current bet)"
+msgstr ""
+
+#: src/ui/hotkey_table.c:46
+msgid "Raise (increase the bet)"
+msgstr ""
+
+#: src/ui/hotkey_table.c:47
+msgid "Complete (finish a partial bet)"
+msgstr ""
+
+#: src/ui/hotkey_table.c:48
+msgid "Discard (draw new cards)"
+msgstr ""
+
+#: src/ui/hotkey_table.c:49
+msgid "Show your current best hand"
+msgstr ""
+
+#: src/ui/hotkey_table.c:57
+msgid "Pick cards to discard during a draw"
+msgstr ""
+
+#: src/ui/hotkey_table.c:58
+msgid "Choose the bet or raise amount"
+msgstr ""
+
+#: src/ui/hotkey_table.c:59
+msgid "Show or hide this key list"
+msgstr ""
+
+#: src/ui/hotkey_table.c:60
+msgid "Toggle fullscreen"
+msgstr ""
+
+#: src/ui/hotkey_table.c:61
+msgid "Close this list, or leave the screen"
+msgstr ""
+
+#. TRANSLATORS: "Discord", "Lazarus Project" should not be translated
+#: src/ui/links.c:9
+#, fuzzy
+msgid "Discord Channel (on Lazarus Project Server)"
+msgstr " Канал Discord (на сервері проєкту Lazarus) "
+
+#. TRANSLATORS: "Zulip" is a brand name; do not translate it
+#: src/ui/links.c:12
+msgid "Zulip Chat"
+msgstr ""
+
+#: src/ui/links.c:13
+msgid "Website"
+msgstr ""
+
+#: src/ui/menus.c:289
 msgid "Connect"
 msgstr "Підключитися"
 
-#: src/ui/menus.c:282 src/ui/menus.c:1190
+#: src/ui/menus.c:291 src/ui/menus.c:1634
 msgid "Settings"
 msgstr ""
 
-#: src/ui/menus.c:317 src/ui/menus.c:873 src/ui/menus.c:1147
-msgid "Save"
-msgstr ""
-
-#: src/ui/menus.c:324 src/ui/menus.c:1158
-msgid "Load Defaults"
-msgstr ""
-
-#. Nick is inline-editable here (a "nick:" label + input), so it can be set
-#. * right before connecting without opening Settings.
-#: src/ui/menus.c:353
+#. Manual-entry table (settings style): a dark panel with a "nick" row and a
+#. "host" + "port" row. Light labels read on the dark panel.
+#: src/ui/menus.c:313
 msgid "nick:"
 msgstr ""
 
-#: src/ui/menus.c:393
+#: src/ui/menus.c:314
+msgid "host:"
+msgstr ""
+
+#: src/ui/menus.c:315
+msgid "port:"
+msgstr ""
+
+#: src/ui/menus.c:382 src/ui/menus.c:1175 src/ui/menus.c:1596
+msgid "Save"
+msgstr ""
+
+#: src/ui/menus.c:392 src/ui/menus.c:1606
+msgid "Load Defaults"
+msgstr ""
+
+#: src/ui/menus.c:444
 msgid "Servers on LAN"
 msgstr ""
 
-#: src/ui/menus.c:437
+#: src/ui/menus.c:509
 msgid "Internet servers"
 msgstr ""
 
-#: src/ui/menus.c:835 src/ui/menus.c:1169
-msgid "Hotkeys"
+#: src/ui/menus.c:1160 src/ui/menus.c:1578
+msgid "Prev"
 msgstr ""
 
-#: src/ui/menus.c:839 src/ui/menus.c:962
+#: src/ui/menus.c:1162 src/ui/menus.c:1580
+msgid "Next"
+msgstr ""
+
+#: src/ui/menus.c:1177
+msgid "Load defaults"
+msgstr ""
+
+#. Hint above the table (registered so it auto-renders/destroys).
+#: src/ui/menus.c:1197 src/ui/menus.c:1329
 msgid "Click an action, then press a key"
 msgstr ""
 
-#: src/ui/menus.c:906
+#: src/ui/menus.c:1206
+msgid "Hotkeys"
+msgstr ""
+
+#: src/ui/menus.c:1244
 msgid "That key is reserved - pick another"
 msgstr ""
 
-#: src/ui/menus.c:931
+#: src/ui/menus.c:1273
 msgid "That key is already used - pick another"
 msgstr ""
 
-#: src/ui/menus.c:960
+#: src/ui/menus.c:1308
+msgid "Defaults restored"
+msgstr ""
+
+#: src/ui/menus.c:1327
 msgid "press a key..."
 msgstr ""
 
-#, fuzzy
-#~ msgid "Discord Channel (on Lazarus Project Server)"
-#~ msgstr " Канал Discord (на сервері проєкту Lazarus) "
+#: src/ui/menus.c:1548
+msgid "Edit"
+msgstr ""
 
 #~ msgid "Connected players:"
 #~ msgstr "Підключені гравці:"
