@@ -89,9 +89,14 @@ pacman -Syu --noconfirm
 # libgallium and a 32 MiB libicudata. --add-common (implies --add-mesa) swaps
 # in the nano mesa/LLVM and the icu stub, which quick-sharun then bundles
 # instead. This is what keeps the AppImage small.
+#
+# `sdl2_image` (positional arg) pulls in pkgforge-dev's sdl2_image-mini, built
+# without AVIF/JPEG-XL. Stock SDL2_image hard-links libavif (-> the whole AV1
+# codec family: libaom, SvtAv1Enc, rav1e, dav1d) and libjxl, ~23 MiB DC never
+# uses (it loads PNG only). The mini keeps PNG/JPG/TIFF/WEBP.
 wget --retry-connrefused --tries=30 "$DEBLOAT_PKGS" -O "$WORKDIR/get-debloated-pkgs"
 chmod +x "$WORKDIR/get-debloated-pkgs"
-./get-debloated-pkgs --add-common --prefer-nano
+./get-debloated-pkgs --add-common --prefer-nano sdl2_image
 
 wget --retry-connrefused --tries=30 "$SHARUN" -O "$WORKDIR/quick-sharun"
 chmod +x "$WORKDIR/quick-sharun"
