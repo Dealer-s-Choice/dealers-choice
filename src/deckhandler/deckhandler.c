@@ -91,7 +91,10 @@ static void DH_init_deck(DH_Deck *deck) {
 }
 
 DH_Deck DH_get_new_deck(void) {
-  DH_Deck deck;
+  /* Zero-init: DH_init_deck fills card[] and the counters but deliberately
+     leaves discard[] untouched (n_discard == 0 gates any read), so returning
+     `deck` by value would copy an uninitialized discard[]. */
+  DH_Deck deck = {0};
   DH_init_deck(&deck);
   return deck;
 }

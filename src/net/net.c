@@ -29,6 +29,7 @@
 #include "net.h"
 #include "game.h"
 #include "util.h"
+#include <limits.h>
 #include <sodium.h>
 
 static void fill_player_message(struct player_message_builder_t *builder, const Player_t *src) {
@@ -267,7 +268,12 @@ int send_all_tcp(tcpme_socket_t sock, const void *data, size_t length) {
   size_t total_sent = 0;
 
   while (total_sent < length) {
-    int sent = tcpme_send(sock, buf + total_sent, (int)(length - total_sent));
+    /* tcpme_send takes an int length; clamp the chunk so a size_t larger than
+       INT_MAX can't wrap to a negative/garbage int (the loop just sends the
+       remainder on the next pass). */
+    size_t remaining = length - total_sent;
+    int chunk = remaining > (size_t)INT_MAX ? INT_MAX : (int)remaining;
+    int sent = tcpme_send(sock, buf + total_sent, chunk);
     if (sent < 0) {
       dc_log(DC_LOG_WARN, "tcpme_send failed: %s", tcpme_get_error());
       return -1;

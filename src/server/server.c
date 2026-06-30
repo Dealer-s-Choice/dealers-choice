@@ -1379,6 +1379,14 @@ int run_server(const CliArgs_t *cli_args, Path_t *path) {
   tcpme_set_t *socket_set = tcpme_alloc_set(MAX_CLIENTS + 1);
   if (!socket_set) {
     dc_log(DC_LOG_ERROR, "Failed to allocate socket set: %s", tcpme_get_error());
+    /* The LAN-discovery set + sockets were opened just above; free them too so
+       this early exit doesn't leak them. */
+    if (discovery_set)
+      tcpme_free_set(discovery_set);
+    if (tcpme_socket_valid(discovery_sock))
+      tcpme_close(discovery_sock);
+    if (tcpme_socket_valid(discovery_sock6))
+      tcpme_close(discovery_sock6);
     tcpme_close(server);
     tcpme_quit();
     return 1;
