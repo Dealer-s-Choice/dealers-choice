@@ -111,6 +111,11 @@ void hotkey_overlay_render(SDL_Renderer *renderer, const Font_t *font, bool in_g
   WIDEN(max_hdr, measure_w(head_font, fixed_head));
   if (in_game) {
     WIDEN(max_hdr, measure_w(head_font, act_head));
+    /* action_rows == min(g_hotkey_def_count, MAX_ACTION_ROWS), so i is always a
+       valid g_hotkey_defs[] index. Coverity flags g_hotkey_defs[i] here as an
+       overrun because g_hotkey_def_count is defined in another TU (hotkey_table.c)
+       and it can't see its value, so it assumes i can reach MAX_ACTION_ROWS (32);
+       at runtime g_hotkey_def_count is 8. False positive — classify as such. */
     for (size_t i = 0; i < action_rows; i++) {
       WIDEN(max_desc, measure_w(row_font, _(g_hotkey_defs[i].description)));
       WIDEN(max_key, measure_w(row_font, action_key[i]));

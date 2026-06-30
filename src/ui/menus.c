@@ -957,6 +957,15 @@ int menu_display_connect(PlayerConfig_t *player_config, char *host_str, uint16_t
 err:
   ui_widget_destroy(&button_connect->base);
   ui_widget_destroy(&button_settings->base);
+  /* tw_nick/tw_host/tw_port are not registered in `reg` (they're placed
+     manually, like the two top buttons), so ui_destroy_all(&reg) won't free
+     them — destroy them here too, matching the normal-exit cleanup above. */
+  if (tw_nick)
+    ui_widget_destroy(&tw_nick->base);
+  if (tw_host)
+    ui_widget_destroy(&tw_host->base);
+  if (tw_port)
+    ui_widget_destroy(&tw_port->base);
   ui_destroy_all(&reg);
   return 0;
 }
@@ -1580,11 +1589,12 @@ void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *sdl_cont
     ui_register(&reg, &btn_next->base);
   }
 
+  /* Register each button immediately after its own NULL-check: if the second
+     create fails, the first is already owned by `reg` and freed by the
+     ui_destroy_all below, rather than leaking. */
   ButtonWidget_t *btn_save =
       button_widget_create_styled(_("Save"), &ROLE_PRIMARY, font->fonts, (SDL_Keycode)0);
-  ButtonWidget_t *btn_defaults =
-      button_widget_create_styled(_("Load Defaults"), &ROLE_PRIMARY, font->fonts, (SDL_Keycode)0);
-  if (!btn_save || !btn_defaults) {
+  if (!btn_save) {
     ui_destroy_all(&reg);
     return;
   }
@@ -1592,6 +1602,12 @@ void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *sdl_cont
   btn_save->base.rect.y = buttons_y;
   btn_save->interactive = false;
   ui_register(&reg, &btn_save->base);
+  ButtonWidget_t *btn_defaults =
+      button_widget_create_styled(_("Load Defaults"), &ROLE_PRIMARY, font->fonts, (SDL_Keycode)0);
+  if (!btn_defaults) {
+    ui_destroy_all(&reg);
+    return;
+  }
   btn_defaults->base.rect.x =
       btn_save->base.rect.x + btn_save->base.rect.w + g_layout_cfg.settings_save_btn_gap;
   btn_defaults->base.rect.y = buttons_y;
@@ -1772,7 +1788,11 @@ void menu_display_settings(PlayerConfig_t *player_config, SdlContext_t *sdl_cont
           int dir = (e.key.keysym.mod & KMOD_SHIFT) ? -1 : 1;
           cur = (cur + dir + n_ord) % n_ord;
           focused_row = order[cur];
-          rows[focused_row].input->focused = true;
+          /* order[] only holds collected row indices (all >= 0 with a non-NULL
+             input), so this is in-bounds — guard anyway to match every other
+             rows[focused_row] access in this function. */
+          if (focused_row >= 0 && rows[focused_row].input)
+            rows[focused_row].input->focused = true;
           break;
         }
         case SDLK_BACKSPACE:

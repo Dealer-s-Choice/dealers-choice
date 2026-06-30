@@ -302,7 +302,11 @@ char *expand_tilde(const char *path) {
 
   size_t home_len = strlen(home);
   size_t path_len = strlen(path);
-  char *result = malloc_wrap(home_len + path_len);
+  /* home + (path with the leading '~' dropped) + NUL. The second memcpy copies
+     path_len bytes (path+1 is path_len-1 chars plus its NUL), so home_len +
+     path_len already covers the terminator exactly; the +1 keeps the buffer
+     obviously in-bounds for a reader (and the static analyzer). */
+  char *result = malloc_wrap(home_len + path_len + 1);
   memcpy(result, home, home_len);
   memcpy(result + home_len, path + 1, path_len);
   return result;

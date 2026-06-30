@@ -623,8 +623,14 @@ bool get_socket_context_and_run_client(PlayerConfig_t *player_config, const CliA
 
     return went_back_result;
   } else {
+    /* Headless callers (the test harness) pass a non-NULL out_socket_context to
+       take ownership of the still-open socket + its set; hand it over. When no
+       caller is taking it (out_socket_context == NULL, e.g. the GUI in main.c),
+       free it here so socket_context.set doesn't leak. */
     if (out_socket_context)
       *out_socket_context = socket_context;
+    else
+      socket_cleanup(&socket_context);
     return false;
   }
 
