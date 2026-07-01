@@ -335,36 +335,6 @@ handler is changed to read `g_hotkey_cfg` live. Prefer treating F1 as a
 read-only reference overlay, with editing left to the Settings path — or do
 the live-`g_hotkey_cfg` change if in-game editing is wanted.
 
-## Known issues — open on branch `claude/automated-bot-testing`
-
-Surfaced by `tests/test_pokeval_fuzz` (registered in `tests/meson.build`) and the harness in `scripts/disconnect_test.sh`. The fuzz test currently fails CI on this branch because it pins behavior that is still wrong; pick these up before merging.
-
-### 1. Pokeval wild straight-flush / flush tie-breaks ~~(~2 mismatches per 1000 fuzz hands)~~ — FIXED
-
-Fixed by introducing `compare_wild_same_rank` in `src/pokeval/pokeval.c`, which centralizes the wild-aware tie-break dispatch and is shared between `update_best_wild` (best-5-of-7 selection) and `POKEVAL_compare_hands_wild` (cross-player winner determination).  The old code had each call site fall back to `compare_high_cards` on the raw combo, which left wilds at `face_val == wild_face` and mismeasured anything past HIGH_CARD.  50,000 fuzz hands across 5 seeds now pass with 0 mismatches; `tests/pokeval_fuzz_check.py` runs the full variant set (no more `--skip-wild`).
-
-
-`POKEVAL_compare_hands_wild` already has rank-aware tiebreaks for FIVE_OF_A_KIND / FOUR / FULL_HOUSE / THREE_OF_A_KIND / PAIR / TWO_PAIR (the last two added in commit `pokeval: wild-aware tie-break for PAIR and TWO_PAIR`).  STRAIGHT, STRAIGHT_FLUSH, and FLUSH still fall through to the `default:` case, which calls `compare_high_cards` on the raw combo — and the raw combo has wilds at `face_val = 2`.  When two flushes / straight flushes tie at the same rank, the wild card sorts to the bottom of the hand instead of being treated as its substituted face, so a Q-high wild SF can lose to a 5-high wheel SF (or a wild flush gets miscompared against a natural one).
-
-Concrete failure case from the fuzz harness:
-```
-P1: Js 2h 9c 8c Tc 2c Qd   — Q-high straight flush in clubs (wilds = Jc, Qc)
-P2: Kh 5h 2s 6s 4h Ah 2d   — 5-high wheel straight flush in hearts (wilds = 2h, 3h)
-```
-Pokeval picks P2 because `compare_high_cards` on the raw combos walks `10 9 8 2 2` vs `14 5 4 2 2` and `14 > 10`.
-
-Fix sketch: add `POKEVAL_STRAIGHT`, `POKEVAL_STRAIGHT_FLUSH`, and `POKEVAL_FLUSH` cases to the `compare_hands_wild` switch.  For straights, substitute the wild into the missing-rung position(s) and compare the resulting straight-high values (handle the A-2-3-4-5 wheel the same way `update_best_5card` already does at line ~819).  For flush, substitute each wild to the dominant suit and pick the highest non-duplicate face for each, then compare high-down.
-
-### 2. ~~Bot reconnect handshake silently hangs ~47% of the time~~ — RESOLVED
-
-Originally observed on the 60-min disconnect harness: roughly half of bot reconnect attempts would print `Exchanging protocol information...` and stop, with no error and no follow-up `Connected to…`.  Re-running the same harness after the server stack-use-after-return fix (`server: clear starting_turn after play_game to avoid stack-use-after-return`) returned **44/44 successful reconnects** across 4 bots in 60 minutes.
-
-Root cause was downstream of the UAR: when the server dereferenced freed stack memory in `args->starting_turn` during the post-game wait window, the corrupted state plausibly stalled `register_new_client` for queued accept-queue entries, so the bot would sit in `recv_all_tcp` waiting for the server's 1-byte ACK that never came.  No tcpme-level bug; the pattern disappears when the server doesn't reach into freed memory.
-
-### 3. Bot wire format leaks ACE_HIGH (face_val = 14) when not using the GUI client
-
-`POKEVAL_sort_hand` mutates aces from `DH_CARD_ACE` (1) to `POKEVAL_ACE` (14) in place so its straight detector sees them at the top of the sort.  Commit `server: restore ace face_val before broadcasting sorted hand` (server.c:`handle_sort_hand`) restores the value before the broadcast, but the underlying pokeval design still couples the sort to evaluator-internal numbering.  Worth considering a cleaner pokeval API split: a pure `POKEVAL_sort_hand_for_eval` that callers know is destructive, vs. a display-safe sort.
-
 ## Open for discussion — headless server binary name
 
 The headless server binary added during the renovation is currently named
