@@ -20,6 +20,17 @@ AppSupportURL={#IssuesURL}
 AppUpdatesURL={#AppURL}
 DefaultDirName={autopf}\{#AppName}
 DefaultGroupName={#AppName}
+; The binaries are 64-bit, so run the installer in 64-bit mode. Without this,
+; the 32-bit Inno stub stays in 32-bit mode and {autopf} resolves to
+; "Program Files (x86)" instead of the real "Program Files".
+; (Requires Inno Setup 6.3+ for the x64compatible/arm64 identifiers.)
+#if ARCH == "aarch64"
+ArchitecturesAllowed=arm64
+ArchitecturesInstallIn64BitMode=arm64
+#else
+ArchitecturesAllowed=x64compatible
+ArchitecturesInstallIn64BitMode=x64compatible
+#endif
 ; Output goes to the repo root (script is in packaging/windows/)
 OutputDir=..\..\
 OutputBaseFilename=dealers-choice-{#VERSION}-windows-{#ARCH}-setup
