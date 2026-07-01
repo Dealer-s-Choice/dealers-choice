@@ -51,6 +51,23 @@ it; the project root is fixed at launch). Available:
 - `/dc-soak` — short (~5 min) sanitized bot soak (run after server-side changes).
 - `/dc-gate` — pre-merge gate: runs `/dc-verify` then `/dc-soak`, one PASS/FAIL.
 
+## Design ethos (scope)
+
+DC is a **casual** game — for friends, family, and strangers — explicitly **not
+competitive**. This steers which features are worth building:
+
+- **No leaderboards or rankings.** They reward play-time over skill, which isn't
+  fair when people can't all play as often.
+- **Prefer session-scoped continuity over persistent accounts.** The real player
+  need after a brief disconnect is to resume the current game with their stack,
+  not a permanent cross-server account. Favour an ephemeral in-session reconnect
+  (hold seat + chips for a grace window, rejoin via a per-session token) over a
+  persistent global identity. A persistent pubkey identity is also a cross-server
+  tracking handle, which cuts against the low-stakes spirit.
+- When suggesting features, bias toward low-friction, social, session-scoped
+  mechanics; **flag** anything that introduces ranking, persistence, or accounts
+  rather than silently adding it.
+
 ## Architecture
 
 **Client-server** networked game, split across three binaries that talk over
@@ -65,7 +82,7 @@ deprecation stub; see "headless server binary name" below). Sources live under
 Meson builds the local libs bottom-up:
 
 1. **tcpme_lib** (`src/tcpme/`) — cross-platform TCP socket abstraction (POSIX + Winsock). Exposed as `tcpme_dep` and merged into `shared_dep`. Note: tcpme was written almost entirely by an LLM, which is a potential concern for correctness and security.
-   - **Keep tcpme generic and DC-agnostic.** It is meant to be a standalone, reusable library (SDL_net-style), so it provides *mechanism* only; DC provides *policy*. Do not put DC-specific values, constants, comments, or assumptions in `src/tcpme/`. Example: socket I/O timeouts — tcpme exposes `tcpme_set_timeout(sock, ms)` (the generic primitive); DC owns the value (`SOCKET_IO_TIMEOUT_MS` in `net.h`) and applies it after connect/accept. When a fix needs a tunable or a project-specific decision, expose a knob in tcpme and set it from DC, don't hardcode it in the library.
+   - **Working on tcpme? See the `tcpme` skill** (`.claude/skills/tcpme/`): the design contract (keep it generic — *mechanism*, not *policy*; expose a knob and let DC own the value, e.g. `tcpme_set_timeout(ms)` with DC's `SOCKET_IO_TIMEOUT_MS`), the POSIX↔Winsock traps, and an audit checklist for the LLM-written, internet-facing code.
 2. **`libdc_core`** (`dc_core_dep`) — the **SDL-free** core: game rules, protocol/serialization, and the server engine (`common_src` = `src/{game,net,server}` + core root files). No SDL, ttf, image, or audio. Linked by all three binaries.
 3. **`_lib` ("game")** (`game_dep`) — the GUI library: rendering, widgets, menus (`gui_src` = `src/ui/` + `widgets_src`), adding SDL2/ttf/image + miniaudio on top of `dc_core_dep`.
 
