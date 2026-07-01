@@ -64,13 +64,16 @@ jobs:
     # DLLs that collect-dlls.sh then bundles into the installer and DC never uses.
     # Build a slim SDL2_image with only PNG+SVG so those imports vanish and ldd
     # stops pulling them. With BACKEND_STB=ON, PNG needs no libpng/zlib either.
-    # The build dir is cached on the tag, so a cache hit skips clone+configure+
-    # build and only re-runs the cheap install. Bump SDL_IMAGE_TAG to invalidate.
-    - name: Cache slim SDL2_image build
+    # The staged install output (DLL + import lib + header) is cached on the tag,
+    # so a cache hit skips clone+configure+build and only re-runs the cheap copy
+    # into $MINGW_PREFIX. Caching the *install output* (not the build dir) means
+    # the header no longer needs the source tree at install time — the source is
+    # not restored on a cache hit. Bump SDL_IMAGE_TAG to invalidate.
+    - name: Cache slim SDL2_image
       id: sdl_image_cache
       uses: actions/cache@v6
       with:
-        path: _sdl_image_build
+        path: _sdl_image_staged
         key: ${{ runner.os }}-${{ matrix.platform }}-sdl_image-${{ env.SDL_IMAGE_TAG }}
 
     - name: Build slim SDL2_image (PNG + SVG only)
@@ -81,7 +84,6 @@ jobs:
           https://github.com/libsdl-org/SDL_image.git _sdl_image_src
         cmake -S _sdl_image_src -B _sdl_image_build -G Ninja \
           -DCMAKE_BUILD_TYPE=Release \
-          -DCMAKE_INSTALL_PREFIX="$MINGW_PREFIX" \
           -DBUILD_SHARED_LIBS=ON \
           -DSDL2IMAGE_SAMPLES=OFF \
           -DSDL2IMAGE_TESTS=OFF \
@@ -94,13 +96,14 @@ jobs:
           -DSDL2IMAGE_TIF=OFF \
           -DSDL2IMAGE_WEBP=OFF
         cmake --build _sdl_image_build
+        cmake --install _sdl_image_build --prefix "$(pwd)/_sdl_image_staged"
 
-    # Always run: on a cache hit the build dir is restored but not yet installed
-    # into $MINGW_PREFIX where meson's dependency('SDL2_image') looks for it.
-    - name: Install slim SDL2_image
+    # Always run: copy the staged (or cache-restored) artifacts into $MINGW_PREFIX
+    # where meson's dependency('SDL2_image') looks for them.
+    - name: Install slim SDL2_image into MinGW prefix
       shell: msys2 {0}
       run: |
-        cmake --install _sdl_image_build
+        cp -a _sdl_image_staged/. "$MINGW_PREFIX"/
 
     - name: Meson setup
       shell: msys2 {0}
