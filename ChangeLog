@@ -5,6 +5,8 @@
   + LAN game discovery: the connect screen now lists DC servers running on
     your local network; click one to join
   + The server is now a separate program, dealers-choice-server.
+  * Windows: the installer is now about half the size (roughly 19 MB to 9 MB)
+    after dropping image formats the game does not use
   * Fix a crash where the GUI client could use a huge amount of memory and
     be killed soon after joining a game
   * Fix the hand ending too early, or declaring the wrong winner, when a

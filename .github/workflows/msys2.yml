@@ -32,6 +32,7 @@ jobs:
       contents: write
     env:
       VERSION: ${{ inputs.version }}
+      SDL_IMAGE_TAG: release-2.8.12
     strategy:
       matrix:
         platform: ['UCRT64', 'CLANG64']
@@ -52,10 +53,54 @@ jobs:
           pkgconf:p
           protobuf-c:p
           SDL2:p
-          SDL2_image:p
           SDL2_ttf:p
         update: true
         cache: true
+
+    # DC only decodes PNG (via SDL_image's built-in stb backend) and SVG (via the
+    # bundled nanosvg) — see src/ui/graphics.c and src/widgets/card_text_atlas.c.
+    # The prebuilt SDL2_image package links libavif, libjxl, libtiff, libwebp and
+    # the whole AV1 codec stack (libaom/libdav1d/librav1e/libSvtAv1Enc): ~29M of
+    # DLLs that collect-dlls.sh then bundles into the installer and DC never uses.
+    # Build a slim SDL2_image with only PNG+SVG so those imports vanish and ldd
+    # stops pulling them. With BACKEND_STB=ON, PNG needs no libpng/zlib either.
+    # The build dir is cached on the tag, so a cache hit skips clone+configure+
+    # build and only re-runs the cheap install. Bump SDL_IMAGE_TAG to invalidate.
+    - name: Cache slim SDL2_image build
+      id: sdl_image_cache
+      uses: actions/cache@v6
+      with:
+        path: _sdl_image_build
+        key: ${{ runner.os }}-${{ matrix.platform }}-sdl_image-${{ env.SDL_IMAGE_TAG }}
+
+    - name: Build slim SDL2_image (PNG + SVG only)
+      if: steps.sdl_image_cache.outputs.cache-hit != 'true'
+      shell: msys2 {0}
+      run: |
+        git clone --depth 1 --branch "$SDL_IMAGE_TAG" \
+          https://github.com/libsdl-org/SDL_image.git _sdl_image_src
+        cmake -S _sdl_image_src -B _sdl_image_build -G Ninja \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DCMAKE_INSTALL_PREFIX="$MINGW_PREFIX" \
+          -DBUILD_SHARED_LIBS=ON \
+          -DSDL2IMAGE_SAMPLES=OFF \
+          -DSDL2IMAGE_TESTS=OFF \
+          -DSDL2IMAGE_BACKEND_STB=ON \
+          -DSDL2IMAGE_PNG=ON \
+          -DSDL2IMAGE_SVG=ON \
+          -DSDL2IMAGE_AVIF=OFF \
+          -DSDL2IMAGE_JXL=OFF \
+          -DSDL2IMAGE_JPG=OFF \
+          -DSDL2IMAGE_TIF=OFF \
+          -DSDL2IMAGE_WEBP=OFF
+        cmake --build _sdl_image_build
+
+    # Always run: on a cache hit the build dir is restored but not yet installed
+    # into $MINGW_PREFIX where meson's dependency('SDL2_image') looks for it.
+    - name: Install slim SDL2_image
+      shell: msys2 {0}
+      run: |
+        cmake --install _sdl_image_build
 
     - name: Meson setup
       shell: msys2 {0}
