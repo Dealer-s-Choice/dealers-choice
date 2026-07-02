@@ -62,8 +62,12 @@ int main(void) {
   int64_t elapsed = tc_now_ms() - t0;
   assert(!tcpme_socket_valid(r));
   assert(strlen(tcpme_get_error()) > 0);
+  printf("refused connect returned in %lld ms (budget 10000): %s\n", (long long)elapsed,
+         tcpme_get_error());
   /* Loopback refusal is an immediate RST; 5s of slack for slow VMs is still
-   * far below the 10s budget, so a refusal that waits out the timeout fails. */
+   * far below the 10s budget, so a refusal that waits out the timeout fails.
+   * (This is the assert that caught Winsock reporting a failed non-blocking
+   * connect only in select's except set -- see try_connect_addrinfo.) */
   assert(elapsed < 5000);
 
   /* --- 3. Deadline against a blackholed target --- */
