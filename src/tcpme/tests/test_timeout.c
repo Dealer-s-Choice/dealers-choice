@@ -34,9 +34,19 @@ int main(void) {
   char buf[64];
 
   /* Case 1 — timeout cap: peer sends nothing, so recv must time out
-   * (return < 0) instead of blocking forever. */
+   * (return < 0) instead of blocking forever.
+   *
+   * The elapsed-time bounds are the real assertion: an instant failure
+   * (e.g. a bug that set O_NONBLOCK instead of SO_RCVTIMEO would return
+   * EWOULDBLOCK immediately) must NOT pass.  Lower bound is lenient for
+   * SO_RCVTIMEO rounding; upper bound only guards against a hang while
+   * absorbing slow-CI scheduling delay. */
+  int64_t t0 = tc_now_ms();
   int r = tcpme_recv(client, buf, sizeof(buf));
+  int64_t elapsed = tc_now_ms() - t0;
   assert(r < 0);
+  assert(elapsed >= 150);
+  assert(elapsed <= 3000);
 
   /* Case 2 — partial frame then stall: peer sends a 2-byte "header" and
    * stops.  The first recv returns that data; the next recv (waiting for the
@@ -44,8 +54,12 @@ int main(void) {
   assert(tcpme_send(peer, "ab", 2) == 2);
   r = tcpme_recv(client, buf, sizeof(buf));
   assert(r > 0);
+  t0 = tc_now_ms();
   r = tcpme_recv(client, buf, sizeof(buf));
+  elapsed = tc_now_ms() - t0;
   assert(r < 0);
+  assert(elapsed >= 150);
+  assert(elapsed <= 3000);
 
   printf("tcpme_set_timeout bounds blocking recv (cap + partial-stall)\n");
 

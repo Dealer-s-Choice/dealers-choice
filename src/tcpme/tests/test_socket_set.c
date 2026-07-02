@@ -59,6 +59,23 @@ int main(void) {
   assert(strcmp(buf, msg) == 0);
   printf("received: \"%s\"\n", buf);
 
+  /* Both sockets readable at once: check_sockets must report 2, not stop at
+   * the first ready socket (the server's poll loop depends on seeing all of
+   * them in one pass).  Re-check in short slices in case the second loopback
+   * delivery lags the first on slow VMs. */
+  assert(tcpme_send(client, msg, (int)sizeof(msg)) == (int)sizeof(msg));
+  assert(tcpme_send(peer, msg, (int)sizeof(msg)) == (int)sizeof(msg));
+  ready = 0;
+  for (int i = 0; i < 100 && ready < 2; i++)
+    ready = tcpme_check_sockets(set, 10);
+  assert(ready == 2);
+  assert(tcpme_socket_ready(set, client));
+  assert(tcpme_socket_ready(set, peer));
+
+  /* Drain both so the later single-ready check starts clean. */
+  assert(tcpme_recv(peer, buf, (int)(sizeof(buf) - 1)) == (int)sizeof(msg));
+  assert(tcpme_recv(client, buf, (int)(sizeof(buf) - 1)) == (int)sizeof(msg));
+
   /* del_socket removes client; peer should still be present. */
   assert(tcpme_del_socket(set, client) == 0);
 

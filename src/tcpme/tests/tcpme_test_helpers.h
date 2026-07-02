@@ -13,6 +13,7 @@
 
 #ifndef _WIN32
 #include <sys/select.h> /* struct timeval, select */
+#include <time.h>       /* clock_gettime for tc_now_ms */
 #endif
 
 /* Thread portability: Win32 on Windows (MSVC and MinGW), pthreads elsewhere.
@@ -54,6 +55,18 @@ static inline void tc_sleep_ms(int ms) {
   tv.tv_sec = ms / 1000;
   tv.tv_usec = (ms % 1000) * 1000;
   select(0, NULL, NULL, NULL, &tv);
+#endif
+}
+
+/* Portable monotonic clock in milliseconds — for asserting that a call
+ * blocked for (roughly) an expected duration, not just that it failed. */
+static inline int64_t tc_now_ms(void) {
+#ifdef _WIN32
+  return (int64_t)GetTickCount64();
+#else
+  struct timespec ts;
+  clock_gettime(CLOCK_MONOTONIC, &ts);
+  return (int64_t)ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
 #endif
 }
 

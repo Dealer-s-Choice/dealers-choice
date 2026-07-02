@@ -1,5 +1,6 @@
 foreach t : [
   'basic',
+  'bytes',
   'loopback',
   'ipv6',
   'socket_set',
@@ -17,10 +18,13 @@ foreach t : [
   test('tcpme_test_' + t, exe, suite: 'tcpme')
 endforeach
 
+# Tests that spawn threads (pthreads / Win32 via tcpme_test_helpers.h).
 threads_dep = dependency('threads')
-exe = executable(
-  'tcpme_test_protocol',
-  'test_protocol.c',
-  dependencies: [tcpme_dep, threads_dep],
-)
-test('tcpme_test_protocol', exe, suite: 'tcpme')
+foreach t : ['protocol', 'error_threadlocal']
+  exe = executable(
+    'tcpme_test_' + t,
+    'test_' + t + '.c',
+    dependencies: [tcpme_dep, threads_dep],
+  )
+  test('tcpme_test_' + t, exe, suite: 'tcpme')
+endforeach
