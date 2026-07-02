@@ -430,6 +430,16 @@ void tcpme_close(tcpme_socket_t sock) {
 }
 
 int tcpme_send(tcpme_socket_t sock, const void *buf, int len) {
+  /* Reject degenerate lengths at the API boundary. On POSIX a negative int
+   * converts to a huge size_t, which Linux clamps (~2 GB) and services rather
+   * than rejecting — send() could then block or transmit garbage instead of
+   * failing. Winsock fails it cleanly; make both platforms behave the same. */
+  if (len < 0) {
+    set_error("send: negative length");
+    return -1;
+  }
+  if (len == 0)
+    return 0;
   int n;
 #if defined(MSG_NOSIGNAL)
   do {
@@ -448,6 +458,14 @@ int tcpme_send(tcpme_socket_t sock, const void *buf, int len) {
 }
 
 int tcpme_recv(tcpme_socket_t sock, void *buf, int len) {
+  /* Same boundary guard as tcpme_send: a negative len becomes a huge size_t
+   * on POSIX and recv() blocks waiting for data instead of failing. */
+  if (len < 0) {
+    set_error("recv: negative length");
+    return -1;
+  }
+  if (len == 0)
+    return 0;
   int n;
 #ifndef _WIN32
   do {
