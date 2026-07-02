@@ -318,9 +318,16 @@ static tcpme_socket_t try_connect_addrinfo(const struct addrinfo *ai, uint32_t t
     bool in_progress = (errno == EINPROGRESS);
 #endif
     if (in_progress) {
-      fd_set wfds;
+      /* Wait for the connect to resolve. POSIX reports both success AND
+       * failure by marking the socket writable (SO_ERROR then tells them
+       * apart), but Winsock reports failure ONLY in the except set -- with
+       * just writefds, a refused connect on Windows never wakes select and
+       * silently eats the whole timeout budget. Pass both sets. */
+      fd_set wfds, efds;
       FD_ZERO(&wfds);
+      FD_ZERO(&efds);
       FD_SET(sock, &wfds);
+      FD_SET(sock, &efds);
       struct timeval tv;
       tv.tv_sec = (long)(timeout_ms / 1000);
       tv.tv_usec = (long)((timeout_ms % 1000) * 1000);
@@ -330,12 +337,23 @@ static tcpme_socket_t try_connect_addrinfo(const struct addrinfo *ai, uint32_t t
 #else
           (int)sock + 1,
 #endif
-          NULL, &wfds, NULL, &tv);
-      if (n > 0 && FD_ISSET(sock, &wfds)) {
+          NULL, &wfds, &efds, &tv);
+      if (n > 0 && (FD_ISSET(sock, &wfds) || FD_ISSET(sock, &efds))) {
         int so_error = 0;
         socklen_t len = sizeof(so_error);
-        if (getsockopt(sock, SOL_SOCKET, SO_ERROR, (char *)&so_error, &len) == 0 && so_error == 0)
-          connected = true;
+        if (getsockopt(sock, SOL_SOCKET, SO_ERROR, (char *)&so_error, &len) == 0) {
+          if (so_error == 0) {
+            connected = true;
+          } else {
+            /* Surface the real failure (e.g. ECONNREFUSED) so the caller's
+             * set_error_sys doesn't format a stale, unrelated error code. */
+#ifdef _WIN32
+            WSASetLastError(so_error);
+#else
+            errno = so_error;
+#endif
+          }
+        }
       }
     }
   }
