@@ -313,12 +313,14 @@ void save_player_config(const PlayerConfig_t *config) {
   if (fclose(fp) != 0)
     write_ok = false;
 
+  /* The removes are best-effort cleanup of the .tmp file on a failed save --
+   * a leftover .tmp is harmless (overwritten by the next save). */
   if (!write_ok) {
     dc_log(DC_LOG_ERROR, "writing player.conf: %s", strerror(errno));
-    remove(tmp_pathname);
+    (void)remove(tmp_pathname);
   } else if (replace_file(tmp_pathname, cfg_pathname) != 0) {
     dc_log(DC_LOG_ERROR, "rename player.conf: %s", strerror(errno));
-    remove(tmp_pathname);
+    (void)remove(tmp_pathname);
   }
 
   free(tmp_pathname);

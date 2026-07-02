@@ -911,8 +911,12 @@ static EReturnCode_t init_game(ArgsBroadcastGameState_t *args, DH_Deck *deck) {
   // uint32_t wait_ms = 2000;
   uint32_t start = dc_get_ticks();
   while (dc_get_ticks() - start < wait_ms) {
-    register_new_client(args);
-    tcpme_check_sockets(args->socket_set, 10);
+    /* Between-hands drain loop: keep accepting/expiring clients until the
+     * timeout. The per-call results don't steer anything here -- a LOOP_ERROR
+     * from register_new_client just means that one join attempt failed, and
+     * the check_sockets count is consumed by handle_disconnections. */
+    (void)register_new_client(args);
+    (void)tcpme_check_sockets(args->socket_set, 10);
     handle_disconnections(args);
   }
 
@@ -952,7 +956,7 @@ static int recv_and_validate_protocol_header(tcpme_socket_t sock, uint8_t *flags
   if (version != GAME_PROTOCOL_VERSION) {
     dc_log(DC_LOG_WARN, "Unsupported protocol version: %u", version);
     uint8_t nack = 1;
-    send_all_tcp(sock, &nack, sizeof(nack)); // best-effort; we're closing anyway
+    (void)send_all_tcp(sock, &nack, sizeof(nack)); // best-effort; we're closing anyway
     return -1;
   }
 

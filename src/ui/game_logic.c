@@ -1089,8 +1089,18 @@ EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
       int pr = g_layout.pot_radius - coin_px / 2; /* leave room for the coin's own size */
       uint32_t pb = (uint32_t)(pr > 0 ? 2 * pr : 0);
       uint32_t boundary = pb - (pb * 3 / 4) * coins / MAX_POT_COINS;
-      coin_in_pot[coins].offset.x = (int)pcg32_boundedrand_r(&rng, boundary) - (int)(boundary / 2);
-      coin_in_pot[coins].offset.y = (int)pcg32_boundedrand_r(&rng, boundary) - (int)(boundary / 2);
+      /* boundary can be 0 when layout.conf's pot_radius is <= half a coin
+       * (pb == 0); pcg32_boundedrand_r(rng, 0) would divide by zero, so pile
+       * the coins dead-center instead. */
+      if (boundary > 0) {
+        coin_in_pot[coins].offset.x =
+            (int)pcg32_boundedrand_r(&rng, boundary) - (int)(boundary / 2);
+        coin_in_pot[coins].offset.y =
+            (int)pcg32_boundedrand_r(&rng, boundary) - (int)(boundary / 2);
+      } else {
+        coin_in_pot[coins].offset.x = 0;
+        coin_in_pot[coins].offset.y = 0;
+      }
       coin_in_pot[coins].angle = pcg32_boundedrand_r(&rng, 360);
       coins++;
       new_coin = true;

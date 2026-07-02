@@ -410,8 +410,10 @@ bool get_socket_context_and_run_client(PlayerConfig_t *player_config, const CliA
     char *nick = player_config->nick;
     uint16_t len = (uint16_t)strlen(nick);
     uint16_t net_len = SDL_SwapBE16(len);
-    send_all_tcp(sock, &net_len, sizeof(net_len));
-    if (send_all_tcp(sock, player_config->nick, len) != 0)
+    /* Short-circuit: if the length prefix fails, don't send the nick bytes --
+     * the server would misparse them as the start of the next message. */
+    if (send_all_tcp(sock, &net_len, sizeof(net_len)) != 0 ||
+        send_all_tcp(sock, player_config->nick, len) != 0)
       dc_log(DC_LOG_ERROR, "Failed to send player nick to server");
 
     const Uint32 timeout = 2000;    // 2 seconds

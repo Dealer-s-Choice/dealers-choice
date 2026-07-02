@@ -293,14 +293,20 @@ int recv_all_tcp(tcpme_socket_t sock, void *buf, size_t len) {
   size_t total = 0;
 
   while (total < len) {
-    int r = tcpme_recv(sock, p + total, (int)(len - total));
+    /* Same clamp as send_all_tcp: tcpme_recv takes an int length, so a size_t
+       above INT_MAX must not wrap negative; the loop reads the rest next pass. */
+    size_t remaining = len - total;
+    int chunk = remaining > (size_t)INT_MAX ? INT_MAX : (int)remaining;
+    int r = tcpme_recv(sock, p + total, chunk);
 
     if (r <= 0)
       return -1;
 
     total += (size_t)r;
   }
-  return (int)total;
+  /* All wire messages are far below INT_MAX, but keep the return well-defined
+     for a huge len rather than an overflowing (int) cast. */
+  return total > (size_t)INT_MAX ? INT_MAX : (int)total;
 }
 
 // Eventually some, or most, of the data in the game state struct will be sent

@@ -59,12 +59,14 @@ static void set_error(const char *msg) {
 }
 
 static void set_nodelay(tcpme_socket_t sock) {
+  /* Best-effort latency knob: without TCP_NODELAY the connection still works,
+   * just with Nagle batching, so a failure here is deliberately ignored. */
 #ifndef _WIN32
   int one = 1;
-  setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, &one, sizeof(one));
+  (void)setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, &one, sizeof(one));
 #else
   DWORD one = 1;
-  setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, (const char *)&one, sizeof(one));
+  (void)setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, (const char *)&one, sizeof(one));
 #endif
 }
 
@@ -186,17 +188,21 @@ tcpme_socket_t tcpme_listen(const char *host, uint16_t port) {
         continue;
 
       int one = 1;
-      setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (const char *)&one, sizeof(one));
+      /* Best-effort: without SO_REUSEADDR a quick restart may fail to bind
+       * (TIME_WAIT), but the listen itself still works, so don't abort on it. */
+      (void)setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (const char *)&one, sizeof(one));
 #ifdef IPV6_V6ONLY
       if (ai->ai_family == AF_INET6) {
         int zero = 0;
-        setsockopt(sock, IPPROTO_IPV6, IPV6_V6ONLY, (const char *)&zero, sizeof(zero));
+        /* A failure here is caught by the read-back verify just below. */
+        (void)setsockopt(sock, IPPROTO_IPV6, IPV6_V6ONLY, (const char *)&zero, sizeof(zero));
         // Verify dual-stack actually took effect; OpenBSD ignores IPV6_V6ONLY=0
         // and the socket would only accept IPv6, so fall through to the IPv4 pass.
+        // A failed getsockopt leaves v6only at 1 -> treated as not-dual-stack.
         int v6only = 1;
         socklen_t vlen = sizeof(v6only);
-        getsockopt(sock, IPPROTO_IPV6, IPV6_V6ONLY, (char *)&v6only, &vlen);
-        if (v6only != 0) {
+        if (getsockopt(sock, IPPROTO_IPV6, IPV6_V6ONLY, (char *)&v6only, &vlen) != 0 ||
+            v6only != 0) {
           close_socket(sock);
           sock = TCPME_INVALID_SOCKET;
           continue;
@@ -559,7 +565,8 @@ tcpme_socket_t tcpme_udp_open(uint16_t bind_port, bool broadcast) {
   }
 
   int one = 1;
-  setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (const char *)&one, sizeof(one));
+  /* Best-effort; see tcpme_listen. */
+  (void)setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (const char *)&one, sizeof(one));
 
   if (broadcast &&
       setsockopt(sock, SOL_SOCKET, SO_BROADCAST, (const char *)&one, sizeof(one)) != 0) {
@@ -660,15 +667,19 @@ tcpme_socket_t tcpme_udp_open6(uint16_t bind_port) {
   }
 
   int one = 1;
-  setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (const char *)&one, sizeof(one));
+  /* Best-effort; see tcpme_listen. */
+  (void)setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (const char *)&one, sizeof(one));
   // Keep this socket purely IPv6 so it can coexist with a separate IPv4 UDP
-  // socket bound to the same port (the dual-stack discovery setup).
-  setsockopt(sock, IPPROTO_IPV6, IPV6_V6ONLY, (const char *)&one, sizeof(one));
+  // socket bound to the same port (the dual-stack discovery setup). Best-effort:
+  // if it fails (v6only stays off) the worst case is this socket also receiving
+  // v4-mapped datagrams meant for the companion IPv4 socket.
+  (void)setsockopt(sock, IPPROTO_IPV6, IPV6_V6ONLY, (const char *)&one, sizeof(one));
   // Link-local scope (1 hop) and loop multicast back, so a server and client on
-  // the same host still discover each other.
+  // the same host still discover each other. Both best-effort: 1 hop is already
+  // the RFC 3493 default for MULTICAST_HOPS, and loopback defaults to on.
   int hops = 1;
-  setsockopt(sock, IPPROTO_IPV6, IPV6_MULTICAST_HOPS, (const char *)&hops, sizeof(hops));
-  setsockopt(sock, IPPROTO_IPV6, IPV6_MULTICAST_LOOP, (const char *)&one, sizeof(one));
+  (void)setsockopt(sock, IPPROTO_IPV6, IPV6_MULTICAST_HOPS, (const char *)&hops, sizeof(hops));
+  (void)setsockopt(sock, IPPROTO_IPV6, IPV6_MULTICAST_LOOP, (const char *)&one, sizeof(one));
 
   struct sockaddr_in6 addr;
   memset(&addr, 0, sizeof(addr));
@@ -735,7 +746,10 @@ int tcpme_udp_mcast6_send_all(tcpme_socket_t sock, const char *group, uint16_t p
   if (ifs) {
     for (struct if_nameindex *p = ifs; p->if_index != 0 || p->if_name != NULL; p++) {
       unsigned idx = p->if_index;
-      setsockopt(sock, IPPROTO_IPV6, IPV6_MULTICAST_IF, (const char *)&idx, sizeof(idx));
+      // If the interface can't be selected (down, no IPv6, ...) skip it rather
+      // than send out whatever interface the socket was last bound to.
+      if (setsockopt(sock, IPPROTO_IPV6, IPV6_MULTICAST_IF, (const char *)&idx, sizeof(idx)) != 0)
+        continue;
       addr.sin6_scope_id = idx; // link-local destination needs the outgoing scope
       if ((int)sendto(sock, (const char *)buf, (size_t)len, 0, (struct sockaddr *)&addr,
                       sizeof(addr)) == len)
@@ -746,8 +760,10 @@ int tcpme_udp_mcast6_send_all(tcpme_socket_t sock, const char *group, uint16_t p
 #endif
   if (sent == 0) {
     // Fallback: default interface (and the only path on Windows here).
+    // Best-effort: index 0 = "kernel picks"; if even that fails, the sendto
+    // below reports the error.
     unsigned idx = 0;
-    setsockopt(sock, IPPROTO_IPV6, IPV6_MULTICAST_IF, (const char *)&idx, sizeof(idx));
+    (void)setsockopt(sock, IPPROTO_IPV6, IPV6_MULTICAST_IF, (const char *)&idx, sizeof(idx));
     addr.sin6_scope_id = 0;
     if ((int)sendto(sock, (const char *)buf, (size_t)len, 0, (struct sockaddr *)&addr,
                     sizeof(addr)) == len)

@@ -396,7 +396,9 @@ static const char *json_find_value(const char *obj, const char *end, const char 
  * un-escaping \" and \\ (the only escapes write_servers_json produces). Returns
  * true on success. */
 static bool json_read_string(const char *p, const char *end, char *out, size_t outsz) {
-  if (p >= end || *p != '"')
+  /* outsz == 0 would make the "out[j] = '\0'" below underflow to out[SIZE_MAX];
+   * all callers pass sizeof(array), but guard the boundary anyway. */
+  if (outsz == 0 || p >= end || *p != '"')
     return false;
   p++;
   size_t j = 0;
@@ -410,9 +412,7 @@ static bool json_read_string(const char *p, const char *end, char *out, size_t o
       out[j++] = c;
     p++;
   }
-  if (j >= outsz)
-    j = outsz - 1;
-  out[j] = '\0';
+  out[j] = '\0'; /* j <= outsz - 1 by the copy guard above */
   return (p < end && *p == '"');
 }
 
@@ -761,15 +761,25 @@ static int run_registry(uint16_t port, const char *json_path) {
     tcpme_quit();
     return 1;
   }
-  tcpme_add_socket(set, server);
+  if (tcpme_add_socket(set, server) != 0) {
+    /* Can't happen with a fresh 1-slot set, but a registry that can't watch
+     * its own listen socket would just spin uselessly -- bail out. */
+    fputs("registry: failed to add listen socket to set\n", stderr);
+    tcpme_free_set(set);
+    tcpme_close(server);
+    tcpme_quit();
+    return 1;
+  }
 
   /* Bring up the shared-state lock and the verify worker before accepting. */
   reg_mutex_init(&g_lock);
   reg_mutex_init(&g_qlock);
   reg_cond_init(&g_qcond);
   /* Seed g_table from the last-written servers.json so a restart doesn't blank
-   * the public list. Done before starting the verify worker, while still
-   * single-threaded, so no locking is needed. */
+   * the public list. Done before starting the verify worker, so this is still
+   * single-threaded -- the locks are taken anyway so every g_table/g_worker_run
+   * access follows the same discipline (and static analyzers can see it). */
+  reg_mutex_lock(&g_lock);
   if (json_path) {
     load_servers_json(json_path, dc_get_ticks());
     /* Resume numbering past the highest reloaded "Server-NN" so a fresh server
@@ -785,7 +795,10 @@ static int run_registry(uint16_t port, const char *json_path) {
     if (max_seq > 0)
       g_next_seq = (uint8_t)(max_seq % 99 + 1);
   }
+  reg_mutex_unlock(&g_lock);
+  reg_mutex_lock(&g_qlock);
   g_worker_run = true;
+  reg_mutex_unlock(&g_qlock);
   reg_thread_t worker;
   if (reg_thread_create(&worker, verify_worker, NULL) != 0) {
     fputs("registry: failed to start verify worker\n", stderr);
@@ -805,7 +818,9 @@ static int run_registry(uint16_t port, const char *json_path) {
 
   uint32_t last_json = 0;
   while (g_running) {
-    tcpme_check_sockets(set, REG_TICK_MS);
+    /* Count deliberately unused: readiness is queried per-socket below, and
+     * the loop must tick anyway (expiry + JSON rewrite) even on 0/error. */
+    (void)tcpme_check_sockets(set, REG_TICK_MS);
     if (tcpme_socket_ready(set, server)) {
       tcpme_socket_t client = tcpme_accept(server);
       if (tcpme_socket_valid(client)) {
