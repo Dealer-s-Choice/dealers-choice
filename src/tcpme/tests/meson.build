@@ -1,6 +1,7 @@
 foreach t : [
   'basic',
   'bytes',
+  'connect_timeout',
   'loopback',
   'ipv6',
   'socket_set',
@@ -9,6 +10,7 @@ foreach t : [
   'peer_close',
   'timeout',
   'udp',
+  'udp6',
 ]
   exe = executable(
     'tcpme_test_' + t,

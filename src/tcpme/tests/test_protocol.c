@@ -5,6 +5,12 @@
  * holds the listen socket. It services everything through tcpme_check_sockets,
  * transforming each "PING <id>:<round>" into "PONG <id>:<round>" and sending
  * it back. N_CLIENTS client threads each do N_ROUNDS exchanges then send QUIT.
+ *
+ * NOTE: the one-recv-per-message pattern is safe ONLY because the protocol is
+ * lockstep — each client waits for its PONG before sending the next PING (and
+ * QUIT goes out only after the last PONG), so at most one message is ever in
+ * flight per connection and TCP cannot coalesce two of them into one recv.
+ * If pipelining is ever added here, the reads must grow real framing.
  */
 
 #include "tcpme_test_helpers.h"

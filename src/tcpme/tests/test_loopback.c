@@ -80,9 +80,12 @@ int main(void) {
   tcpme_close(client);
   tcpme_close(server);
 
-  /* Verify recv on closed socket returns ≤ 0. */
+  /* Verify recv on a dead socket handle returns ≤ 0.  Uses the INVALID
+   * sentinel rather than the just-closed `peer`: recv-ing a closed fd is a
+   * stale-descriptor use that would turn into an fd-reuse bug if anything
+   * ever opened a descriptor between the close and the recv. */
   char tmp[4];
-  assert(tcpme_recv(peer, tmp, sizeof(tmp)) <= 0);
+  assert(tcpme_recv(TCPME_INVALID_SOCKET, tmp, sizeof(tmp)) <= 0);
 
   tcpme_quit();
   return 0;

@@ -10,6 +10,7 @@
  */
 
 #include "tcpme_test_helpers.h"
+#include <stdio.h>
 
 #include "tcpme.h"
 
@@ -77,6 +78,18 @@ int main(void) {
   /* Error path: invalid IPv4 literal must fail without sending. */
   assert(tcpme_udp_sendto(client, "not.an.ip", 1234, query, (int)sizeof(query)) == -1);
   assert(strlen(tcpme_get_error()) > 0);
+
+  /* Broadcast send path: delivery is environment-dependent (see header), but
+   * the *send* itself must either succeed or fail cleanly with an error set —
+   * some sandboxes have no broadcast route, so both outcomes are accepted. */
+  int bn = tcpme_udp_broadcast(client, server_port, query, (int)sizeof(query));
+  if (bn == (int)sizeof(query)) {
+    printf("broadcast send succeeded\n");
+  } else {
+    assert(bn == -1);
+    assert(strlen(tcpme_get_error()) > 0);
+    printf("broadcast send unavailable here: %s\n", tcpme_get_error());
+  }
 
   tcpme_close(client);
   tcpme_close(server);
