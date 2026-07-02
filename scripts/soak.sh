@@ -60,7 +60,7 @@ abort(){ say "ABORTED"; exit 1; }
 soak(){ local secs=$(( $1 * 60 )) t=0; while [ $t -lt $secs ]; do check_server || abort; sleep 20; t=$((t+20)); done; }
 
 say "launching sanitized server (port $DC_PORT, build $DC_BUILD)"
-DEALERSCHOICE_DATADIR="$DC_REPO/data" stdbuf -oL -eL "$DC_BUILD/dealers-choice-server" --port "$DC_PORT" --verbose > "$SRVLOG" 2>&1 &
+DEALERSCHOICE_DATADIR="$DC_REPO/data" stdbuf -oL -eL "$DC_BUILD/dealers-choice-server" --port "$DC_PORT" --verbose --disable-publish > "$SRVLOG" 2>&1 &
 SRV=$!
 sleep 3
 kill -0 "$SRV" 2>/dev/null || { say "server failed to start"; exit 1; }

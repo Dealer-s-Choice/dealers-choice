@@ -122,9 +122,11 @@ Binaries: `dealers-choice` = `main.c` + `game_dep`; `dealers-choice-bot` = `bot.
   `dealers-choice-registry` binary (`src/registry/registry_main.c`) verifies each
   announce by connecting back, expires stale entries (TTL), and writes
   `servers.json`. Client opt-out: `registry_browser = no` in player.conf /
-  `--disable-registry-browser`. Server opt-out: `--disable-publish` or the
-  `DC_DISABLE_PUBLISH` env (the meson tests set it so test servers never publish
-  to the live registry). Details in `docs/REGISTRY.md`; Docker in
+  `--disable-registry-browser`. Server opt-out: `--disable-publish` — the only
+  opt-out (the old `DC_DISABLE_PUBLISH` env was removed); every test/script
+  server spawn must pass the flag or it announces to the live registry
+  (`tests/game_logic.py`, `scripts/soak.sh`, `scripts/run_bot_session.sh`,
+  `scripts/disconnect_test.sh` all do). Details in `docs/REGISTRY.md`; Docker in
   `docker/README.md`. Open registry work: #74 (non-blocking verify), #75 (reload
   `servers.json` on boot + faster announce retry).
 

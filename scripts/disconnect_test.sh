@@ -63,6 +63,7 @@ trap cleanup EXIT INT TERM
 echo "Starting server on port $PORT (out: $OUT_DIR), running ${DURATION}s" >&2
 "$SERVER" \
   --conf "$OUT_DIR/server.conf" \
+  --disable-publish \
   --log-hands "$OUT_DIR/hands.jsonl" \
   --log-game-results "$OUT_DIR/game_results.md" \
   >"$OUT_DIR/server.log" 2>&1 &

@@ -233,7 +233,11 @@ Run the binaries with
 Line-buffer the verbose log so it doesn't lag behind the game (stdio
 block-buffers to a file):
 
-    stdbuf -oL -eL ./dealers-choice-server --verbose > log 2>&1
+    stdbuf -oL -eL ./dealers-choice-server --verbose --disable-publish > log 2>&1
+
+(`--disable-publish` keeps a hand-run test server from announcing itself to the
+live public registry in `data/common.conf`; it is the only opt-out — the old
+`DC_DISABLE_PUBLISH` env variable was removed.)
 
 For a fully-automated repro, run **two bots** (they auto-deal/play) instead of a
 manual GUI client.

@@ -277,14 +277,12 @@ CliArgs_t parse_server_args(int argc, char *argv[]) {
     }
   }
 
-  /* Tests/CI (and ops) can suppress registry announces via the environment, so a
-   * server reading the shipped common.conf (which carries the public registry
-   * line) doesn't publish to the live registry. Equivalent to --disable-publish;
-   * the meson test env sets it for every test. */
-  if (getenv("DC_DISABLE_PUBLISH") != NULL)
-    cli_args.disable_publish = true;
+  /* Registry publishing is opted out of with --disable-publish only. There used
+   * to be a DC_DISABLE_PUBLISH env equivalent for tests/CI, but a visible CLI
+   * flag is more obvious for end-users, so the env was removed; every test
+   * harness / script server spawn now passes the flag explicitly. */
 
-  /* Same idea for LAN discovery (separate from the registry): a test server must
+  /* Tests/CI can suppress LAN discovery via the environment: a test server must
    * not answer discovery probes on the tester's real network. Equivalent to
    * --disable-lan-discovery; the meson test env sets it for every test. */
   if (getenv("DC_DISABLE_LAN_DISCOVERY") != NULL)
