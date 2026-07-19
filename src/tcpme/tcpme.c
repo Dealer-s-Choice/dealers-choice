@@ -58,6 +58,20 @@ static void set_error(const char *msg) {
   tcpme_errbuf[sizeof(tcpme_errbuf) - 1] = '\0';
 }
 
+/* Reject a negative length at a datagram API boundary before the (size_t)len
+ * cast turns it into a huge value that POSIX sendto/recvfrom would service (OOB
+ * read on send, overflow on recv) while Winsock rejects it — the same guard,
+ * and reason, as tcpme_send/tcpme_recv. `errval` is the caller's error return
+ * (-1, or 0 for the count-returning multicast sender). Zero-length datagrams
+ * are valid, so only negatives are rejected. */
+#define TCPME_REJECT_NEG_LEN(len, errval)                                                          \
+  do {                                                                                             \
+    if ((len) < 0) {                                                                               \
+      set_error("negative length");                                                                \
+      return (errval);                                                                             \
+    }                                                                                              \
+  } while (0)
+
 static void set_nodelay(tcpme_socket_t sock) {
   /* Best-effort latency knob: without TCP_NODELAY the connection still works,
    * just with Nagle batching, so a failure here is deliberately ignored. */
@@ -146,8 +160,9 @@ static bool format_sockaddr(const struct sockaddr *sa, socklen_t salen, bool wit
     return false;
   }
   if (!with_port) {
-    strncpy(buf, host, buflen - 1);
-    buf[buflen - 1] = '\0';
+    /* snprintf (not strncpy) so buflen == 0 is safe — strncpy's buflen-1 would
+     * underflow to SIZE_MAX. Matches the bounded with_port branch below. */
+    snprintf(buf, buflen, "%s", host);
     return true;
   }
   if (sa->sa_family == AF_INET6)
@@ -157,9 +172,10 @@ static bool format_sockaddr(const struct sockaddr *sa, socklen_t salen, bool wit
   return true;
 }
 
-// --- Listen / accept / connect ----------------------------------------------
-
-tcpme_socket_t tcpme_listen(const char *host, uint16_t port) {
+/* Resolve host:port for a TCP socket (SOCK_STREAM, AI_NUMERICSERV; AI_PASSIVE
+ * when `passive`, i.e. for listen). On success fills *res — the caller must
+ * freeaddrinfo it — and returns 0; on failure sets the error and returns -1. */
+static int resolve_tcp(const char *host, uint16_t port, bool passive, struct addrinfo **res) {
   char portstr[8];
   snprintf(portstr, sizeof(portstr), "%u", (unsigned)port);
 
@@ -167,14 +183,23 @@ tcpme_socket_t tcpme_listen(const char *host, uint16_t port) {
   memset(&hints, 0, sizeof(hints));
   hints.ai_family = AF_UNSPEC;
   hints.ai_socktype = SOCK_STREAM;
-  hints.ai_flags = AI_PASSIVE | AI_NUMERICSERV;
+  hints.ai_flags = AI_NUMERICSERV | (passive ? AI_PASSIVE : 0);
 
-  struct addrinfo *res = NULL;
-  int rc = getaddrinfo(host, portstr, &hints, &res);
+  *res = NULL;
+  int rc = getaddrinfo(host, portstr, &hints, res);
   if (rc != 0) {
     set_error(gai_strerror(rc));
-    return TCPME_INVALID_SOCKET;
+    return -1;
   }
+  return 0;
+}
+
+// --- Listen / accept / connect ----------------------------------------------
+
+tcpme_socket_t tcpme_listen(const char *host, uint16_t port) {
+  struct addrinfo *res = NULL;
+  if (resolve_tcp(host, port, true, &res) != 0)
+    return TCPME_INVALID_SOCKET;
 
   static const int families[2] = {AF_INET6, AF_INET};
   tcpme_socket_t sock = TCPME_INVALID_SOCKET;
@@ -231,6 +256,14 @@ tcpme_socket_t tcpme_accept(tcpme_socket_t server_sock) {
   if (!tcpme_socket_valid(server_sock))
     return TCPME_INVALID_SOCKET;
 
+#ifndef _WIN32
+  /* POSIX fd_set is a bitmap indexed by fd value; guard against out-of-range. */
+  if ((int)server_sock >= FD_SETSIZE) {
+    set_error("accept: socket fd exceeds FD_SETSIZE");
+    return TCPME_INVALID_SOCKET;
+  }
+#endif
+
   // Use select with zero timeout so this never blocks.
   fd_set rfds;
   FD_ZERO(&rfds);
@@ -265,21 +298,9 @@ tcpme_socket_t tcpme_accept(tcpme_socket_t server_sock) {
 }
 
 tcpme_socket_t tcpme_connect(const char *host, uint16_t port) {
-  char portstr[8];
-  snprintf(portstr, sizeof(portstr), "%u", (unsigned)port);
-
-  struct addrinfo hints;
-  memset(&hints, 0, sizeof(hints));
-  hints.ai_family = AF_UNSPEC;
-  hints.ai_socktype = SOCK_STREAM;
-  hints.ai_flags = AI_NUMERICSERV;
-
   struct addrinfo *res = NULL;
-  int rc = getaddrinfo(host, portstr, &hints, &res);
-  if (rc != 0) {
-    set_error(gai_strerror(rc));
+  if (resolve_tcp(host, port, false, &res) != 0)
     return TCPME_INVALID_SOCKET;
-  }
 
   tcpme_socket_t sock = TCPME_INVALID_SOCKET;
   for (struct addrinfo *ai = res; ai != NULL; ai = ai->ai_next) {
@@ -315,6 +336,16 @@ static tcpme_socket_t try_connect_addrinfo(const struct addrinfo *ai, uint32_t t
     close_socket(sock);
     return TCPME_INVALID_SOCKET;
   }
+#ifndef _WIN32
+  /* select() indexes a POSIX fd_set bitmap by fd value, so an fd >= FD_SETSIZE
+   * is out of bounds. (Winsock's fd_set is a bounded array, not indexed by
+   * value, so this guard is POSIX-only.) */
+  if ((int)sock >= FD_SETSIZE) {
+    set_error("connect: socket fd exceeds FD_SETSIZE");
+    close_socket(sock);
+    return TCPME_INVALID_SOCKET;
+  }
+#endif
 
   bool connected = (connect(sock, ai->ai_addr, (socklen_t)ai->ai_addrlen) == 0);
   if (!connected) {
@@ -330,20 +361,37 @@ static tcpme_socket_t try_connect_addrinfo(const struct addrinfo *ai, uint32_t t
        * just writefds, a refused connect on Windows never wakes select and
        * silently eats the whole timeout budget. Pass both sets. */
       fd_set wfds, efds;
-      FD_ZERO(&wfds);
-      FD_ZERO(&efds);
-      FD_SET(sock, &wfds);
-      FD_SET(sock, &efds);
-      struct timeval tv;
-      tv.tv_sec = (long)(timeout_ms / 1000);
-      tv.tv_usec = (long)((timeout_ms % 1000) * 1000);
-      int n = select(
+      int n;
+      /* Retry across EINTR so a stray signal doesn't turn an in-progress
+       * connect into a spurious failure. A repeated signal can extend the wait
+       * by up to timeout_ms per interruption; connect_timeout's budget is
+       * already per-address, not a hard overall deadline, so that's acceptable. */
+      for (;;) {
+        FD_ZERO(&wfds);
+        FD_ZERO(&efds);
+        FD_SET(sock, &wfds);
+        FD_SET(sock, &efds);
+        struct timeval tv;
+        tv.tv_sec = (long)(timeout_ms / 1000);
+        tv.tv_usec = (long)((timeout_ms % 1000) * 1000);
+        n = select(
 #ifdef _WIN32
-          0,
+            0,
 #else
-          (int)sock + 1,
+            (int)sock + 1,
 #endif
-          NULL, &wfds, &efds, &tv);
+            NULL, &wfds, &efds, &tv);
+        if (n < 0) {
+#ifdef _WIN32
+          if (WSAGetLastError() == WSAEINTR)
+            continue;
+#else
+          if (errno == EINTR)
+            continue;
+#endif
+        }
+        break;
+      }
       if (n > 0 && (FD_ISSET(sock, &wfds) || FD_ISSET(sock, &efds))) {
         int so_error = 0;
         socklen_t len = sizeof(so_error);
@@ -365,7 +413,13 @@ static tcpme_socket_t try_connect_addrinfo(const struct addrinfo *ai, uint32_t t
   }
 
   if (connected) {
-    set_nonblocking(sock, 0); /* restore blocking for normal send/recv */
+    /* Restore blocking mode for normal send/recv; if that fails the socket
+     * would give spurious EWOULDBLOCK later, so fail the connect instead. */
+    if (set_nonblocking(sock, 0) != 0) {
+      set_error_sys("connect: failed to restore blocking mode");
+      close_socket(sock);
+      return TCPME_INVALID_SOCKET;
+    }
     set_nodelay(sock);
     set_nosigpipe(sock);
     return sock;
@@ -374,64 +428,31 @@ static tcpme_socket_t try_connect_addrinfo(const struct addrinfo *ai, uint32_t t
   return TCPME_INVALID_SOCKET;
 }
 
-tcpme_socket_t tcpme_connect_timeout(const char *host, uint16_t port, uint32_t timeout_ms) {
-  char portstr[8];
-  snprintf(portstr, sizeof(portstr), "%u", (unsigned)port);
-
-  struct addrinfo hints;
-  memset(&hints, 0, sizeof(hints));
-  hints.ai_family = AF_UNSPEC;
-  hints.ai_socktype = SOCK_STREAM;
-  hints.ai_flags = AI_NUMERICSERV;
-
+/* Shared body of the two timed-connect entry points. `pref4` selects an
+ * IPv4-first two-pass walk of the resolved addresses; otherwise they're tried
+ * in resolver order. timeout_ms applies per address (see the header). */
+static tcpme_socket_t connect_timeout_impl(const char *host, uint16_t port, uint32_t timeout_ms,
+                                           bool pref4) {
   struct addrinfo *res = NULL;
-  int rc = getaddrinfo(host, portstr, &hints, &res);
-  if (rc != 0) {
-    set_error(gai_strerror(rc));
+  if (resolve_tcp(host, port, false, &res) != 0)
     return TCPME_INVALID_SOCKET;
-  }
 
   tcpme_socket_t sock = TCPME_INVALID_SOCKET;
-  for (struct addrinfo *ai = res; ai != NULL; ai = ai->ai_next) {
-    sock = try_connect_addrinfo(ai, timeout_ms);
-    if (tcpme_socket_valid(sock))
-      break;
-  }
-
-  freeaddrinfo(res);
-
-  if (sock == TCPME_INVALID_SOCKET)
-    set_error_sys("connect timed out or failed");
-
-  return sock;
-}
-
-tcpme_socket_t tcpme_connect_timeout_pref4(const char *host, uint16_t port, uint32_t timeout_ms) {
-  char portstr[8];
-  snprintf(portstr, sizeof(portstr), "%u", (unsigned)port);
-
-  struct addrinfo hints;
-  memset(&hints, 0, sizeof(hints));
-  hints.ai_family = AF_UNSPEC;
-  hints.ai_socktype = SOCK_STREAM;
-  hints.ai_flags = AI_NUMERICSERV;
-
-  struct addrinfo *res = NULL;
-  int rc = getaddrinfo(host, portstr, &hints, &res);
-  if (rc != 0) {
-    set_error(gai_strerror(rc));
-    return TCPME_INVALID_SOCKET;
-  }
-
-  /* Two passes over the resolved addresses: IPv4 first, then the rest. A
-   * dual-stack host is reached over IPv4 when it has it, falling back to IPv6
-   * only if no IPv4 address connects. */
-  tcpme_socket_t sock = TCPME_INVALID_SOCKET;
-  for (int v4_pass = 1; v4_pass >= 0 && !tcpme_socket_valid(sock); v4_pass--) {
+  if (pref4) {
+    /* Two passes: IPv4 first, then everything else, so a dual-stack host is
+     * reached over IPv4 when it has it and falls back to IPv6 only otherwise. */
+    for (int v4_pass = 1; v4_pass >= 0 && !tcpme_socket_valid(sock); v4_pass--) {
+      for (struct addrinfo *ai = res; ai != NULL; ai = ai->ai_next) {
+        bool is_v4 = (ai->ai_family == AF_INET);
+        if (is_v4 != (v4_pass == 1))
+          continue;
+        sock = try_connect_addrinfo(ai, timeout_ms);
+        if (tcpme_socket_valid(sock))
+          break;
+      }
+    }
+  } else {
     for (struct addrinfo *ai = res; ai != NULL; ai = ai->ai_next) {
-      bool is_v4 = (ai->ai_family == AF_INET);
-      if (is_v4 != (v4_pass == 1))
-        continue; /* first pass: IPv4 only; second pass: everything else */
       sock = try_connect_addrinfo(ai, timeout_ms);
       if (tcpme_socket_valid(sock))
         break;
@@ -444,6 +465,14 @@ tcpme_socket_t tcpme_connect_timeout_pref4(const char *host, uint16_t port, uint
     set_error_sys("connect timed out or failed");
 
   return sock;
+}
+
+tcpme_socket_t tcpme_connect_timeout(const char *host, uint16_t port, uint32_t timeout_ms) {
+  return connect_timeout_impl(host, port, timeout_ms, false);
+}
+
+tcpme_socket_t tcpme_connect_timeout_pref4(const char *host, uint16_t port, uint32_t timeout_ms) {
+  return connect_timeout_impl(host, port, timeout_ms, true);
 }
 
 // --- Close / send / recv ----------------------------------------------------
@@ -525,34 +554,30 @@ int tcpme_set_timeout(tcpme_socket_t sock, uint32_t timeout_ms) {
 
 // --- Address queries --------------------------------------------------------
 
-bool tcpme_get_peer_addr(tcpme_socket_t sock, char *buf, size_t buflen) {
+/* Shared body of the address-query functions: read the socket's local
+ * (`local`) or peer name, then format it with or without the port. */
+static bool query_addr(tcpme_socket_t sock, bool local, bool with_port, char *buf, size_t buflen) {
   struct sockaddr_storage sa;
   socklen_t salen = sizeof(sa);
-  if (getpeername(sock, (struct sockaddr *)&sa, &salen) != 0) {
-    set_error_sys("getpeername() failed");
+  int rc = local ? getsockname(sock, (struct sockaddr *)&sa, &salen)
+                 : getpeername(sock, (struct sockaddr *)&sa, &salen);
+  if (rc != 0) {
+    set_error_sys(local ? "getsockname() failed" : "getpeername() failed");
     return false;
   }
-  return format_sockaddr((const struct sockaddr *)&sa, salen, true, buf, buflen);
+  return format_sockaddr((const struct sockaddr *)&sa, salen, with_port, buf, buflen);
+}
+
+bool tcpme_get_peer_addr(tcpme_socket_t sock, char *buf, size_t buflen) {
+  return query_addr(sock, false, true, buf, buflen);
 }
 
 bool tcpme_get_local_addr(tcpme_socket_t sock, char *buf, size_t buflen) {
-  struct sockaddr_storage sa;
-  socklen_t salen = sizeof(sa);
-  if (getsockname(sock, (struct sockaddr *)&sa, &salen) != 0) {
-    set_error_sys("getsockname() failed");
-    return false;
-  }
-  return format_sockaddr((const struct sockaddr *)&sa, salen, true, buf, buflen);
+  return query_addr(sock, true, true, buf, buflen);
 }
 
 bool tcpme_get_peer_ip(tcpme_socket_t sock, char *buf, size_t buflen) {
-  struct sockaddr_storage sa;
-  socklen_t salen = sizeof(sa);
-  if (getpeername(sock, (struct sockaddr *)&sa, &salen) != 0) {
-    set_error_sys("getpeername() failed");
-    return false;
-  }
-  return format_sockaddr((const struct sockaddr *)&sa, salen, false, buf, buflen);
+  return query_addr(sock, false, false, buf, buflen);
 }
 
 // --- UDP (IPv4 datagram) ----------------------------------------------------
@@ -593,6 +618,7 @@ tcpme_socket_t tcpme_udp_open(uint16_t bind_port, bool broadcast) {
 }
 
 int tcpme_udp_broadcast(tcpme_socket_t sock, uint16_t port, const void *buf, int len) {
+  TCPME_REJECT_NEG_LEN(len, -1);
   struct sockaddr_in addr;
   memset(&addr, 0, sizeof(addr));
   addr.sin_family = AF_INET;
@@ -606,6 +632,7 @@ int tcpme_udp_broadcast(tcpme_socket_t sock, uint16_t port, const void *buf, int
 }
 
 int tcpme_udp_sendto(tcpme_socket_t sock, const char *ip, uint16_t port, const void *buf, int len) {
+  TCPME_REJECT_NEG_LEN(len, -1);
   struct sockaddr_in addr;
   memset(&addr, 0, sizeof(addr));
   addr.sin_family = AF_INET;
@@ -623,6 +650,7 @@ int tcpme_udp_sendto(tcpme_socket_t sock, const char *ip, uint16_t port, const v
 
 int tcpme_udp_recvfrom(tcpme_socket_t sock, void *buf, int len, char *out_ip, size_t out_iplen,
                        uint16_t *out_port) {
+  TCPME_REJECT_NEG_LEN(len, -1);
   struct sockaddr_in src;
   socklen_t srclen = sizeof(src);
   int n;
@@ -732,6 +760,7 @@ int tcpme_mcast6_join_all(tcpme_socket_t sock, const char *group) {
 // link. Returns the number of interfaces the datagram went out on.
 int tcpme_udp_mcast6_send_all(tcpme_socket_t sock, const char *group, uint16_t port,
                               const void *buf, int len) {
+  TCPME_REJECT_NEG_LEN(len, 0); /* returns an interface count; 0 = sent nowhere */
   struct sockaddr_in6 addr;
   memset(&addr, 0, sizeof(addr));
   addr.sin6_family = AF_INET6;
@@ -779,6 +808,7 @@ int tcpme_udp_mcast6_send_all(tcpme_socket_t sock, const char *group, uint16_t p
 // later connect to, a link-local address.
 int tcpme_udp_recvfrom6(tcpme_socket_t sock, void *buf, int len, char *out_ip, size_t out_iplen,
                         unsigned *out_scope, uint16_t *out_port) {
+  TCPME_REJECT_NEG_LEN(len, -1);
   struct sockaddr_in6 src;
   socklen_t srclen = sizeof(src);
   int n;
@@ -808,6 +838,7 @@ int tcpme_udp_recvfrom6(tcpme_socket_t sock, void *buf, int len, char *out_ip, s
 // destination (0 for global/ULA addresses).
 int tcpme_udp_sendto6(tcpme_socket_t sock, const char *ip, unsigned scope, uint16_t port,
                       const void *buf, int len) {
+  TCPME_REJECT_NEG_LEN(len, -1);
   struct sockaddr_in6 addr;
   memset(&addr, 0, sizeof(addr));
   addr.sin6_family = AF_INET6;
@@ -836,6 +867,14 @@ struct tcpme_set_t {
 tcpme_set_t *tcpme_alloc_set(int capacity) {
   if (capacity <= 0) {
     set_error("capacity must be > 0");
+    return NULL;
+  }
+  /* The readiness layer is select()-based: a POSIX fd_set holds fds < FD_SETSIZE
+   * and the Winsock fd_set array holds at most FD_SETSIZE entries, so a larger
+   * set can't be select()ed safely. A poll()/WSAPoll migration would lift this
+   * (see BACKLOG). */
+  if (capacity > FD_SETSIZE) {
+    set_error("capacity exceeds FD_SETSIZE");
     return NULL;
   }
   tcpme_set_t *set = (tcpme_set_t *)malloc(sizeof(*set));
@@ -905,11 +944,18 @@ int tcpme_check_sockets(tcpme_set_t *set, uint32_t timeout_ms) {
   FD_ZERO(&rfds);
   int nfds = 0;
   for (int i = 0; i < set->count; i++) {
-    FD_SET(set->sockets[i], &rfds);
 #ifndef _WIN32
+    /* POSIX fd_set is a bitmap indexed by fd value; an fd >= FD_SETSIZE would
+     * corrupt the stack. (Winsock's fd_set is a count-bounded array — the cap
+     * in tcpme_alloc_set covers that side.) */
+    if ((int)set->sockets[i] >= FD_SETSIZE) {
+      set_error("tcpme_check_sockets: socket fd exceeds FD_SETSIZE");
+      return -1;
+    }
     if ((int)set->sockets[i] > nfds)
       nfds = (int)set->sockets[i];
 #endif
+    FD_SET(set->sockets[i], &rfds);
   }
 
   struct timeval tv;
