@@ -57,8 +57,6 @@ _MAIN_HEAD_
   short rank = POKEVAL_evaluate_hand(best);
   fprintf(stderr, "Test 2 (Flush, not Royal Flush): rank=%d expected=%d\n", rank, POKEVAL_FLUSH);
   assert(rank == POKEVAL_FLUSH);
-  assert(rank != POKEVAL_ROYAL_FLUSH);
-  assert(rank != POKEVAL_STRAIGHT_FLUSH);
 }
 
 // --- Test 3: compare_hands_omaha - straight beats three of a kind ---

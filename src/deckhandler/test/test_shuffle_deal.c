@@ -1,5 +1,5 @@
 /*
- * test_01.c
+ * test_shuffle_deal.c
  *
  * This file is part of the deckhandler library
  *

@@ -91,8 +91,4 @@ game_state.player[0].in = true;
 turn = get_next_player(players_array, 0);
 assert(turn->id == 0);
 
-// turn = get_next_player(players_array, turn->id);
-// fprintf(stderr, "turn->id: %d\n", turn->id);
-// assert(turn->id == 3);
-
 _MAIN_TAIL_

@@ -121,7 +121,7 @@ pokeval_fuzz_exe = executable(
 )
 
 # Run the fuzzer and cross-check pokeval's verdicts against the
-# Python analyzer.  1000 hands runs in <1s sanitized locally; budget
+# Python analyzer.  250 hands runs in <1s sanitized locally; budget
 # 180s to cover s390x-under-QEMU (OpenSUSE Tumbleweed CI) and the
 # OpenBSD VM runner, both of which are ~50x slower than native.
 # Override hand count with the DC_FUZZ_N env var, seed with

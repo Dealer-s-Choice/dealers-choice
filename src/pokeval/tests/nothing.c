@@ -78,8 +78,4 @@ assert(n_wins == 1);
 fprintf(stderr, "winners: %d\n", n_wins);
 assert(need_comparing2[2].won);
 
-// memcpy(&need_comparing[0].hand, &hands[i], sizeof hands[i]);
-// memcpy(&need_comparing[1].hand, &hands[i + 1], sizeof hands[i + 1]);
-// memcpy(&need_comparing[2].hand, &hands[i + 2], sizeof hands[i + 2]);
-
 _MAIN_TAIL_

@@ -4,7 +4,7 @@ against its output to confirm pokeval's declared winners match the
 independent Python evaluator.
 
 Exits non-zero on any mismatch.  Tuned to stay well under a 5-second
-test budget on commodity hardware (1000 hands × 13 variants, with the
+test budget on commodity hardware (250 hands × 13 variants, with the
 analyzer cross-check, runs in <1s on a development machine).
 """
 
