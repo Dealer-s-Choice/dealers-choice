@@ -50,7 +50,7 @@ typedef struct {
 ChatGPT:
 The reason `fg_color` (foreground/text color) is not stored in the struct is
 because in this design, the **text is rendered immediately to a texture**
-during `create_indicator()`.
+during `create_indicator_colored()`.
 
 Once the texture is created with `SDL_CreateTextureFromSurface()`, the
 color information is baked into the texture**. * You no longer need the
@@ -59,8 +59,6 @@ the pre-created texture.
 
 */
 
-Indicator_t *create_indicator(const char *text, TTF_Font *font, EColorName_t bg_color,
-                              EColorName_t fg_color);
 Indicator_t *create_indicator_colored(const char *text, TTF_Font *font, SDL_Color bg_color,
                                       SDL_Color fg_color);
 

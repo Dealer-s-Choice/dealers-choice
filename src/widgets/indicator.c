@@ -142,11 +142,6 @@ static Indicator_t *indicator_init(const char *text, TTF_Font *font, SDL_Color b
   return ind;
 }
 
-Indicator_t *create_indicator(const char *text, TTF_Font *font, EColorName_t bg_color,
-                              EColorName_t fg_color) {
-  return indicator_init(text, font, get_color(bg_color), get_color(fg_color));
-}
-
 Indicator_t *create_indicator_colored(const char *text, TTF_Font *font, SDL_Color bg_color,
                                       SDL_Color fg_color) {
   return indicator_init(text, font, bg_color, fg_color);

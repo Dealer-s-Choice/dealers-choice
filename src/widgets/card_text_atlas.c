@@ -247,8 +247,6 @@ bool card_text_atlas_get(int face_val, int suit_val, CardAtlasEntry_t *out) {
   out->face_w = g_face_atlas[face_val][c].w;
   out->face_h = g_face_atlas[face_val][c].h;
   out->suit = suit;
-  out->suit_w = g_suit_atlas[suit_val].w;
-  out->suit_h = g_suit_atlas[suit_val].h;
   return true;
 }
 

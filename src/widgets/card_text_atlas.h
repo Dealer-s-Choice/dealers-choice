@@ -45,7 +45,6 @@ typedef struct {
   SDL_Texture *face;
   SDL_Texture *suit;
   int face_w, face_h;
-  int suit_w, suit_h;
 } CardAtlasEntry_t;
 
 /* Builds two atlases:
