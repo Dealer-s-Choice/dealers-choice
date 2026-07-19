@@ -58,6 +58,20 @@ static void set_error(const char *msg) {
   tcpme_errbuf[sizeof(tcpme_errbuf) - 1] = '\0';
 }
 
+/* Reject a negative length at a datagram API boundary before the (size_t)len
+ * cast turns it into a huge value that POSIX sendto/recvfrom would service (OOB
+ * read on send, overflow on recv) while Winsock rejects it — the same guard,
+ * and reason, as tcpme_send/tcpme_recv. `errval` is the caller's error return
+ * (-1, or 0 for the count-returning multicast sender). Zero-length datagrams
+ * are valid, so only negatives are rejected. */
+#define TCPME_REJECT_NEG_LEN(len, errval)                                                          \
+  do {                                                                                             \
+    if ((len) < 0) {                                                                               \
+      set_error("negative length");                                                                \
+      return (errval);                                                                             \
+    }                                                                                              \
+  } while (0)
+
 static void set_nodelay(tcpme_socket_t sock) {
   /* Best-effort latency knob: without TCP_NODELAY the connection still works,
    * just with Nagle batching, so a failure here is deliberately ignored. */
@@ -146,8 +160,9 @@ static bool format_sockaddr(const struct sockaddr *sa, socklen_t salen, bool wit
     return false;
   }
   if (!with_port) {
-    strncpy(buf, host, buflen - 1);
-    buf[buflen - 1] = '\0';
+    /* snprintf (not strncpy) so buflen == 0 is safe — strncpy's buflen-1 would
+     * underflow to SIZE_MAX. Matches the bounded with_port branch below. */
+    snprintf(buf, buflen, "%s", host);
     return true;
   }
   if (sa->sa_family == AF_INET6)
@@ -230,6 +245,14 @@ tcpme_socket_t tcpme_listen(const char *host, uint16_t port) {
 tcpme_socket_t tcpme_accept(tcpme_socket_t server_sock) {
   if (!tcpme_socket_valid(server_sock))
     return TCPME_INVALID_SOCKET;
+
+#ifndef _WIN32
+  /* POSIX fd_set is a bitmap indexed by fd value; guard against out-of-range. */
+  if ((int)server_sock >= FD_SETSIZE) {
+    set_error("accept: socket fd exceeds FD_SETSIZE");
+    return TCPME_INVALID_SOCKET;
+  }
+#endif
 
   // Use select with zero timeout so this never blocks.
   fd_set rfds;
@@ -315,6 +338,16 @@ static tcpme_socket_t try_connect_addrinfo(const struct addrinfo *ai, uint32_t t
     close_socket(sock);
     return TCPME_INVALID_SOCKET;
   }
+#ifndef _WIN32
+  /* select() indexes a POSIX fd_set bitmap by fd value, so an fd >= FD_SETSIZE
+   * is out of bounds. (Winsock's fd_set is a bounded array, not indexed by
+   * value, so this guard is POSIX-only.) */
+  if ((int)sock >= FD_SETSIZE) {
+    set_error("connect: socket fd exceeds FD_SETSIZE");
+    close_socket(sock);
+    return TCPME_INVALID_SOCKET;
+  }
+#endif
 
   bool connected = (connect(sock, ai->ai_addr, (socklen_t)ai->ai_addrlen) == 0);
   if (!connected) {
@@ -330,20 +363,37 @@ static tcpme_socket_t try_connect_addrinfo(const struct addrinfo *ai, uint32_t t
        * just writefds, a refused connect on Windows never wakes select and
        * silently eats the whole timeout budget. Pass both sets. */
       fd_set wfds, efds;
-      FD_ZERO(&wfds);
-      FD_ZERO(&efds);
-      FD_SET(sock, &wfds);
-      FD_SET(sock, &efds);
-      struct timeval tv;
-      tv.tv_sec = (long)(timeout_ms / 1000);
-      tv.tv_usec = (long)((timeout_ms % 1000) * 1000);
-      int n = select(
+      int n;
+      /* Retry across EINTR so a stray signal doesn't turn an in-progress
+       * connect into a spurious failure. A repeated signal can extend the wait
+       * by up to timeout_ms per interruption; connect_timeout's budget is
+       * already per-address, not a hard overall deadline, so that's acceptable. */
+      for (;;) {
+        FD_ZERO(&wfds);
+        FD_ZERO(&efds);
+        FD_SET(sock, &wfds);
+        FD_SET(sock, &efds);
+        struct timeval tv;
+        tv.tv_sec = (long)(timeout_ms / 1000);
+        tv.tv_usec = (long)((timeout_ms % 1000) * 1000);
+        n = select(
 #ifdef _WIN32
-          0,
+            0,
 #else
-          (int)sock + 1,
+            (int)sock + 1,
 #endif
-          NULL, &wfds, &efds, &tv);
+            NULL, &wfds, &efds, &tv);
+        if (n < 0) {
+#ifdef _WIN32
+          if (WSAGetLastError() == WSAEINTR)
+            continue;
+#else
+          if (errno == EINTR)
+            continue;
+#endif
+        }
+        break;
+      }
       if (n > 0 && (FD_ISSET(sock, &wfds) || FD_ISSET(sock, &efds))) {
         int so_error = 0;
         socklen_t len = sizeof(so_error);
@@ -365,7 +415,13 @@ static tcpme_socket_t try_connect_addrinfo(const struct addrinfo *ai, uint32_t t
   }
 
   if (connected) {
-    set_nonblocking(sock, 0); /* restore blocking for normal send/recv */
+    /* Restore blocking mode for normal send/recv; if that fails the socket
+     * would give spurious EWOULDBLOCK later, so fail the connect instead. */
+    if (set_nonblocking(sock, 0) != 0) {
+      set_error_sys("connect: failed to restore blocking mode");
+      close_socket(sock);
+      return TCPME_INVALID_SOCKET;
+    }
     set_nodelay(sock);
     set_nosigpipe(sock);
     return sock;
@@ -593,6 +649,7 @@ tcpme_socket_t tcpme_udp_open(uint16_t bind_port, bool broadcast) {
 }
 
 int tcpme_udp_broadcast(tcpme_socket_t sock, uint16_t port, const void *buf, int len) {
+  TCPME_REJECT_NEG_LEN(len, -1);
   struct sockaddr_in addr;
   memset(&addr, 0, sizeof(addr));
   addr.sin_family = AF_INET;
@@ -606,6 +663,7 @@ int tcpme_udp_broadcast(tcpme_socket_t sock, uint16_t port, const void *buf, int
 }
 
 int tcpme_udp_sendto(tcpme_socket_t sock, const char *ip, uint16_t port, const void *buf, int len) {
+  TCPME_REJECT_NEG_LEN(len, -1);
   struct sockaddr_in addr;
   memset(&addr, 0, sizeof(addr));
   addr.sin_family = AF_INET;
@@ -623,6 +681,7 @@ int tcpme_udp_sendto(tcpme_socket_t sock, const char *ip, uint16_t port, const v
 
 int tcpme_udp_recvfrom(tcpme_socket_t sock, void *buf, int len, char *out_ip, size_t out_iplen,
                        uint16_t *out_port) {
+  TCPME_REJECT_NEG_LEN(len, -1);
   struct sockaddr_in src;
   socklen_t srclen = sizeof(src);
   int n;
@@ -732,6 +791,7 @@ int tcpme_mcast6_join_all(tcpme_socket_t sock, const char *group) {
 // link. Returns the number of interfaces the datagram went out on.
 int tcpme_udp_mcast6_send_all(tcpme_socket_t sock, const char *group, uint16_t port,
                               const void *buf, int len) {
+  TCPME_REJECT_NEG_LEN(len, 0); /* returns an interface count; 0 = sent nowhere */
   struct sockaddr_in6 addr;
   memset(&addr, 0, sizeof(addr));
   addr.sin6_family = AF_INET6;
@@ -779,6 +839,7 @@ int tcpme_udp_mcast6_send_all(tcpme_socket_t sock, const char *group, uint16_t p
 // later connect to, a link-local address.
 int tcpme_udp_recvfrom6(tcpme_socket_t sock, void *buf, int len, char *out_ip, size_t out_iplen,
                         unsigned *out_scope, uint16_t *out_port) {
+  TCPME_REJECT_NEG_LEN(len, -1);
   struct sockaddr_in6 src;
   socklen_t srclen = sizeof(src);
   int n;
@@ -808,6 +869,7 @@ int tcpme_udp_recvfrom6(tcpme_socket_t sock, void *buf, int len, char *out_ip, s
 // destination (0 for global/ULA addresses).
 int tcpme_udp_sendto6(tcpme_socket_t sock, const char *ip, unsigned scope, uint16_t port,
                       const void *buf, int len) {
+  TCPME_REJECT_NEG_LEN(len, -1);
   struct sockaddr_in6 addr;
   memset(&addr, 0, sizeof(addr));
   addr.sin6_family = AF_INET6;
@@ -836,6 +898,14 @@ struct tcpme_set_t {
 tcpme_set_t *tcpme_alloc_set(int capacity) {
   if (capacity <= 0) {
     set_error("capacity must be > 0");
+    return NULL;
+  }
+  /* The readiness layer is select()-based: a POSIX fd_set holds fds < FD_SETSIZE
+   * and the Winsock fd_set array holds at most FD_SETSIZE entries, so a larger
+   * set can't be select()ed safely. A poll()/WSAPoll migration would lift this
+   * (see BACKLOG). */
+  if (capacity > FD_SETSIZE) {
+    set_error("capacity exceeds FD_SETSIZE");
     return NULL;
   }
   tcpme_set_t *set = (tcpme_set_t *)malloc(sizeof(*set));
@@ -905,11 +975,18 @@ int tcpme_check_sockets(tcpme_set_t *set, uint32_t timeout_ms) {
   FD_ZERO(&rfds);
   int nfds = 0;
   for (int i = 0; i < set->count; i++) {
-    FD_SET(set->sockets[i], &rfds);
 #ifndef _WIN32
+    /* POSIX fd_set is a bitmap indexed by fd value; an fd >= FD_SETSIZE would
+     * corrupt the stack. (Winsock's fd_set is a count-bounded array — the cap
+     * in tcpme_alloc_set covers that side.) */
+    if ((int)set->sockets[i] >= FD_SETSIZE) {
+      set_error("tcpme_check_sockets: socket fd exceeds FD_SETSIZE");
+      return -1;
+    }
     if ((int)set->sockets[i] > nfds)
       nfds = (int)set->sockets[i];
 #endif
+    FD_SET(set->sockets[i], &rfds);
   }
 
   struct timeval tv;
