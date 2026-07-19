@@ -172,9 +172,10 @@ static bool format_sockaddr(const struct sockaddr *sa, socklen_t salen, bool wit
   return true;
 }
 
-// --- Listen / accept / connect ----------------------------------------------
-
-tcpme_socket_t tcpme_listen(const char *host, uint16_t port) {
+/* Resolve host:port for a TCP socket (SOCK_STREAM, AI_NUMERICSERV; AI_PASSIVE
+ * when `passive`, i.e. for listen). On success fills *res — the caller must
+ * freeaddrinfo it — and returns 0; on failure sets the error and returns -1. */
+static int resolve_tcp(const char *host, uint16_t port, bool passive, struct addrinfo **res) {
   char portstr[8];
   snprintf(portstr, sizeof(portstr), "%u", (unsigned)port);
 
@@ -182,14 +183,23 @@ tcpme_socket_t tcpme_listen(const char *host, uint16_t port) {
   memset(&hints, 0, sizeof(hints));
   hints.ai_family = AF_UNSPEC;
   hints.ai_socktype = SOCK_STREAM;
-  hints.ai_flags = AI_PASSIVE | AI_NUMERICSERV;
+  hints.ai_flags = AI_NUMERICSERV | (passive ? AI_PASSIVE : 0);
 
-  struct addrinfo *res = NULL;
-  int rc = getaddrinfo(host, portstr, &hints, &res);
+  *res = NULL;
+  int rc = getaddrinfo(host, portstr, &hints, res);
   if (rc != 0) {
     set_error(gai_strerror(rc));
-    return TCPME_INVALID_SOCKET;
+    return -1;
   }
+  return 0;
+}
+
+// --- Listen / accept / connect ----------------------------------------------
+
+tcpme_socket_t tcpme_listen(const char *host, uint16_t port) {
+  struct addrinfo *res = NULL;
+  if (resolve_tcp(host, port, true, &res) != 0)
+    return TCPME_INVALID_SOCKET;
 
   static const int families[2] = {AF_INET6, AF_INET};
   tcpme_socket_t sock = TCPME_INVALID_SOCKET;
@@ -288,21 +298,9 @@ tcpme_socket_t tcpme_accept(tcpme_socket_t server_sock) {
 }
 
 tcpme_socket_t tcpme_connect(const char *host, uint16_t port) {
-  char portstr[8];
-  snprintf(portstr, sizeof(portstr), "%u", (unsigned)port);
-
-  struct addrinfo hints;
-  memset(&hints, 0, sizeof(hints));
-  hints.ai_family = AF_UNSPEC;
-  hints.ai_socktype = SOCK_STREAM;
-  hints.ai_flags = AI_NUMERICSERV;
-
   struct addrinfo *res = NULL;
-  int rc = getaddrinfo(host, portstr, &hints, &res);
-  if (rc != 0) {
-    set_error(gai_strerror(rc));
+  if (resolve_tcp(host, port, false, &res) != 0)
     return TCPME_INVALID_SOCKET;
-  }
 
   tcpme_socket_t sock = TCPME_INVALID_SOCKET;
   for (struct addrinfo *ai = res; ai != NULL; ai = ai->ai_next) {
@@ -430,64 +428,31 @@ static tcpme_socket_t try_connect_addrinfo(const struct addrinfo *ai, uint32_t t
   return TCPME_INVALID_SOCKET;
 }
 
-tcpme_socket_t tcpme_connect_timeout(const char *host, uint16_t port, uint32_t timeout_ms) {
-  char portstr[8];
-  snprintf(portstr, sizeof(portstr), "%u", (unsigned)port);
-
-  struct addrinfo hints;
-  memset(&hints, 0, sizeof(hints));
-  hints.ai_family = AF_UNSPEC;
-  hints.ai_socktype = SOCK_STREAM;
-  hints.ai_flags = AI_NUMERICSERV;
-
+/* Shared body of the two timed-connect entry points. `pref4` selects an
+ * IPv4-first two-pass walk of the resolved addresses; otherwise they're tried
+ * in resolver order. timeout_ms applies per address (see the header). */
+static tcpme_socket_t connect_timeout_impl(const char *host, uint16_t port, uint32_t timeout_ms,
+                                           bool pref4) {
   struct addrinfo *res = NULL;
-  int rc = getaddrinfo(host, portstr, &hints, &res);
-  if (rc != 0) {
-    set_error(gai_strerror(rc));
+  if (resolve_tcp(host, port, false, &res) != 0)
     return TCPME_INVALID_SOCKET;
-  }
 
   tcpme_socket_t sock = TCPME_INVALID_SOCKET;
-  for (struct addrinfo *ai = res; ai != NULL; ai = ai->ai_next) {
-    sock = try_connect_addrinfo(ai, timeout_ms);
-    if (tcpme_socket_valid(sock))
-      break;
-  }
-
-  freeaddrinfo(res);
-
-  if (sock == TCPME_INVALID_SOCKET)
-    set_error_sys("connect timed out or failed");
-
-  return sock;
-}
-
-tcpme_socket_t tcpme_connect_timeout_pref4(const char *host, uint16_t port, uint32_t timeout_ms) {
-  char portstr[8];
-  snprintf(portstr, sizeof(portstr), "%u", (unsigned)port);
-
-  struct addrinfo hints;
-  memset(&hints, 0, sizeof(hints));
-  hints.ai_family = AF_UNSPEC;
-  hints.ai_socktype = SOCK_STREAM;
-  hints.ai_flags = AI_NUMERICSERV;
-
-  struct addrinfo *res = NULL;
-  int rc = getaddrinfo(host, portstr, &hints, &res);
-  if (rc != 0) {
-    set_error(gai_strerror(rc));
-    return TCPME_INVALID_SOCKET;
-  }
-
-  /* Two passes over the resolved addresses: IPv4 first, then the rest. A
-   * dual-stack host is reached over IPv4 when it has it, falling back to IPv6
-   * only if no IPv4 address connects. */
-  tcpme_socket_t sock = TCPME_INVALID_SOCKET;
-  for (int v4_pass = 1; v4_pass >= 0 && !tcpme_socket_valid(sock); v4_pass--) {
+  if (pref4) {
+    /* Two passes: IPv4 first, then everything else, so a dual-stack host is
+     * reached over IPv4 when it has it and falls back to IPv6 only otherwise. */
+    for (int v4_pass = 1; v4_pass >= 0 && !tcpme_socket_valid(sock); v4_pass--) {
+      for (struct addrinfo *ai = res; ai != NULL; ai = ai->ai_next) {
+        bool is_v4 = (ai->ai_family == AF_INET);
+        if (is_v4 != (v4_pass == 1))
+          continue;
+        sock = try_connect_addrinfo(ai, timeout_ms);
+        if (tcpme_socket_valid(sock))
+          break;
+      }
+    }
+  } else {
     for (struct addrinfo *ai = res; ai != NULL; ai = ai->ai_next) {
-      bool is_v4 = (ai->ai_family == AF_INET);
-      if (is_v4 != (v4_pass == 1))
-        continue; /* first pass: IPv4 only; second pass: everything else */
       sock = try_connect_addrinfo(ai, timeout_ms);
       if (tcpme_socket_valid(sock))
         break;
@@ -500,6 +465,14 @@ tcpme_socket_t tcpme_connect_timeout_pref4(const char *host, uint16_t port, uint
     set_error_sys("connect timed out or failed");
 
   return sock;
+}
+
+tcpme_socket_t tcpme_connect_timeout(const char *host, uint16_t port, uint32_t timeout_ms) {
+  return connect_timeout_impl(host, port, timeout_ms, false);
+}
+
+tcpme_socket_t tcpme_connect_timeout_pref4(const char *host, uint16_t port, uint32_t timeout_ms) {
+  return connect_timeout_impl(host, port, timeout_ms, true);
 }
 
 // --- Close / send / recv ----------------------------------------------------
@@ -581,34 +554,30 @@ int tcpme_set_timeout(tcpme_socket_t sock, uint32_t timeout_ms) {
 
 // --- Address queries --------------------------------------------------------
 
-bool tcpme_get_peer_addr(tcpme_socket_t sock, char *buf, size_t buflen) {
+/* Shared body of the address-query functions: read the socket's local
+ * (`local`) or peer name, then format it with or without the port. */
+static bool query_addr(tcpme_socket_t sock, bool local, bool with_port, char *buf, size_t buflen) {
   struct sockaddr_storage sa;
   socklen_t salen = sizeof(sa);
-  if (getpeername(sock, (struct sockaddr *)&sa, &salen) != 0) {
-    set_error_sys("getpeername() failed");
+  int rc = local ? getsockname(sock, (struct sockaddr *)&sa, &salen)
+                 : getpeername(sock, (struct sockaddr *)&sa, &salen);
+  if (rc != 0) {
+    set_error_sys(local ? "getsockname() failed" : "getpeername() failed");
     return false;
   }
-  return format_sockaddr((const struct sockaddr *)&sa, salen, true, buf, buflen);
+  return format_sockaddr((const struct sockaddr *)&sa, salen, with_port, buf, buflen);
+}
+
+bool tcpme_get_peer_addr(tcpme_socket_t sock, char *buf, size_t buflen) {
+  return query_addr(sock, false, true, buf, buflen);
 }
 
 bool tcpme_get_local_addr(tcpme_socket_t sock, char *buf, size_t buflen) {
-  struct sockaddr_storage sa;
-  socklen_t salen = sizeof(sa);
-  if (getsockname(sock, (struct sockaddr *)&sa, &salen) != 0) {
-    set_error_sys("getsockname() failed");
-    return false;
-  }
-  return format_sockaddr((const struct sockaddr *)&sa, salen, true, buf, buflen);
+  return query_addr(sock, true, true, buf, buflen);
 }
 
 bool tcpme_get_peer_ip(tcpme_socket_t sock, char *buf, size_t buflen) {
-  struct sockaddr_storage sa;
-  socklen_t salen = sizeof(sa);
-  if (getpeername(sock, (struct sockaddr *)&sa, &salen) != 0) {
-    set_error_sys("getpeername() failed");
-    return false;
-  }
-  return format_sockaddr((const struct sockaddr *)&sa, salen, false, buf, buflen);
+  return query_addr(sock, false, false, buf, buflen);
 }
 
 // --- UDP (IPv4 datagram) ----------------------------------------------------
