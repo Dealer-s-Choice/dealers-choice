@@ -34,10 +34,9 @@ static void step_scale_render(UIWidget_t *w) {
 
   for (int i = 0; i < s->count; i++) {
     bool sel = s->active && (i == s->selected);
-    SDL_Color nc = !s->active      ? (SDL_Color){90, 90, 90, 255}
-                   : sel           ? (SDL_Color){255, 190, 70, 255}
-                   : s->enabled[i] ? (SDL_Color){255, 190, 70, 255}
-                                   : (SDL_Color){60, 60, 60, 255};
+    SDL_Color nc = !s->active               ? (SDL_Color){90, 90, 90, 255}
+                   : (sel || s->enabled[i]) ? (SDL_Color){255, 190, 70, 255}
+                                            : (SDL_Color){60, 60, 60, 255};
     int nw = sel ? 6 : 4;
     int nh = sel ? w->rect.h / 4 : w->rect.h / 6;
     SDL_SetRenderDrawColor(r, nc.r, nc.g, nc.b, 255);

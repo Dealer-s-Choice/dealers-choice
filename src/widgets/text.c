@@ -14,6 +14,30 @@ static bool text_too_long(const char *text) {
   return i >= TEXT_WIDGET_MAX_LEN;
 }
 
+/* (Re)build tw->tex from `text` using tw's stored font/color/renderer, and set
+ * the base rect to the rendered size. Any prior texture must already be freed by
+ * the caller (this only overwrites the pointer). An empty string or a render
+ * failure leaves tex NULL and the rect zeroed — text_widget_render no-ops on a
+ * NULL texture. Shared by text_widget_create and text_widget_set_text. */
+static void text_widget_rebuild(TextWidget_t *tw, const char *text) {
+  tw->tex = NULL;
+  tw->base.rect.w = 0;
+  tw->base.rect.h = 0;
+
+  if (text[0] == '\0')
+    return;
+
+  SDL_Surface *s = TTF_RenderUTF8_Blended(tw->font, text, tw->color);
+  if (!s) {
+    dc_log(DC_LOG_ERROR, "TTF_RenderUTF8_Blended error: %s", TTF_GetError());
+    return;
+  }
+  tw->tex = SDL_CreateTextureFromSurface(tw->renderer, s);
+  tw->base.rect.w = s->w;
+  tw->base.rect.h = s->h;
+  SDL_FreeSurface(s);
+}
+
 static void text_widget_render(UIWidget_t *w) {
   TextWidget_t *tw = (TextWidget_t *)w;
 
@@ -52,28 +76,9 @@ TextWidget_t *text_widget_create(const char *text, TTF_Font *font, SDL_Color col
   tw->color = color;
   tw->text = dc_strdup(text);
 
-  /* An empty string has zero width; SDL_ttf returns NULL with a "zero width"
-   * error on it. Render nothing (no texture, zero-size rect from calloc) rather
-   * than log-spam — text_widget_render already no-ops when tex is NULL. */
-  if (text[0] == '\0') {
-    tw->base.render = text_widget_render;
-    tw->base.destroy = text_widget_destroy;
-    return tw;
-  }
-
-  SDL_Surface *s = TTF_RenderUTF8_Blended(font, text, color);
-  if (!s) {
-    dc_log(DC_LOG_ERROR, "TTF_RenderUTF8_Blended error: %s", TTF_GetError());
-    tw->base.render = text_widget_render;
-    tw->base.destroy = text_widget_destroy;
-    return tw;
-  }
-  tw->tex = SDL_CreateTextureFromSurface(renderer, s);
-
-  tw->base.rect.w = s->w;
-  tw->base.rect.h = s->h;
-
-  SDL_FreeSurface(s);
+  /* An empty string / render failure leaves tex NULL and a zero-size rect —
+   * text_widget_render no-ops on a NULL texture rather than log-spamming. */
+  text_widget_rebuild(tw, text);
 
   tw->base.render = text_widget_render;
   tw->base.destroy = text_widget_destroy;
@@ -96,24 +101,7 @@ void text_widget_set_text(TextWidget_t *tw, const char *text) {
   free(tw->text);
   tw->text = dc_strdup(text);
 
-  /* Empty string -> no texture, zero-size rect (see text_widget_create). */
-  if (text[0] == '\0') {
-    tw->tex = NULL;
-    tw->base.rect.w = 0;
-    tw->base.rect.h = 0;
-    return;
-  }
-
-  SDL_Surface *s = TTF_RenderUTF8_Blended(tw->font, text, tw->color);
-  if (!s) {
-    dc_log(DC_LOG_ERROR, "TTF_RenderUTF8_Blended error: %s", TTF_GetError());
-    tw->tex = NULL;
-    return;
-  }
-  tw->tex = SDL_CreateTextureFromSurface(tw->renderer, s);
-  tw->base.rect.w = s->w;
-  tw->base.rect.h = s->h;
-  SDL_FreeSurface(s);
+  text_widget_rebuild(tw, text);
 }
 
 void text_wrapper_destroy(UIWidget_t *w) {

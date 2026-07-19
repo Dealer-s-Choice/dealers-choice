@@ -23,6 +23,10 @@ PingWidget_t *ping_widget_create(int ping, TTF_Font *font) {
   snprintf(buf, sizeof buf, "%dms", ping);
 
   pw->text = text_widget_create(buf, font, DC_TEXT_ON_DARK);
+  if (!pw->text) {
+    free(pw);
+    return NULL;
+  }
   pw->ping = ping;
 
   // IMPORTANT: propagate size to base widget
