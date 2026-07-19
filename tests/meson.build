@@ -65,6 +65,7 @@ sodium_compat_exe = executable(
   'test_sodium_compat',
   ['sodium_compat.c', '00_test.c'],
   dependencies: game_dep,
+  c_args: ['-DDC_TEST_DEFAULT_PORT=' + base_port.to_string()],
   override_options: ['b_lto=false'],
 )
 sodium_compat_env = environment(base_env)
@@ -93,6 +94,7 @@ foreach name : game_logic
     'test_' + name,
     [name + '.c', '00_test.c'],
     dependencies: game_dep,
+    c_args: ['-DDC_TEST_DEFAULT_PORT=' + port.to_string()],
     override_options: ['b_lto=false'],
   )
 

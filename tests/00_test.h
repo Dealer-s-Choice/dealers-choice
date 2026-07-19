@@ -17,6 +17,27 @@
 extern const uint32_t n_ms;
 extern int n_passes;
 
+/* The port a socket test binds when DC_PORT isn't in the environment. tests/
+ * meson.build owns port allocation and injects each test's unique port via
+ * -DDC_TEST_DEFAULT_PORT, so a by-hand binary run picks the same port CI gave
+ * it (and distinct tests never collide). This literal is only the safety net
+ * for a test binary built without the define. */
+#ifndef DC_TEST_DEFAULT_PORT
+#define DC_TEST_DEFAULT_PORT 30000
+#endif
+
+/* Resolve the test server port: the DC_PORT env override when it names a valid
+ * 1..65535 port, else the compile-time DC_TEST_DEFAULT_PORT. */
+static inline uint16_t dc_test_port(void) {
+  const char *env = getenv("DC_PORT");
+  if (env) {
+    unsigned long v = strtoul(env, NULL, 10);
+    if (v > 0 && v <= 65535)
+      return (uint16_t)v;
+  }
+  return DC_TEST_DEFAULT_PORT;
+}
+
 #define _MAIN_HEAD_                                                                                \
   int main(int argc, char *argv[]) {                                                               \
                                                                                                    \
@@ -72,15 +93,7 @@ extern int n_passes;
                                                                                                    \
   ERecvStatus_t recv_status;                                                                       \
                                                                                                    \
-  uint16_t test_port = 22777;                                                                      \
-  {                                                                                                \
-    const char *dc_port_env = getenv("DC_PORT");                                                   \
-    if (dc_port_env) {                                                                             \
-      unsigned long port_val = strtoul(dc_port_env, NULL, 10);                                     \
-      if (port_val > 0 && port_val <= 65535)                                                       \
-        test_port = (uint16_t)port_val;                                                            \
-    }                                                                                              \
-  }                                                                                                \
+  uint16_t test_port = dc_test_port();                                                            \
                                                                                                    \
   for (int i = 0; i < N_PLAYERS; i++) {                                                            \
     get_socket_context_and_run_client(&player_config, &cli_args, "127.0.0.1", test_port, NULL,     \

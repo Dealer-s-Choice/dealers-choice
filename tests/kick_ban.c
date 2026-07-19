@@ -66,15 +66,7 @@ int main(int argc, char *argv[]) {
 
   dc_test_mode = true; /* deterministic mode; also grants admin to all clients */
 
-  uint16_t test_port = 22777;
-  {
-    const char *p = getenv("DC_PORT");
-    if (p) {
-      unsigned long v = strtoul(p, NULL, 10);
-      if (v > 0 && v <= 65535)
-        test_port = (uint16_t)v;
-    }
-  }
+  uint16_t test_port = dc_test_port();
 
   /* Connect N_PLAYERS (3) clients.  In test mode, all clients receive admin. */
   for (int i = 0; i < N_PLAYERS; i++) {

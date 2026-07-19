@@ -21,16 +21,6 @@
 /* Any-source test group, link-local scope. */
 #define TEST_GROUP "ff02::114"
 
-static int wait_readable_ms(tcpme_socket_t sock, uint32_t ms) {
-  tcpme_set_t *set = tcpme_alloc_set(1);
-  assert(set != NULL);
-  assert(tcpme_add_socket(set, sock) == 0);
-  int n = tcpme_check_sockets(set, ms);
-  int ready = (n == 1) && tcpme_socket_ready(set, sock);
-  tcpme_free_set(set);
-  return ready;
-}
-
 int main(void) {
   assert(tcpme_init() == 0);
 
@@ -58,7 +48,7 @@ int main(void) {
   assert(tcpme_udp_sendto6(client, "::1", 0, server_port, query, (int)sizeof(query)) ==
          (int)sizeof(query));
 
-  assert(wait_readable_ms(server, 1000));
+  assert(tc_wait_readable(server, 1000));
   char buf[64];
   char from_ip[TCPME_ADDRSTRLEN];
   unsigned from_scope = 1234; /* poison: recvfrom6 must overwrite it */
@@ -76,7 +66,7 @@ int main(void) {
   assert(tcpme_udp_sendto6(server, from_ip, from_scope, from_port, reply, (int)sizeof(reply)) ==
          (int)sizeof(reply));
 
-  assert(wait_readable_ms(client, 1000));
+  assert(tc_wait_readable(client, 1000));
   char rbuf[64];
   char rip[TCPME_ADDRSTRLEN];
   unsigned rscope = 0;
@@ -105,7 +95,7 @@ int main(void) {
     const char mq[] = "DCLAN6-MC?";
     int sent = tcpme_udp_mcast6_send_all(client, TEST_GROUP, server_port, mq, (int)sizeof(mq));
     printf("mcast6_send_all: sent on %d interface(s)\n", sent);
-    if (sent > 0 && wait_readable_ms(server, 1000)) {
+    if (sent > 0 && tc_wait_readable(server, 1000)) {
       n = tcpme_udp_recvfrom6(server, buf, sizeof(buf), from_ip, sizeof(from_ip), &from_scope,
                               &from_port);
       assert(n == (int)sizeof(mq));

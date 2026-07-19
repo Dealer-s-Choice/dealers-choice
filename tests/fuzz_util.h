@@ -119,4 +119,23 @@ static inline size_t fuzz_mutate(fuzz_rng_t *r, const uint8_t *src, size_t src_l
   return len;
 }
 
+/*
+ * Parse the shared fuzzer knobs: argv[1] = iteration count (default 20000),
+ * argv[2] = seed (default 1); DC_FUZZ_N / DC_FUZZ_SEED override either. A
+ * non-positive count is clamped back to the default. Every wire fuzzer opens
+ * its main() with this identical block.
+ */
+static inline void fuzz_parse_args(int argc, char **argv, long *count, uint64_t *seed) {
+  *count = (argc > 1) ? strtol(argv[1], NULL, 10) : 20000;
+  *seed = (argc > 2) ? strtoull(argv[2], NULL, 10) : 1;
+  const char *env_n = getenv("DC_FUZZ_N");
+  const char *env_seed = getenv("DC_FUZZ_SEED");
+  if (env_n)
+    *count = strtol(env_n, NULL, 10);
+  if (env_seed)
+    *seed = strtoull(env_seed, NULL, 10);
+  if (*count <= 0)
+    *count = 20000;
+}
+
 #endif /* DC_FUZZ_UTIL_H */

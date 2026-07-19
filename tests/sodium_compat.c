@@ -74,13 +74,7 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  uint16_t port = 22784;
-  const char *port_env = getenv("DC_PORT");
-  if (port_env) {
-    unsigned long v = strtoul(port_env, NULL, 10);
-    if (v > 0 && v <= 65535)
-      port = (uint16_t)v;
-  }
+  uint16_t port = dc_test_port();
 
   ServerArgs_t server_args = {.port = port, .result = -1};
   SDL_Thread *thread = SDL_CreateThread(server_thread, "auth_server", &server_args);

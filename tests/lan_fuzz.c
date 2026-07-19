@@ -87,16 +87,9 @@ static size_t build_valid_query(uint8_t *out) {
 }
 
 int main(int argc, char **argv) {
-  long count = (argc > 1) ? strtol(argv[1], NULL, 10) : 20000;
-  uint64_t seed = (argc > 2) ? strtoull(argv[2], NULL, 10) : 1;
-  const char *env_n = getenv("DC_FUZZ_N");
-  const char *env_seed = getenv("DC_FUZZ_SEED");
-  if (env_n)
-    count = strtol(env_n, NULL, 10);
-  if (env_seed)
-    seed = strtoull(env_seed, NULL, 10);
-  if (count <= 0)
-    count = 20000;
+  long count;
+  uint64_t seed;
+  fuzz_parse_args(argc, argv, &count, &seed);
 
   if (tcpme_init() != 0) {
     fputs("lan_fuzz: tcpme_init failed\n", stderr);

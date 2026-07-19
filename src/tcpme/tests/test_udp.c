@@ -16,16 +16,6 @@
 
 /* Wait up to ~1s for sock to become readable; abort the test if it never
  * does (so a broken recvfrom path fails fast instead of hanging). */
-static void wait_readable(tcpme_socket_t sock) {
-  tcpme_set_t *set = tcpme_alloc_set(1);
-  assert(set != NULL);
-  assert(tcpme_add_socket(set, sock) == 0);
-  int n = tcpme_check_sockets(set, 1000);
-  assert(n == 1);
-  assert(tcpme_socket_ready(set, sock));
-  tcpme_free_set(set);
-}
-
 int main(void) {
   assert(tcpme_init() == 0);
 
@@ -49,7 +39,7 @@ int main(void) {
          (int)sizeof(query));
 
   /* Server receives it and learns the sender's address. */
-  wait_readable(server);
+  assert(tc_wait_readable(server, 1000));
   char buf[64];
   char from_ip[TCPME_ADDRSTRLEN];
   uint16_t from_port = 0;
@@ -65,7 +55,7 @@ int main(void) {
          (int)sizeof(reply));
 
   /* Client receives the reply. */
-  wait_readable(client);
+  assert(tc_wait_readable(client, 1000));
   char rbuf[64];
   char rip[TCPME_ADDRSTRLEN];
   uint16_t rport = 0;

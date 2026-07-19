@@ -1,17 +1,8 @@
 #include "00_test.h"
 
+/* Deuces-wild evaluator; body lives in 00_test.h's TEST_HAND_RANK. */
 #define TEST_WILD(expected_rank, f, s)                                                             \
-  do {                                                                                             \
-    int tw_faces[POKEVAL_HAND_SIZE];                                                               \
-    int tw_suits[POKEVAL_HAND_SIZE];                                                               \
-    static POKEVAL_Hand_5 hand;                                                                    \
-    memcpy(tw_faces, f, POKEVAL_HAND_SIZE * sizeof(int));                                          \
-    memcpy(tw_suits, s, POKEVAL_HAND_SIZE * sizeof(int));                                          \
-    set_hand(&hand, tw_faces, tw_suits);                                                           \
-    short rank = POKEVAL_evaluate_hand_wild(hand, DH_CARD_TWO);                                    \
-    fprintf(stderr, "rank: %s\n", POKEVAL_rank[rank]);                                             \
-    assert(rank == expected_rank);                                                                 \
-  } while (0)
+  TEST_HAND_RANK(expected_rank, f, s, POKEVAL_evaluate_hand_wild(hand, DH_CARD_TWO))
 
 _MAIN_HEAD_
 

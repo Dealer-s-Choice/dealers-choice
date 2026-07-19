@@ -1,17 +1,7 @@
 #include "00_test.h"
 
-#define TEST_HAND(expected_rank, f, s)                                                             \
-  do {                                                                                             \
-    int faces[POKEVAL_HAND_SIZE];                                                                  \
-    int suits[POKEVAL_HAND_SIZE];                                                                  \
-    static POKEVAL_Hand_5 hand;                                                                    \
-    memcpy(faces, f, sizeof(faces));                                                               \
-    memcpy(suits, s, sizeof(suits));                                                               \
-    set_hand(&hand, faces, suits);                                                                 \
-    short rank = POKEVAL_evaluate_hand(hand);                                                      \
-    fprintf(stderr, "rank: %s\n", POKEVAL_rank[rank]);                                             \
-    assert(rank == expected_rank);                                                                 \
-  } while (0)
+/* The plain (non-wild) evaluator; body lives in 00_test.h's TEST_HAND_RANK. */
+#define TEST_HAND(expected_rank, f, s) TEST_HAND_RANK(expected_rank, f, s, POKEVAL_evaluate_hand(hand))
 
 static void test_static_hands(void) {
   int rf_faces[] = {DH_CARD_KING, DH_CARD_QUEEN, DH_CARD_ACE, DH_CARD_JACK, DH_CARD_TEN};

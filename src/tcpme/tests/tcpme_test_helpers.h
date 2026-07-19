@@ -83,6 +83,20 @@ static inline tcpme_socket_t tc_accept_retry(tcpme_socket_t server) {
   return tcpme_accept(server);
 }
 
+/* Wait up to `ms` for `sock` to become readable via a one-socket set.
+ * Returns nonzero if it did, 0 on timeout — callers assert() it when readiness
+ * is required (unicast round trips) and branch on it when delivery is
+ * best-effort (multicast). */
+static inline int tc_wait_readable(tcpme_socket_t sock, uint32_t ms) {
+  tcpme_set_t *set = tcpme_alloc_set(1);
+  assert(set != NULL);
+  assert(tcpme_add_socket(set, sock) == 0);
+  int n = tcpme_check_sockets(set, ms);
+  int ready = (n == 1) && tcpme_socket_ready(set, sock);
+  tcpme_free_set(set);
+  return ready;
+}
+
 /* Extract the port number from a "IP:port" or "[IPv6]:port" string. */
 static inline uint16_t extract_port(const char *addr) {
   const char *colon = strrchr(addr, ':');

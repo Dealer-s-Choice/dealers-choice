@@ -2,13 +2,6 @@
 
 #define NULL_CARD {DH_CARD_NULL, DH_CARD_NULL}
 
-typedef struct {
-  POKEVAL_Hand_9 hand; // card[6] is null for 6-card hands
-  short expected_rank;
-  const int *expected_cards; // NULL = don't check; sorted descending face values
-  const char *description;
-} TestCase;
-
 _MAIN_HEAD_
 
 TestCase cases[] = {
@@ -94,27 +87,6 @@ TestCase cases[] = {
     },
 };
 
-size_t num_cases = sizeof cases / sizeof cases[0];
-
-for (size_t i = 0; i < num_cases; ++i) {
-  POKEVAL_Hand_5 reduced = POKEVAL_hand5_from_hand7(&cases[i].hand);
-  for (int j = 0; j < POKEVAL_HAND_SIZE; j++)
-    fprintf(stderr, "card: %d | ", reduced.card[j].face_val);
-  fputc('\n', stderr);
-
-  short actual_rank = POKEVAL_evaluate_hand(reduced);
-
-  fprintf(stderr, "Test %zu: %s (Expected rank: %d, Got: %d)\n", i + 1, cases[i].description,
-          cases[i].expected_rank, actual_rank);
-
-  fputc('\n', stderr);
-
-  assert(actual_rank == cases[i].expected_rank);
-
-  if (cases[i].expected_cards) {
-    for (int j = 0; j < POKEVAL_HAND_SIZE; j++)
-      assert(reduced.card[j].face_val == cases[i].expected_cards[j]);
-  }
-}
+run_hand7_rank_cases(cases, sizeof cases / sizeof cases[0]);
 
 _MAIN_TAIL_

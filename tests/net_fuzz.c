@@ -263,16 +263,9 @@ static void hammer_deserializers(const uint8_t *data, size_t len) {
 }
 
 int main(int argc, char **argv) {
-  long count = (argc > 1) ? strtol(argv[1], NULL, 10) : 20000;
-  uint64_t seed = (argc > 2) ? strtoull(argv[2], NULL, 10) : 1;
-  const char *env_n = getenv("DC_FUZZ_N");
-  const char *env_seed = getenv("DC_FUZZ_SEED");
-  if (env_n)
-    count = strtol(env_n, NULL, 10);
-  if (env_seed)
-    seed = strtoull(env_seed, NULL, 10);
-  if (count <= 0)
-    count = 20000;
+  long count;
+  uint64_t seed;
+  fuzz_parse_args(argc, argv, &count, &seed);
 
   /* DC_FUZZ_MS: optional wall-clock cap in ms (0 = none). Bounds the run on slow
    * CI runners (Windows, the QEMU BSD VMs) so the socket loop can't trip the
