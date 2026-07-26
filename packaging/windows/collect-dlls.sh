@@ -13,13 +13,13 @@ mkdir -p "$DEST"
 # ldd prints lines like:
 #   libSDL2-2.0-0.dll => /ucrt64/bin/libSDL2-2.0-0.dll (0x...)
 # We keep only DLLs that live inside the MSYS2 tree (not C:/Windows/...).
-ldd "$EXE" \
-  | grep -i '=> /' \
-  | grep -v '/c/[Ww]indows' \
-  | awk '{print $3}' \
-  | while read -r dll; do
-      if [ -f "$dll" ]; then
-        echo "Copying: $dll"
-        cp "$dll" "$DEST/"
-      fi
-    done
+# Read from a process substitution rather than piping into the loop: with
+# pipefail, a pipeline whose grep matches nothing exits 1, so the old form would
+# fail the staging step the moment a build stopped needing any DLL (e.g. after
+# static-linking). Zero DLLs is a valid result.
+while read -r dll; do
+  if [ -f "$dll" ]; then
+    echo "Copying: $dll"
+    cp "$dll" "$DEST/"
+  fi
+done < <(ldd "$EXE" | grep -i '=> /' | grep -v '/c/[Ww]indows' | awk '{print $3}')
