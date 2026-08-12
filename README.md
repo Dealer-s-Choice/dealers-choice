@@ -28,7 +28,7 @@ file for details.
 * [Discussions](https://github.com/Dealer-s-Choice/dealers_choice/discussions)
 * [Bug Reporting](https://github.com/Dealer-s-Choice/dealers_choice/issues)
 
-### Games available
+## Games available
 
 * [5-card single and double draw](https://en.wikipedia.org/wiki/Draw_poker)
 * 5-card showdown (Similar to 5-card draw, but with no discard/draw round)
@@ -44,7 +44,7 @@ Most of the games above can be played with the [Deuces (Twos) Wild
 option](https://dealer-s-choice.github.io/docs/GAME_PLAY.html#using-wild-cards)
 enabled.
 
-### Computer Opponents
+## Computer Opponents
 
 A headless rules-based bot (`dealers-choice-bot`) is available. See
 [docs/BOT.md](docs/BOT.md) for usage.
