@@ -31,6 +31,7 @@
 
 #include "tcpme/tcpme.h"
 
+#include "dc_identity.h"
 #include "globals.h"
 #include "dc_protocol.pb-c.h"
 #include "types.h"
@@ -177,6 +178,17 @@ int send_message(tcpme_socket_t sock, uint16_t opcode, const uint8_t *payload, s
 int send_protocol_header(tcpme_socket_t sock, uint8_t flags);
 
 int authenticate_with_server(tcpme_socket_t sock, const char *password);
+
+/* Identity challenge-response (#67). Client sends its public key, the server
+   replies with a random nonce, the client signs the nonce and sends the
+   signature, the server verifies it. Nothing replayable crosses the wire, so it
+   does not depend on transport encryption. Both return 0 on success, non-zero on
+   I/O error or (server side) signature rejection; on success the server side
+   fills out_pubkey with the authenticated key. Always performed in production;
+   skipped in dc_test_mode (kept symmetric with the password/nick exchange). */
+int identity_handshake_client(tcpme_socket_t sock, const DcIdentity_t *id);
+int identity_handshake_server(tcpme_socket_t sock,
+                              unsigned char out_pubkey[crypto_sign_PUBLICKEYBYTES]);
 
 bool bot_connect(const char *host_str, uint16_t port, const char *nick, const char *password,
                  SocketContext_t *out);

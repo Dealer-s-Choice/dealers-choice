@@ -78,6 +78,10 @@ typedef struct {
   bool winner;
   bool is_connected;
   bool is_admin;
+  /* ed25519 public key (crypto_sign_PUBLICKEYBYTES; static_assert'd == 32 in
+     dc_identity.c). The player's portable identity from the challenge-response
+     handshake (#67); server-only, never serialized. */
+  unsigned char identity_pk[32];
 } Player_t;
 
 typedef struct {
