@@ -56,6 +56,7 @@ CliArgs_t parse_cli_args(int argc, char *argv[]) {
     OPT_CARD_PREVIEW,
     OPT_LOG_FILE,
     OPT_DISABLE_REGISTRY_BROWSER,
+    OPT_CLIENT_DISCOVERY_PORT,
   };
 
   static const glopt_option_t options[] = {{"server", GLOPT_NO_ARG, OPT_SERVER, 0},
@@ -70,6 +71,8 @@ CliArgs_t parse_cli_args(int argc, char *argv[]) {
                                            {"log-file", GLOPT_REQUIRED_ARG, OPT_LOG_FILE, 0},
                                            {"disable-registry-browser", GLOPT_NO_ARG,
                                             OPT_DISABLE_REGISTRY_BROWSER, 0},
+                                           {"discovery-port", GLOPT_REQUIRED_ARG,
+                                            OPT_CLIENT_DISCOVERY_PORT, 0},
                                            {NULL, 0, 0, 0}};
 
   glopt_parser_t parser;
@@ -126,6 +129,12 @@ CliArgs_t parse_cli_args(int argc, char *argv[]) {
     case OPT_DISABLE_REGISTRY_BROWSER:
       cli_args.disable_registry_browser = true;
       break;
+    case OPT_CLIENT_DISCOVERY_PORT: {
+      unsigned long dp;
+      parse_unsigned(parser.optarg, UINT16_MAX, &dp);
+      cli_args.discovery_port = (uint16_t)dp;
+      break;
+    }
     case '?':
     default:
       print_version();
@@ -136,6 +145,8 @@ CliArgs_t parse_cli_args(int argc, char *argv[]) {
           "  --port [port]\n"
           "  --disable-audio\n"
           "  --disable-registry-browser Do not query the registry for the internet server list\n"
+          "  --discovery-port [port]    LAN discovery UDP port; must match the servers on your "
+          "LAN\n"
           "  --auto-connect             Connect immediately using host/port from player.conf\n"
           "  --verbose\n"
           "  --debug                    Verbose plus per-opcode trace (DC_LOG_DEBUG)\n"
@@ -277,12 +288,12 @@ CliArgs_t parse_server_args(int argc, char *argv[]) {
     }
   }
 
-  /* --disable-publish forces publishing off. It is deliberately undocumented
-   * (absent from the usage text above) now that publishing requires an operator
-   * to create common.conf and name a registry: the flag is redundant for
-   * end-users, but the test harnesses and scripts still pass it, so it stays
-   * implemented. A DC_DISABLE_PUBLISH env equivalent used to exist and was
-   * removed. */
+  /* --disable-publish forces publishing off. It is kept out of the usage text
+   * because publishing now needs an operator to create common.conf and name a
+   * registry, so a stock build never publishes and the flag has nothing to turn
+   * off. It stays implemented for the case where a registry IS configured: the
+   * test harnesses and scripts pass it so a test server never announces. A
+   * DC_DISABLE_PUBLISH env equivalent used to exist and was removed. */
 
   /* Tests/CI can suppress LAN discovery via the environment: a test server must
    * not answer discovery probes on the tester's real network. Equivalent to

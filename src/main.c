@@ -213,6 +213,10 @@ int main(int argc, char *argv[]) {
   PlayerConfig_t player_config = get_player_config();
   get_common_registries(path.data, player_config.registry_host, player_config.registry_port,
                         &player_config.registry_count, &player_config.lan_discovery_port);
+  /* Mirrors the server's flag: without it, a LAN on a non-default discovery port
+   * would need common.conf created by hand on every client. */
+  if (cli_args.discovery_port != 0)
+    player_config.lan_discovery_port = cli_args.discovery_port;
   /* --disable-registry-browser overrides the player.conf preference for this run. */
   if (cli_args.disable_registry_browser)
     player_config.registry_browser = false;

@@ -90,6 +90,21 @@ dealers-choice --disable-registry-browser
 This only affects the internet server list. LAN discovery is separate and is
 not changed by it.
 
+## LAN discovery port
+
+The client and the servers on your LAN must agree on one UDP port, which
+defaults to 22787. Change it only if that port is already taken, and change it
+on every machine:
+
+```
+dealers-choice --discovery-port 22800
+dealers-choice-server --discovery-port 22800
+```
+
+The same setting can live in `common.conf` as `lan_discovery_port`, which is
+useful when several machines share a data directory. The flag wins over the
+file.
+
 ## Language
 
 To use a language that is different from your system's default:
