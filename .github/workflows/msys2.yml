@@ -125,15 +125,23 @@ jobs:
       if: matrix.platform == 'UCRT64'
       shell: msys2 {0}
       run: |
+        # Stage from `meson install` rather than copying data/ by hand, so what
+        # the installer ships is decided in one place: meson's install_subdir,
+        # including its exclude_files. Copying the tree directly meant every
+        # exclusion had to be repeated here (and a missed *addition* is what once
+        # left common.conf and layout.conf out of the package).
+        meson install -C _build --destdir "$PWD/_install"
+        # --destdir prepends the install prefix, which msys2 sets from the MinGW
+        # root, so find the installed tree rather than assuming the path.
+        installed_data=$(dirname "$(find _install -name layout.conf -print -quit)")
+        installed_bin=$(dirname "$(find _install -name dealers-choice.exe -print -quit)")
+        test -n "$installed_data" -a -d "$installed_data" || { echo "installed data dir not found"; exit 1; }
+        test -n "$installed_bin" -a -d "$installed_bin" || { echo "installed bin dir not found"; exit 1; }
         mkdir -p _staging/data
-        cp _build/dealers-choice.exe _build/dealers-choice-bot.exe _staging/
-        # Ship the whole data/ tree (mirrors meson's install_subdir('data')) so a
-        # new asset or config file can never be left out of the package again
-        # (this is what caused the missing common.conf/layout.conf). common.conf
-        # itself is excluded to match install_subdir's exclude_files: it is an
-        # opt-in template, not shipped config.
-        cp -r data/. _staging/data/
-        rm -f _staging/data/common.conf
+        # The installer ships the client and the bot only, not the headless server.
+        cp "$installed_bin/dealers-choice.exe" "$installed_bin/dealers-choice-bot.exe" _staging/
+        cp -r "$installed_data/." _staging/data/
+        ls -R _staging/data
         bash packaging/windows/collect-dlls.sh _staging/dealers-choice.exe _staging/
 
     - name: Set version
