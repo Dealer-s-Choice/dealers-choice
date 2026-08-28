@@ -104,6 +104,22 @@ typedef struct {
 // A forward declaration
 struct ServerConfig_t;
 
+/* A connection accepted but not yet through the join handshake; see
+ * ArgsBroadcastGameState_t::pending. */
+#define MAX_PENDING_CLIENTS 16
+/* Handshake reads use this instead of SOCKET_IO_TIMEOUT_MS. Once select says a
+ * socket is readable the read itself is still blocking, so a peer that sends a
+ * partial frame and then stops holds the loop for this long -- two seconds
+ * rather than thirty. */
+#define HANDSHAKE_IO_TIMEOUT_MS 2000
+/* A parked connection that never becomes readable is dropped after this. */
+#define HANDSHAKE_DEADLINE_MS 5000
+
+typedef struct PendingClient_t {
+  tcpme_socket_t sock;
+  uint32_t deadline; /* dc_get_ticks() value past which the connection is closed */
+} PendingClient_t;
+
 typedef struct {
   tcpme_socket_t *clients;
   tcpme_set_t *socket_set;
@@ -135,6 +151,14 @@ typedef struct {
   tcpme_set_t *lan_discovery_set;
   uint16_t lan_port;
   uint32_t lan_instance_id; /* random per-process id sent in discovery replies (clients dedup on it) */
+  /* Connections accepted but not yet through the join handshake (#363). They are
+   * parked here and not read from until select says data is waiting: the loop is
+   * single-threaded, so reading eagerly let one connection that sent nothing
+   * stall every other player for the socket timeout. Storage lives in
+   * run_server; pending_set holds the same sockets for the readiness check. */
+  PendingClient_t *pending;
+  int *pending_count;
+  tcpme_set_t *pending_set;
 } ArgsBroadcastGameState_t;
 
 struct GameChoice_t;

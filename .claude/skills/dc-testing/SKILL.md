@@ -61,6 +61,20 @@ so it cannot match the agent shell, and kill by pid:
 pgrep -f "^\./dealers-choice-server" | xargs -r kill
 ```
 
+**Anchoring is not enough when the pattern itself appears in your command.**
+`pkill -f "scripts/soak.sh"` dies the same way, because the shell running it has
+`scripts/soak.sh` in its own argv. Anchoring only helps for patterns starting
+`^./`, which a shell's argv never does. For anything else — a script name, a
+path fragment — **split it across two tool calls**: `pgrep` for the pid in one,
+`kill <pid>` in the next. A literal numeric pid cannot match anything but the
+process you meant.
+
+This one recurred three times in the session that first documented it, twice
+*after* it was written down, because the failure is invisible: the command exits
+144 and everything after the kill — including source edits in the same call —
+silently never happens. If a tool call containing a kill exits 144, assume none
+of its later steps ran and re-check the files it was supposed to change.
+
 To see what is running, `pgrep -af dealers-choice` and read past your own shell
 in the output.
 

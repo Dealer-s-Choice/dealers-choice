@@ -1140,13 +1140,62 @@ static void service_registry_publish(ArgsBroadcastGameState_t *args) {
   }
 }
 
+static ELoop_t complete_join_handshake(ArgsBroadcastGameState_t *args, tcpme_socket_t new_client);
+
+/* Drop a parked connection and forget it. */
+static void pending_remove(ArgsBroadcastGameState_t *args, int idx, bool close_it) {
+  tcpme_del_socket(args->pending_set, args->pending[idx].sock);
+  if (close_it)
+    tcpme_close(args->pending[idx].sock);
+  for (int k = idx; k < *args->pending_count - 1; k++)
+    args->pending[k] = args->pending[k + 1];
+  (*args->pending_count)--;
+}
+
+/* Advance any parked connection that has data waiting, and reap the ones that
+ * never sent anything. Called once per main-loop pass; the readiness check does
+ * not wait, so an idle pending list costs nothing (#363). */
+static ELoop_t service_pending_handshakes(ArgsBroadcastGameState_t *args) {
+  if (*args->pending_count == 0)
+    return LOOP_OK;
+
+  const uint32_t now = dc_get_ticks();
+  const bool any_ready = tcpme_check_sockets(args->pending_set, 0) > 0;
+
+  /* Backwards: pending_remove compacts the array, so a forward walk would skip
+   * the entry shifted into a removed slot. */
+  for (int i = *args->pending_count - 1; i >= 0; i--) {
+    const tcpme_socket_t sock = args->pending[i].sock;
+
+    if (any_ready && tcpme_socket_ready(args->pending_set, sock)) {
+      pending_remove(args, i, false); /* ownership passes to the handshake */
+      ELoop_t rc = complete_join_handshake(args, sock);
+      if (rc == LOOP_CONTINUE)
+        continue; /* handshake closed it itself */
+      if (rc != LOOP_OK)
+        return rc;
+      continue;
+    }
+
+    /* dc_get_ticks() wraps about every 49 days; comparing the difference rather
+     * than the absolute values keeps this correct across the wrap. */
+    if ((int32_t)(now - args->pending[i].deadline) >= 0) {
+      dc_log(DC_LOG_INFO, "Dropping a connection that sent nothing within %d ms",
+             HANDSHAKE_DEADLINE_MS);
+      pending_remove(args, i, true);
+    }
+  }
+  return LOOP_OK;
+}
+
 ELoop_t register_new_client(ArgsBroadcastGameState_t *args) {
   service_lan_discovery(args, true);
   service_registry_publish(args);
   // checks for and accepts incoming connections
   tcpme_socket_t new_client = tcpme_accept(*args->server_sock);
   if (tcpme_socket_valid(new_client)) {
-    tcpme_set_timeout(new_client, SOCKET_IO_TIMEOUT_MS);
+    /* No timeout is set here: the checks below do no I/O, and parking installs
+     * the handshake timeout. The gameplay timeout goes on once the client is in. */
     char peer_ip_str[TCPME_ADDRSTRLEN] = "";
     tcpme_get_peer_ip(new_client, peer_ip_str, sizeof(peer_ip_str));
 
@@ -1186,148 +1235,178 @@ ELoop_t register_new_client(ArgsBroadcastGameState_t *args) {
       }
     }
 
-    /* Validate the protocol header BEFORE allocating a slot. A registry verify
-     * probe (PROTO_FLAG_PROBE) then completes the handshake and disconnects
-     * without taking a slot or logging connect/nickname noise — so it succeeds
-     * even when the server is full (#33). */
-    uint8_t proto_flags = 0;
-    if (recv_and_validate_protocol_header(new_client, &proto_flags) != 0) {
+    /* Park it rather than starting the handshake here. Nothing is read until
+     * this socket is readable, so a client that connects and sends nothing
+     * costs a pending slot instead of freezing the loop (#363). */
+    if (*args->pending_count >= MAX_PENDING_CLIENTS) {
+      dc_log(DC_LOG_WARN, "Pending handshake list full; rejecting connection from %s", peer_ip_str);
       tcpme_close(new_client);
-      return LOOP_CONTINUE;
-    }
-    if (proto_flags & PROTO_FLAG_PROBE) {
-      tcpme_close(new_client);
-      return LOOP_CONTINUE;
-    }
-
-    int8_t slot = -1;
-    for (int8_t i = 0; i < MAX_CLIENTS; i++) {
-      if (!args->slot_taken[i]) {
-        slot = i;
-        break;
-      }
-    }
-
-    if (slot != -1) {
-      args->clients[slot] = new_client;
-      args->slot_taken[slot] = true;
-      tcpme_add_socket(args->socket_set, new_client);
-
-      char peer_addr_str[TCPME_ADDRSTRLEN];
-      if (tcpme_get_peer_addr(new_client, peer_addr_str, sizeof(peer_addr_str)))
-        dc_log(DC_LOG_INFO, "Client %d connected from %s; slot %d taken", slot, peer_addr_str,
-                slot);
-
-      Player_t *slot_id = &(args->game_state->player)[slot];
-      slot_id->id = slot;
-      slot_id->is_connected = true;
-      args->player_timeouts[slot] = 0;
-      if (args->game_state->at_menu)
-        slot_id->in = true;
-      else {
-        for (int i = 0; i < MAX_HAND_SIZE; i++)
-          args->real_hand[slot].card[i] = DH_card_null;
-        memcpy(&args->game_state->player[slot].hand, &args->real_hand[slot],
-               sizeof(POKEVAL_Hand_9));
-      }
-
-      if (!dc_test_mode) {
-        Player_t *player = &(args->game_state->player)[slot];
-
-        bool is_bot = (proto_flags & PROTO_FLAG_BOT) != 0;
-        const char *password = args->config->password;
-
-        if (is_bot && !*password) {
-          printf("Rejected bot connection: server has no password set\n");
-          do_socket_cleanup(new_client, args->socket_set, args->slot_taken, slot, player,
-                            &args->clients[slot]);
-          return LOOP_CONTINUE;
-        }
-
-        unsigned char nonce[NONCE_SIZE];
-        if (send_nonce(new_client, nonce) < 0) {
-          dc_log(DC_LOG_ERROR, "Failed to send nonce");
-          return -1;
-        }
-
-        int auth_ok = (verify_client_password(new_client, password, nonce) == 0 && *password);
-
-        if (is_bot && !auth_ok) {
-          printf("Rejected bot connection: authentication failed\n");
-          do_socket_cleanup(new_client, args->socket_set, args->slot_taken, slot, player,
-                            &args->clients[slot]);
-          return LOOP_CONTINUE;
-        }
-
-        if (auth_ok) {
-          puts("Client authenticated!");
-          player->is_admin = true;
-        } else {
-          player->is_admin = false;
-        }
-
-        int16_t net_len;
-
-        // Step 1: Recv the size first (must happen before interpreting it)
-        if (recv_all_tcp(new_client, &net_len, sizeof(net_len)) <= 0) {
-          // Handle error: client disconnected or invalid
-          dc_log(DC_LOG_ERROR, "Failed to receive nickname length.");
-          do_socket_cleanup(new_client, args->socket_set, args->slot_taken, slot, player,
-                            &args->clients[slot]);
-          return LOOP_CONTINUE;
-        }
-
-        // Step 2: Now convert
-        uint16_t len = tcpme_get_be16((const uint8_t *)&net_len);
-
-        // Step 3: Validate length
-        if (len == 0) {
-          dc_log(DC_LOG_WARN, "Invalid nickname length: %d", len);
-          do_socket_cleanup(new_client, args->socket_set, args->slot_taken, slot, player,
-                            &args->clients[slot]);
-          return LOOP_CONTINUE;
-        }
-        if (len >= sizeof(player->nick))
-          len = (uint16_t)(sizeof(player->nick) - 1);
-
-        // Step 4: Read nickname
-        memset(player->nick, 0, sizeof(player->nick));
-        if (recv_all_tcp(new_client, player->nick, len) != (int)len) {
-          dc_log(DC_LOG_ERROR, "Failed to receive nickname.");
-          do_socket_cleanup(new_client, args->socket_set, args->slot_taken, slot, player,
-                            &args->clients[slot]);
-          return LOOP_CONTINUE;
-        }
-
-        // Step 5: Null terminate
-        player->nick[len] = '\0';
-        verbose_printf("received nick: %s\n", player->nick);
-        ensure_unique_nick(args->game_state, player, slot);
-      } else {
-        /* In test mode all clients are granted admin so that kick/ban
-         * functionality can be exercised from any position in the test suite. */
-        slot_id->is_admin = true;
-      }
-
-      args->game_settings->client_id = slot;
-      send_game_settings(args, new_client);
-      broadcast_game_state(args);
-
-      /* A client joining a running game missed the MSG_GAME_SELECT that was
-       * broadcast at game-select time, so its game-name / deuces-wild
-       * indicators stay blank. Send the current selection to just this
-       * client; its existing MSG_GAME_SELECT handler populates both (#223). */
-      if (!args->game_state->at_menu) {
-        if (send_game_select(new_client, args->game_type, args->deuces_wild) < 0)
-          dc_log(DC_LOG_ERROR, "[register_new_client] Failed to send game type to client %d", slot);
-      }
     } else {
-      printf("Server full. Rejecting connection.\n");
-      tcpme_close(new_client);
+      tcpme_set_timeout(new_client, HANDSHAKE_IO_TIMEOUT_MS);
+      tcpme_add_socket(args->pending_set, new_client);
+      args->pending[*args->pending_count].sock = new_client;
+      args->pending[*args->pending_count].deadline = dc_get_ticks() + HANDSHAKE_DEADLINE_MS;
+      (*args->pending_count)++;
     }
+  }
+
+  return service_pending_handshakes(args);
+}
+
+/* The join handshake, from the protocol header onward. Called only once select
+ * reports data waiting on the socket, so the first read cannot block on a client
+ * that connected and went quiet -- that stalled the whole single-threaded loop
+ * for SOCKET_IO_TIMEOUT_MS and froze every other player (#363). The reads within
+ * the sequence are still blocking, but the socket carries
+ * HANDSHAKE_IO_TIMEOUT_MS, so a peer that sends a partial frame costs seconds
+ * rather than half a minute. */
+static ELoop_t complete_join_handshake(ArgsBroadcastGameState_t *args, tcpme_socket_t new_client) {
+  /* Validate the protocol header BEFORE allocating a slot. A registry verify
+   * probe (PROTO_FLAG_PROBE) then completes the handshake and disconnects
+   * without taking a slot or logging connect/nickname noise — so it succeeds
+   * even when the server is full (#33). */
+  uint8_t proto_flags = 0;
+  if (recv_and_validate_protocol_header(new_client, &proto_flags) != 0) {
+    tcpme_close(new_client);
+    return LOOP_CONTINUE;
+  }
+  if (proto_flags & PROTO_FLAG_PROBE) {
+    tcpme_close(new_client);
+    return LOOP_CONTINUE;
+  }
+
+  int8_t slot = -1;
+  for (int8_t i = 0; i < MAX_CLIENTS; i++) {
+    if (!args->slot_taken[i]) {
+      slot = i;
+      break;
+    }
+  }
+
+  if (slot != -1) {
+    args->clients[slot] = new_client;
+    args->slot_taken[slot] = true;
+    tcpme_add_socket(args->socket_set, new_client);
+
+    char peer_addr_str[TCPME_ADDRSTRLEN];
+    if (tcpme_get_peer_addr(new_client, peer_addr_str, sizeof(peer_addr_str)))
+      dc_log(DC_LOG_INFO, "Client %d connected from %s; slot %d taken", slot, peer_addr_str,
+              slot);
+
+    Player_t *slot_id = &(args->game_state->player)[slot];
+    slot_id->id = slot;
+    slot_id->is_connected = true;
+    args->player_timeouts[slot] = 0;
+    if (args->game_state->at_menu)
+      slot_id->in = true;
+    else {
+      for (int i = 0; i < MAX_HAND_SIZE; i++)
+        args->real_hand[slot].card[i] = DH_card_null;
+      memcpy(&args->game_state->player[slot].hand, &args->real_hand[slot],
+             sizeof(POKEVAL_Hand_9));
+    }
+
+    if (!dc_test_mode) {
+      Player_t *player = &(args->game_state->player)[slot];
+
+      bool is_bot = (proto_flags & PROTO_FLAG_BOT) != 0;
+      const char *password = args->config->password;
+
+      if (is_bot && !*password) {
+        printf("Rejected bot connection: server has no password set\n");
+        do_socket_cleanup(new_client, args->socket_set, args->slot_taken, slot, player,
+                          &args->clients[slot]);
+        return LOOP_CONTINUE;
+      }
+
+      unsigned char nonce[NONCE_SIZE];
+      if (send_nonce(new_client, nonce) < 0) {
+        dc_log(DC_LOG_ERROR, "Failed to send nonce");
+        return -1;
+      }
+
+      int auth_ok = (verify_client_password(new_client, password, nonce) == 0 && *password);
+
+      if (is_bot && !auth_ok) {
+        printf("Rejected bot connection: authentication failed\n");
+        do_socket_cleanup(new_client, args->socket_set, args->slot_taken, slot, player,
+                          &args->clients[slot]);
+        return LOOP_CONTINUE;
+      }
+
+      if (auth_ok) {
+        puts("Client authenticated!");
+        player->is_admin = true;
+      } else {
+        player->is_admin = false;
+      }
+
+      int16_t net_len;
+
+      // Step 1: Recv the size first (must happen before interpreting it)
+      if (recv_all_tcp(new_client, &net_len, sizeof(net_len)) <= 0) {
+        // Handle error: client disconnected or invalid
+        dc_log(DC_LOG_ERROR, "Failed to receive nickname length.");
+        do_socket_cleanup(new_client, args->socket_set, args->slot_taken, slot, player,
+                          &args->clients[slot]);
+        return LOOP_CONTINUE;
+      }
+
+      // Step 2: Now convert
+      uint16_t len = tcpme_get_be16((const uint8_t *)&net_len);
+
+      // Step 3: Validate length
+      if (len == 0) {
+        dc_log(DC_LOG_WARN, "Invalid nickname length: %d", len);
+        do_socket_cleanup(new_client, args->socket_set, args->slot_taken, slot, player,
+                          &args->clients[slot]);
+        return LOOP_CONTINUE;
+      }
+      if (len >= sizeof(player->nick))
+        len = (uint16_t)(sizeof(player->nick) - 1);
+
+      // Step 4: Read nickname
+      memset(player->nick, 0, sizeof(player->nick));
+      if (recv_all_tcp(new_client, player->nick, len) != (int)len) {
+        dc_log(DC_LOG_ERROR, "Failed to receive nickname.");
+        do_socket_cleanup(new_client, args->socket_set, args->slot_taken, slot, player,
+                          &args->clients[slot]);
+        return LOOP_CONTINUE;
+      }
+
+      // Step 5: Null terminate
+      player->nick[len] = '\0';
+      verbose_printf("received nick: %s\n", player->nick);
+      ensure_unique_nick(args->game_state, player, slot);
+    } else {
+      /* In test mode all clients are granted admin so that kick/ban
+       * functionality can be exercised from any position in the test suite. */
+      slot_id->is_admin = true;
+    }
+
+    /* The handshake timeout was deliberately short; in-game reads get the normal
+     * one back, or a slow-but-legitimate client would be dropped mid-game. */
+    tcpme_set_timeout(new_client, SOCKET_IO_TIMEOUT_MS);
+
+    args->game_settings->client_id = slot;
+    send_game_settings(args, new_client);
+    broadcast_game_state(args);
+
+    /* A client joining a running game missed the MSG_GAME_SELECT that was
+     * broadcast at game-select time, so its game-name / deuces-wild
+     * indicators stay blank. Send the current selection to just this
+     * client; its existing MSG_GAME_SELECT handler populates both (#223). */
+    if (!args->game_state->at_menu) {
+      if (send_game_select(new_client, args->game_type, args->deuces_wild) < 0)
+        dc_log(DC_LOG_ERROR, "[register_new_client] Failed to send game type to client %d", slot);
+    }
+  } else {
+    printf("Server full. Rejecting connection.\n");
+    tcpme_close(new_client);
   }
   return LOOP_OK;
 }
+
 
 int run_server(const CliArgs_t *cli_args, Path_t *path) {
   GameState_t game_state = {0};
@@ -1390,6 +1469,11 @@ int run_server(const CliArgs_t *cli_args, Path_t *path) {
   tcpme_socket_t clients[MAX_CLIENTS];
   for (int i = 0; i < MAX_CLIENTS; i++)
     clients[i] = TCPME_INVALID_SOCKET;
+  /* Connections accepted but not yet through the handshake (#363). */
+  PendingClient_t pending[MAX_PENDING_CLIENTS] = {0};
+  int pending_count = 0;
+  tcpme_set_t *pending_set = tcpme_alloc_set(MAX_PENDING_CLIENTS);
+
   tcpme_set_t *socket_set = tcpme_alloc_set(MAX_CLIENTS + 1);
   if (!socket_set) {
     dc_log(DC_LOG_ERROR, "Failed to allocate socket set: %s", tcpme_get_error());
@@ -1458,6 +1542,9 @@ int run_server(const CliArgs_t *cli_args, Path_t *path) {
         .lan_discovery_set = discovery_set,
         .lan_port = port,
         .lan_instance_id = lan_instance_id,
+        .pending = pending,
+        .pending_count = &pending_count,
+        .pending_set = pending_set,
     };
     memcpy(args_broadcast_game_state.ban_list, session_ban_list, sizeof(session_ban_list));
     memcpy(args_broadcast_game_state.player_timeouts, session_player_timeouts,
@@ -1706,6 +1793,9 @@ int run_server(const CliArgs_t *cli_args, Path_t *path) {
     tcpme_close(discovery_sock6);
 
   tcpme_close(server);
+  for (int i = 0; i < pending_count; i++)
+    tcpme_close(pending[i].sock);
+  tcpme_free_set(pending_set);
   tcpme_free_set(socket_set);
   tcpme_quit();
 
