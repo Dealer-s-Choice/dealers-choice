@@ -309,6 +309,18 @@ int recv_all_tcp(tcpme_socket_t sock, void *buf, size_t len) {
   return total > (size_t)INT_MAX ? INT_MAX : (int)total;
 }
 
+/* A frame is a few bytes and in practice arrives in one segment, so a short
+ * deadline is ample for any real client while bounding what a peer that sends
+ * part of a frame and stops can cost the loop. It does not remove the stall --
+ * that would need per-client accumulation across loop passes -- it caps it at
+ * IN_GAME_FRAME_TIMEOUT_MS instead of SOCKET_IO_TIMEOUT_MS (#373). */
+int recv_frame_bounded(tcpme_socket_t sock, void *buf, size_t len) {
+  tcpme_set_timeout(sock, IN_GAME_FRAME_TIMEOUT_MS);
+  int r = recv_all_tcp(sock, buf, len);
+  tcpme_set_timeout(sock, SOCKET_IO_TIMEOUT_MS);
+  return r;
+}
+
 // Eventually some, or most, of the data in the game state struct will be sent
 // via opcodes, like what's done for the discard/draw request
 ERecvStatus_t recv_game_state(SocketContext_t *socket_context, GameState_t *game_state,

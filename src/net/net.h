@@ -164,6 +164,16 @@ int send_all_tcp(tcpme_socket_t sock, const void *data, size_t length);
 
 int recv_all_tcp(tcpme_socket_t sock, void *buf, size_t len);
 
+/* Deadline for reading one in-game frame from a socket select has just reported
+ * readable. Distinct from SOCKET_IO_TIMEOUT_MS: readability guarantees a byte,
+ * not a whole frame, so an unbounded read here lets one peer hold the
+ * single-threaded server for the full I/O timeout (#373). */
+#define IN_GAME_FRAME_TIMEOUT_MS 2000
+
+/* recv_all_tcp with that deadline, restoring SOCKET_IO_TIMEOUT_MS afterwards.
+ * Use it for every in-game read that follows a readiness check. */
+int recv_frame_bounded(tcpme_socket_t sock, void *buf, size_t len);
+
 ERecvStatus_t recv_game_state(SocketContext_t *socket_context, GameState_t *game_state,
                               ClientState_t *client_state, const int8_t id);
 

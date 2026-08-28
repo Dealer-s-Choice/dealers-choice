@@ -150,7 +150,7 @@ ELoop_t handle_draw(ArgsBroadcastGameState_t *args, tcpme_socket_t sock, const i
       if (num_ready > 0) {
         if (tcpme_socket_ready(args->socket_set, sock)) {
           uint32_t size_net = 0;
-          if (recv_all_tcp(sock, &size_net, sizeof(size_net)) > 0) {
+          if (recv_frame_bounded(sock, &size_net, sizeof(size_net)) > 0) {
             msg_size = tcpme_get_be32((const uint8_t *)&size_net);
             break;
           } else {
@@ -187,7 +187,7 @@ ELoop_t handle_draw(ArgsBroadcastGameState_t *args, tcpme_socket_t sock, const i
       return LOOP_ERROR;
     }
     memset(buffer, 0, sizeof(buffer));
-    if (recv_all_tcp(sock, buffer, msg_size) <= 0) {
+    if (recv_frame_bounded(sock, buffer, msg_size) <= 0) {
       remove_disconnected_player(args, id);
       broadcast_game_state(args);
       return LOOP_BREAK;

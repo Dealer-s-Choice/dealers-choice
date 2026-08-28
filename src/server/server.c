@@ -539,7 +539,7 @@ ETurnMsg_t recv_turn_player_msg(tcpme_socket_t sock, PlayerActionMsg_t *out_acti
    *   [size:4 BE][opcode:2 BE][payload...] where size = 2 + len(payload). */
   for (;;) {
     uint32_t size_net = 0;
-    if (recv_all_tcp(sock, &size_net, sizeof(size_net)) <= 0)
+    if (recv_frame_bounded(sock, &size_net, sizeof(size_net)) <= 0)
       return TURN_MSG_DISCONNECT;
 
     uint32_t size = tcpme_get_be32((const uint8_t *)&size_net);
@@ -549,7 +549,7 @@ ETurnMsg_t recv_turn_player_msg(tcpme_socket_t sock, PlayerActionMsg_t *out_acti
     }
 
     uint8_t buf[16];
-    if (recv_all_tcp(sock, buf, size) <= 0)
+    if (recv_frame_bounded(sock, buf, size) <= 0)
       return TURN_MSG_DISCONNECT;
 
     uint16_t opcode_be;
@@ -1608,7 +1608,7 @@ int run_server(const CliArgs_t *cli_args, Path_t *path) {
 
           // Read the message size first (4 bytes)
           uint32_t size_net = 0;
-          if (recv_all_tcp(clients[i], &size_net, sizeof(size_net)) <= 0) {
+          if (recv_frame_bounded(clients[i], &size_net, sizeof(size_net)) <= 0) {
             dc_log(DC_LOG_WARN, "[NET] Disconnection while reading size from client %d", i);
             remove_disconnected_player(&args_broadcast_game_state, i);
             continue;
@@ -1627,7 +1627,7 @@ int run_server(const CliArgs_t *cli_args, Path_t *path) {
             continue;
           }
 
-          if (recv_all_tcp(clients[i], buffer, size) <= 0) {
+          if (recv_frame_bounded(clients[i], buffer, size) <= 0) {
             dc_log(DC_LOG_WARN, "[NET] Disconnection while reading payload from client %d", i);
             free(buffer);
             continue;
