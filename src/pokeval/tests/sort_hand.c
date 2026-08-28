@@ -10,7 +10,7 @@ POKEVAL_Hand_5 hand = {.card = {
                            {DH_CARD_KING, DH_SUIT_CLUBS},
                        }};
 
-POKEVAL_sort_hand(&hand);
+POKEVAL_sort_hand_for_eval(&hand);
 
 int expected[] = {POKEVAL_ACE, DH_CARD_KING, DH_CARD_TEN, DH_CARD_FIVE, DH_CARD_THREE};
 for (int i = 0; i < POKEVAL_HAND_SIZE; ++i) {

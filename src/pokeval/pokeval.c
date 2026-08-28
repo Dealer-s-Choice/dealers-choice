@@ -53,7 +53,7 @@ static int count_face(const POKEVAL_Hand_5 *hand, int face_val) {
   return count;
 }
 
-void POKEVAL_sort_hand(POKEVAL_Hand_5 *hand) {
+void POKEVAL_sort_hand_for_eval(POKEVAL_Hand_5 *hand) {
   for (int i = 0; i < POKEVAL_HAND_SIZE - 1; ++i) {
     for (int j = i + 1; j < POKEVAL_HAND_SIZE; ++j) {
       int32_t val_i =
@@ -69,6 +69,18 @@ void POKEVAL_sort_hand(POKEVAL_Hand_5 *hand) {
         hand->card[j] = tmp;
       }
     }
+  }
+}
+
+/* Sort for display or for the wire. Same ordering as the evaluator form, but
+ * the ace mutation is undone afterwards so the hand still carries face values
+ * in DH's 1..13 range. Every caller that broadcasts, logs or renders the hand
+ * wants this one; POKEVAL_sort_hand_for_eval is only safe on a scratch copy. */
+void POKEVAL_sort_hand_display(POKEVAL_Hand_5 *hand) {
+  POKEVAL_sort_hand_for_eval(hand);
+  for (int i = 0; i < POKEVAL_HAND_SIZE; ++i) {
+    if (hand->card[i].face_val == POKEVAL_ACE)
+      hand->card[i].face_val = DH_CARD_ACE;
   }
 }
 
@@ -98,7 +110,7 @@ static bool is_straight(POKEVAL_Hand_5 *hand) {
 }
 
 short POKEVAL_evaluate_hand(POKEVAL_Hand_5 hand) {
-  POKEVAL_sort_hand(&hand);
+  POKEVAL_sort_hand_for_eval(&hand);
 
   bool flush = true;
   for (int i = 1; i < POKEVAL_HAND_SIZE; ++i)
@@ -307,7 +319,7 @@ static int get_kicker_value(const POKEVAL_Hand_5 *hand, int quad_val) {
 
 static uint8_t compare_hands_5(POKEVAL_NeedComparing *need_comparing, uint8_t count) {
   for (size_t i = 0; i < count; ++i) {
-    POKEVAL_sort_hand(&need_comparing[i].hand_5);
+    POKEVAL_sort_hand_for_eval(&need_comparing[i].hand_5);
   }
 
   uint8_t num_winners = 0;
@@ -495,7 +507,7 @@ POKEVAL_Hand_5 POKEVAL_hand5_from_hand7(const POKEVAL_Hand_9 *src) {
       memcpy(candidate.card, temp, sizeof(temp));
 
       short rank = POKEVAL_evaluate_hand(candidate);
-      POKEVAL_sort_hand(&candidate);
+      POKEVAL_sort_hand_for_eval(&candidate);
 
       if (rank > best_rank) {
         best_rank = rank;
@@ -535,7 +547,7 @@ POKEVAL_Hand_5 POKEVAL_hand5_from_hand7(const POKEVAL_Hand_9 *src) {
       memcpy(candidate.card, temp, sizeof(temp));
 
       short rank = POKEVAL_evaluate_hand(candidate);
-      POKEVAL_sort_hand(&candidate);
+      POKEVAL_sort_hand_for_eval(&candidate);
 
       if (rank > best_rank) {
         best_rank = rank;
@@ -790,8 +802,9 @@ static int compare_flush_tiebreak_wild(const POKEVAL_Hand_5 *a, const POKEVAL_Ha
 static int compare_wild_same_rank(const POKEVAL_Hand_5 *a, const POKEVAL_Hand_5 *b, short rank,
                                   int32_t wild_face) {
   POKEVAL_Hand_5 as = *a, bs = *b;
-  POKEVAL_sort_hand(&as);
-  POKEVAL_sort_hand(&bs);
+  /* Scratch copies, so the destructive form is correct here. */
+  POKEVAL_sort_hand_for_eval(&as);
+  POKEVAL_sort_hand_for_eval(&bs);
 
   switch (rank) {
   case POKEVAL_ROYAL_FLUSH:
@@ -976,7 +989,7 @@ POKEVAL_Hand_5 POKEVAL_hand5_omaha(const POKEVAL_Hand_9 *src) {
             candidate.card[3] = comm[c2];
             candidate.card[4] = comm[c3];
             short rank = POKEVAL_evaluate_hand(candidate);
-            POKEVAL_sort_hand(&candidate);
+            POKEVAL_sort_hand_for_eval(&candidate);
             update_best_5card(&best_hand, &best_rank, candidate, rank);
           }
         }
@@ -1122,7 +1135,7 @@ static int compare_pair_tiebreak_wild(const POKEVAL_Hand_5 *a, const POKEVAL_Han
       if (h->card[i].face_val == wild_face)
         h->card[i].face_val = POKEVAL_ACE;
 
-    POKEVAL_sort_hand(h);
+    POKEVAL_sort_hand_for_eval(h);
   }
 
   /* compare_one_pair_tiebreak and compare_two_pair_tiebreak use INVERTED
@@ -1163,7 +1176,7 @@ static int compare_kind_tiebreak_wild(const POKEVAL_Hand_5 *a, const POKEVAL_Han
     for (int i = 0; i < POKEVAL_HAND_SIZE; i++)
       if (h->card[i].face_val == wild_face)
         h->card[i].face_val = POKEVAL_ACE;
-    POKEVAL_sort_hand(h);
+    POKEVAL_sort_hand_for_eval(h);
   }
   return compare_high_cards(&as, &bs);
 }
@@ -1221,7 +1234,7 @@ static int compare_flush_tiebreak_wild(const POKEVAL_Hand_5 *a, const POKEVAL_Ha
     for (int i = 0; i < POKEVAL_HAND_SIZE; i++)
       if (h->card[i].face_val == wild_face)
         h->card[i].face_val = POKEVAL_ACE;
-    POKEVAL_sort_hand(h);
+    POKEVAL_sort_hand_for_eval(h);
   }
   return compare_high_cards(&as, &bs);
 }
@@ -1418,7 +1431,7 @@ uint64_t POKEVAL_score_visible_cards(const DH_Card *cards, int n) {
 
   POKEVAL_Hand_5 best5 = POKEVAL_hand5_from_hand7(&hand9);
   short rank = POKEVAL_evaluate_hand(best5);
-  POKEVAL_sort_hand(&best5);
+  POKEVAL_sort_hand_for_eval(&best5);
 
   int v0 = 0, v1 = 0;
   int vk[5], nk = 0;

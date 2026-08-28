@@ -69,8 +69,19 @@ typedef struct {
   POKEVAL_Hand_5 hand_5;
 } POKEVAL_NeedComparing;
 
-void POKEVAL_sort_hand(POKEVAL_Hand_5 *hand);
+/* DESTRUCTIVE: sorts descending and rewrites aces from DH_CARD_ACE (1) to
+ * POKEVAL_ACE (14) in place, because the straight and high-card logic needs
+ * aces at the top. The hand is then carrying a value DH and the wire format do
+ * not accept, so only ever call this on a scratch copy that will not be
+ * broadcast, logged or drawn. Use POKEVAL_sort_hand_display otherwise. */
+void POKEVAL_sort_hand_for_eval(POKEVAL_Hand_5 *hand);
 
+/* Same ordering, with the ace mutation undone so face values stay in 1..13.
+ * This is the one for display, broadcast and logging. */
+void POKEVAL_sort_hand_display(POKEVAL_Hand_5 *hand);
+
+/* Ascending (low wins). Compares through lowball_value() and never writes
+ * face_val, so it is safe on a hand that will be displayed. */
 void POKEVAL_sort_hand_lowball(POKEVAL_Hand_5 *hand);
 
 short POKEVAL_evaluate_hand(POKEVAL_Hand_5 hand);

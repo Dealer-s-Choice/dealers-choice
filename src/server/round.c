@@ -100,20 +100,13 @@ void handle_sort_hand(POKEVAL_Hand_9 *real_hand, const bool is_lowball, const bo
    * kicker when picking from a 6- or 7-card stud hand. */
   POKEVAL_Hand_5 tmp_hand = deuces_wild ? POKEVAL_hand5_from_hand7_wild(real_hand, DH_CARD_TWO)
                                         : POKEVAL_hand5_from_hand7(real_hand);
+  /* The display variants keep face values in DH's 1..13 range; this hand goes
+   * straight into the broadcast buffer, where POKEVAL_ACE would reach clients
+   * and the JSON hand log as a face_val of 14. */
   if (!is_lowball)
-    POKEVAL_sort_hand(&tmp_hand);
+    POKEVAL_sort_hand_display(&tmp_hand);
   else
     POKEVAL_sort_hand_lowball(&tmp_hand);
-  /* POKEVAL_sort_hand mutates aces from DH_CARD_ACE (1) to POKEVAL_ACE (14)
-   * so its own straight/broadway detector sees them at the top of the sort.
-   * That mutation is fine for pokeval's internal use but must not bleed into
-   * the broadcast hand — clients (and our own JSON hand log) expect cards
-   * with face_val 1..13.  Restore aces before we copy the sorted hand into
-   * the broadcast buffer. */
-  for (int i = 0; i < POKEVAL_HAND_SIZE; ++i) {
-    if (tmp_hand.card[i].face_val == POKEVAL_ACE)
-      tmp_hand.card[i].face_val = DH_CARD_ACE;
-  }
   memcpy(&real_hand->card[0], &tmp_hand.card[0], sizeof(tmp_hand.card));
 
   /* Ensure unused card slots are NULL */
