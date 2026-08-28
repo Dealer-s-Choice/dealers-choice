@@ -35,12 +35,19 @@ jobs:
             arch: amd64
             platform: linux/amd64
             base: archlinux:latest
-          # Official Arch is x86_64-only, so arm64 builds from the community
-          # Arch Linux ARM image (digest-pinned, matching appimage.yml).
+          # Official Arch is x86_64-only, so arm64 builds from the community Arch
+          # Linux ARM image. Pinned to the MANIFEST LIST digest of :latest, not to
+          # the arm64 entry inside it: Arch Linux ARM mislabels that entry's config
+          # as amd64, so pinning it directly makes buildx report
+          # "was pulled with platform linux/amd64, expected linux/arm64" on every
+          # build -- the same warning a genuine mismatch produces, which is what
+          # makes a real one easy to read past (#375). Given the list, buildx
+          # selects by platform instead of believing one image's config. The list
+          # digest is as immutable as the entry digest was.
           - runner: ubuntu-24.04-arm
             arch: arm64
             platform: linux/arm64
-            base: lopsided/archlinux@sha256:bb1e4b4a564126c7d91c63813a3d3afe34334ec5dd15285ed8b574c88e23fbde
+            base: lopsided/archlinux@sha256:e895dfb834a8a60b42c2a43d6f447403b94ade083609ba0130032767d2bb34e1
 
     steps:
       - name: Checkout
