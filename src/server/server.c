@@ -1422,6 +1422,13 @@ int run_server(const CliArgs_t *cli_args, Path_t *path) {
    * disconnect threshold. A real action resets that player's count to 0. */
   uint8_t session_player_timeouts[MAX_PLAYERS] = {0};
 
+  /* One random id for the life of the process, so LAN clients can collapse the
+   * several discovery replies they get (one per interface) into a single row.
+   * It must live outside the loop: generating it per iteration gave the server a
+   * new identity every couple of seconds, so a client's list grew a fresh row
+   * per re-query until the entries timed out (#368). */
+  const uint32_t lan_instance_id = randombytes_random();
+
   while (!game_started) {
     ArgsBroadcastGameState_t args_broadcast_game_state = {
         .clients = clients,
@@ -1440,9 +1447,7 @@ int run_server(const CliArgs_t *cli_args, Path_t *path) {
         .lan_discovery_sock6 = discovery_sock6,
         .lan_discovery_set = discovery_set,
         .lan_port = port,
-        /* One random id per server process; lets clients collapse the multiple
-         * discovery replies they get (one per interface) into a single row. */
-        .lan_instance_id = randombytes_random(),
+        .lan_instance_id = lan_instance_id,
     };
     memcpy(args_broadcast_game_state.ban_list, session_ban_list, sizeof(session_ban_list));
     memcpy(args_broadcast_game_state.player_timeouts, session_player_timeouts,
