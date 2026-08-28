@@ -121,7 +121,25 @@ static void set_error_sys(const char *prefix) {
     msg[--len] = '\0';
   snprintf(tcpme_errbuf, sizeof(tcpme_errbuf), "%s: %s (%d)", prefix, msg, err);
 #else
+  /* strerror() may return a pointer into a shared static buffer, so two threads
+   * formatting an error can race even though tcpme_errbuf is thread-local.
+   * strerror_r has two incompatible shapes: the GNU one returns char* and may
+   * leave the caller's buffer untouched, the XSI one returns int. Pick by the
+   * macros glibc sets, and fall back to strerror() where neither applies. */
+  char errmsg[128];
+#  if defined(__GLIBC__) && (_GNU_SOURCE + 0) && !((_POSIX_C_SOURCE + 0) >= 200112L && !(_GNU_SOURCE + 0))
+  /* GNU: the return value is the message, which may or may not be errmsg. */
+  const char *m = strerror_r(errno, errmsg, sizeof(errmsg));
+  snprintf(tcpme_errbuf, sizeof(tcpme_errbuf), "%s: %s", prefix, m ? m : "unknown error");
+#  elif (_POSIX_C_SOURCE + 0) >= 200112L || defined(__APPLE__) || defined(__FreeBSD__) ||           \
+      defined(__OpenBSD__) || defined(__NetBSD__) || defined(__DragonFly__)
+  /* XSI: fills the buffer and returns 0 on success. */
+  if (strerror_r(errno, errmsg, sizeof(errmsg)) != 0)
+    snprintf(errmsg, sizeof(errmsg), "errno %d", errno);
+  snprintf(tcpme_errbuf, sizeof(tcpme_errbuf), "%s: %s", prefix, errmsg);
+#  else
   snprintf(tcpme_errbuf, sizeof(tcpme_errbuf), "%s: %s", prefix, strerror(errno));
+#  endif
 #endif
 }
 

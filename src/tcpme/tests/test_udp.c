@@ -11,6 +11,7 @@
 
 #include "tcpme_test_helpers.h"
 #include <stdio.h>
+#include <string.h>
 
 #include "tcpme.h"
 
@@ -80,6 +81,25 @@ int main(void) {
     assert(strlen(tcpme_get_error()) > 0);
     printf("broadcast send unavailable here: %s\n", tcpme_get_error());
   }
+
+  /* Degenerate lengths: the UDP entry points carry the same boundary guard as
+   * tcpme_send/tcpme_recv (TCPME_REJECT_NEG_LEN), because a negative int becomes
+   * a huge size_t on POSIX and the kernel services it rather than rejecting it.
+   * The TCP side is asserted in test_error_paths.c; these are the UDP mirror.
+   * tcpme_udp_mcast6_send_all is the odd one out -- it returns an interface
+   * count, so its rejection value is 0 rather than -1; that one is asserted in
+   * test_udp6.c. */
+  assert(tcpme_udp_sendto(client, "127.0.0.1", server_port, query, -1) == -1);
+  assert(strlen(tcpme_get_error()) > 0);
+
+  char nbuf[8] = {0};
+  char nip[TCPME_ADDRSTRLEN];
+  uint16_t nport = 0;
+  assert(tcpme_udp_recvfrom(client, nbuf, -1, nip, sizeof(nip), &nport) == -1);
+  assert(strlen(tcpme_get_error()) > 0);
+
+  assert(tcpme_udp_broadcast(client, server_port, query, -1) == -1);
+  assert(strlen(tcpme_get_error()) > 0);
 
   tcpme_close(client);
   tcpme_close(server);

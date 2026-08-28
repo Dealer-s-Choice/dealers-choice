@@ -18,6 +18,8 @@
 
 #include "tcpme.h"
 
+#include <string.h>
+
 /* Any-source test group, link-local scope. */
 #define TEST_GROUP "ff02::114"
 
@@ -104,6 +106,15 @@ int main(void) {
     } else {
       printf("multicast delivery unavailable here; join/send paths exercised only\n");
     }
+  }
+
+  /* Same boundary guard as the IPv4 UDP paths (see test_udp.c). This one
+   * returns an interface count rather than a status, so a rejected length
+   * reports 0 interfaces, not -1. */
+  {
+    char q6[4] = {0};
+    assert(tcpme_udp_mcast6_send_all(client, "ff02::4443", 22787, q6, -1) == 0);
+    assert(strlen(tcpme_get_error()) > 0);
   }
 
   tcpme_close(client);
