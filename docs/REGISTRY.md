@@ -18,6 +18,18 @@ games (the LAN-only equivalent is built into the game and needs no registry).
 - The registry writes the current list to a JSON file (`--json <path>`) that a
   website can serve, and answers list requests from clients.
 
+## Building it
+
+The registry is **not built or installed by default** — most people running the
+game never host a directory server. Turn it on at configure time:
+
+```
+meson setup _build -Dregistry=true
+```
+
+(The wire parsers it shares with the client and server are always built and
+tested; only the `dealers-choice-registry` program is gated.)
+
 ## Running it
 
 ```

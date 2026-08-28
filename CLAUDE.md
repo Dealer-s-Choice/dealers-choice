@@ -121,6 +121,10 @@ Binaries: `dealers-choice` = `main.c` + `game_dep`; `dealers-choice-bot` = `bot.
   ships with **no registry configured** (the lines are commented out, so the
   default is LAN-only and an operator opts in by naming a host; default port
   22070). The `dealers-choice-registry` binary (`src/registry/registry_main.c`)
+  is **not built or installed by default** — it needs `-Dregistry=true` (CI and
+  the Docker image pass it; the AppImage deliberately does not bundle it. The
+  registry parsers live in libdc_core, so `test_registry`/`test_registry_fuzz`
+  build either way). It
   verifies each announce by connecting back, expires stale entries (TTL), and writes
   `servers.json`. Client opt-out: `registry_browser = no` in player.conf /
   `--disable-registry-browser`. Server opt-out: `--disable-publish` — the only

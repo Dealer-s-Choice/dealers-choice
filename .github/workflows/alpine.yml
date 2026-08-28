@@ -34,7 +34,7 @@ jobs:
             sdl2-dev sdl2_ttf-dev sdl2_image-dev
       - uses: actions/checkout@v7
       - name: Meson setup
-        run: meson setup _build
+        run: meson setup _build -Dregistry=true
       - name: Build
         run: meson compile -C _build
       - name: Test

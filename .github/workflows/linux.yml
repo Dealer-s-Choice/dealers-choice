@@ -41,7 +41,7 @@ jobs:
     - name: Install Dependencies
       run: scripts/install_ubuntu_deps.sh
     - name: Meson setup
-      run: meson setup _build
+      run: meson setup _build -Dregistry=true
     - name: Build
       run: meson compile -C _build
     - name: Test
@@ -56,7 +56,7 @@ jobs:
         if git diff --name-only "$base"...HEAD | grep -q '^src/dc_protocol.proto$'; then
           echo "dc_protocol.proto changed -- regenerating and building against fresh output"
           sudo apt-get install --no-install-recommends -y protobuf-compiler protobuf-c-compiler
-          meson setup _build_proto -Dgen_protobuf=true
+          meson setup _build_proto -Dgen_protobuf=true -Dregistry=true
           meson compile -C _build_proto gen-proto
           meson compile -C _build_proto
         else
@@ -80,7 +80,7 @@ jobs:
     - name: Install Dependencies
       run: scripts/install_ubuntu_deps.sh
     - name: Meson setup
-      run: CC=clang CFLAGS="${{ env.CFLAGS }} -fno-sanitize-recover=all" meson setup _build -Db_sanitize=${{ matrix.sanitize }} -Db_lundef=false
+      run: CC=clang CFLAGS="${{ env.CFLAGS }} -fno-sanitize-recover=all" meson setup _build -Db_sanitize=${{ matrix.sanitize }} -Db_lundef=false -Dregistry=true
     - name: Build
       run: meson compile -C _build
     - name: Test
@@ -120,7 +120,7 @@ jobs:
       run: scripts/install_ubuntu_deps.sh
 
     - name: Meson setup
-      run: meson setup _build
+      run: meson setup _build -Dregistry=true
 
     - name: Build
       run: meson compile -C _build

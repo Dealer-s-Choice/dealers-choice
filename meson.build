@@ -253,12 +253,18 @@ executable(
 )
 
 # Headless server registry (directory). Links libdc_core only (no SDL).
-executable(
-  meson.project_name() + '-registry',
-  ['src/registry/registry_main.c'],
-  dependencies: dc_core_dep,
-  install: true,
-)
+# Off by default (-Dregistry=true): most builds never host a directory server,
+# and it is the internet-facing binary. The registry wire parsers still build
+# and get tested unconditionally -- they live in libdc_core, so test_registry
+# and test_registry_fuzz are unaffected by this option.
+if get_option('registry')
+  executable(
+    meson.project_name() + '-registry',
+    ['src/registry/registry_main.c'],
+    dependencies: dc_core_dep,
+    install: true,
+  )
+endif
 
 # Optional diagnostic CLIs (registry-probe, ...). Off by default; -Dtools=true.
 subdir('tools')

@@ -12,7 +12,7 @@ jobs:
       run: scripts/install_ubuntu_deps.sh
 
     - name: Meson setup
-      run: CFLAGS="-Werror" meson setup _build
+      run: CFLAGS="-Werror" meson setup _build -Dregistry=true
 
     - uses: vapier/coverity-scan-action@v1
       with:

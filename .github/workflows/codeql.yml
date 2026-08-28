@@ -45,7 +45,7 @@ jobs:
         languages: 'cpp'
 
     - name: Meson setup
-      run: meson setup -Db_sanitize=none _build
+      run: meson setup -Db_sanitize=none -Dregistry=true _build
 
     - name: Build
       run: meson compile -C _build
