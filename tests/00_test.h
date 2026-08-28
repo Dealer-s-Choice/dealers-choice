@@ -70,6 +70,36 @@ static inline uint16_t dc_test_port(void) {
     assert(tcpme_socket_valid(socket_context[i].sock));                                            \
   }
 
+/* Every client must have heard a real game state from the server before any test
+ * logic runs. recv_game_state returning RECV_NOTHING leaves game_state[] as the
+ * memset zeros it started as, and a zeroed dealer_id of 0 makes the dealer
+ * assertion below pass vacuously -- the test then announces "Dealer 0 selecting
+ * game" and sends MSG_GAME_SELECT as a dealer the server never named, which the
+ * server logs as "Non-dealer client 0 sent MSG_GAME_SELECT (ignored)". The
+ * failure then surfaces several asserts later against state the server never
+ * populated. Requiring RECV_SUCCESS here turns that into a direct symptom
+ * (#365). */
+#define _REQUIRE_INITIAL_GAME_STATE()                                                              \
+  for (int rq_i = 0; rq_i < N_PLAYERS; rq_i++) {                                                   \
+    const uint32_t rq_deadline = SDL_GetTicks() + 10000;                                           \
+    ERecvStatus_t rq_status = RECV_NOTHING;                                                        \
+    while (SDL_GetTicks() < rq_deadline) {                                                         \
+      rq_status = recv_game_state(&socket_context[rq_i], &game_state[rq_i], &client_state[rq_i],   \
+                                  game_settings[rq_i].client_id);                                  \
+      assert(rq_status != RECV_ERROR);                                                             \
+      if (rq_status == RECV_SUCCESS)                                                               \
+        break;                                                                                     \
+      SDL_Delay(50);                                                                               \
+    }                                                                                              \
+    if (rq_status != RECV_SUCCESS) {                                                               \
+      fprintf(stderr,                                                                              \
+              "FATAL: no initial game state received from the server for client %d after 10s; "    \
+              "the server never broadcast one (stalled, or the join did not complete)\n",          \
+              rq_i);                                                                               \
+      abort();                                                                                     \
+    }                                                                                              \
+  }
+
 #define _SETUP_SOCKET_CONTEXT()                                                                    \
   if (SDL_Init(0) == -1) {                                                                         \
     fprintf(stderr, "SDL init failed: %s\n", SDL_GetError());                                      \
@@ -102,6 +132,8 @@ static inline uint16_t dc_test_port(void) {
     recv_game_settings(socket_context[i].sock, socket_context[i].set, &game_settings[i]);          \
     SDL_Delay(n_ms);                                                                               \
   }                                                                                                \
+                                                                                                   \
+  _REQUIRE_INITIAL_GAME_STATE()                                                                    \
                                                                                                    \
   for (int game = 0; game < n_passes; game++) {                                                    \
     fprintf(stderr, "\n-#- game: %d\n", game);                                                     \
