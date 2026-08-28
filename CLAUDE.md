@@ -117,16 +117,17 @@ Binaries: `dealers-choice` = `main.c` + `game_dep`; `dealers-choice-bot` = `bot.
 - Default port: 22777.
 - Auth: libsodium-based password hashing.
 - **Registry (directory server).** `dealers-choice-server` announces itself to,
-  and the GUI client browses, the registries in `data/common.conf` (default: the
-  public `registry.dealers-choice-foss.dev`, TCP 22070). The
-  `dealers-choice-registry` binary (`src/registry/registry_main.c`) verifies each
-  announce by connecting back, expires stale entries (TTL), and writes
+  and the GUI client browses, the registries in `data/common.conf` — which now
+  ships with **no registry configured** (the lines are commented out, so the
+  default is LAN-only and an operator opts in by naming a host; default port
+  22070). The `dealers-choice-registry` binary (`src/registry/registry_main.c`)
+  verifies each announce by connecting back, expires stale entries (TTL), and writes
   `servers.json`. Client opt-out: `registry_browser = no` in player.conf /
   `--disable-registry-browser`. Server opt-out: `--disable-publish` — the only
   opt-out (the old `DC_DISABLE_PUBLISH` env was removed); every test/script
-  server spawn must pass the flag or it announces to the live registry
-  (`tests/game_logic.py`, `scripts/soak.sh`, `scripts/run_bot_session.sh`,
-  `scripts/disconnect_test.sh` all do). Details in `docs/REGISTRY.md`; Docker in
+  server spawn must pass the flag or it announces to whatever registry is
+  configured (`tests/game_logic.py`, `scripts/soak.sh`,
+  `scripts/run_bot_session.sh`, `scripts/disconnect_test.sh` all do). Details in `docs/REGISTRY.md`; Docker in
   `docker/README.md`. Open registry work: #74 (non-blocking verify), #75 (reload
   `servers.json` on boot + faster announce retry).
 
@@ -136,6 +137,10 @@ Binaries: `dealers-choice` = `main.c` + `game_dep`; `dealers-choice-bot` = `bot.
 no external deps) that fetches a registry's `servers.json` and renders a live,
 auto-refreshing table of active servers. The felt theme uses `web/felt.png` (a
 seamless green tile cut from the game's `data/images/felt.png`, kept in sync).
+
+There is **no hosted instance** — the old public site and its registry are gone
+and are not coming back (maintenance burden). What lives here is tooling for
+whoever wants to run their own; don't add a project URL back into the docs.
 
 - **Served by Caddy, not Apache/nginx.** `web/docker-compose.yml` runs the
   official Caddy image; `web/Caddyfile` serves everything from `/site` and
