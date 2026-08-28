@@ -1620,6 +1620,25 @@ EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
     if (g_show_hand_rank && hand_rank_tw) {
       const char *rank = local_hand_rank_name(&game_state->player[my_id].hand,
                                               client_state.game_choice, client_state.deuces_wild);
+      /* The overlay draws nothing when local_hand_rank_name returns NULL, which
+       * it does whenever fewer than five cards are *known* (nine for Omaha) --
+       * card backs and empty slots do not count. That is the likely reason the
+       * rank vanishes and returns mid-hand without the toggle being touched
+       * (#367). Log only the transitions, not every frame, so a play session
+       * shows whether the gaps line up with the known-card count. */
+      static bool prev_rank_shown = false;
+      const bool rank_shown = (rank != NULL);
+      if (rank_shown != prev_rank_shown) {
+        int known = 0;
+        for (size_t k = 0; k < 9; k++) {
+          const DH_Card c = game_state->player[my_id].hand.card[k];
+          if (!DH_is_card_null(c) && !DH_is_card_back(c))
+            known++;
+        }
+        dc_log(DC_LOG_DEBUG, "[hand-rank] %s (known cards: %d)",
+               rank_shown ? "shown" : "hidden", known);
+        prev_rank_shown = rank_shown;
+      }
       if (rank) {
         text_widget_set_text(hand_rank_tw, _(rank));
         ui_widget_place(&hand_rank_tw->base,
