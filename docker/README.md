@@ -13,7 +13,7 @@ systemd service.
 
 You need Docker and the Compose plugin.
 
-Each service (server, bot, registry) is opt-in. A plain `docker compose up`
+Each service (server, bot) is opt-in. A plain `docker compose up`
 starts nothing. You choose what to run with `--profile`.
 
 1. Copy the example settings file and edit it:
@@ -46,9 +46,6 @@ All settings are optional except `DC_PASSWORD`. See `env.example`.
 | `DC_BOT_HOST` | Server the bot connects to. Only used by the `bot` profile. | `dealers-choice-server` |
 | `DC_BOT_PORT` | Port the bot connects to. Only used by the `bot` profile. | `DC_PORT` |
 | `DC_BOT_ARGS` | Extra command-line options for the bot. Only used by the `bot` profile. | (none) |
-| `DC_REGISTRY_DIR` | Host folder mounted at `/dc_registry` where the registry writes `servers.json`. Only used by the `registry` profile. | (none) |
-| `DC_REGISTRY_PORT` | Host port the registry is published on. Only used by the `registry` profile. | `22070` |
-| `DC_REGISTRY_ARGS` | Extra command-line options for the registry (for example `--verbose`). Only used by the `registry` profile. | (none) |
 
 The server writes a hand log and a results log automatically. They are named by
 `DC_PORT` and placed under the `/dc_output` mount:
@@ -91,42 +88,6 @@ To point it at a different server (for example one already running, or an
 external host), set `DC_BOT_HOST` and `DC_BOT_PORT`. The bot has no built-in
 dependency on the server. If no server is reachable, the bot exits with an error
 and is restarted, so start a server first or point the bot at a running one.
-
-### Registry (optional)
-
-> **Warning: the registry is experimental and in maintenance mode.**
-> It is new and lightly tested, the protocol is not final, and no public
-> registry is being run. Run one only if you are adventurous and want to host a
-> server directory yourself.
-
-The registry is a directory of public game servers. Game servers announce
-themselves to it, and clients can browse the list to find internet games. You
-do not need a registry for LAN play. The registry does not store the IP
-addresses of clients who only browse the list.
-
-The registry is not started by default. To start it:
-
-    docker compose --profile registry up -d
-
-Before you start it, set `DC_REGISTRY_DIR` to a host folder. The registry
-writes the server list to `servers.json` inside that folder. A website can then
-serve that file.
-
-The registry listens on port `22070`. Change the published host port with
-`DC_REGISTRY_PORT`. Open inbound TCP on that port on the registry host. To see
-log output, set `DC_REGISTRY_ARGS=--verbose`.
-
-**Your servers will not announce themselves until you tell them where to.** The
-image ships no `common.conf`, so a server publishes nowhere by default. To point
-the servers in this stack at the registry, mount a `common.conf` naming it into
-the server's data directory, for example:
-
-    volumes:
-      - ./common.conf:/usr/share/dealers-choice/common.conf:ro
-
-with the file containing:
-
-    registry = dealers-choice-registry
 
 ## systemd (without Docker)
 

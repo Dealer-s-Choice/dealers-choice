@@ -123,10 +123,11 @@ Binaries: `dealers-choice` = `main.c` + `game_dep`; `dealers-choice-bot` = `bot.
   data dir is the opt-in, an absent one means LAN-only and is not an error
   (`get_common_registries` returns quietly; it used to `exit(EXIT_FAILURE)`).
   Default registry port 22070. The `dealers-choice-registry` binary (`src/registry/registry_main.c`)
-  is **not built or installed by default** — it needs `-Dregistry=true` (CI and
-  the Docker image pass it; the AppImage deliberately does not bundle it. The
-  registry parsers live in libdc_core, so `test_registry`/`test_registry_fuzz`
-  build either way). It
+  is **not built or installed by default** — it needs `-Dregistry=true`, which
+  only CI passes. The AppImage does not bundle it and the Docker image does not
+  build it: the registry is not part of the Docker stack at all (no service, no
+  `DC_REGISTRY_*` env). The registry parsers live in libdc_core, so
+  `test_registry`/`test_registry_fuzz` build either way. It
   verifies each announce by connecting back, expires stale entries (TTL), and writes
   `servers.json`. `registry_browser` is **no longer a player.conf key or a
   Settings row** (removed from `player_config_entries[]`, which drives both);
@@ -136,8 +137,8 @@ Binaries: `dealers-choice` = `main.c` + `game_dep`; `dealers-choice-bot` = `bot.
   was removed); every test/script
   server spawn must pass the flag or it announces to whatever registry is
   configured (`tests/game_logic.py`, `scripts/soak.sh`,
-  `scripts/run_bot_session.sh`, `scripts/disconnect_test.sh` all do). Details in `docs/REGISTRY.md`; Docker in
-  `docker/README.md`. Open registry work: #74 (non-blocking verify), #75 (reload
+  `scripts/run_bot_session.sh`, `scripts/disconnect_test.sh` all do). Details in
+  `docs/REGISTRY.md`; the Docker stack (server + bot only) in `docker/README.md`. Open registry work: #74 (non-blocking verify), #75 (reload
   `servers.json` on boot + faster announce retry).
 
 ### Website / server-list widget (`web/`)

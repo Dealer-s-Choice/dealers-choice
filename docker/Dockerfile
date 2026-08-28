@@ -18,7 +18,7 @@ RUN apk update && apk add --no-cache \
 WORKDIR /dealer
 COPY . .
 
-RUN meson setup builddir --buildtype=release -Db_sanitize=none -Dregistry=true --prefix=/usr && \
+RUN meson setup builddir --buildtype=release -Db_sanitize=none --prefix=/usr && \
     meson compile -C builddir -v && \
     DESTDIR=/tmp/dealer_install meson install -C builddir
 
@@ -44,9 +44,9 @@ ENV DEALERSCHOICE_DATADIR=/usr/share/dealers-choice
 # Run as a non-root user (uid/gid 1000) so a compromised parser is contained to
 # an unprivileged account, not container-root. The binaries bind only high ports
 # (>1024), so no extra capabilities are needed. Bind-mounted host dirs
-# (DC_OUTPUT_DIR / DC_REGISTRY_DIR) must be writable by this uid; the compose
+# (DC_OUTPUT_DIR) must be writable by this uid; the compose
 # `user:` knob (DC_UID/DC_GID) lets operators match their host owner.
 RUN addgroup -g 1000 dc && adduser -D -u 1000 -G dc dc \
-    && mkdir -p /dc_config /dc_output /dc_registry \
-    && chown dc:dc /dc_config /dc_output /dc_registry
+    && mkdir -p /dc_config /dc_output \
+    && chown dc:dc /dc_config /dc_output
 USER dc

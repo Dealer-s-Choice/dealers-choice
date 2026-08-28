@@ -1,10 +1,10 @@
 # Host-networking override — layer on top of docker-compose.yml for a direct-IP
-# VPS (e.g. BitFolk) whose PUBLIC IP is on its own NIC. Needed so a co-located
-# registry records the server's real public IP instead of the docker gateway
-# (172.x). Apply it as a second -f:
+# VPS (e.g. BitFolk) whose PUBLIC IP is on its own NIC, so the server sees real
+# client addresses instead of the docker gateway (172.x). Apply it as a second
+# -f:
 #
 #   docker compose -f docker-compose.yml -f docker-compose.hostnet.yml \
-#     --profile server --profile registry [--profile bot] up -d
+#     --profile server [--profile bot] up -d
 #
 # Notes:
 #  - Under host mode the published `ports:` from the base file are ignored (a
@@ -15,9 +15,6 @@
 #    the base project-network setup works there and keeps container isolation.
 services:
   dealers-choice-server:
-    network_mode: host
-
-  dealers-choice-registry:
     network_mode: host
 
   dealers-choice-bot:
