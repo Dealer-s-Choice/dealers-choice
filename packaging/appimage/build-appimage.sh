@@ -102,9 +102,8 @@ wget --retry-connrefused --tries=30 "$SHARUN" -O "$WORKDIR/quick-sharun"
 chmod +x "$WORKDIR/quick-sharun"
 
 # Deploy the three installed binaries -- the GUI client plus the headless
-# server and bot -- so one AppImage can host/join/bot a game. The registry is
-# deliberately NOT bundled: it is the internet-facing directory server, is off
-# by default (-Dregistry=true), and anyone hosting one builds it themselves.
+# server and bot -- so one AppImage can host/join/bot a game. (The registry is
+# not among them: this build passes no -Dregistry, so it is never built.)
 # The GUI stays the default launch (the bundled .desktop's Exec=dealers-choice);
 # the others run via sharun's argv0 dispatch. quick-sharun auto-bundles the
 # data and locale and patches the hardcoded /usr paths. Then turn the AppDir

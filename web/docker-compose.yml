@@ -5,8 +5,8 @@
 # DC_WEB_DOMAIN (TLS-ALPN-01 on 443 -- no port 80 needed).
 #
 # Run on the SAME host as the registry. Point DC_WEB_ROOT at the directory the
-# registry writes servers.json to -- i.e. its DC_REGISTRY_DIR, which must be a
-# host PATH (not the default named volume) so this separate stack can read it:
+# registry writes servers.json to -- i.e. the directory in its --json path, which
+# must be a host PATH so this separate stack can read it:
 #
 #   cd web
 #   cp .env.example .env        # set DC_WEB_DOMAIN (and DC_WEB_ROOT if not /srv/www)

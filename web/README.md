@@ -18,7 +18,7 @@ docker compose up -d
 docker compose logs -f      # watch the cert get issued
 ```
 
-Point the registry at a host path (`DC_REGISTRY_DIR=/srv/www`) and set
+Point the registry at a host path (`--json /srv/www/servers.json`) and set
 `DC_WEB_ROOT` to that same path so Caddy can read `servers.json`. Needs a DNS A
 record for `DC_WEB_DOMAIN` → this host and TCP 443 reachable. Because the page
 and the JSON share an origin here, **no CORS header is needed**.

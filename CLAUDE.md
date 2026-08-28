@@ -320,12 +320,11 @@ boilerplate. Two refactors worth doing once there are ~4–5 of these screens
   positions its label+box rows manually and is a candidate.
 - **Shared "menu event loop" helper** to handle quit / Escape / back-arrow /
   F11 fullscreen once, instead of every screen copying that block.
-- **`menu_display_settings` is fragile and full** (#76). It hardcodes positional
-  config indices (`bool_idx`, `password_idx`) and assumes a single bool checkbox;
-  the 2×3 grid is full, so a second bool (`registry_browser`) had to be
-  special-cased into the third column. Redesign: drive widgets from
-  `player_config_entries[]` by type (checkbox per `CFG_TYPE_BOOL`), drop the
-  positional hardcoding, and use a scalable (scroll/paginated) layout.
+- **`menu_display_settings` still keys rows by position** (#76). The screen is
+  now driven from `player_config_entries[]` by type and is paginated, so the old
+  `bool_idx`/`password_idx` hardcoding is gone; what remains is the
+  `i == 0 || i == 1 || i == 2` skip-list for nick/host/port, which silently
+  breaks if an entry is inserted at the front of the table.
 
 A heavier framework (Dear ImGui, etc.) is **not** the answer — it fights the
 absolute-positioned style and the `style.h` config system.

@@ -4,25 +4,20 @@
 publish themselves to it, and clients can browse the list to find internet
 games (the LAN-only equivalent is built into the game and needs no registry).
 
-> **The registry is currently in maintenance mode until further notice.** No
-> public registry is being run. The code is kept building and tested, but it is
-> not being developed further for now.
-
-> **Status: experimental.** Like the dedicated server, the registry is new and
-> lightly tested. Run one only if you are comfortable with that.
-
-> ⚠️ The server and networking code was primarily written by an LLM and has
+> ⚠️ **Experimental, and in maintenance mode.** No public registry is being
+> run; the code is kept building and tested but is not being developed further
+> for now.
+>
+> The server and networking code was primarily written by an LLM and has
 > not been fully reviewed by a human network security expert. Any instructions
 > regarding running the server should take that into account. This project
 > attempts to use rigorous testing methods and anticipate security issues but,
 > like any project, cannot guarantee the programs here are free of potential
 > vulnerabilities.
 >
-> A LAN or other trusted network is the intended use. Hosting a registry or a
-> game server on the public internet is lower-risk if you keep it to people you
-> know, but it is at your own risk until the code has had an independent
-> review — and a LAN is not a hard boundary either (a compromised device or a
-> guest on your wifi is already inside it).
+> Run one on a LAN or another network whose members you know. Hosting on the
+> public internet is at your own risk until the code has had an independent
+> review.
 
 ## What it does
 

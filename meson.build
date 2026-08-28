@@ -304,9 +304,8 @@ run_target(
   ],
 )
 
-# common.conf is deliberately NOT installed: everything in it is commented out,
-# and creating it is how an operator opts into a registry (see docs/REGISTRY.md).
-# The copy in data/ stays as the template and is what the test suite reads.
+# common.conf is not installed -- creating it is how an operator opts in (see
+# docs/REGISTRY.md). The copy in data/ is the template, and what tests read.
 install_subdir(
   'data',
   install_dir: join_paths(get_option('datadir'), meson.project_name()),

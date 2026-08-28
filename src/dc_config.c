@@ -331,8 +331,8 @@ void player_config_set_field(PlayerConfig_t *cfg, size_t entry_idx, const char *
   config_set_from_string_real(cfg, &player_config_entries[entry_idx], val);
 }
 
-/* Read the shared registry list from <data_dir>/common.conf, if present (both the
- * server, to publish, and the client, to browse). dnsmasq-style: one registry
+/* Read the shared registry list from <data_dir>/common.conf, if present (read by
+ * both the server, to publish, and the client, to browse). dnsmasq-style: one registry
  * per line, the host is the value and an optional port is the first attribute:
  *   registry = registry.example.org
  *   registry = 203.0.113.5, 22071
@@ -344,19 +344,14 @@ void get_common_registries(const char *data_dir, char host[][REGISTRY_HOST_LEN],
   char *cfg_pathname = canfigger_path_join(data_dir, "common.conf");
   if (!cfg_pathname)
     return;
-  /* common.conf is optional and is no longer installed: with no registries the
-   * game is LAN-only, which is the default. An absent file therefore means "no
-   * registries, default discovery port" — the same as the all-commented template
-   * in data/ — so it is not an error. An operator opting into a registry creates
-   * the file themselves (docs/REGISTRY.md). */
-  FILE *probe = fopen(cfg_pathname, "r");
-  if (!probe) {
-    dc_log(DC_LOG_DEBUG, "no %s; LAN-only (no registries)", cfg_pathname);
-    free(cfg_pathname);
-    return;
-  }
-  fclose(probe);
+  /* common.conf is optional and is not installed: an absent one means "no
+   * registries, default discovery port", the same as the all-commented template
+   * in data/, so it is silent. Present but unreadable is a different case — the
+   * operator created it and it is not being honoured — so that still logs why. */
   struct Canfigger *cfg_node = canfigger_parse_file(cfg_pathname, ',');
+  if (!cfg_node && check_pathname_state(cfg_pathname) != PATH_NOT_FOUND)
+    dc_log(DC_LOG_ERROR, "cannot read %s (%s); continuing with no registries", cfg_pathname,
+           strerror(errno));
   free(cfg_pathname);
   while (cfg_node) {
     if (strcasecmp(cfg_node->key, "registry") == 0 && cfg_node->value && *count < MAX_REGISTRIES) {
@@ -581,9 +576,9 @@ LayoutConfig_t get_layout_config(const char *data_dir) {
   printf("Reading layout config: %s\n", cfg_pathname);
   /* layout.conf ships with every install, so a missing/unreadable one means a
    * broken or incomplete install — fail loudly rather than silently running with
-   * default geometry. (common.conf, by contrast, is optional, is not installed,
-   * and its absence is not even logged at normal verbosity.) An existing-but-
-   * empty file is fine and falls back to defaults below. */
+   * default geometry. (common.conf, by contrast, is optional -- see
+   * get_common_registries.) An existing-but-empty file is fine and falls back to
+   * defaults below. */
   FILE *probe = fopen(cfg_pathname, "r");
   if (!probe) {
     dc_log(DC_LOG_ERROR, "cannot open %s (%s); the install looks incomplete (layout.conf is required)",

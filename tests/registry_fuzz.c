@@ -14,7 +14,8 @@
  * Fuzz the registry wire parsers with random + mutated bytes.
  *
  * Internet-facing surface: a public registry accepts MSG_REG_ANNOUNCE from any
- * server, and clients accept MSG_REG_LIST from the registry. A hostile peer on either side feeds arbitrary bytes into:
+ * server, and clients accept MSG_REG_LIST from the registry. A hostile peer on
+ * either side feeds arbitrary bytes into:
  *   - registry_parse_announce()  (registry side; ServerAnnounce protobuf)
  *   - server_list__unpack()      (client side; the ServerList parse that
  *                                 registry_recv_list runs after deframing)

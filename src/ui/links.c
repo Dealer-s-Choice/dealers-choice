@@ -10,6 +10,12 @@ const LinkDef_t LINK_DEFS[] = {
      "https://discord.com/channels/1295630985429516299/1385298664192217138"},
     {N_("Website"), DEALERSCHOICE_URL}};
 
+/* LINK_DEFS_COUNT is in links.h because main.c sizes an array with it, so it
+ * cannot be derived from this array. Editing one without the other would walk
+ * off the end of it. */
+_Static_assert(sizeof LINK_DEFS / sizeof LINK_DEFS[0] == LINK_DEFS_COUNT,
+               "LINK_DEFS_COUNT is out of sync with LINK_DEFS");
+
 void layout_links(LinkWidget_t **links, size_t count) {
   int center_x = g_layout.menu.links_center_x;
 
