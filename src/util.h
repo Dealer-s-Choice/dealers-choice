@@ -88,7 +88,7 @@ typedef enum {
 } DCLogLevel_t;
 
 /* Timestamped logger: prints "YYYY-MM-DD HH:MM:SS [LEVEL] <msg>\n" to stderr.
- * DEBUG is gated by --debug; INFO and WARN by --verbose; ERROR always prints.
+ * DEBUG is gated by --debug; INFO, WARN and ERROR always print.
  * The message must NOT include a trailing newline (dc_log appends one). */
 /* Use the gnu_printf archetype on MinGW: its default "printf" archetype is
  * ms_printf, which rejects C99 conversions like %z (UCRT supports them at

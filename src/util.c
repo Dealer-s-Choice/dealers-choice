@@ -224,12 +224,12 @@ void dc_log_set_file(const char *path) {
 }
 
 void dc_log(DCLogLevel_t level, const char *fmt, ...) {
-  if (level == DC_LOG_DEBUG) {
-    if (!dc_debug)
-      return;
-  } else if (level != DC_LOG_ERROR && !verbose) {
+  /* Only DEBUG is gated. INFO marks low-volume state transitions (joins, slot
+   * changes, dealer moves) and WARN marks anomalies; both are what explains a
+   * failure after the fact, so neither may depend on someone having thought to
+   * pass --verbose -- CI runs do not (#366). Per-frame tracing goes to DEBUG. */
+  if (level == DC_LOG_DEBUG && !dc_debug)
     return;
-  }
 
   static const char *const tag[] = {"DEBUG", "INFO", "WARN", "ERROR"};
   FILE *out = dc_log_fp ? dc_log_fp : stderr;

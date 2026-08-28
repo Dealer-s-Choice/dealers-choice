@@ -52,15 +52,17 @@ string. The call dies with **exit code 144** (128+SIGTERM) and everything after
 the `pkill` silently never runs — including edits you expected it to make. An
 exit 144 from a command containing `pkill` is this.
 
-Match the process name exactly instead; it does not see the shell's arguments:
+**`pkill -x` is not the fix.** Linux matches `-x` against the 15-character
+process name, and `dealers-choice-server` is 21, so it warns and kills nothing —
+which reads as "no strays" while the stray keeps running. Anchor a `-f` pattern
+so it cannot match the agent shell, and kill by pid:
 
 ```sh
-pkill -x dealers-choice-server
+pgrep -f "^\./dealers-choice-server" | xargs -r kill
 ```
 
-`pgrep -x` warns that the name exceeds 15 characters and matches nothing, which
-is harmless for `pkill -x`. To check what is running, use `pgrep -af` and read
-past your own shell in the output.
+To see what is running, `pgrep -af dealers-choice` and read past your own shell
+in the output.
 
 ### 3. Suppressed build output hides whether the binary changed
 
@@ -144,6 +146,22 @@ DEALERSCHOICE_DATADIR=/tmp/dc-inst/usr/local/share/dealers-choice ./dealers-choi
 
 `common.conf` is not installed, so that also exercises the absent-file branch in
 `get_common_registries`.
+
+## Match the test to the change
+
+The full suite is 57 tests and many are multi-second socket tests, so running all
+of it after a comment or logging change is wasted time. Run what the change can
+break:
+
+```sh
+meson test -C <builddir> test_registry          # one test
+meson test -C <builddir> --suite dealers-choice # everything
+```
+
+Reserve the full run for changes to the server loop, the wire protocol, or
+anything touching shared state — and for the point just before committing. A
+build alone (`meson compile`) is enough to check that a comment or docs edit did
+not break anything.
 
 ## Longer runs
 

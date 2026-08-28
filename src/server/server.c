@@ -556,6 +556,12 @@ ETurnMsg_t recv_turn_player_msg(tcpme_socket_t sock, PlayerActionMsg_t *out_acti
     memcpy(&opcode_be, buf, sizeof(opcode_be));
     uint16_t opcode = tcpme_get_be16((const uint8_t *)&opcode_be);
 
+    /* Per-frame trace (--debug only; this is the one high-volume site). A
+     * framing desync shows up here as the drift happens -- a plausible size
+     * followed by an opcode that makes no sense for the phase -- instead of
+     * only as its aftermath several frames later (#366, #299 family). */
+    dc_log(DC_LOG_DEBUG, "[recv] size=%u opcode=0x%04X", size, opcode);
+
     if (opcode == MSG_PING_RESPONSE)
       continue;
 
@@ -653,7 +659,7 @@ void remove_disconnected_player(ArgsBroadcastGameState_t *args, const int8_t id)
     return;
   }
 
-  printf("Client %d disconnected\n", id);
+  dc_log(DC_LOG_INFO, "Client %d disconnected; slot %d cleared", id, id);
   tcpme_close(args->clients[id]);
   args->clients[id] = TCPME_INVALID_SOCKET;
   args->slot_taken[id] = false;
@@ -797,13 +803,13 @@ static bool reassign_dealer_if_needed(GameState_t *game_state, bool *slot_taken)
     for (int8_t i = 0; i < MAX_CLIENTS; i++) {
       if (slot_taken[i]) {
         game_state->dealer_id = i;
-        printf("Dealer reassigned to client %d\n", i);
+        dc_log(DC_LOG_INFO, "Dealer reassigned to client %d", i);
         return true;
       }
     }
     // No clients left — should not happen in this context
     game_state->dealer_id = -1;
-    printf("No players available to assign as dealer.\n");
+    dc_log(DC_LOG_INFO, "No players available to assign as dealer; dealer_id = -1");
   }
   return false;
 }
@@ -930,9 +936,9 @@ static EReturnCode_t init_game(ArgsBroadcastGameState_t *args, DH_Deck *deck) {
   if (next_dealer != -1) {
     *dealer_id = next_dealer;
     broadcast_game_state(args);
-    verbose_printf("Dealer rotated to player %d\n", next_dealer);
+    dc_log(DC_LOG_INFO, "Dealer rotated to player %d", next_dealer);
   } else {
-    printf("No valid dealer found after rotation\n");
+    dc_log(DC_LOG_INFO, "No valid dealer found after rotation; dealer_id = -1");
     *dealer_id = -1;
   }
   // broadcast_game_state(args);
@@ -977,6 +983,9 @@ static void do_socket_cleanup(tcpme_socket_t sock, tcpme_set_t *socket_set, bool
   if (client_ref)
     *client_ref = TCPME_INVALID_SOCKET;
   slot_taken[slot] = false;
+  /* Debug, not info: the caller that matters (a real disconnect) logs its own
+   * line, and this helper also runs on paths that never had a seated player. */
+  dc_log(DC_LOG_DEBUG, "slot %d cleared", slot);
   if (p) {
     p->is_connected = false;
     p->in = false;
@@ -1206,7 +1215,8 @@ ELoop_t register_new_client(ArgsBroadcastGameState_t *args) {
 
       char peer_addr_str[TCPME_ADDRSTRLEN];
       if (tcpme_get_peer_addr(new_client, peer_addr_str, sizeof(peer_addr_str)))
-        printf("Client %d connected from %s\n", slot, peer_addr_str);
+        dc_log(DC_LOG_INFO, "Client %d connected from %s; slot %d taken", slot, peer_addr_str,
+                slot);
 
       Player_t *slot_id = &(args->game_state->player)[slot];
       slot_id->id = slot;
@@ -1472,7 +1482,7 @@ int run_server(const CliArgs_t *cli_args, Path_t *path) {
       for (int8_t i = 0; i < MAX_CLIENTS; i++) {
         if (slot_taken[i]) {
           *dealer_id = i;
-          printf("Initial dealer set to player %d\n", i);
+          dc_log(DC_LOG_INFO, "Initial dealer set to player %d", i);
           break;
         }
       }
@@ -1646,7 +1656,10 @@ int run_server(const CliArgs_t *cli_args, Path_t *path) {
       if (dealer_timeout_start == 0) {
         dealer_timeout_start = dc_get_ticks();
       } else if (dc_get_ticks() - dealer_timeout_start >= config.dealer_timeout_ms) {
+        const int8_t timed_out_dealer = *dealer_id;
         *dealer_id = get_next_dealer(*dealer_id, slot_taken);
+        dc_log(DC_LOG_INFO, "Dealer %d timed out selecting a game; dealer is now %d",
+               timed_out_dealer, *dealer_id);
         dealer_timeout_start = 0;
         broadcast_game_state(&args_broadcast_game_state);
       }

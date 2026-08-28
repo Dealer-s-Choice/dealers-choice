@@ -345,13 +345,20 @@ void get_common_registries(const char *data_dir, char host[][REGISTRY_HOST_LEN],
   if (!cfg_pathname)
     return;
   /* common.conf is optional and is not installed: an absent one means "no
-   * registries, default discovery port", the same as the all-commented template
-   * in data/, so it is silent. Present but unreadable is a different case — the
-   * operator created it and it is not being honoured — so that still logs why. */
+   * registries, default discovery port", which is silent. So is the all-comment
+   * template, since canfigger returns NULL for "parsed fine, no keys" as well as
+   * for a read failure -- only an open() distinguishes them. Present but
+   * unreadable is worth a line: the operator created the file and it is not
+   * being honoured. */
   struct Canfigger *cfg_node = canfigger_parse_file(cfg_pathname, ',');
-  if (!cfg_node && check_pathname_state(cfg_pathname) != PATH_NOT_FOUND)
-    dc_log(DC_LOG_ERROR, "cannot read %s (%s); continuing with no registries", cfg_pathname,
-           strerror(errno));
+  if (!cfg_node) {
+    FILE *probe = fopen(cfg_pathname, "r");
+    if (probe)
+      fclose(probe);
+    else if (check_pathname_state(cfg_pathname) != PATH_NOT_FOUND)
+      dc_log(DC_LOG_ERROR, "cannot read %s (%s); continuing with no registries", cfg_pathname,
+             strerror(errno));
+  }
   free(cfg_pathname);
   while (cfg_node) {
     if (strcasecmp(cfg_node->key, "registry") == 0 && cfg_node->value && *count < MAX_REGISTRIES) {
