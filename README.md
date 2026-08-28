@@ -11,6 +11,13 @@ supporting draw, stud, and community-card variants, including Texas Hold'em
 and Omaha, with optional wild cards. The deal rotates around the table, and
 the dealer chooses the game before each hand.
 
+> ⚠️ The server and networking code was primarily written by an LLM and has
+> not been fully reviewed by a human network security expert. Any instructions
+> regarding running the server should take that into account. This project
+> attempts to use rigorous testing methods and anticipate security issues but,
+> like any project, cannot guarantee the programs here are free of potential
+> vulnerabilities.
+
 ## License
 
 This project is licensed under the MIT License – see the
