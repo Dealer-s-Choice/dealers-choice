@@ -129,8 +129,11 @@ jobs:
         cp _build/dealers-choice.exe _build/dealers-choice-bot.exe _staging/
         # Ship the whole data/ tree (mirrors meson's install_subdir('data')) so a
         # new asset or config file can never be left out of the package again
-        # (this is what caused the missing common.conf/layout.conf).
+        # (this is what caused the missing common.conf/layout.conf). common.conf
+        # itself is excluded to match install_subdir's exclude_files: it is an
+        # opt-in template, not shipped config.
         cp -r data/. _staging/data/
+        rm -f _staging/data/common.conf
         bash packaging/windows/collect-dlls.sh _staging/dealers-choice.exe _staging/
 
     - name: Set version

@@ -34,11 +34,11 @@ def main():
     # A TCP probe connection is not used because the server would accept it as
     # a real client slot.  The test binary retries connections internally if
     # the server is not yet ready within this window.
-    # --disable-publish: the server reads the shipped data/common.conf, which
-    # carries the public registry line — without the flag every test-launched
-    # server would announce to the live registry (and fail its verify, since
-    # CI/test hosts aren't reachable). The old DC_DISABLE_PUBLISH env is gone;
-    # this flag is the only opt-out.
+    # --disable-publish: tests point DEALERSCHOICE_DATADIR at the source data/,
+    # so the server reads data/common.conf directly. That template lists no
+    # registry today, but the flag keeps a test server from announcing anywhere
+    # if someone uncomments one locally. The old DC_DISABLE_PUBLISH env is gone;
+    # this flag is the only opt-out, and it is deliberately undocumented.
     server_cmd = [server_binary, "--port", str(port), "--disable-publish"]
     # Opt-in network-health logging (slow-send / ping-spike / recv-wait), e.g.
     # in CI, so an intermittent failure leaves diagnostics in the test log.

@@ -77,23 +77,18 @@ connect.attempts = 6 # Number of connection attempts before giving up
 
 ## Server browser
 
-The connect screen lists internet servers by asking the registries in
-`common.conf` (see the [registry guide](REGISTRY.md)). To stop the client from
-contacting any registry, set:
-
-```
-registry_browser = no
-```
-
-The default is `yes`. You can also change this on the Settings screen, or turn
-it off for one run from the command line:
+The connect screen lists internet servers by asking the registries named in
+`common.conf` (see the [registry guide](REGISTRY.md)). That file is not
+installed, so out of the box there are no registries and the list stays empty —
+creating it is how you opt in. To stop the client contacting a registry for one
+run, start it with:
 
 ```
 dealers-choice --disable-registry-browser
 ```
 
 This only affects the internet server list. LAN discovery is separate and is
-not changed by this setting.
+not changed by it.
 
 ## Language
 

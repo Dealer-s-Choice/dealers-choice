@@ -235,9 +235,10 @@ block-buffers to a file):
 
     stdbuf -oL -eL ./dealers-choice-server --verbose --disable-publish > log 2>&1
 
-(`--disable-publish` keeps a hand-run test server from announcing itself to the
-live public registry in `data/common.conf`; it is the only opt-out — the old
-`DC_DISABLE_PUBLISH` env variable was removed.)
+(`--disable-publish` keeps a hand-run test server from announcing itself to any
+registry listed in `data/common.conf`; it is the only opt-out — the old
+`DC_DISABLE_PUBLISH` env variable was removed. The flag is undocumented in
+`--help` but still implemented for exactly this use.)
 
 For a fully-automated repro, run **two bots** (they auto-deal/play) instead of a
 manual GUI client.

@@ -485,8 +485,9 @@ int menu_display_connect(PlayerConfig_t *player_config, char *host_str, uint16_t
   const int section_gap = g_layout_cfg.input_field_v_gap * 3;
 
   /* Internet servers (top) from the configured registries, slow-refreshed.
-   * registry_browser (player.conf / --disable-registry-browser) lets the user
-   * opt out of querying the registry entirely. */
+   * registry_browser (--disable-registry-browser) lets the user opt out of
+   * querying the registry entirely; with no common.conf there is nothing to
+   * query anyway, which is the default. */
   const bool browse_registry = (player_config->registry_count > 0 && player_config->registry_browser);
   RegistryServer_t reg_found[REG_MAX_SHOWN];
   int reg_found_count = 0;

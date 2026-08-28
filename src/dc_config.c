@@ -66,8 +66,6 @@ const ConfigEntry player_config_entries[] = {
      sizeof(uint8_t)},
     {"password", CFG_TYPE_STRING, "", offsetof(PlayerConfig_t, password),
      sizeof(((PlayerConfig_t *)0)->password)},
-    {"registry_browser", CFG_TYPE_BOOL, "yes", offsetof(PlayerConfig_t, registry_browser),
-     sizeof(bool)},
 #define HK(name, def)                                                                              \
   {"hotkey_" #name, CFG_TYPE_STRING, def, offsetof(PlayerConfig_t, hotkey_##name),                 \
    SIZEOF_HOTKEY_NAME}
@@ -333,7 +331,7 @@ void player_config_set_field(PlayerConfig_t *cfg, size_t entry_idx, const char *
   config_set_from_string_real(cfg, &player_config_entries[entry_idx], val);
 }
 
-/* Read the shared registry list from <data_dir>/common.conf (read by both the
+/* Read the shared registry list from <data_dir>/common.conf, if present (both the
  * server, to publish, and the client, to browse). dnsmasq-style: one registry
  * per line, the host is the value and an optional port is the first attribute:
  *   registry = registry.example.org
@@ -346,16 +344,16 @@ void get_common_registries(const char *data_dir, char host[][REGISTRY_HOST_LEN],
   char *cfg_pathname = canfigger_path_join(data_dir, "common.conf");
   if (!cfg_pathname)
     return;
-  /* common.conf ships with every install, so a missing/unreadable one means a
-   * broken or incomplete install — fail loudly. An existing but empty/all-
-   * commented file is a valid LAN-only / no-registry config (it just yields zero
-   * registries below); only the open failure is fatal. */
+  /* common.conf is optional and is no longer installed: with no registries the
+   * game is LAN-only, which is the default. An absent file therefore means "no
+   * registries, default discovery port" — the same as the all-commented template
+   * in data/ — so it is not an error. An operator opting into a registry creates
+   * the file themselves (docs/REGISTRY.md). */
   FILE *probe = fopen(cfg_pathname, "r");
   if (!probe) {
-    dc_log(DC_LOG_ERROR, "cannot open %s (%s); the install looks incomplete (common.conf is required)",
-           cfg_pathname, strerror(errno));
+    dc_log(DC_LOG_DEBUG, "no %s; LAN-only (no registries)", cfg_pathname);
     free(cfg_pathname);
-    exit(EXIT_FAILURE);
+    return;
   }
   fclose(probe);
   struct Canfigger *cfg_node = canfigger_parse_file(cfg_pathname, ',');
@@ -470,6 +468,10 @@ ServerConfig_t get_server_config(Path_t *path, const CliArgs_t *cli_args) {
 PlayerConfig_t get_player_config(void) {
   PlayerConfig_t config = {0};
   config.loaded = false;
+  /* Not a player.conf key or a Settings row: browsing is opted into by naming a
+   * registry in common.conf (which ships with none), so a second per-player
+   * toggle was redundant. --disable-registry-browser still forces it off. */
+  config.registry_browser = true;
 
   char *cfgdir = canfigger_config_dir(DEALERSCHOICE_NAME);
   if (!cfgdir) {
@@ -579,8 +581,9 @@ LayoutConfig_t get_layout_config(const char *data_dir) {
   printf("Reading layout config: %s\n", cfg_pathname);
   /* layout.conf ships with every install, so a missing/unreadable one means a
    * broken or incomplete install — fail loudly rather than silently running with
-   * default geometry. (common.conf, by contrast, is optional / LAN-only and only
-   * warns.) An existing-but-empty file is fine and falls back to defaults below. */
+   * default geometry. (common.conf, by contrast, is optional, is not installed,
+   * and its absence is not even logged at normal verbosity.) An existing-but-
+   * empty file is fine and falls back to defaults below. */
   FILE *probe = fopen(cfg_pathname, "r");
   if (!probe) {
     dc_log(DC_LOG_ERROR, "cannot open %s (%s); the install looks incomplete (layout.conf is required)",

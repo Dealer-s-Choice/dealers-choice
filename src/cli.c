@@ -277,10 +277,12 @@ CliArgs_t parse_server_args(int argc, char *argv[]) {
     }
   }
 
-  /* Registry publishing is opted out of with --disable-publish only. There used
-   * to be a DC_DISABLE_PUBLISH env equivalent for tests/CI, but a visible CLI
-   * flag is more obvious for end-users, so the env was removed; every test
-   * harness / script server spawn now passes the flag explicitly. */
+  /* --disable-publish forces publishing off. It is deliberately undocumented
+   * (absent from the usage text above) now that publishing requires an operator
+   * to create common.conf and name a registry: the flag is redundant for
+   * end-users, but the test harnesses and scripts still pass it, so it stays
+   * implemented. A DC_DISABLE_PUBLISH env equivalent used to exist and was
+   * removed. */
 
   /* Tests/CI can suppress LAN discovery via the environment: a test server must
    * not answer discovery probes on the tester's real network. Equivalent to

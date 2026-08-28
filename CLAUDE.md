@@ -117,18 +117,23 @@ Binaries: `dealers-choice` = `main.c` + `game_dep`; `dealers-choice-bot` = `bot.
 - Default port: 22777.
 - Auth: libsodium-based password hashing.
 - **Registry (directory server).** `dealers-choice-server` announces itself to,
-  and the GUI client browses, the registries in `data/common.conf` — which now
-  ships with **no registry configured** (the lines are commented out, so the
-  default is LAN-only and an operator opts in by naming a host; default port
-  22070). The `dealers-choice-registry` binary (`src/registry/registry_main.c`)
+  and the GUI client browses, the registries in `common.conf` — which is **no
+  longer installed** (`exclude_files` on the data install_subdir). `data/common.conf`
+  is a template with everything commented out; creating the file in the installed
+  data dir is the opt-in, an absent one means LAN-only and is not an error
+  (`get_common_registries` returns quietly; it used to `exit(EXIT_FAILURE)`).
+  Default registry port 22070. The `dealers-choice-registry` binary (`src/registry/registry_main.c`)
   is **not built or installed by default** — it needs `-Dregistry=true` (CI and
   the Docker image pass it; the AppImage deliberately does not bundle it. The
   registry parsers live in libdc_core, so `test_registry`/`test_registry_fuzz`
   build either way). It
   verifies each announce by connecting back, expires stale entries (TTL), and writes
-  `servers.json`. Client opt-out: `registry_browser = no` in player.conf /
-  `--disable-registry-browser`. Server opt-out: `--disable-publish` — the only
-  opt-out (the old `DC_DISABLE_PUBLISH` env was removed); every test/script
+  `servers.json`. `registry_browser` is **no longer a player.conf key or a
+  Settings row** (removed from `player_config_entries[]`, which drives both);
+  the field defaults on in `get_player_config` and `--disable-registry-browser`
+  is the only way off. Server opt-out: `--disable-publish`, kept implemented but
+  **undocumented** (absent from the usage text; the old `DC_DISABLE_PUBLISH` env
+  was removed); every test/script
   server spawn must pass the flag or it announces to whatever registry is
   configured (`tests/game_logic.py`, `scripts/soak.sh`,
   `scripts/run_bot_session.sh`, `scripts/disconnect_test.sh` all do). Details in `docs/REGISTRY.md`; Docker in

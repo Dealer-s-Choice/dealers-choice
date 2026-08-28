@@ -94,9 +94,10 @@ and is restarted, so start a server first or point the bot at a running one.
 
 ### Registry (optional)
 
-> **Warning: the registry is experimental.**
-> It is new and lightly tested, and the protocol is not final. Run a registry
-> only if you are adventurous and want to host a public server directory.
+> **Warning: the registry is experimental and in maintenance mode.**
+> It is new and lightly tested, the protocol is not final, and no public
+> registry is being run. Run one only if you are adventurous and want to host a
+> server directory yourself.
 
 The registry is a directory of public game servers. Game servers announce
 themselves to it, and clients can browse the list to find internet games. You
@@ -114,6 +115,18 @@ serve that file.
 The registry listens on port `22070`. Change the published host port with
 `DC_REGISTRY_PORT`. Open inbound TCP on that port on the registry host. To see
 log output, set `DC_REGISTRY_ARGS=--verbose`.
+
+**Your servers will not announce themselves until you tell them where to.** The
+image ships no `common.conf`, so a server publishes nowhere by default. To point
+the servers in this stack at the registry, mount a `common.conf` naming it into
+the server's data directory, for example:
+
+    volumes:
+      - ./common.conf:/usr/share/dealers-choice/common.conf:ro
+
+with the file containing:
+
+    registry = dealers-choice-registry
 
 ## systemd (without Docker)
 

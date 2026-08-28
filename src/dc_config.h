@@ -74,7 +74,9 @@ typedef struct {
   bool turn_notify;
   uint8_t connect_attempts;
   char password[MAX_INPUT_LENGTH];
-  bool registry_browser; /* query the registry for the internet server list (#33) */
+  bool registry_browser; /* query the registry for the internet server list (#33).
+                          * Not a player.conf key or a Settings row: defaults on, and
+                          * --disable-registry-browser is the only way to turn it off. */
   char hotkey_check[SIZEOF_HOTKEY_NAME];
   char hotkey_bet[SIZEOF_HOTKEY_NAME];
   char hotkey_fold[SIZEOF_HOTKEY_NAME];
@@ -90,8 +92,9 @@ typedef struct {
 } PlayerConfig_t;
 
 /* Read the shared registry list and LAN-discovery port from
- * <data_dir>/common.conf (used by both the server, to publish, and the client,
- * to browse). lan_discovery_port defaults to LAN_DISCOVERY_PORT. */
+ * <data_dir>/common.conf if it exists (used by both the server, to publish, and
+ * the client, to browse). The file is optional and not installed; absent means
+ * no registries. lan_discovery_port defaults to LAN_DISCOVERY_PORT. */
 void get_common_registries(const char *data_dir, char host[][REGISTRY_HOST_LEN], uint16_t *port,
                            uint8_t *count, uint16_t *lan_discovery_port);
 
