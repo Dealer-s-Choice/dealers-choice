@@ -30,10 +30,28 @@
 #include <netdb.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
+#include <poll.h>
 #include <sys/select.h>
 #include <sys/socket.h>
 #include <unistd.h>
 #define close_socket(s) close(s)
+#endif
+
+/* Readiness polling. poll()/WSAPoll replaces select() for the readiness and
+ * accept waits, which lifts select()'s FD_SETSIZE ceiling: on POSIX fd_set is a
+ * bitmap indexed by the fd value, and Winsock's is an array bounded at
+ * FD_SETSIZE (64 by default).
+ *
+ * The timed-connect path deliberately still uses select(). WSAPoll does not
+ * report a failed non-blocking connect the way select()'s exception set does,
+ * so migrating that path would silently reintroduce a refused connect eating
+ * the whole timeout on Windows. See the comment there. */
+#ifdef _WIN32
+typedef WSAPOLLFD tcpme_pollfd;
+#  define tcpme_poll WSAPoll
+#else
+typedef struct pollfd tcpme_pollfd;
+#  define tcpme_poll poll
 #endif
 
 #include "tcpme.h"
@@ -274,30 +292,20 @@ tcpme_socket_t tcpme_accept(tcpme_socket_t server_sock) {
   if (!tcpme_socket_valid(server_sock))
     return TCPME_INVALID_SOCKET;
 
-#ifndef _WIN32
-  /* POSIX fd_set is a bitmap indexed by fd value; guard against out-of-range. */
-  if ((int)server_sock >= FD_SETSIZE) {
-    set_error("accept: socket fd exceeds FD_SETSIZE");
-    return TCPME_INVALID_SOCKET;
-  }
-#endif
+  /* Poll with a zero timeout so this never blocks. No FD_SETSIZE guard is
+   * needed: poll takes the fd by value rather than indexing a bitmap with it. */
+  tcpme_pollfd pfd;
+  pfd.fd = server_sock;
+  pfd.events = POLLIN;
+  pfd.revents = 0;
 
-  // Use select with zero timeout so this never blocks.
-  fd_set rfds;
-  FD_ZERO(&rfds);
-  FD_SET(server_sock, &rfds);
-  struct timeval tv = {0, 0};
-
-  int n = select(
-#ifdef _WIN32
-      0,
-#else
-      (int)server_sock + 1,
-#endif
-      &rfds, NULL, NULL, &tv);
-
+  int n = tcpme_poll(&pfd, 1, 0);
   if (n < 0) {
-    set_error_sys("accept: select() failed");
+#ifndef _WIN32
+    if (errno == EINTR)
+      return TCPME_INVALID_SOCKET;
+#endif
+    set_error_sys("accept: poll() failed");
     return TCPME_INVALID_SOCKET;
   }
   if (n == 0)
@@ -354,6 +362,12 @@ static tcpme_socket_t try_connect_addrinfo(const struct addrinfo *ai, uint32_t t
     close_socket(sock);
     return TCPME_INVALID_SOCKET;
   }
+  /* DELIBERATELY still select(), unlike the readiness and accept paths.
+   * WSAPoll does not report a failed non-blocking connect: a refused connection
+   * never raises POLLERR/POLLHUP there, so the poll would simply time out and a
+   * refused connect would eat the entire timeout on Windows -- the bug fixed on
+   * the connect-timeout-win branch. select()'s exception set does report it, so
+   * this path keeps select() and its FD_SETSIZE guard (#370). */
 #ifndef _WIN32
   /* select() indexes a POSIX fd_set bitmap by fd value, so an fd >= FD_SETSIZE
    * is out of bounds. (Winsock's fd_set is a bounded array, not indexed by
@@ -878,6 +892,7 @@ int tcpme_udp_sendto6(tcpme_socket_t sock, const char *ip, unsigned scope, uint1
 struct tcpme_set_t {
   tcpme_socket_t *sockets;
   bool *ready;
+  tcpme_pollfd *pfds; /* rebuilt per check; allocated once at capacity */
   int count;
   int capacity;
 };
@@ -887,14 +902,9 @@ tcpme_set_t *tcpme_alloc_set(int capacity) {
     set_error("capacity must be > 0");
     return NULL;
   }
-  /* The readiness layer is select()-based: a POSIX fd_set holds fds < FD_SETSIZE
-   * and the Winsock fd_set array holds at most FD_SETSIZE entries, so a larger
-   * set can't be select()ed safely. A poll()/WSAPoll migration would lift this
-   * (see BACKLOG). */
-  if (capacity > FD_SETSIZE) {
-    set_error("capacity exceeds FD_SETSIZE");
-    return NULL;
-  }
+  /* No FD_SETSIZE ceiling here any more: the readiness layer polls rather than
+   * selects, so neither the POSIX fd bitmap nor Winsock's bounded fd_set array
+   * applies. */
   tcpme_set_t *set = (tcpme_set_t *)malloc(sizeof(*set));
   if (!set) {
     set_error_sys("tcpme_alloc_set: malloc failed");
@@ -902,10 +912,12 @@ tcpme_set_t *tcpme_alloc_set(int capacity) {
   }
   set->sockets = (tcpme_socket_t *)malloc((size_t)capacity * sizeof(tcpme_socket_t));
   set->ready = (bool *)calloc((size_t)capacity, sizeof(bool));
-  if (!set->sockets || !set->ready) {
+  set->pfds = (tcpme_pollfd *)calloc((size_t)capacity, sizeof(tcpme_pollfd));
+  if (!set->sockets || !set->ready || !set->pfds) {
     set_error_sys("tcpme_alloc_set: malloc failed");
     free(set->sockets);
     free(set->ready);
+    free(set->pfds);
     free(set);
     return NULL;
   }
@@ -918,6 +930,7 @@ void tcpme_free_set(tcpme_set_t *set) {
   if (set) {
     free(set->sockets);
     free(set->ready);
+    free(set->pfds);
     free(set);
   }
 }
@@ -958,40 +971,28 @@ int tcpme_check_sockets(tcpme_set_t *set, uint32_t timeout_ms) {
   if (!set || set->count == 0)
     return 0;
 
-  fd_set rfds;
-  FD_ZERO(&rfds);
-  int nfds = 0;
   for (int i = 0; i < set->count; i++) {
-#ifndef _WIN32
-    /* POSIX fd_set is a bitmap indexed by fd value; an fd >= FD_SETSIZE would
-     * corrupt the stack. (Winsock's fd_set is a count-bounded array — the cap
-     * in tcpme_alloc_set covers that side.) */
-    if ((int)set->sockets[i] >= FD_SETSIZE) {
-      set_error("tcpme_check_sockets: socket fd exceeds FD_SETSIZE");
-      return -1;
-    }
-    if ((int)set->sockets[i] > nfds)
-      nfds = (int)set->sockets[i];
-#endif
-    FD_SET(set->sockets[i], &rfds);
+    set->pfds[i].fd = set->sockets[i];
+    set->pfds[i].events = POLLIN;
+    set->pfds[i].revents = 0;
   }
 
-  struct timeval tv;
-  tv.tv_sec = (long)(timeout_ms / 1000);
-  tv.tv_usec = (long)((timeout_ms % 1000) * 1000);
-
-  int n = select(nfds + 1, &rfds, NULL, NULL, &tv);
+  /* poll() takes whole milliseconds, which is what callers pass anyway. */
+  int n = tcpme_poll(set->pfds, (unsigned)set->count, (int)timeout_ms);
   if (n < 0) {
 #ifndef _WIN32
     if (errno == EINTR)
       return 0;
 #endif
-    set_error_sys("select() failed");
+    set_error_sys("poll() failed");
     return -1;
   }
 
+  /* A peer that closed is "ready" here, exactly as it was under select(): the
+   * caller's next read returns 0 or -1 and it notices the disconnect. Reporting
+   * only POLLIN would strand a half-closed socket as permanently not-ready. */
   for (int i = 0; i < set->count; i++)
-    set->ready[i] = (FD_ISSET(set->sockets[i], &rfds) != 0);
+    set->ready[i] = (set->pfds[i].revents & (POLLIN | POLLHUP | POLLERR | POLLNVAL)) != 0;
 
   return n;
 }

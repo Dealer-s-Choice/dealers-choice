@@ -219,8 +219,9 @@ int tcpme_udp_recvfrom6(tcpme_socket_t sock, void *buf, int len, char *out_ip, s
 int tcpme_udp_sendto6(tcpme_socket_t sock, const char *ip, unsigned scope, uint16_t port,
                       const void *buf, int len);
 
-// Allocate a socket set for select-based readiness polling.
-// capacity is the maximum number of sockets the set will hold.
+// Allocate a socket set for readiness polling (poll()/WSAPoll).
+// capacity is the maximum number of sockets the set will hold; it is not
+// bounded by FD_SETSIZE, since the readiness layer does not use fd_set.
 // Returns NULL on allocation failure.
 tcpme_set_t *tcpme_alloc_set(int capacity);
 

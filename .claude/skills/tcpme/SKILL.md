@@ -38,7 +38,9 @@ one place:
 - **TCP:** `tcpme_listen` / `tcpme_accept` (non-blocking; INVALID ≠ error, means
   "nothing pending") / `tcpme_connect[_timeout][_pref4]` / `tcpme_close` /
   `tcpme_send` / `tcpme_recv` / `tcpme_set_timeout`.
-- **Readiness:** the `tcpme_set_t` select-wrapper — `tcpme_alloc_set` /
+- **Readiness:** the `tcpme_set_t` poll wrapper (poll()/WSAPoll, so no
+  FD_SETSIZE ceiling; the timed-connect path still uses select() because
+  WSAPoll cannot report a failed non-blocking connect) — `tcpme_alloc_set` /
   `add`/`del_socket` / `tcpme_check_sockets(set, ms)` / `tcpme_socket_ready`.
 - **UDP discovery:** IPv4 (`tcpme_udp_open`/`broadcast`/`sendto`/`recvfrom`) and
   IPv6 multicast (`tcpme_udp_open6` V6ONLY / `mcast6_join_all` /
