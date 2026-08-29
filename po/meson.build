@@ -22,13 +22,20 @@ if get_option('nls') and not platform_is_windows
         header_args: inc_args,
         required: false,
       )
-    else  # darwin, cygwin
-      inc_intl_dir = include_directories('/opt/homebrew/opt/gettext/include')
+    elif host_sys == 'darwin'
+      # include_directories() hard-errors on a path that does not exist, which
+      # on a Mac without Homebrew gettext would pre-empt the friendly error
+      # below. Only name the dir once it is really there.
+      fs = import('fs')
+      if fs.is_dir('/opt/homebrew/opt/gettext/include')
+        inc_intl_dir = include_directories('/opt/homebrew/opt/gettext/include')
+      endif
       intl_dep = cc.find_library(
         'intl',
         dirs: ['/opt/homebrew/opt/gettext/lib'],
         has_headers: ['libintl.h'],
         header_include_directories: inc_intl_dir,
+        required: false,
       )
     endif
   endif
@@ -48,9 +55,9 @@ if get_option('nls') and not platform_is_windows
       ],
     )
   else
-    message('libintl not found. You will either need to install the appropriate')
-    message('package or add "-Dnls=false" to the setup/configure options.')
-    error('')
+    error(
+      'libintl not found. Install the gettext development package, or configure with -Dnls=false.',
+    )
   endif
 endif
 

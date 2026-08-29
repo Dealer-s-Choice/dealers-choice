@@ -86,7 +86,6 @@ miniaudio_dep = dependency(
   required: false,
   fallback: ['miniaudio', 'miniaudio_dep'],
 )
-#miniaudio_dep = subproject('miniaudio').get_variable('miniaudio_dep')
 
 shared_dep = [
   canfigger_dep,
@@ -151,7 +150,7 @@ shared_dep += tcpme_dep
 
 conf.set_quoted(
   'DEALERSCHOICE_LOCALEDIR',
-  join_paths(get_option('prefix'), get_option('localedir')),
+  get_option('prefix') / get_option('localedir'),
 )
 conf.set_quoted('DEALERSCHOICE_VERSION', meson.project_version())
 conf.set_quoted('DEALERSCHOICE_FORMAL_NAME', 'Dealer\'s Choice')
@@ -166,7 +165,7 @@ conf.set_quoted(
 )
 conf.set_quoted(
   'DEALERSCHOICE_DATADIR',
-  join_paths(get_option('prefix'), get_option('datadir'), meson.project_name()),
+  get_option('prefix') / get_option('datadir') / meson.project_name(),
 )
 
 # pcg-c PRNG: prefer a system install (full pcg-c, <pcg_variants.h>); otherwise
@@ -300,7 +299,7 @@ run_target(
   'regen-keys-doc',
   command: [
     gen_keys_doc,
-    join_paths(meson.project_source_root(), 'docs', 'keys.md'),
+    meson.project_source_root() / 'docs' / 'keys.md',
   ],
 )
 
@@ -308,7 +307,7 @@ run_target(
 # docs/REGISTRY.md). The copy in data/ is the template, and what tests read.
 install_subdir(
   'data',
-  install_dir: join_paths(get_option('datadir'), meson.project_name()),
+  install_dir: get_option('datadir') / meson.project_name(),
   strip_directory: true,
   exclude_files: ['common.conf'],
 )
@@ -345,34 +344,23 @@ install_subdir('docs', install_dir: get_option('docdir'))
 if not platform_is_windows
   install_data(
     'dealers-choice.desktop',
-    install_dir: join_paths(get_option('datadir'), 'applications'),
+    install_dir: get_option('datadir') / 'applications',
   )
 
+  icon_dir = get_option('datadir') / 'icons' / 'hicolor'
   icon_sizes = ['128', '64', '32', '16']
 
   foreach size : icon_sizes
     install_data(
       'icons/dealers-choice_@0@x@0@.png'.format(size),
       rename: 'dealers-choice.png',
-      install_dir: join_paths(
-        get_option('datadir'),
-        'icons',
-        'hicolor',
-        '@0@x@0@'.format(size),
-        'apps',
-      ),
+      install_dir: icon_dir / '@0@x@0@'.format(size) / 'apps',
     )
   endforeach
 
   install_data(
     'icons/dealers-choice.svg',
-    install_dir: join_paths(
-      get_option('datadir'),
-      'icons',
-      'hicolor',
-      'scalable',
-      'apps',
-    ),
+    install_dir: icon_dir / 'scalable' / 'apps',
   )
 endif
 

@@ -1,3 +1,5 @@
+no_lto = ['b_lto=false']
+
 
 unit_tests = [
   'serialization',
@@ -11,7 +13,7 @@ unit_tests = [
 ]
 
 base_env = {
-  'DEALERSCHOICE_DATADIR': join_paths(meson.project_source_root(), 'data'),
+  'DEALERSCHOICE_DATADIR': meson.project_source_root() / 'data',
   'MESON_BUILD_ROOT': meson.project_build_root(),
   'MESON_BUILD_TEST_ROOT': meson.current_build_dir(),
   # Registry opt-out is CLI-only (--disable-publish, passed by game_logic.py);
@@ -27,7 +29,7 @@ foreach name : unit_tests
     'test_' + name,
     [name + '.c', '00_test.c'],
     dependencies: game_dep,
-    override_options: ['b_lto=false'],
+    override_options: no_lto,
   )
   test('test_' + name, exe, env: environment(base_env))
 endforeach
@@ -38,7 +40,7 @@ lan_discovery_exe = executable(
   'test_lan_discovery',
   'lan_discovery_test.c',
   dependencies: game_dep,
-  override_options: ['b_lto=false'],
+  override_options: no_lto,
 )
 test('test_lan_discovery', lan_discovery_exe, env: environment(base_env))
 
@@ -52,7 +54,7 @@ if get_option('tools')
     'ping_probe_flood.c',
     dependencies: game_dep,
     install: false,
-    override_options: ['b_lto=false'],
+    override_options: no_lto,
   )
 endif
 
@@ -66,15 +68,13 @@ sodium_compat_exe = executable(
   ['sodium_compat.c', '00_test.c'],
   dependencies: game_dep,
   c_args: ['-DDC_TEST_DEFAULT_PORT=' + base_port.to_string()],
-  override_options: ['b_lto=false'],
+  override_options: no_lto,
 )
 sodium_compat_env = environment(base_env)
 sodium_compat_env.set('DC_PORT', base_port.to_string())
 test('test_sodium_compat', sodium_compat_exe, env: sodium_compat_env)
 
-game_logic_script = files(
-  join_paths(meson.current_source_dir(), 'game_logic.py'),
-)
+game_logic_script = files('game_logic.py')
 
 game_logic = [
   'fold',
@@ -95,7 +95,7 @@ foreach name : game_logic
     [name + '.c', '00_test.c'],
     dependencies: game_dep,
     c_args: ['-DDC_TEST_DEFAULT_PORT=' + port.to_string()],
-    override_options: ['b_lto=false'],
+    override_options: no_lto,
   )
 
   env = environment(base_env)
@@ -117,7 +117,7 @@ pokeval_fuzz_exe = executable(
   'test_pokeval_fuzz',
   'pokeval_fuzz.c',
   dependencies: game_dep,
-  override_options: ['b_lto=false'],
+  override_options: no_lto,
 )
 
 # Run the fuzzer and cross-check pokeval's verdicts against the
@@ -126,9 +126,7 @@ pokeval_fuzz_exe = executable(
 # OpenBSD VM runner, both of which are ~50x slower than native.
 # Override hand count with the DC_FUZZ_N env var, seed with
 # DC_FUZZ_SEED.
-pokeval_fuzz_check = files(
-  join_paths(meson.current_source_dir(), 'pokeval_fuzz_check.py'),
-)
+pokeval_fuzz_check = files('pokeval_fuzz_check.py')
 test(
   'test_pokeval_fuzz',
   pokeval_fuzz_check,
@@ -164,7 +162,7 @@ foreach name : fuzz_parsers
     'test_' + name,
     name + '.c',
     dependencies: game_dep,
-    override_options: ['b_lto=false'],
+    override_options: no_lto,
   )
   fuzz_env = base_env
   # net_fuzz drives a real loopback socket, so on slow CI runners (Windows, the
@@ -185,7 +183,6 @@ endforeach
 
 add_test_setup(
   'Three_pass',
-  #exe_wrapper: [join_paths(meson.current_source_dir(), '5_card_showdown.sh')],
   env: environment(
     base_env + {
       'DC_NPASSES': '3',
