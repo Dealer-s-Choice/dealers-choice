@@ -706,9 +706,11 @@ void kick_player(ArgsBroadcastGameState_t *args, int8_t id) {
     return;
   char status_str[LEN_STATUS_STR] = {0};
   snprintf(status_str, sizeof status_str, _("%s was kicked"), args->game_state->player[id].nick);
-  remove_disconnected_player(args, id);
+  /* Before the removal, which broadcasts its own "disconnected" line and the
+     resulting game state: the specific reason should lead, and a second full
+     state broadcast right after it carries nothing new. */
   broadcast_status_message(args, status_str);
-  broadcast_game_state(args);
+  remove_disconnected_player(args, id);
 }
 
 void ban_player(ArgsBroadcastGameState_t *args, int8_t id) {
@@ -725,10 +727,14 @@ void ban_player(ArgsBroadcastGameState_t *args, int8_t id) {
   }
   char status_str[LEN_STATUS_STR] = {0};
   snprintf(status_str, sizeof status_str, _("%s was banned"), args->game_state->player[id].nick);
-  remove_disconnected_player(args, id);
   broadcast_status_message(args, status_str);
-  broadcast_game_state(args);
+  remove_disconnected_player(args, id);
 }
+
+/* The largest admin frame payload the loop below accepts; frames claiming more
+   are rejected rather than truncated. Only kick/ban ride this path, and both
+   carry a single target id. */
+#define ADMIN_PAYLOAD_MAX 32
 
 bool handle_disconnections(ArgsBroadcastGameState_t *args) {
   bool someone_disconnected = false;
@@ -748,7 +754,10 @@ bool handle_disconnections(ArgsBroadcastGameState_t *args) {
     }
 
     uint32_t msg_len = tcpme_get_be32((const uint8_t *)&len_be);
-    if (msg_len < OPCODE_SIZE || msg_len > 256) {
+    /* Bound by what the payload buffer below actually holds. A larger frame used
+       to pass this check and then be read only sizeof(payload) deep, leaving the
+       remainder in the stream to be misread as the next frame's length prefix. */
+    if (msg_len < OPCODE_SIZE || msg_len > OPCODE_SIZE + ADMIN_PAYLOAD_MAX) {
       remove_disconnected_player(args, i);
       someone_disconnected = true;
       continue;
@@ -764,10 +773,9 @@ bool handle_disconnections(ArgsBroadcastGameState_t *args) {
     uint16_t opcode = tcpme_get_be16((const uint8_t *)&opcode_be);
 
     uint32_t payload_len = msg_len - OPCODE_SIZE;
-    uint8_t payload[32] = {0};
+    uint8_t payload[ADMIN_PAYLOAD_MAX] = {0};
     if (payload_len > 0) {
-      r = tcpme_recv(args->clients[i], payload,
-                     payload_len < sizeof(payload) ? payload_len : sizeof(payload));
+      r = tcpme_recv(args->clients[i], payload, (int)payload_len);
       if (r <= 0) {
         remove_disconnected_player(args, i);
         someone_disconnected = true;
@@ -983,6 +991,12 @@ static void do_socket_cleanup(tcpme_socket_t sock, tcpme_set_t *socket_set, bool
   if (client_ref)
     *client_ref = TCPME_INVALID_SOCKET;
   slot_taken[slot] = false;
+  /* No player_count adjustment here, unlike remove_disconnected_player. Every
+   * caller is a join rejection in complete_join_handshake, and a join is only
+   * seated with in == true while at_menu, where player_count is 0 — so there is
+   * never a count to decrement. That coupling is load-bearing and undocumented
+   * elsewhere: a held-but-disconnected slot state (the reconnect work) would
+   * break it, and this helper would then need the was_in guard too. */
   /* Debug, not info: the caller that matters (a real disconnect) logs its own
    * line, and this helper also runs on paths that never had a seated player. */
   dc_log(DC_LOG_DEBUG, "slot %d cleared", slot);
@@ -1300,6 +1314,10 @@ static ELoop_t complete_join_handshake(ArgsBroadcastGameState_t *args, tcpme_soc
     if (args->game_state->at_menu)
       slot_id->in = true;
     else {
+      /* A mid-hand joiner spectates: player_count was fixed at hand start and
+         never counted them. Set explicitly rather than relying on the previous
+         occupant of this slot having left in == false. */
+      slot_id->in = false;
       for (int i = 0; i < MAX_HAND_SIZE; i++)
         args->real_hand[slot].card[i] = DH_card_null;
       memcpy(&args->game_state->player[slot].hand, &args->real_hand[slot],
