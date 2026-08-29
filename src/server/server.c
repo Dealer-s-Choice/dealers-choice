@@ -744,9 +744,14 @@ bool handle_disconnections(ArgsBroadcastGameState_t *args) {
     if (!tcpme_socket_ready(args->socket_set, args->clients[i]))
       continue;
 
-    /* Read the length prefix to determine if this is a disconnect or a message. */
+    /* Read the length prefix to determine if this is a disconnect or a message.
+       Readability guarantees a byte, not a whole frame, so every read here is
+       bounded: a raw tcpme_recv would block for SOCKET_IO_TIMEOUT_MS on a peer
+       that sends part of a frame and stops, freezing the single-threaded loop
+       for every other player. It also short-reads -- a 2-byte read of this
+       4-byte prefix returned r > 0 and was accepted as a complete length. */
     uint32_t len_be;
-    int r = tcpme_recv(args->clients[i], &len_be, sizeof(len_be));
+    int r = recv_frame_bounded(args->clients[i], &len_be, sizeof(len_be));
     if (r <= 0) {
       remove_disconnected_player(args, i);
       someone_disconnected = true;
@@ -764,7 +769,7 @@ bool handle_disconnections(ArgsBroadcastGameState_t *args) {
     }
 
     uint16_t opcode_be;
-    r = tcpme_recv(args->clients[i], &opcode_be, sizeof(opcode_be));
+    r = recv_frame_bounded(args->clients[i], &opcode_be, sizeof(opcode_be));
     if (r <= 0) {
       remove_disconnected_player(args, i);
       someone_disconnected = true;
@@ -775,7 +780,7 @@ bool handle_disconnections(ArgsBroadcastGameState_t *args) {
     uint32_t payload_len = msg_len - OPCODE_SIZE;
     uint8_t payload[ADMIN_PAYLOAD_MAX] = {0};
     if (payload_len > 0) {
-      r = tcpme_recv(args->clients[i], payload, (int)payload_len);
+      r = recv_frame_bounded(args->clients[i], payload, payload_len);
       if (r <= 0) {
         remove_disconnected_player(args, i);
         someone_disconnected = true;
