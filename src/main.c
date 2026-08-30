@@ -121,8 +121,16 @@ static void init_sdl_window(SdlContext_t *c, const char *title) {
   }
 
   const float factor = 0.8f;
-  const int w = (int)(bounds.w * factor);
-  const int h = (int)(bounds.h * factor);
+  /* Largest 16:9 box inside the target area. Sizing straight from the display
+     bounds gave the window the DISPLAY's aspect, so on a 16:10 or 4:3 monitor the
+     logical 1920x1080 content was letterboxed from the very first frame and the
+     bars rendered as flat table-green bands (#333). */
+  int w = (int)(bounds.w * factor);
+  int h = (int)(bounds.h * factor);
+  if (w * 9 > h * 16)
+    w = (h * 16 + 4) / 9;
+  else
+    h = (w * 9 + 8) / 16;
 
   c->window = SDL_CreateWindow(title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, w, h,
                                SDL_WINDOW_SHOWN | SDL_WINDOW_ALLOW_HIGHDPI);

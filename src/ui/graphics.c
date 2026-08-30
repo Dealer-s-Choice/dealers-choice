@@ -125,11 +125,17 @@ void draw_logo(SDL_Renderer *renderer, SDL_Rect dst) {
 }
 
 void clear_screen(SDL_Renderer *renderer) {
-  SDL_SetRenderDrawColor(renderer, get_color(COLOR_TABLE_GREEN).r, get_color(COLOR_TABLE_GREEN).g,
-                         get_color(COLOR_TABLE_GREEN).b, get_color(COLOR_TABLE_GREEN).a);
+  /* Black, not table-green. SDL_RenderClear covers the whole window while the
+     felt below only fills the logical 1920x1080 area, so this colour is exactly
+     what shows in the letterbox bars when the window is not 16:9 -- and flat
+     green bands beside the felt read as a rendering glitch rather than as
+     framing (#333). The windowed case no longer letterboxes at all now that the
+     window is created 16:9, but fullscreen on a 16:10 or 4:3 display still
+     must. */
+  SDL_SetRenderDrawColor(renderer, get_color(COLOR_BLACK).r, get_color(COLOR_BLACK).g,
+                         get_color(COLOR_BLACK).b, get_color(COLOR_BLACK).a);
   SDL_RenderClear(renderer);
-  /* Stretch the felt over the flat-green clear; NULL dst fills the logical area.
-     The clear color still shows in any aspect-ratio letterbox bars. */
+  /* Stretch the felt over the clear; NULL dst fills the logical area. */
   if (g_felt_tex)
     SDL_RenderCopy(renderer, g_felt_tex, NULL, NULL);
 }
@@ -380,12 +386,19 @@ bool toggle_fullscreen(SdlContext_t *c) {
     SDL_Log("SDL_SetWindowFullscreen failed: %s", SDL_GetError());
     return false;
   }
+  graphics_refresh_viewport(c);
+  return true;
+}
+
+void graphics_refresh_viewport(SdlContext_t *c) {
+  if (!c || !c->renderer)
+    return;
   SDL_RenderGetViewport(c->renderer, &g_viewport);
   g_center.x = g_viewport.x + g_viewport.w / 2;
   g_center.y = g_viewport.y + g_viewport.h / 2;
   layout_compute();
-  return true;
 }
+
 
 /* Draw a 2-pixel-thick border using SDL_RenderFillRect so it survives
  * SDL_RenderSetLogicalSize scaling (SDL_RenderDrawRect is 1 logical pixel

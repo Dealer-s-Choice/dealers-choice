@@ -129,6 +129,11 @@ SDL_Texture *load_texture(SDL_Renderer *renderer, const char *path);
 
 bool toggle_fullscreen(SdlContext_t *sdl_context);
 
+/* Recompute g_viewport/g_center from the renderer and re-run layout_compute().
+   Call after anything that changes the drawable size. */
+void graphics_refresh_viewport(SdlContext_t *sdl_context);
+
+
 // Transitional loading screen
 void show_loading_screen(SDL_Renderer *renderer, TTF_Font *font, const char *message);
 
