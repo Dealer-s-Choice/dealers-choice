@@ -387,6 +387,27 @@ static const char *local_hand_rank_name(const POKEVAL_Hand_9 *hand, const GameCh
   return POKEVAL_rank[r];
 }
 
+/* Does this event trigger `bw`? Each half is gated on the event type, and that
+ * gating is the whole point.
+ *
+ * The test used to be `PointInRect(mouse_pos, rect) || keysym == hotkey` with no
+ * type check, inside a block entered for MOUSEBUTTONDOWN *or* KEYDOWN. mouse_pos
+ * is the live cursor position from SDL_GetMouseState, not anything to do with
+ * the event -- so ANY keypress fired whichever action the pointer happened to be
+ * resting over. Pressing a bet-amount digit with the cursor over Raise raised.
+ *
+ * The mirror case is just as wrong: on a mouse event, event.key aliases the
+ * SDL_Event union over an SDL_MouseButtonEvent, so keysym.sym reads bytes that
+ * are not a keycode and can happen to equal a hotkey. */
+static bool action_triggered(const SDL_Event *event, SDL_Point mouse_pos,
+                             const ButtonWidget_t *bw) {
+  if (event->type == SDL_MOUSEBUTTONDOWN)
+    return SDL_PointInRect(&mouse_pos, &bw->base.rect) ? true : false;
+  if (event->type == SDL_KEYDOWN)
+    return event->key.keysym.sym == bw->hotkey;
+  return false;
+}
+
 static SDL_Keycode action_hotkey(int action) {
   switch (action) {
   case CHECK:
@@ -1799,51 +1820,41 @@ EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
         if (my_turn && !client_state.do_discard_draw) {
           if (client_state.bet_check_fold || client_state.call_raise_fold ||
               client_state.call_complete_fold || client_state.complete_check_fold) {
-            if (SDL_PointInRect(&mouse_pos, &action_bw[FOLD]->base.rect) ||
-                event.key.keysym.sym == action_bw[FOLD]->hotkey) {
+            if (action_triggered(&event, mouse_pos, action_bw[FOLD])) {
               send_player_action(&client_state, sock, ACTION_FOLD, 0);
             }
           }
           if (client_state.bet_check_fold) {
             // TODO: use existing array (or modify it) to loop through each action
-            if (SDL_PointInRect(&mouse_pos, &action_bw[BET]->base.rect) ||
-                event.key.keysym.sym == action_bw[BET]->hotkey) {
+            if (action_triggered(&event, mouse_pos, action_bw[BET])) {
               send_player_action(&client_state, sock, ACTION_BET, client_state.selected_amount);
-            } else if (SDL_PointInRect(&mouse_pos, &action_bw[CHECK]->base.rect) ||
-                       event.key.keysym.sym == action_bw[CHECK]->hotkey) {
+            } else if (action_triggered(&event, mouse_pos, action_bw[CHECK])) {
               send_player_action(&client_state, sock, ACTION_CHECK, 0);
             }
           } else if (client_state.call_raise_fold) {
             if (action_bw[RAISE]->interactive &&
-                (SDL_PointInRect(&mouse_pos, &action_bw[RAISE]->base.rect) ||
-                 event.key.keysym.sym == action_bw[RAISE]->hotkey)) {
+                (action_triggered(&event, mouse_pos, action_bw[RAISE]))) {
               send_player_action(&client_state, sock, ACTION_RAISE, client_state.selected_amount);
-            } else if (SDL_PointInRect(&mouse_pos, &action_bw[CALL]->base.rect) ||
-                       event.key.keysym.sym == action_bw[CALL]->hotkey) {
+            } else if (action_triggered(&event, mouse_pos, action_bw[CALL])) {
               send_player_action(&client_state, sock, ACTION_CALL, 0);
             }
           } else if (client_state.call_complete_fold) {
             if (action_bw[COMPLETE]->interactive &&
-                (SDL_PointInRect(&mouse_pos, &action_bw[COMPLETE]->base.rect) ||
-                 event.key.keysym.sym == action_bw[COMPLETE]->hotkey)) {
+                (action_triggered(&event, mouse_pos, action_bw[COMPLETE]))) {
               send_player_action(&client_state, sock, ACTION_BET, client_state.selected_amount);
-            } else if (SDL_PointInRect(&mouse_pos, &action_bw[CALL]->base.rect) ||
-                       event.key.keysym.sym == action_bw[CALL]->hotkey) {
+            } else if (action_triggered(&event, mouse_pos, action_bw[CALL])) {
               send_player_action(&client_state, sock, ACTION_CALL, 0);
             }
           } else if (client_state.complete_check_fold) {
             if (action_bw[COMPLETE]->interactive &&
-                (SDL_PointInRect(&mouse_pos, &action_bw[COMPLETE]->base.rect) ||
-                 event.key.keysym.sym == action_bw[COMPLETE]->hotkey)) {
+                (action_triggered(&event, mouse_pos, action_bw[COMPLETE]))) {
               send_player_action(&client_state, sock, ACTION_BET, client_state.selected_amount);
-            } else if (SDL_PointInRect(&mouse_pos, &action_bw[CHECK]->base.rect) ||
-                       event.key.keysym.sym == action_bw[CHECK]->hotkey) {
+            } else if (action_triggered(&event, mouse_pos, action_bw[CHECK])) {
               send_player_action(&client_state, sock, ACTION_CHECK, 0);
             }
           }
         } else if (action_bw[DISCARD]->interactive && client_state.do_discard_draw &&
-                   (SDL_PointInRect(&mouse_pos, &action_bw[DISCARD]->base.rect) ||
-                    event.key.keysym.sym == action_bw[DISCARD]->hotkey)) {
+                   (action_triggered(&event, mouse_pos, action_bw[DISCARD]))) {
 
           // Although the maximum allowed discards for 5 card draw can never
           // exceed 4, we need an array size of MAX_HAND_SIZE in case they select
