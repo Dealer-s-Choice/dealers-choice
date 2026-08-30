@@ -18,6 +18,7 @@
 /* Wait up to ~1s for sock to become readable; abort the test if it never
  * does (so a broken recvfrom path fails fast instead of hanging). */
 int main(void) {
+  tc_test_init();
   assert(tcpme_init() == 0);
 
   /* Server: bound to an ephemeral port we read back. */

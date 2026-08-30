@@ -6,6 +6,7 @@
 #endif
 #include <assert.h>
 #include <stdint.h>
+#include <stdio.h> /* setvbuf */
 #include <stdlib.h> /* atoi */
 #include <string.h> /* strrchr */
 
@@ -45,6 +46,18 @@ static inline int tc_thread_create(tc_thread_t *t, void *(*fn)(void *), void *ar
 }
 static inline void tc_thread_join(tc_thread_t t) { pthread_join(t, NULL); }
 #endif
+
+/* Call first in every test's main().
+ *
+ * Unbuffers the streams so whatever a test printed is already out when it dies.
+ * meson kills a timed-out test with SIGTERM, and block-buffered stdout (which is
+ * what you get when output is piped, as it is in CI) is discarded with the
+ * process -- so a hang arrives as a bare "TIMEOUT" with no clue which stage it
+ * reached. That is exactly how the first CI timeout of this suite showed up. */
+static inline void tc_test_init(void) {
+  setvbuf(stdout, NULL, _IONBF, 0);
+  setvbuf(stderr, NULL, _IONBF, 0);
+}
 
 /* Portable millisecond sleep. */
 static inline void tc_sleep_ms(int ms) {

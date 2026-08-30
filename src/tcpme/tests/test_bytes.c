@@ -12,6 +12,7 @@
 #include "tcpme.h"
 
 int main(void) {
+  tc_test_init();
   uint8_t b[4];
 
   /* --- be16: exact wire bytes --- */

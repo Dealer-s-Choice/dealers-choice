@@ -13,6 +13,7 @@
 #include "tcpme.h"
 
 int main(void) {
+  tc_test_init();
   assert(tcpme_init() == 0);
 
   /* Listen on loopback, port 0 → OS assigns a free port. */

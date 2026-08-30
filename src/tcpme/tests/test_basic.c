@@ -9,6 +9,7 @@
 #include "tcpme.h"
 
 int main(void) {
+  tc_test_init();
   /* tcpme_socket_valid */
   assert(!tcpme_socket_valid(TCPME_INVALID_SOCKET));
 

@@ -10,6 +10,7 @@
 #include "tcpme.h"
 
 int main(void) {
+  tc_test_init();
   assert(tcpme_init() == 0);
 
   tcpme_socket_t server = tcpme_listen("127.0.0.1", 0);

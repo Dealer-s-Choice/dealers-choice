@@ -60,6 +60,7 @@ static TC_THREAD_FN thread_b(void *varg) {
 }
 
 int main(void) {
+  tc_test_init();
   assert(tcpme_init() == 0);
 
   ThreadErrArg_t a = {.error = 0};

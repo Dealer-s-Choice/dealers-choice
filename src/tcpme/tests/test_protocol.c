@@ -22,6 +22,11 @@
 #define N_CLIENTS 3
 #define N_ROUNDS 8
 
+/* Both well under meson's 30s test timeout, so a stall ends as a failure that
+ * says what stalled rather than as a SIGTERM that says nothing. */
+#define SERVER_DEADLINE_MS 15000
+#define CLIENT_IO_TIMEOUT_MS 5000
+
 /* listen socket + one slot per client */
 #define SET_CAP (N_CLIENTS + 1)
 
@@ -43,7 +48,20 @@ static TC_THREAD_FN server_thread(void *varg) {
   int n_accepted = 0;
   int n_active = 0;
 
+  /* The exit condition depends on every client connecting and then leaving. A
+   * client that dies before connecting -- a refused or slow connect on a loaded
+   * runner -- would otherwise strand this loop forever, and main() joins this
+   * thread, so the whole test hangs until the harness kills it. Bound it. */
+  const int64_t deadline = tc_now_ms() + SERVER_DEADLINE_MS;
+
   while (n_accepted < N_CLIENTS || n_active > 0) {
+    if (tc_now_ms() > deadline) {
+      fprintf(stderr, "server: gave up after %d ms (accepted %d/%d, %d still active)\n",
+              SERVER_DEADLINE_MS, n_accepted, N_CLIENTS, n_active);
+      sa->error = 1;
+      break;
+    }
+
     int ready = tcpme_check_sockets(set, 1000);
     if (ready < 0) {
       sa->error = 1;
@@ -55,6 +73,7 @@ static TC_THREAD_FN server_thread(void *varg) {
       if (tcpme_socket_valid(c)) {
         clients[n_accepted++] = c;
         n_active++;
+        printf("server: accepted %d/%d\n", n_accepted, N_CLIENTS);
         assert(tcpme_add_socket(set, c) == 0);
       }
     }
@@ -105,11 +124,17 @@ static TC_THREAD_FN client_thread(void *varg) {
     return TC_THREAD_RET;
   }
 
+  /* Without a timeout a PONG that never arrives blocks this thread forever, and
+   * main() is joining it. Bounded, the same loss is a failure naming the round. */
+  tcpme_set_timeout(sock, CLIENT_IO_TIMEOUT_MS);
+  printf("client %d: connected\n", ca->id);
+
   for (int r = 0; r < N_ROUNDS && !ca->error; r++) {
     char msg[32];
     int mlen = snprintf(msg, sizeof(msg), "PING %d:%d", ca->id, r);
 
     if (tcpme_send(sock, msg, mlen) != mlen) {
+      fprintf(stderr, "client %d round %d: send failed: %s\n", ca->id, r, tcpme_get_error());
       ca->error = 1;
       break;
     }
@@ -117,6 +142,8 @@ static TC_THREAD_FN client_thread(void *varg) {
     char reply[32] = {0};
     int n = tcpme_recv(sock, reply, (int)sizeof(reply) - 1);
     if (n <= 0) {
+      fprintf(stderr, "client %d round %d: no PONG within %d ms (%s)\n", ca->id, r,
+              CLIENT_IO_TIMEOUT_MS, tcpme_get_error());
       ca->error = 1;
       break;
     }
@@ -130,6 +157,8 @@ static TC_THREAD_FN client_thread(void *varg) {
     }
   }
 
+  printf("client %d: done (%d rounds)\n", ca->id, N_ROUNDS);
+
   const char quit[] = "QUIT";
   tcpme_send(sock, quit, (int)strlen(quit));
   tcpme_close(sock);
@@ -139,6 +168,7 @@ static TC_THREAD_FN client_thread(void *varg) {
 /* ------------------------------------------------------------------ main */
 
 int main(void) {
+  tc_test_init();
   assert(tcpme_init() == 0);
 
   tcpme_socket_t listen_sock = tcpme_listen(NULL, 0);

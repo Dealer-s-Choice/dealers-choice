@@ -24,6 +24,7 @@
 #define TEST_GROUP "ff02::114"
 
 int main(void) {
+  tc_test_init();
   assert(tcpme_init() == 0);
 
   /* Probe IPv6 availability: no v6 stack → the socket/bind fails → skip. */

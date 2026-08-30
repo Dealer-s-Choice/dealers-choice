@@ -10,6 +10,7 @@
 #include "tcpme.h"
 
 int main(void) {
+  tc_test_init();
   assert(tcpme_init() == 0);
 
   char buf[TCPME_ADDRPORTSTRLEN];

@@ -12,6 +12,7 @@
 #include "tcpme.h"
 
 int main(void) {
+  tc_test_init();
   assert(tcpme_init() == 0);
 
   /* --- 1. Hostname resolution: connect via "localhost" --- */
