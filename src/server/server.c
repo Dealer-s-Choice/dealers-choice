@@ -738,7 +738,7 @@ void ban_player(ArgsBroadcastGameState_t *args, int8_t id) {
       strncpy(args->ban_list[args->ban_count], ip_str, TCPME_ADDRSTRLEN - 1);
       args->ban_list[args->ban_count][TCPME_ADDRSTRLEN - 1] = '\0';
       args->ban_count++;
-      printf("Banned IP: %s\n", ip_str);
+      dc_log(DC_LOG_WARN, "Banned IP: %s", ip_str);
     }
   }
   char status_str[LEN_STATUS_STR] = {0};
@@ -1236,7 +1236,7 @@ ELoop_t register_new_client(ArgsBroadcastGameState_t *args) {
 
     for (int b = 0; b < args->ban_count; b++) {
       if (strcmp(args->ban_list[b], peer_ip_str) == 0) {
-        printf("Rejected banned client\n");
+        dc_log(DC_LOG_WARN, "Rejected connection: banned (from %s)", peer_ip_str);
         tcpme_close(new_client);
         return LOOP_CONTINUE;
       }
@@ -1247,7 +1247,8 @@ ELoop_t register_new_client(ArgsBroadcastGameState_t *args) {
     if (!is_loopback) {
       if (args->config->max_connections_per_minute > 0) {
         if (!rate_limit_check(peer_ip_str, args->config->max_connections_per_minute)) {
-          printf("Rejected connection: rate limit exceeded\n");
+          dc_log(DC_LOG_WARN, "Rejected connection: rate limit exceeded (from %s)",
+                 peer_ip_str);
           tcpme_close(new_client);
           return LOOP_CONTINUE;
         }
@@ -1263,7 +1264,8 @@ ELoop_t register_new_client(ArgsBroadcastGameState_t *args) {
             count++;
         }
         if (count >= args->config->max_connections_per_ip) {
-          printf("Rejected connection: max_connections_per_ip reached\n");
+          dc_log(DC_LOG_WARN, "Rejected connection: max_connections_per_ip reached (from %s)",
+                 peer_ip_str);
           tcpme_close(new_client);
           return LOOP_CONTINUE;
         }
@@ -1348,11 +1350,17 @@ static ELoop_t complete_join_handshake(ArgsBroadcastGameState_t *args, tcpme_soc
     if (!dc_test_mode) {
       Player_t *player = &(args->game_state->player)[slot];
 
+      /* Rejections below name the peer so a log scanner (fail2ban) has an
+         address to act on; the address alone, not the ip:port above. */
+      char join_ip_str[TCPME_ADDRSTRLEN] = "";
+      tcpme_get_peer_ip(new_client, join_ip_str, sizeof(join_ip_str));
+
       bool is_bot = (proto_flags & PROTO_FLAG_BOT) != 0;
       const char *password = args->config->password;
 
       if (is_bot && !*password) {
-        printf("Rejected bot connection: server has no password set\n");
+        dc_log(DC_LOG_WARN, "Rejected bot connection: server has no password set (from %s)",
+               join_ip_str);
         do_socket_cleanup(new_client, args->socket_set, args->slot_taken, slot, player,
                           &args->clients[slot]);
         return LOOP_CONTINUE;
@@ -1367,7 +1375,8 @@ static ELoop_t complete_join_handshake(ArgsBroadcastGameState_t *args, tcpme_soc
       int auth_ok = (verify_client_password(new_client, password, nonce) == 0 && *password);
 
       if (is_bot && !auth_ok) {
-        printf("Rejected bot connection: authentication failed\n");
+        dc_log(DC_LOG_WARN, "Rejected bot connection: authentication failed (from %s)",
+               join_ip_str);
         do_socket_cleanup(new_client, args->socket_set, args->slot_taken, slot, player,
                           &args->clients[slot]);
         return LOOP_CONTINUE;
