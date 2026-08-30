@@ -615,6 +615,21 @@ int send_message(tcpme_socket_t sock, uint16_t opcode, const uint8_t *payload, s
   return 0;
 }
 
+/* All zeros is the "I hold no token" value, so it must never match a live hold.
+   sodium_is_zero is constant time; that is not required here (the value is the
+   client's own) but costs nothing and keeps the comparison uniform. */
+bool reconnect_token_is_zero(const unsigned char token[RECONNECT_TOKEN_LEN]) {
+  return sodium_is_zero(token, RECONNECT_TOKEN_LEN) == 1;
+}
+
+int send_reconnect_token(tcpme_socket_t sock, const unsigned char token[RECONNECT_TOKEN_LEN]) {
+  return send_all_tcp(sock, token, RECONNECT_TOKEN_LEN);
+}
+
+int recv_reconnect_token(tcpme_socket_t sock, unsigned char out[RECONNECT_TOKEN_LEN]) {
+  return recv_all_tcp(sock, out, RECONNECT_TOKEN_LEN) == RECONNECT_TOKEN_LEN ? 0 : -1;
+}
+
 int send_protocol_header(tcpme_socket_t sock, uint8_t flags) {
   verbose_puts("Exchanging protocol information...");
   GameProtocolHeader_t hdr = {0};
@@ -681,6 +696,18 @@ bool bot_connect(const char *host_str, uint16_t port, const char *nick, const ch
 
   if (send_protocol_header(sock, PROTO_FLAG_BOT) != 0)
     goto fail;
+
+  {
+    /* Bots never reclaim a seat, but the exchange is part of the handshake, so
+       they still send the no-claim value and read the issued token. */
+    unsigned char none[RECONNECT_TOKEN_LEN] = {0};
+    unsigned char issued[RECONNECT_TOKEN_LEN];
+    if (send_reconnect_token(sock, none) != 0 || recv_reconnect_token(sock, issued) != 0) {
+      dc_log(DC_LOG_ERROR, "Failed to exchange reconnect token");
+      goto fail;
+    }
+    sodium_memzero(issued, sizeof issued);
+  }
 
   if (authenticate_with_server(sock, password ? password : "") < 0) {
     dc_log(DC_LOG_ERROR, "Authentication failed");

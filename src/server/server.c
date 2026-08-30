@@ -687,6 +687,22 @@ void remove_disconnected_player(ArgsBroadcastGameState_t *args, const int8_t id)
    * player_count and end the hand for everyone else (observer-quit regression). */
   const bool was_in = p->in;
 
+  /* Hold the seat and the stack for a grace window (#112) rather than handing
+     both back immediately: a blip, a crash, or quitting and restarting should
+     not cost a player their chips, and the seat must not be taken meanwhile.
+     This runs only for an established client: join-time rejections go through
+     do_socket_cleanup instead, so there is no need to test for a completed
+     join here. kick/ban release the hold right after this returns, since a
+     removed player must not be able to reclaim the seat. */
+  {
+    HeldSeat_t *h = &args->held[id];
+    h->active = true;
+    memcpy(h->token, args->session_token[id], RECONNECT_TOKEN_LEN);
+    snprintf(h->nick, sizeof h->nick, "%s", p->nick);
+    h->coins = p->coins;
+    h->deadline = dc_get_ticks() + RECONNECT_GRACE_MS;
+  }
+
   // Reset player info
   p->coins = args->config->starting_coins;
   p->winner = false;
@@ -717,6 +733,32 @@ void remove_disconnected_player(ArgsBroadcastGameState_t *args, const int8_t id)
   broadcast_game_state(args);
 }
 
+/* Give a held seat up immediately: the occupant is not coming back to it, or
+   the hold has run out. Zeroes the token too so a leaked copy is worthless. */
+void release_held_seat(ArgsBroadcastGameState_t *args, int8_t id) {
+  if (id < 0 || id >= MAX_CLIENTS)
+    return;
+  memset(&args->held[id], 0, sizeof(args->held[id]));
+  sodium_memzero(args->session_token[id], RECONNECT_TOKEN_LEN);
+}
+
+/* Free any seat whose grace window has run out. Called once per main-loop pass
+   from register_new_client, so expiry keeps working between hands as well as
+   during one. */
+void reap_expired_holds(ArgsBroadcastGameState_t *args) {
+  const uint32_t now = dc_get_ticks();
+  for (int8_t i = 0; i < MAX_CLIENTS; i++) {
+    if (!args->held[i].active)
+      continue;
+    /* Difference, not absolute values: dc_get_ticks() wraps about every 49 days. */
+    if ((int32_t)(now - args->held[i].deadline) >= 0) {
+      dc_log(DC_LOG_INFO, "Seat %d released: %s did not return within %u ms", i,
+             args->held[i].nick, RECONNECT_GRACE_MS);
+      release_held_seat(args, i);
+    }
+  }
+}
+
 void kick_player(ArgsBroadcastGameState_t *args, int8_t id) {
   if (id < 0 || id >= MAX_CLIENTS || !args->slot_taken[id])
     return;
@@ -727,6 +769,7 @@ void kick_player(ArgsBroadcastGameState_t *args, int8_t id) {
      state broadcast right after it carries nothing new. */
   broadcast_status_message(args, status_str);
   remove_disconnected_player(args, id);
+  release_held_seat(args, id);
 }
 
 void ban_player(ArgsBroadcastGameState_t *args, int8_t id) {
@@ -745,6 +788,7 @@ void ban_player(ArgsBroadcastGameState_t *args, int8_t id) {
   snprintf(status_str, sizeof status_str, _("%s was banned"), args->game_state->player[id].nick);
   broadcast_status_message(args, status_str);
   remove_disconnected_player(args, id);
+  release_held_seat(args, id);
 }
 
 /* The largest admin frame payload the loop below accepts; frames claiming more
@@ -1224,6 +1268,7 @@ static ELoop_t service_pending_handshakes(ArgsBroadcastGameState_t *args) {
 }
 
 ELoop_t register_new_client(ArgsBroadcastGameState_t *args) {
+  reap_expired_holds(args);
   service_lan_discovery(args, true);
   service_registry_publish(args);
   // checks for and accepts incoming connections
@@ -1312,11 +1357,43 @@ static ELoop_t complete_join_handshake(ArgsBroadcastGameState_t *args, tcpme_soc
     return LOOP_CONTINUE;
   }
 
+  /* The reconnect claim comes before the seat is chosen, because it decides
+     WHICH seat: a returning player must get their own back, not the next free
+     one. Read outside the dc_test_mode gate below so the byte order on the wire
+     is the same in both modes (the client sends it unconditionally too). */
+  unsigned char claim[RECONNECT_TOKEN_LEN];
+  if (recv_reconnect_token(new_client, claim) != 0) {
+    dc_log(DC_LOG_WARN, "Failed to receive reconnect token");
+    tcpme_close(new_client);
+    return LOOP_CONTINUE;
+  }
+
   int8_t slot = -1;
-  for (int8_t i = 0; i < MAX_CLIENTS; i++) {
-    if (!args->slot_taken[i]) {
-      slot = i;
-      break;
+  bool reclaimed = false;
+  if (!reconnect_token_is_zero(claim)) {
+    for (int8_t i = 0; i < MAX_CLIENTS; i++) {
+      /* sodium_memcmp, not memcmp: the comparison is against a secret and must
+         not leak how much of it matched via timing. */
+      if (args->held[i].active &&
+          sodium_memcmp(args->held[i].token, claim, RECONNECT_TOKEN_LEN) == 0) {
+        slot = i;
+        reclaimed = true;
+        break;
+      }
+    }
+  }
+  sodium_memzero(claim, sizeof claim);
+
+  /* An unknown or expired claim is NOT an error -- the server forgets holds on
+     expiry and on restart, so a client presenting a stale token must simply
+     join normally rather than be turned away. Held seats are skipped: they are
+     occupied as far as allocation is concerned, just not by anyone present. */
+  if (slot == -1) {
+    for (int8_t i = 0; i < MAX_CLIENTS; i++) {
+      if (!args->slot_taken[i] && !args->held[i].active) {
+        slot = i;
+        break;
+      }
     }
   }
 
@@ -1334,6 +1411,15 @@ static ELoop_t complete_join_handshake(ArgsBroadcastGameState_t *args, tcpme_soc
     slot_id->id = slot;
     slot_id->is_connected = true;
     args->player_timeouts[slot] = 0;
+    if (reclaimed) {
+      /* Restore the stack before anything can overwrite it. The nick is not
+         restored: the client sends its own below, and a player who renamed
+         between sessions should keep the new name. */
+      slot_id->coins = args->held[slot].coins;
+      dc_log(DC_LOG_INFO, "Seat %d reclaimed by %s with %d coins", slot, args->held[slot].nick,
+             slot_id->coins);
+      release_held_seat(args, slot);
+    }
     if (args->game_state->at_menu)
       slot_id->in = true;
     else {
@@ -1345,6 +1431,19 @@ static ELoop_t complete_join_handshake(ArgsBroadcastGameState_t *args, tcpme_soc
         args->real_hand[slot].card[i] = DH_card_null;
       memcpy(&args->game_state->player[slot].hand, &args->real_hand[slot],
              sizeof(POKEVAL_Hand_9));
+    }
+
+    /* Issue a fresh token for this session, right after the header exchange and
+       before anything mode-dependent, so the wire order is identical whether or
+       not dc_test_mode skips the password and nick steps below. Minting one per
+       join rather than reusing the presented one keeps it single-use: a spent
+       token cannot be replayed to take the seat later. */
+    randombytes_buf(args->session_token[slot], RECONNECT_TOKEN_LEN);
+    if (send_reconnect_token(new_client, args->session_token[slot]) != 0) {
+      dc_log(DC_LOG_ERROR, "Failed to send reconnect token");
+      do_socket_cleanup(new_client, args->socket_set, args->slot_taken, slot,
+                        &args->game_state->player[slot], &args->clients[slot]);
+      return LOOP_CONTINUE;
     }
 
     if (!dc_test_mode) {
@@ -1549,6 +1648,11 @@ int run_server(const CliArgs_t *cli_args, Path_t *path) {
 
   int game_started = 0;
   bool slot_taken[MAX_CLIENTS] = {false};
+  /* Seats held for dropped players and the live per-session reconnect tokens
+     (#112). Both are per-process and deliberately not persisted: a server
+     restart forgets every hold, which is the documented limit of the feature. */
+  HeldSeat_t held[MAX_CLIENTS] = {0};
+  unsigned char session_token[MAX_CLIENTS][RECONNECT_TOKEN_LEN] = {{0}};
   uint32_t dealer_timeout_start = 0;
   uint32_t autodeal_start = 0;
 
@@ -1593,6 +1697,8 @@ int run_server(const CliArgs_t *cli_args, Path_t *path) {
         .pending = pending,
         .pending_count = &pending_count,
         .pending_set = pending_set,
+        .held = held,
+        .session_token = session_token,
     };
     memcpy(args_broadcast_game_state.ban_list, session_ban_list, sizeof(session_ban_list));
     memcpy(args_broadcast_game_state.player_timeouts, session_player_timeouts,

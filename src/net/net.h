@@ -174,6 +174,16 @@ int recv_all_tcp(tcpme_socket_t sock, void *buf, size_t len);
  * Use it for every in-game read that follows a readiness check. */
 int recv_frame_bounded(tcpme_socket_t sock, void *buf, size_t len);
 
+/* Reconnect-token exchange (#112), both ends of the join handshake.
+ *
+ * The client sends the token it holds for this server, or all zeros when it has
+ * none; the server replies after the nick with the token to present next time.
+ * An all-zero token means "no claim" and is never a valid hold, so a stale or
+ * unknown one simply falls through to a normal join rather than failing it. */
+int send_reconnect_token(tcpme_socket_t sock, const unsigned char token[RECONNECT_TOKEN_LEN]);
+int recv_reconnect_token(tcpme_socket_t sock, unsigned char out[RECONNECT_TOKEN_LEN]);
+bool reconnect_token_is_zero(const unsigned char token[RECONNECT_TOKEN_LEN]);
+
 ERecvStatus_t recv_game_state(SocketContext_t *socket_context, GameState_t *game_state,
                               ClientState_t *client_state, const int8_t id);
 

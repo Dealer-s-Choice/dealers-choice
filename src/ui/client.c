@@ -398,6 +398,21 @@ bool get_socket_context_and_run_client(PlayerConfig_t *player_config, const CliA
   if (send_protocol_header(sock, 0) != 0)
     goto cleanup;
 
+  {
+    /* Reconnect with stack (#112). Present whatever token this process was last
+       issued -- all zeros on a first connection -- and keep the one the server
+       issues in return. Held in memory only, so it survives a dropped socket
+       and the trip back through the connect menu, but not the process exiting.
+       A stale or unknown token is not an error: the server falls through to a
+       normal join, so there is nothing to handle here. */
+    static unsigned char g_reconnect_token[RECONNECT_TOKEN_LEN];
+    if (send_reconnect_token(sock, g_reconnect_token) != 0 ||
+        recv_reconnect_token(sock, g_reconnect_token) != 0) {
+      dc_log(DC_LOG_ERROR, "Failed to exchange reconnect token with server");
+      goto cleanup;
+    }
+  }
+
   if (!dc_test_mode) {
     const char *env_pw = getenv("DC_PASSWORD");
     const char *password = env_pw ? env_pw : player_config->password;
