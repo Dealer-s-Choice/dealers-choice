@@ -74,12 +74,28 @@ bool dc_rate_limit_check_at(const char *ip_str, uint32_t max_per_minute, uint32_
   if ((uint32_t)count >= max_per_minute)
     return false;
 
+  /* Pick the slot to record this attempt in. Skipping the insert when the table
+     was full made the limiter fail OPEN under exactly the load it exists for: an
+     IP not already present could never accumulate a count, so it was never
+     limited. An IP is blocked once it holds max_per_minute rows, so filling the
+     table takes only RATE_LIMIT_CAPACITY / max_per_minute addresses -- about 52
+     at the default of 10, trivial for a scanner farm. Evicting the oldest entry
+     keeps every IP countable instead. */
+  int idx;
   if (conn_attempts_count < RATE_LIMIT_CAPACITY) {
-    strncpy(conn_attempts[conn_attempts_count].ip, ip_str, TCPME_ADDRSTRLEN - 1);
-    conn_attempts[conn_attempts_count].ip[TCPME_ADDRSTRLEN - 1] = '\0';
-    conn_attempts[conn_attempts_count].ticks = now;
-    conn_attempts_count++;
+    idx = conn_attempts_count++;
+  } else {
+    idx = 0;
+    for (int i = 1; i < conn_attempts_count; i++) {
+      /* Difference, not absolute values: dc_get_ticks() wraps about every 49
+         days and the entries can straddle the wrap. */
+      if ((int32_t)(conn_attempts[i].ticks - conn_attempts[idx].ticks) < 0)
+        idx = i;
+    }
   }
+  strncpy(conn_attempts[idx].ip, ip_str, TCPME_ADDRSTRLEN - 1);
+  conn_attempts[idx].ip[TCPME_ADDRSTRLEN - 1] = '\0';
+  conn_attempts[idx].ticks = now;
 
   return true;
 }

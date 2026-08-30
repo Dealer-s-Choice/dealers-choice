@@ -74,6 +74,28 @@ static void test_sliding_window_recovery(void) {
   assert(!dc_rate_limit_check_at("172.16.0.1", 3, WINDOW_MS + 3));
 }
 
+/* The table used to skip the insert once full, which made the limiter fail
+ * OPEN: an address it had not already seen accumulated nothing and was never
+ * capped. Filling it takes only RATE_LIMIT_CAPACITY / max_per_minute addresses.
+ * The oldest entry is now evicted instead. */
+static void test_full_table_still_limits_a_new_ip(void) {
+  dc_rate_limit_reset();
+
+  /* 256 addresses x 2 rows each fills RATE_LIMIT_CAPACITY (512). All at t=0,
+     so nothing expires out from under the check below. */
+  for (int i = 0; i < 256; i++) {
+    char ip[64];
+    snprintf(ip, sizeof ip, "10.0.%d.1", i);
+    assert(dc_rate_limit_check_at(ip, 2, 0));
+    assert(dc_rate_limit_check_at(ip, 2, 0));
+  }
+
+  /* An address the full table has never seen still gets counted and capped. */
+  assert(dc_rate_limit_check_at("9.9.9.9", 2, 1));
+  assert(dc_rate_limit_check_at("9.9.9.9", 2, 1));
+  assert(!dc_rate_limit_check_at("9.9.9.9", 2, 1));
+}
+
 static void test_higher_max_admits_more(void) {
   dc_rate_limit_reset();
 
@@ -89,5 +111,6 @@ test_burst_then_reject();
 test_per_ip_counters_are_independent();
 test_sliding_window_recovery();
 test_higher_max_admits_more();
+test_full_table_still_limits_a_new_ip();
 fprintf(stderr, "rate-limit tests: OK\n");
 _MAIN_TAIL_
