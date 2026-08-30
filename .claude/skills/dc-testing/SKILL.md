@@ -17,11 +17,11 @@ one, ASan, TSan, gcc), so there is no single correct name. List them with:
 ls -d */meson-info 2>/dev/null | xargs -n1 dirname
 ```
 
-## Three traps that invalidate a run
+## Four traps that invalidate a run
 
 Each of these produced a confidently wrong conclusion in one session (issue #368).
 They share a shape: **the test runs, prints plausible output, and is not measuring
-the thing you changed.** Rule all three out before believing a result — especially
+the thing you changed.** Rule all four out before believing a result — especially
 a result that says your fix did not work.
 
 ### 1. A stale server answers for the one you just started
@@ -95,6 +95,19 @@ strings <builddir>/dealers-choice-server | grep -c MY_MARKER
 An unchanged mtime after a compile is itself information: either the edit did not
 land, or it was to a file this target does not build.
 
+### 4. A backgrounded job's exit status is the shell's, not the script's
+
+Running `./scripts/soak.sh > log 2>&1; echo "exit=$?"` in the background reports
+the status of the **whole shell line**, and the trailing `echo` always succeeds.
+The completion notice then says exit code 0 over a script that exited 1. In one
+session this turned a soak that never started into an apparent pass, and led to a
+non-existent bug being reported in `soak.sh` (its `exit 1` at line 66 was correct
+all along).
+
+Read the script's own status out of the job's output file, or drop the trailing
+`echo` so the line's status is the script's. Either way the log still decides —
+see "Before claiming a result".
+
 ## Temporary instrumentation
 
 When behaviour disagrees with the source, print from the line in question instead
@@ -134,6 +147,65 @@ Reading the output:
 
 The wire format is documented at the top of `src/net/lan_discovery.c` and the
 probe hardcodes it, so a format change needs the same edit in both.
+
+## Silent-connection probe (join-path stalls)
+
+`silent-connection-probe.py` beside this file measures whether a connection that
+sends nothing can freeze the server loop — the #363 failure. It opens N silent
+connections, times a real handshake against them, and checks the server reaps
+them.
+
+```sh
+python3 .claude/skills/dc-testing/silent-connection-probe.py [--port 22999] [--silent 3]
+```
+
+It crafts the 11-byte header itself (`DCPROTO\0`, big-endian version from
+`GAME_PROTOCOL_VERSION` in `src/net/net.h`, flags) and sets `PROTO_FLAG_PROBE`,
+so it completes a handshake **without taking a slot** and works against a full
+server. A protocol-version bump needs the constant updated here too.
+
+Passing on trunk at the time of writing: 7.8 ms baseline, 40.2 ms with three
+silent connections held, 3/3 reaped at `HANDSHAKE_DEADLINE_MS` (5 s). A
+regression pushes the timed probe toward `SOCKET_IO_TIMEOUT_MS` (30 s).
+
+The same shape reaches the in-game path (#373): send a *partial* frame rather
+than nothing and the read is bounded by `IN_GAME_FRAME_TIMEOUT_MS` (2 s),
+measured at 1755 ms. Testing that needs a fully seated client — header, nonce,
+password and nick — which this probe does not do.
+
+## Reconnect probe (#112 seat + stack hold)
+
+`reconnect-probe.py` beside this file checks that a dropped player gets their
+seat and chips back. Against a `DC_TEST=1` server the password and nick steps
+are skipped on both ends, so a join is only the 11-byte header, a 32-byte
+reconnect claim, and the 32-byte token the server issues back — which is little
+enough to speak from Python.
+
+```sh
+cd <builddir> && DC_TEST=1 ./dealers-choice-server --port 22999 --verbose \
+  --disable-publish > /tmp/dc_reconnect_server.log 2>&1 &
+python3 .claude/skills/dc-testing/reconnect-probe.py --port 22999
+```
+
+It asserts four things, and all four are the actual promise rather than proxies
+for it: a non-zero token is issued; a *different* client joining during the hold
+does **not** get the held seat; the original reclaims its own seat and chip count
+(`Seat 0 reclaimed by <nick> with <n> coins` in the server log); and a token the
+server has never seen joins normally instead of being refused. It also fails if
+the server hands back the same token twice, which would make it replayable.
+
+`--case eviction` covers the other half: it fills every seat, drops one, and
+checks that an arriving player displaces the longest-waiting hold instead of
+being turned away (`given up early` in the server log). That case needs a
+**freshly started server** -- every earlier connection leaves a hold of its own,
+so the seats must start empty for the table to fill predictably.
+
+Passing on trunk at the time of writing: held seat kept while another client took
+slot 1, reclaim of slot 0 with 20000 coins, unknown token admitted as slot 2, and
+a full table admitting a late joiner by giving up seat 0.
+
+Both this and the silent-connection probe hardcode `GAME_PROTOCOL_VERSION` and
+the token length, so a protocol bump needs the constants updated here too.
 
 ## Running the binaries
 
@@ -182,6 +254,20 @@ not break anything.
 `scripts/soak.sh` drives bots against a server for several minutes; run it after
 server-side changes and **read the log**, not just the exit status. Background
 long runs and tee to a log file so progress can be watched with `tail -f`.
+
+Two things it needs on this machine:
+
+- `DC_BUILD` defaults to `_build_asan`. Point it at the build you actually made:
+  `DC_BUILD=<repo>/_build_dealers_choice ./scripts/soak.sh`.
+- A `b_sanitize` build will not start under it. The server is launched through
+  `stdbuf` (line 63), which `LD_PRELOAD`s ahead of the ASan runtime, and ASan
+  refuses: `ASan runtime does not come first in initial library list`. The driver
+  log says only `server failed to start`; the reason is the single line in
+  `$SRVLOG`. Pass the full options string with the check disabled:
+
+```sh
+ASAN_OPTIONS="halt_on_error=1:abort_on_error=1:print_stacktrace=1:detect_leaks=0:verify_asan_link_order=0" ./scripts/soak.sh
+```
 
 ## Before claiming a result
 
