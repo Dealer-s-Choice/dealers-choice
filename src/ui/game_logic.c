@@ -636,31 +636,60 @@ static int word_wrap_status(TTF_Font *font, const char *text, int max_w, char ou
   return n;
 }
 
-static void render_text_pot(const char *text, const SDL_Point center, const Font_t *font) {
-  if (!text)
-    text = "";
+/* Cached glyphs for the pot amount. The pot is drawn every frame but only
+ * changes when someone bets, so rasterizing per frame burned a surface malloc
+ * and a GPU upload ~60x/sec for an unchanged string. Rebuild on value change
+ * only; w/h are kept because the background circle is sized from them. */
+typedef struct {
+  SDL_Texture *texture;
+  int w;
+  int h;
+  uint32_t value;
+} PotText_t;
 
-  SDL_Surface *surface = TTF_RenderUTF8_Blended(font->fonts[FONT_DEFAULT_BOLD], *text ? text : " ",
-                                                get_color(COLOR_BLACK));
-  if (!surface) {
-    dc_log(DC_LOG_ERROR, "TTF_RenderUTF8_Blended error: %s", TTF_GetError());
-    return;
+static void pot_text_destroy(PotText_t *cache) {
+  if (cache->texture) {
+    SDL_DestroyTexture(cache->texture);
+    cache->texture = NULL;
   }
+}
 
+static void render_text_pot(PotText_t *cache, uint32_t pot, const SDL_Point center,
+                            const Font_t *font) {
   SDL_Renderer *renderer = g_sdl_context->renderer;
-  SDL_Texture *texture = SDL_CreateTextureFromSurface(renderer, surface);
-  if (!texture) {
-    SDL_FreeSurface(surface);
-    dc_log(DC_LOG_ERROR, "SDL_CreateTextureFromSurface error: %s", SDL_GetError());
-    return;
-  }
 
-  int text_w = surface->w;
-  int text_h = surface->h;
+  /* A NULL texture also means "last rebuild failed", so a transient TTF/SDL
+   * error retries on the next frame rather than blanking the pot for good. */
+  if (!cache->texture || cache->value != pot) {
+    char text[16];
+    snprintf(text, sizeof text, "%" PRIu32, pot);
+
+    SDL_Surface *surface =
+        TTF_RenderUTF8_Blended(font->fonts[FONT_DEFAULT_BOLD], text, get_color(COLOR_BLACK));
+    if (!surface) {
+      dc_log(DC_LOG_ERROR, "TTF_RenderUTF8_Blended error: %s", TTF_GetError());
+      return;
+    }
+
+    SDL_Texture *texture = SDL_CreateTextureFromSurface(renderer, surface);
+    if (!texture) {
+      SDL_FreeSurface(surface);
+      dc_log(DC_LOG_ERROR, "SDL_CreateTextureFromSurface error: %s", SDL_GetError());
+      return;
+    }
+
+    pot_text_destroy(cache);
+    cache->texture = texture;
+    cache->w = surface->w;
+    cache->h = surface->h;
+    cache->value = pot;
+
+    SDL_FreeSurface(surface);
+  }
 
   /* Background circle */
   int PAD = g_layout_cfg.indicator_pad;
-  int radius = (text_w > text_h ? text_w : text_h) / 2 + PAD;
+  int radius = (cache->w > cache->h ? cache->w : cache->h) / 2 + PAD;
   if (radius < g_layout_cfg.indicator_min_r)
     radius = 24;
 
@@ -669,12 +698,9 @@ static void render_text_pot(const char *text, const SDL_Point center, const Font
   draw_filled_circle(renderer, center.x, center.y, radius);
 
   /* Text rect centered */
-  SDL_Rect text_rect = {center.x - text_w / 2, center.y - text_h / 2, text_w, text_h};
+  SDL_Rect text_rect = {center.x - cache->w / 2, center.y - cache->h / 2, cache->w, cache->h};
 
-  SDL_RenderCopy(renderer, texture, NULL, &text_rect);
-
-  SDL_FreeSurface(surface);
-  SDL_DestroyTexture(texture);
+  SDL_RenderCopy(renderer, cache->texture, NULL, &text_rect);
 }
 EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
                                      SocketContext_t *socket_context,
@@ -799,6 +825,7 @@ EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
   SDL_Texture *coin_tex_front = n_coin_images > 0 ? coin_textures[which_coin] : NULL;
 
   SDL_Texture *vignette_tex = create_vignette_texture(sdl_context->renderer);
+  PotText_t pot_text = {0};
 
   TextWidget_t *open_seat_tw[MAX_PLAYERS] = {0};
   for (int i = 0; i < MAX_PLAYERS; i++)
@@ -1627,9 +1654,7 @@ EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
                           my_turn && !game_state->winner_declared);
     }
 
-    char buffer[128];
-    snprintf(buffer, sizeof(buffer), "%" PRIu32, game_state->pot);
-    render_text_pot(buffer, g_layout.table_center, font);
+    render_text_pot(&pot_text, game_state->pot, g_layout.table_center, font);
 
     /* CTRL-H: show the best rank of your own hand, lower-right corner (#61). */
     if (g_show_hand_rank && hand_rank_tw) {
@@ -1881,6 +1906,7 @@ EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
         client_state.n_cards_selected++;
   }
   SDL_DestroyTexture(vignette_tex);
+  pot_text_destroy(&pot_text);
   for (int i = 0; i < MAX_PLAYERS; i++)
     if (open_seat_tw[i])
       ui_widget_destroy(&open_seat_tw[i]->base);
