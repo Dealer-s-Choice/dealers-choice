@@ -63,23 +63,23 @@
 
    NOT the config dir: this is neither configuration nor durable data, it is a
    secret with a two-minute life, and people keep ~/.config in dotfile repos and
-   backups. canfigger_cache_dir matches the semantics instead -- XDG cache is
-   explicitly deletable at any time without loss, which is true here (losing the
-   token costs a reclaim, never a join) -- and it resolves CSIDL_LOCAL_APPDATA on
-   Windows rather than the roaming APPDATA that canfigger_config_dir uses. A
-   machine-local token must not be synced to the user's other machines.
+   backups.
 
-   XDG_RUNTIME_DIR is preferred where the session provides one: it is user-only
-   and cleared at logout, so a stale credential does not outlive the login. That
-   is the one location canfigger has no helper for; everything else, including
-   all of Windows, comes from the library. */
+   canfigger_runtime_dir is XDG_RUNTIME_DIR, which is user-only and cleared at
+   logout -- and it verifies the directory really is ours (exists, owned by us,
+   mode 0700) rather than trusting the variable, so a token is never written
+   somewhere another user could read it. It returns NULL when there is no usable
+   runtime directory, which is ordinary rather than an error: cron, container and
+   Windows sessions have none.
+
+   canfigger_cache_dir is the fallback. XDG cache is explicitly deletable at any
+   time without loss, which is true here (losing the token costs a reclaim, never
+   a join), and it resolves CSIDL_LOCAL_APPDATA on Windows rather than the
+   roaming APPDATA that config_dir would give -- a machine-local token must not
+   be synced to the user's other machines. */
 static char *token_dir(void) {
-#ifndef _WIN32
-  const char *run = getenv("XDG_RUNTIME_DIR");
-  if (run && *run)
-    return canfigger_path_join(run, DEALERSCHOICE_NAME);
-#endif
-  return canfigger_cache_dir(DEALERSCHOICE_NAME);
+  char *dir = canfigger_runtime_dir(DEALERSCHOICE_NAME);
+  return dir ? dir : canfigger_cache_dir(DEALERSCHOICE_NAME);
 }
 
 /* The filename is a hash of server+nick rather than those values verbatim: a

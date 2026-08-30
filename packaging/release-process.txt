@@ -25,6 +25,17 @@ test locally with simulated lag
   has no manual subproject checkout, so meson re-fetches each subproject at its
   pinned .wrap revision.
 
+- If a .wrap pins a COMMIT SHA rather than a tag, that subproject has
+  unreleased code DC depends on. Release THAT project first, then re-pin the
+  .wrap to its new tag before building the dist -- shipping a release that
+  points at an untagged commit makes the tarball depend on a revision no
+  distro can package against.
+  Currently: subprojects/canfigger.wrap pins a commit for
+  canfigger_runtime_dir() (used by src/reconnect_store.c). meson.build's
+  `version: '>=0.3.3'` floor assumes that canfigger release exists, so until it
+  is tagged, a distro cannot build DC against a system canfigger at all -- only
+  against the bundled subproject.
+
 - Ensure all CI workflows are passing on trunk
 - Checkout release branch
 - Update ChangeLog: set the release date and version (replace "in progress")

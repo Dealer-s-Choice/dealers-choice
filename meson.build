@@ -71,7 +71,11 @@ endif
 
 canfigger_dep = dependency(
   'canfigger',
-  version: '>=0.3.1',
+  # 0.3.3 for canfigger_runtime_dir(), used by src/reconnect_store.c. This also
+  # guards the SYSTEM canfigger: a distro shipping 0.3.2 satisfies a lower bound
+  # and then fails to link, so the floor is what protects packagers, not the
+  # wrap pin (which only covers the subproject fallback).
+  version: '>=0.3.3',
   fallback: ['canfigger', 'canfigger_dep'],
   default_options: ['default_library=static'],
 )

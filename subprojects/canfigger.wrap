@@ -1,8 +1,12 @@
 [wrap-git]
 url = https://github.com/andy5995/canfigger.git
 
-revision = v0.3.2
-#revision = v0.3.0
+# Pinned to a commit rather than a tag: DC needs canfigger_runtime_dir(),
+# which is on trunk but not in any release yet. Move this to v0.3.3 once
+# that is tagged. A shallow clone of a commit id needs the server to allow
+# it; GitHub does (verified).
+revision = e92e92a965010b53e7b6d639793eebef9f9f08af
+#revision = v0.3.2
 depth = 1
 
 [provide]
