@@ -108,6 +108,15 @@ Read the script's own status out of the job's output file, or drop the trailing
 `echo` so the line's status is the script's. Either way the log still decides —
 see "Before claiming a result".
 
+**The same session hit trap 2 three more times, in a form the original entry does
+not cover:** `pgrep -f`/`pkill -f` match the *calling shell's* command line, and
+that line contains the pattern whenever the kill and a mention of the target are
+in one invocation — including a heredoc that merely WRITES a cleanup script. Exit
+code 144 with no other output is this. The bracket trick (`[d]ealers-choice`)
+does not save you, because the literal name still appears elsewhere on the line.
+Put the kill in a script file and invoke it as its own command, as
+`gui-cleanup.sh` does.
+
 ## Temporary instrumentation
 
 When behaviour disagrees with the source, print from the line in question instead
@@ -232,6 +241,47 @@ DEALERSCHOICE_DATADIR=/tmp/dc-inst/usr/local/share/dealers-choice ./dealers-choi
 
 `common.conf` is not installed, so that also exercises the absent-file branch in
 `get_common_registries`.
+
+## Driving the GUI on a virtual display
+
+The client can be launched, navigated and screenshotted without touching the
+real desktop, using Xvfb (`xorg-server-xvfb`). Everything happens on `:99`/`:98`,
+so nothing pops up in front of whoever is at the keyboard.
+
+```sh
+.claude/skills/dc-testing/gui-two-clients.sh        # 2 clients, one display each
+.claude/skills/dc-testing/gui-shot.sh 99 /tmp/a.png # capture display :99
+.claude/skills/dc-testing/gui-cleanup.sh            # kill clients + Xvfb
+```
+
+Verified end to end against a running server: launch, click Connect, reach the
+lobby, the dealer selects a game, the hand plays. Five things that each cost a
+wrong turn:
+
+- **`import -window <id>` returns solid BLACK** once the game's render context is
+  live. It works on the menus, which is what makes it convincing, then silently
+  yields black frames on the screen you actually wanted. Capture `root` and crop
+  to the window geometry instead — that is what `gui-shot.sh` does. On Xvfb the
+  root is only our own virtual screen, so the "never capture root" rule (which is
+  about not grabbing Andy's desktop) does not apply.
+- **One display per client.** Both clients open the same 1536x864 window at the
+  same position, so on a shared display a click lands on whichever is stacked on
+  top and driving the pair is a coin flip. Separate displays make each click
+  unambiguous.
+- **Read coordinates off a screenshot, not out of the source.** The logical canvas
+  is `LOGICAL_WIDTH` 1920 but the window is 1536x864, and `layout_action_buttons`
+  only sets `y` — the widths come from text metrics. A root-crop screenshot is
+  1:1 with window coordinates, which is what `xdotool mousemove --window` wants.
+- **Only the dealer can pick a game.** Clicking a game on the other client does
+  nothing and the screen says "Waiting for dealer to select game..." — check the
+  Dealer column before deciding a click failed.
+- **A sanitized build needs `ASAN_OPTIONS=verify_asan_link_order=0`**, same as the
+  soak.
+
+Worth it for RENDER bugs, which no unit test reaches — #113 (the hand-rank
+overlay that intermittently stops drawing) is exactly this shape. For input
+LOGIC, prefer a unit test: `tests/action_trigger.c` pins the action-button
+trigger rule with synthetic SDL_Events and needs no display at all.
 
 ## Match the test to the change
 
