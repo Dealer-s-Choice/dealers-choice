@@ -112,25 +112,45 @@ static int run_card_preview(SdlContext_t *sdl_context, Font_t *font, Path_t *pat
   return 0;
 }
 
-static void init_sdl_window(SdlContext_t *c, const char *title) {
-  SDL_Rect bounds;
-
-  if (SDL_GetDisplayBounds(0, &bounds) != 0) {
-    SDL_Log("SDL_GetDisplayBounds failed: %s", SDL_GetError());
-    exit(EXIT_FAILURE);
-  }
-
-  const float factor = 0.8f;
-  /* Largest 16:9 box inside the target area. Sizing straight from the display
-     bounds gave the window the DISPLAY's aspect, so on a 16:10 or 4:3 monitor the
-     logical 1920x1080 content was letterboxed from the very first frame and the
-     bars rendered as flat table-green bands (#333). */
-  int w = (int)(bounds.w * factor);
-  int h = (int)(bounds.h * factor);
+/* Largest 16:9 box inside `factor` of the given area. */
+static void fit_16_9(int avail_w, int avail_h, float factor, int *out_w, int *out_h) {
+  int w = (int)(avail_w * factor);
+  int h = (int)(avail_h * factor);
   if (w * 9 > h * 16)
     w = (h * 16 + 4) / 9;
   else
     h = (w * 9 + 8) / 16;
+  *out_w = w;
+  *out_h = h;
+}
+
+static void init_sdl_window(SdlContext_t *c, const char *title) {
+  SDL_Rect bounds;
+
+  /* Usable bounds excludes taskbars and docks, so the window can take a larger
+     share of the screen without landing under a panel. Not implemented on every
+     platform; fall back to the full display bounds. */
+  if (SDL_GetDisplayUsableBounds(0, &bounds) != 0 && SDL_GetDisplayBounds(0, &bounds) != 0) {
+    SDL_Log("SDL_GetDisplayUsableBounds/Bounds failed: %s", SDL_GetError());
+    exit(EXIT_FAILURE);
+  }
+
+  /* Largest 16:9 box inside the target area. Sizing straight from the display
+     bounds gave the window the DISPLAY's aspect, so on a 16:10 or 4:3 monitor the
+     logical 1920x1080 content was letterboxed from the very first frame and the
+     bars rendered as flat table-green bands (#333). */
+  int w = 0, h = 0;
+  fit_16_9(bounds.w, bounds.h, 0.8f, &w, &h);
+
+  /* Everything is drawn into a 1920x1080 logical space and scaled to the window,
+     so window height sets on-screen text size directly: the smallest UI text is
+     ptsize 22, giving 22 * h / 1080 pixels. Below roughly 600 that lands under
+     12px, where it is both small and losing contrast to antialiasing. A margin
+     is a luxury a large display can afford and a small one cannot -- on a 1024x768
+     screen the 0.8 factor costs the difference between about 9px and 11px -- so
+     take more of the screen only when the result would otherwise be too small. */
+  if (h < 600)
+    fit_16_9(bounds.w, bounds.h, 0.95f, &w, &h);
 
   c->window = SDL_CreateWindow(title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, w, h,
                                SDL_WINDOW_SHOWN | SDL_WINDOW_ALLOW_HIGHDPI);
