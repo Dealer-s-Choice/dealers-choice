@@ -23,9 +23,9 @@ pokeval builds on `deckhandler.h`. Cards are `DH_Card { int32_t face_val, suit; 
 - **`POKEVAL_ACE` is `DH_CARD_KING + 1 = 14`** — an *evaluator-internal* high-ace
   value, so an ace sorts above a king for straight/high detection. It is **not** a
   value any dealt card should carry outside the evaluator.
-- `face_rank(val)` (top of `pokeval.c`) maps `DH_CARD_ACE→14` **without mutating** —
+- `face_rank(val)` (`pokeval.c:46`) maps `DH_CARD_ACE→14` **without mutating** —
   use this pattern when you need ace-high ordering for a comparison. Contrast with
-  `POKEVAL_sort_hand`, which mutates (see below).
+  `POKEVAL_sort_hand_for_eval`, which mutates (see below).
 - **Suit ordering is context-dependent, a real footgun.** deckhandler's enum is
   hearts=0, diamonds=1, spades=2, clubs=3. pokeval's *poker* suit rank for stud
   bring-in is the opposite convention — clubs=0 (lowest, forced to bring in) …
@@ -34,19 +34,36 @@ pokeval builds on `deckhandler.h`. Cards are `DH_Card { int32_t face_val, suit; 
 
 ## The destructive-sort trap (read before touching sort or broadcast)
 
-`POKEVAL_sort_hand` sorts a 5-card hand descending **and rewrites every
-`DH_CARD_ACE`(1) to `POKEVAL_ACE`(14) in place**. That mutation is deliberate — the
-straight/high logic downstream wants aces at 14 — but it means **after sorting, the
-hand's aces read 14**, which is *not* a legal wire/display value.
+Verified against the code 2026-08-29; #360 reshaped this and the old advice was
+inverted in one place, so do not trust memory here.
 
-- This is the root of the ACE-leak bug: the server sorts a hand for evaluation
-  and, if it broadcasts that same struct, ships aces as `face_val = 14`
-  to any non-GUI client. `server.c:handle_sort_hand` restores the ace value before
-  broadcasting — **preserve that restore**, and if you add a new "sort then send"
-  path you must restore too (or sort a copy).
-- General rule: treat `POKEVAL_sort_hand` / `POKEVAL_sort_hand_lowball` as
-  **destructive, evaluator-only**. Never persist or transmit a hand you handed to
-  them without normalizing aces back to `DH_CARD_ACE`.
+- **`POKEVAL_sort_hand_for_eval`** sorts descending **and rewrites every
+  `DH_CARD_ACE`(1) to `POKEVAL_ACE`(14) in place**. This is the destructive one.
+  Deliberate — straight/high logic wants aces at 14 — but the hand afterwards
+  carries a face value that is not legal on the wire or on screen. Safe only on a
+  scratch copy.
+- **`POKEVAL_sort_hand_display`** is the same sort with the ace raise undone
+  before it returns. Anything that broadcasts, logs or renders wants this one.
+- **`POKEVAL_sort_hand_lowball` is NOT destructive** — despite what #360's text
+  claims. It orders via `lowball_value()`, a *read*, and swaps whole cards; it
+  never writes `face_val`. Checked directly: no assignment to `face_val` anywhere
+  in its body. Do not "fix" it.
+- **The best-5-of-N selectors return display-safe hands.**
+  `POKEVAL_hand5_from_hand7`, `..._wild` and `POKEVAL_hand5_omaha` sort candidates
+  for evaluation internally but restore aces before returning
+  (`restore_display_aces`), so a caller may broadcast or render the result
+  directly. The evaluators re-raise aces themselves, so feeding a returned hand
+  back into `POKEVAL_evaluate_hand()` is still correct.
+
+The old ACE-leak bug was a sort-then-broadcast path shipping `face_val = 14` to
+non-GUI clients. `handle_sort_hand` (**`src/server/round.c`**, not server.c) was
+the manual mitigation; it now just calls the display sort, and the restore lives
+inside pokeval where every caller gets it.
+
+**The rule that survives all of this:** `POKEVAL_ACE` is evaluator-internal. If a
+hand can leave the evaluator — wire, JSON log, screen — its aces must read
+`DH_CARD_ACE`. When adding a new sort or selector, put the restore in pokeval
+rather than asking each caller to remember, which is the coupling #360 removed.
 
 ## The evaluation surface (know which entry point you're in)
 
@@ -98,6 +115,10 @@ tie through `compare_wild_same_rank`, the wild-aware dispatch shared by
   `lowball.c`, `omaha.c`, `bringin.c`, `sort_hand.c`, …) for the exact hand you
   fixed — the fuzzer finds regressions, the unit test pins the specific case.
 - If you touched sorting or any "evaluate then broadcast" path, re-check ace
-  normalization (destructive-sort trap above).
+  normalization (destructive-sort trap above). The pokeval unit tests pin the
+  contract in both directions: `sort_hand.c` expects `POKEVAL_ACE` back from
+  `_for_eval`, while `6-card-hand.c`/`7-card-hand.c` expect `DH_CARD_ACE` from the
+  selectors. If a change flips one of those, decide which contract you meant
+  before editing the expectation.
 - Keep evaluator-internal numbering (`POKEVAL_ACE`) out of anything that leaves the
   evaluator.
