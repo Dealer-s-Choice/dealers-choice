@@ -550,7 +550,7 @@ int menu_display_connect(PlayerConfig_t *player_config, char *host_str, uint16_t
           reg_connect[i]->base.hovered = diamond_button_hit(reg_connect[i], mouse_pos.x, mouse_pos.y);
       if (e.type == SDL_QUIT) {
         running = false;
-      } else if (e.type == SDL_MOUSEBUTTONDOWN) {
+      } else if (e.type == SDL_MOUSEBUTTONDOWN && e.button.button == SDL_BUTTON_LEFT) {
         if (btn_quit_connect && SDL_PointInRect(&mouse_pos, &btn_quit_connect->base.rect) &&
             confirm_quit(font->fonts)) {
           SDL_Event quit = {.type = SDL_QUIT};
