@@ -476,6 +476,19 @@ static uint8_t compare_hands_5(POKEVAL_NeedComparing *need_comparing, uint8_t co
   return num_winners;
 }
 
+/* The "best 5 of N" selectors below sort candidates with
+ * POKEVAL_sort_hand_for_eval, which raises Aces to POKEVAL_ACE (14), and return
+ * the winning candidate. Handing that back leaves the caller holding cards with
+ * a face value that is illegal on the wire and on screen, and every caller then
+ * has to know to undo it -- exactly the coupling #360 set out to remove. Restore
+ * before returning so a selector always yields display-safe cards; the
+ * evaluators re-raise Aces themselves, so nothing is lost by doing it here. */
+static void restore_display_aces(POKEVAL_Hand_5 *hand) {
+  for (int i = 0; i < POKEVAL_HAND_SIZE; ++i)
+    if (hand->card[i].face_val == POKEVAL_ACE)
+      hand->card[i].face_val = DH_CARD_ACE;
+}
+
 POKEVAL_Hand_5 POKEVAL_hand5_from_hand7(const POKEVAL_Hand_9 *src) {
   // Count valid (non-null) cards
   size_t n = 0;
@@ -487,6 +500,7 @@ POKEVAL_Hand_5 POKEVAL_hand5_from_hand7(const POKEVAL_Hand_9 *src) {
     POKEVAL_Hand_5 dest = {0};
     for (size_t i = 0; i < n; ++i)
       dest.card[i] = src->card[i];
+    restore_display_aces(&dest);
     return dest;
   }
 
@@ -529,6 +543,7 @@ POKEVAL_Hand_5 POKEVAL_hand5_from_hand7(const POKEVAL_Hand_9 *src) {
           best_hand = candidate;
       }
     }
+    restore_display_aces(&best_hand);
     return best_hand;
   }
 
@@ -571,6 +586,7 @@ POKEVAL_Hand_5 POKEVAL_hand5_from_hand7(const POKEVAL_Hand_9 *src) {
     }
   }
 
+  restore_display_aces(&best_hand);
   return best_hand;
 }
 
@@ -880,6 +896,7 @@ POKEVAL_Hand_5 POKEVAL_hand5_from_hand7_wild(const POKEVAL_Hand_9 *src, int32_t 
     POKEVAL_Hand_5 dest = {0};
     for (size_t i = 0; i < n; i++)
       dest.card[i] = src->card[i];
+    restore_display_aces(&dest);
     return dest;
   }
 
@@ -898,6 +915,7 @@ POKEVAL_Hand_5 POKEVAL_hand5_from_hand7_wild(const POKEVAL_Hand_9 *src, int32_t 
       memcpy(candidate.card, temp, sizeof(temp));
       update_best_wild(&best_hand, &best_rank, candidate, wild_face);
     }
+    restore_display_aces(&best_hand);
     return best_hand;
   }
 
@@ -914,6 +932,7 @@ POKEVAL_Hand_5 POKEVAL_hand5_from_hand7_wild(const POKEVAL_Hand_9 *src, int32_t 
     }
   }
 
+  restore_display_aces(&best_hand);
   return best_hand;
 }
 
@@ -996,6 +1015,7 @@ POKEVAL_Hand_5 POKEVAL_hand5_omaha(const POKEVAL_Hand_9 *src) {
       }
     }
   }
+  restore_display_aces(&best_hand);
   return best_hand;
 }
 

@@ -1,3 +1,7 @@
+/* expected_cards use DH_CARD_ACE, not POKEVAL_ACE: the selectors return
+   display-safe cards, so an Ace comes back as 1 even though it sorted as 14
+   during evaluation. POKEVAL_sort_hand_for_eval still yields 14 -- see
+   tests/sort_hand.c. */
 #include "00_test.h"
 
 _MAIN_HEAD_
@@ -80,7 +84,7 @@ TestCase cases[] = {
         }},
         .expected_rank = POKEVAL_THREE_OF_A_KIND,
         .expected_cards =
-            (const int[]){POKEVAL_ACE, DH_CARD_KING, DH_CARD_KING, DH_CARD_KING, DH_CARD_JACK},
+            (const int[]){DH_CARD_ACE, DH_CARD_KING, DH_CARD_KING, DH_CARD_KING, DH_CARD_JACK},
         .description = "Three of a Kind: Kings (Ace kicker must be selected, not Three)",
     },
     {
@@ -97,7 +101,7 @@ TestCase cases[] = {
         }},
         .expected_rank = POKEVAL_FLUSH,
         .expected_cards =
-            (const int[]){POKEVAL_ACE, DH_CARD_KING, DH_CARD_QUEEN, DH_CARD_JACK, DH_CARD_NINE},
+            (const int[]){DH_CARD_ACE, DH_CARD_KING, DH_CARD_QUEEN, DH_CARD_JACK, DH_CARD_NINE},
         .description = "Flush: 6 same-suit cards, picks 5 highest",
     },
     {
@@ -113,7 +117,7 @@ TestCase cases[] = {
         }},
         .expected_rank = POKEVAL_FULL_HOUSE,
         .expected_cards =
-            (const int[]){POKEVAL_ACE, POKEVAL_ACE, POKEVAL_ACE, DH_CARD_KING, DH_CARD_KING},
+            (const int[]){DH_CARD_ACE, DH_CARD_ACE, DH_CARD_ACE, DH_CARD_KING, DH_CARD_KING},
         .description = "Full House: Aces over Kings (must pick Kings over Queens as the pair)",
     },
     {
@@ -129,7 +133,7 @@ TestCase cases[] = {
         }},
         .expected_rank = POKEVAL_TWO_PAIR,
         .expected_cards =
-            (const int[]){POKEVAL_ACE, POKEVAL_ACE, DH_CARD_KING, DH_CARD_KING, DH_CARD_QUEEN},
+            (const int[]){DH_CARD_ACE, DH_CARD_ACE, DH_CARD_KING, DH_CARD_KING, DH_CARD_QUEEN},
         .description = "Two Pair: A A K K with Queen kicker (not Jack or Two)",
     },
     {
@@ -161,7 +165,7 @@ TestCase cases[] = {
         }},
         .expected_rank = POKEVAL_FOUR_OF_A_KIND,
         .expected_cards =
-            (const int[]){POKEVAL_ACE, POKEVAL_ACE, POKEVAL_ACE, POKEVAL_ACE, DH_CARD_KING},
+            (const int[]){DH_CARD_ACE, DH_CARD_ACE, DH_CARD_ACE, DH_CARD_ACE, DH_CARD_KING},
         .description = "Four of a Kind: Aces with King kicker (not Queen)",
     },
     {
@@ -177,7 +181,7 @@ TestCase cases[] = {
         }},
         .expected_rank = POKEVAL_PAIR,
         .expected_cards =
-            (const int[]){POKEVAL_ACE, POKEVAL_ACE, DH_CARD_KING, DH_CARD_QUEEN, DH_CARD_JACK},
+            (const int[]){DH_CARD_ACE, DH_CARD_ACE, DH_CARD_KING, DH_CARD_QUEEN, DH_CARD_JACK},
         .description = "One Pair: Aces with K Q J kickers (not Nine or Two)",
     },
     {

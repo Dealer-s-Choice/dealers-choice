@@ -166,19 +166,7 @@ static void mark_winning_cards(CardWidget_t card_context[MAX_PLAYERS][MAX_HAND_S
         if (DH_is_card_null(card) || DH_is_card_back(card))
           continue;
         for (int b = 0; b < POKEVAL_HAND_SIZE; b++) {
-          /* Still required, despite #360 -- do not delete as leftover.
-           * POKEVAL_hand5_from_hand7 sorts each candidate with
-           * POKEVAL_sort_hand_for_eval and returns the winner, so `best` carries
-           * Aces as POKEVAL_ACE (14). `card` comes off the wire, where the
-           * server's handle_sort_hand has already restored them to DH_CARD_ACE
-           * (1) via the display sort -- so the two sides disagree on Aces and
-           * every ace-high hand would fail to highlight without this.
-           * (#360 split the sort functions but left hand5_from_hand7 returning
-           * evaluator values, undocumented in pokeval.h.) */
-          int32_t best_val =
-              (best.card[b].face_val == POKEVAL_ACE) ? DH_CARD_ACE : best.card[b].face_val;
-          int32_t card_val = (card.face_val == POKEVAL_ACE) ? DH_CARD_ACE : card.face_val;
-          if (card_val == best_val && card.suit == best.card[b].suit) {
+          if (card.face_val == best.card[b].face_val && card.suit == best.card[b].suit) {
             card_context[p][c].is_winning = true;
             break;
           }
@@ -199,10 +187,7 @@ static void mark_winning_cards(CardWidget_t card_context[MAX_PLAYERS][MAX_HAND_S
       if (DH_is_card_null(card) || DH_is_card_back(card))
         continue;
       for (int b = 0; b < POKEVAL_HAND_SIZE; b++) {
-        int32_t best_val =
-            (best.card[b].face_val == POKEVAL_ACE) ? DH_CARD_ACE : best.card[b].face_val;
-        int32_t card_val = (card.face_val == POKEVAL_ACE) ? DH_CARD_ACE : card.face_val;
-        if (card_val == best_val && card.suit == best.card[b].suit) {
+        if (card.face_val == best.card[b].face_val && card.suit == best.card[b].suit) {
           if (game_choice->card_slot[c] == CARD_SLOT_HOLE) {
             card_context[p][c].is_winning = true;
           } else {

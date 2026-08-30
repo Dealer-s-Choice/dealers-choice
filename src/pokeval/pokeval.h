@@ -91,6 +91,17 @@ short POKEVAL_evaluate_hand(POKEVAL_Hand_5 hand);
 uint8_t POKEVAL_compare_hands(POKEVAL_NeedComparing *hands, const uint8_t count,
                               const bool lowball);
 
+/* The three selectors below pick the best 5-card hand out of a larger hand.
+ *
+ * Each returns cards with face values in DH's 1..13 range -- Aces come back as
+ * DH_CARD_ACE (1), not POKEVAL_ACE (14) -- so the result is safe to broadcast,
+ * log or render without further work. They sort internally with
+ * POKEVAL_sort_hand_for_eval and undo the Ace raise before returning; the
+ * evaluators re-raise it themselves, so passing a result straight into
+ * POKEVAL_evaluate_hand() is correct.
+ *
+ * The returned hand is ordered for evaluation (descending, Ace high), which is
+ * also a sensible display order; do not rely on card[0] being Ace-valued at 14. */
 POKEVAL_Hand_5 POKEVAL_hand5_from_hand7(const POKEVAL_Hand_9 *src);
 
 // Omaha evaluation: cards 0-3 are hole cards, cards 4-8 are community cards.
