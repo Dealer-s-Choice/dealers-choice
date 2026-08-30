@@ -42,6 +42,7 @@
 #include <time.h>
 
 #include "client.h"
+#include "reconnect_store.h"
 #include "client_internal.h"
 #include "game.h"
 #include "globals_gui.h"
@@ -399,18 +400,24 @@ bool get_socket_context_and_run_client(PlayerConfig_t *player_config, const CliA
     goto cleanup;
 
   {
-    /* Reconnect with stack (#112). Present whatever token this process was last
-       issued -- all zeros on a first connection -- and keep the one the server
-       issues in return. Held in memory only, so it survives a dropped socket
-       and the trip back through the connect menu, but not the process exiting.
-       A stale or unknown token is not an error: the server falls through to a
-       normal join, so there is nothing to handle here. */
-    static unsigned char g_reconnect_token[RECONNECT_TOKEN_LEN];
-    if (send_reconnect_token(sock, g_reconnect_token) != 0 ||
-        recv_reconnect_token(sock, g_reconnect_token) != 0) {
+    /* Reconnect with stack (#112). Present the token stored for this server and
+       nick, then keep whatever the server issues back. Loading from disk rather
+       than a process-static covers the client having exited in between -- a
+       crash, or the player closing it after a drop and starting it again.
+
+       A stale or unknown token is not an error: the server forgets holds on
+       expiry and on restart and falls through to a normal join, so there is
+       nothing to handle here beyond storing the replacement. */
+    unsigned char token[RECONNECT_TOKEN_LEN];
+    reconnect_store_load(host_str, port, player_config->nick, token);
+    const int rc = send_reconnect_token(sock, token);
+    sodium_memzero(token, sizeof token);
+    if (rc != 0 || recv_reconnect_token(sock, token) != 0) {
       dc_log(DC_LOG_ERROR, "Failed to exchange reconnect token with server");
       goto cleanup;
     }
+    reconnect_store_save(host_str, port, player_config->nick, token);
+    sodium_memzero(token, sizeof token);
   }
 
   if (!dc_test_mode) {
