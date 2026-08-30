@@ -402,7 +402,11 @@ static const char *local_hand_rank_name(const POKEVAL_Hand_9 *hand, const GameCh
 static bool action_triggered(const SDL_Event *event, SDL_Point mouse_pos,
                              const ButtonWidget_t *bw) {
   if (event->type == SDL_MOUSEBUTTONDOWN)
-    return SDL_PointInRect(&mouse_pos, &bw->base.rect) ? true : false;
+    /* Left button only. Without this, a right- or middle-click inside a
+       button's rect sent the action -- easy to do by accident, and the rest of
+       this screen already checks (the admin nick selection below does). */
+    return event->button.button == SDL_BUTTON_LEFT &&
+           SDL_PointInRect(&mouse_pos, &bw->base.rect);
   if (event->type == SDL_KEYDOWN)
     return event->key.keysym.sym == bw->hotkey;
   return false;
