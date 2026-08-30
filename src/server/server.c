@@ -1397,6 +1397,30 @@ static ELoop_t complete_join_handshake(ArgsBroadcastGameState_t *args, tcpme_soc
     }
   }
 
+  /* Every seat taken or held, and someone is here now wanting to play. A hold
+     reserves a seat, it does not owe it: turning away a player who is present
+     to keep a seat warm for one who is not is the wrong way round, and on a
+     five-seat table two holds would otherwise show the table as full. Give up
+     whichever hold has been waiting longest -- it is the closest to expiring
+     anyway, so it loses the least. */
+  if (slot == -1) {
+    int8_t oldest = -1;
+    for (int8_t i = 0; i < MAX_CLIENTS; i++) {
+      if (args->slot_taken[i] || !args->held[i].active)
+        continue;
+      /* Difference, not absolute values: dc_get_ticks() wraps about every 49
+         days and two holds can straddle the wrap. */
+      if (oldest == -1 || (int32_t)(args->held[i].deadline - args->held[oldest].deadline) < 0)
+        oldest = i;
+    }
+    if (oldest != -1) {
+      dc_log(DC_LOG_INFO, "Seat %d given up early: %s's hold made way for a waiting player", oldest,
+             args->held[oldest].nick);
+      release_held_seat(args, oldest);
+      slot = oldest;
+    }
+  }
+
   if (slot != -1) {
     args->clients[slot] = new_client;
     args->slot_taken[slot] = true;
