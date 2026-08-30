@@ -11,6 +11,7 @@ unit_tests = [
   'rate_limit',
   'ping_probe_cooldown',
   'reconnect_store',
+  'action_trigger',
 ]
 
 base_env = {

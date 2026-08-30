@@ -34,6 +34,7 @@
 #define __CLIENT_INTERNAL_H
 
 #include "client.h"
+#include "widgets/button.h" /* ButtonWidget_t, for action_triggered() */
 
 /* Start a miniaudio sound, logging the call site on failure.  ma_sound_start_wrap
  * lives in client.c; both client.c and game_logic.c trigger sounds. */
@@ -77,6 +78,12 @@ SDL_Texture *load_coin_texture(SDL_Renderer *renderer, const char *base_path, co
 
 /* The gameplay-screen render+input loop (game_logic.c), driven by client.c's
  * connection loop. */
+/* Whether an event triggers an action button: a left-click inside its rect, or
+ * its hotkey. Exposed (rather than static in game_logic.c) so tests/action_trigger.c
+ * can pin the gating -- the dispatch it replaced fired whichever action the mouse
+ * happened to be hovering on ANY keypress. */
+bool action_triggered(const SDL_Event *event, SDL_Point mouse_pos, const ButtonWidget_t *bw);
+
 EGameLogicResult_t handle_game_logic(const PlayerConfig_t *player_config,
                                      SocketContext_t *socket_context,
                                      const GameSettings_t *game_settings, GameState_t *game_state,

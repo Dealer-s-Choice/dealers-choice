@@ -399,8 +399,7 @@ static const char *local_hand_rank_name(const POKEVAL_Hand_9 *hand, const GameCh
  * The mirror case is just as wrong: on a mouse event, event.key aliases the
  * SDL_Event union over an SDL_MouseButtonEvent, so keysym.sym reads bytes that
  * are not a keycode and can happen to equal a hotkey. */
-static bool action_triggered(const SDL_Event *event, SDL_Point mouse_pos,
-                             const ButtonWidget_t *bw) {
+bool action_triggered(const SDL_Event *event, SDL_Point mouse_pos, const ButtonWidget_t *bw) {
   if (event->type == SDL_MOUSEBUTTONDOWN)
     /* Left button only. Without this, a right- or middle-click inside a
        button's rect sent the action -- easy to do by accident, and the rest of
