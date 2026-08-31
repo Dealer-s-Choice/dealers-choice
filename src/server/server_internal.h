@@ -92,7 +92,6 @@ void log_hands_fold_json(const ArgsBroadcastGameState_t *args, const Player_t *w
                          uint32_t pot);
 void remove_disconnected_player(ArgsBroadcastGameState_t *args, const int8_t id);
 void release_held_seat(ArgsBroadcastGameState_t *args, int8_t id);
-void reap_expired_holds(ArgsBroadcastGameState_t *args);
 void kick_player(ArgsBroadcastGameState_t *args, int8_t id);
 void ban_player(ArgsBroadcastGameState_t *args, int8_t id);
 bool handle_disconnections(ArgsBroadcastGameState_t *args);

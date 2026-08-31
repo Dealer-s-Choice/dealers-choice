@@ -700,7 +700,7 @@ void remove_disconnected_player(ArgsBroadcastGameState_t *args, const int8_t id)
     memcpy(h->token, args->session_token[id], RECONNECT_TOKEN_LEN);
     snprintf(h->nick, sizeof h->nick, "%s", p->nick);
     h->coins = p->coins;
-    h->deadline = dc_get_ticks() + RECONNECT_GRACE_MS;
+    h->held_since = dc_get_ticks();
   }
 
   // Reset player info
@@ -740,23 +740,6 @@ void release_held_seat(ArgsBroadcastGameState_t *args, int8_t id) {
     return;
   memset(&args->held[id], 0, sizeof(args->held[id]));
   sodium_memzero(args->session_token[id], RECONNECT_TOKEN_LEN);
-}
-
-/* Free any seat whose grace window has run out. Called once per main-loop pass
-   from register_new_client, so expiry keeps working between hands as well as
-   during one. */
-void reap_expired_holds(ArgsBroadcastGameState_t *args) {
-  const uint32_t now = dc_get_ticks();
-  for (int8_t i = 0; i < MAX_CLIENTS; i++) {
-    if (!args->held[i].active)
-      continue;
-    /* Difference, not absolute values: dc_get_ticks() wraps about every 49 days. */
-    if ((int32_t)(now - args->held[i].deadline) >= 0) {
-      dc_log(DC_LOG_INFO, "Seat %d released: %s did not return within %u ms", i,
-             args->held[i].nick, RECONNECT_GRACE_MS);
-      release_held_seat(args, i);
-    }
-  }
 }
 
 void kick_player(ArgsBroadcastGameState_t *args, int8_t id) {
@@ -1268,7 +1251,6 @@ static ELoop_t service_pending_handshakes(ArgsBroadcastGameState_t *args) {
 }
 
 ELoop_t register_new_client(ArgsBroadcastGameState_t *args) {
-  reap_expired_holds(args);
   service_lan_discovery(args, true);
   service_registry_publish(args);
   // checks for and accepts incoming connections
@@ -1401,8 +1383,9 @@ static ELoop_t complete_join_handshake(ArgsBroadcastGameState_t *args, tcpme_soc
      reserves a seat, it does not owe it: turning away a player who is present
      to keep a seat warm for one who is not is the wrong way round, and on a
      five-seat table two holds would otherwise show the table as full. Give up
-     whichever hold has been waiting longest -- it is the closest to expiring
-     anyway, so it loses the least. */
+     whichever hold has been waiting longest -- absent the longest is the best
+     guess at least likely to return. This is the only thing that frees a seat
+     besides the player coming back, since holds do not expire on a timer. */
   if (slot == -1) {
     int8_t oldest = -1;
     for (int8_t i = 0; i < MAX_CLIENTS; i++) {
@@ -1410,7 +1393,7 @@ static ELoop_t complete_join_handshake(ArgsBroadcastGameState_t *args, tcpme_soc
         continue;
       /* Difference, not absolute values: dc_get_ticks() wraps about every 49
          days and two holds can straddle the wrap. */
-      if (oldest == -1 || (int32_t)(args->held[i].deadline - args->held[oldest].deadline) < 0)
+      if (oldest == -1 || (int32_t)(args->held[i].held_since - args->held[oldest].held_since) < 0)
         oldest = i;
     }
     if (oldest != -1) {

@@ -116,9 +116,12 @@ struct ServerConfig_t;
 #define HANDSHAKE_DEADLINE_MS 5000
 
 /* Reconnect with stack (#112). When a player drops, their seat and chip count
- * are held for RECONNECT_GRACE_MS instead of being freed, so a brief network
- * blip -- or a client crash, or quitting and restarting -- does not cost them
- * their stack, and nobody else takes the seat meanwhile.
+ * are held instead of being freed, so a brief network blip -- or a client
+ * crash, or quitting and restarting -- does not cost them their stack, and
+ * nobody else takes the seat meanwhile.
+ *
+ * A hold does not expire on a timer. It lasts until the player returns, until
+ * a newcomer needs the seat, or until the server stops.
  *
  * The token is an ephemeral PER-SESSION secret, deliberately not an identity:
  * it is minted fresh on every join, means nothing to any other server, and is
@@ -126,19 +129,24 @@ struct ServerConfig_t;
  * the whole check -- the stake is one seat's play money, which is why that is
  * an acceptable trade rather than an oversight.
  *
+ * Holding without a deadline costs nothing in seat availability: a player who
+ * is present always gets a seat, evicting the longest-waiting hold when every
+ * seat is taken or held. Nor can it outlive the run -- held[] is storage in
+ * run_server, so every hold dies with the process and a token presented to a
+ * restarted server is simply unknown.
+ *
  * A held seat is neither free nor connected, which is a third state:
  * slot_taken[] stays false so count_active_clients() (and therefore
  * player_count at hand start, and the reported player counts) does not count
  * an absent player, while seat allocation must skip it so the seat is kept. */
 #define RECONNECT_TOKEN_LEN 32
-#define RECONNECT_GRACE_MS 120000u
 
 typedef struct {
   bool active;
   unsigned char token[RECONNECT_TOKEN_LEN];
   char nick[SIZEOF_NICK];
   int32_t coins;
-  uint32_t deadline; /* dc_get_ticks() value past which the seat is released */
+  uint32_t held_since; /* dc_get_ticks() when the hold began; orders evictions */
 } HeldSeat_t;
 
 typedef struct PendingClient_t {

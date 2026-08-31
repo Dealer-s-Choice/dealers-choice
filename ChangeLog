@@ -42,6 +42,10 @@
   * Fix some key presses being missed during a game, such as needing to press
     Call twice
   * Windows: the package now includes all the game's data files
+  + If you lose your connection, or close the game, your seat and your chips
+    are kept for you; rejoin the same server with the same name to carry on
+    with the same stack. The seat is given up if a new player needs it, or
+    when the server stops
   * Protocol version 11: clients and servers from earlier releases can no
     longer connect to each other
 
