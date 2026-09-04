@@ -138,11 +138,22 @@ jobs:
         test -n "$installed_data" -a -d "$installed_data" || { echo "installed data dir not found"; exit 1; }
         test -n "$installed_bin" -a -d "$installed_bin" || { echo "installed bin dir not found"; exit 1; }
         mkdir -p _staging/data
-        # The installer ships the client and the bot only, not the headless server.
-        cp "$installed_bin/dealers-choice.exe" "$installed_bin/dealers-choice-bot.exe" _staging/
+        # The installer ships the client, the bot and the headless server. Named
+        # explicitly rather than globbed: this job configures -Dregistry=true, so
+        # _install also holds dealers-choice-registry.exe, which is the
+        # internet-facing binary and is deliberately not packaged.
+        for exe in dealers-choice.exe dealers-choice-bot.exe dealers-choice-server.exe; do
+          cp "$installed_bin/$exe" _staging/
+        done
         cp -r "$installed_data/." _staging/data/
         ls -R _staging/data
-        bash packaging/windows/collect-dlls.sh _staging/dealers-choice.exe _staging/
+        # Collect DLLs for every staged exe. The bot and server link libdc_core
+        # only, so their needs are a subset of the client's today -- but relying
+        # on that silently ships a broken exe the moment one of them gains a
+        # dependency the client does not have.
+        for exe in _staging/*.exe; do
+          bash packaging/windows/collect-dlls.sh "$exe" _staging/
+        done
 
     - name: Set version
       if: matrix.platform == 'UCRT64'

@@ -46,6 +46,9 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 ; Executables
 Source: "..\..\_staging\{#AppExe}";              DestDir: "{app}"; Flags: ignoreversion
 Source: "..\..\_staging\dealers-choice-bot.exe"; DestDir: "{app}"; Flags: ignoreversion
+; Headless server. No Start Menu shortcut: it is a console program that takes
+; flags (--conf, --port), so a bare double-click would only flash a window.
+Source: "..\..\_staging\dealers-choice-server.exe"; DestDir: "{app}"; Flags: ignoreversion
 ; Runtime DLLs collected by collect-dlls.sh
 Source: "..\..\_staging\*.dll";     DestDir: "{app}"; Flags: ignoreversion
 ; Game data (fonts, images, sounds, server.conf)
