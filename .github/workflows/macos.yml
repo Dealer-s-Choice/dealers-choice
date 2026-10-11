@@ -24,7 +24,8 @@ jobs:
       matrix:
         os:
           - macos-15
-          - macos-14
+          - macOS-15-arm64
+          - macOS-26
     runs-on: ${{ matrix.os }}
     env:
       HOMEBREW_NO_AUTO_UPDATE: 1
