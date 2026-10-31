@@ -86,7 +86,7 @@ conf = configuration_data()
 
 miniaudio_dep = dependency(
   'miniaudio',
-  version: '0.11.25',
+  version: '0.11.26',
   required: false,
   fallback: ['miniaudio', 'miniaudio_dep'],
 )
