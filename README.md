@@ -130,11 +130,32 @@ See [BUILD.md](https://github.com/Dealer-s-Choice/dealers_choice/blob/trunk/BUIL
 
 See [docs/TRANSLATE.md](docs/TRANSLATE.md)
 
-## Note on AppImages
+## Installing
 
-If you're a Linux user, you can download the AppImage from the [Releases
+### Linux
+
+Download the AppImage from the [Releases
 page](https://github.com/Dealer-s-Choice/dealers_choice/releases/latest), or install
-it with [AppMan](https://github.com/ivan-hc/AM).
+it with [AppMan](https://github.com/ivan-hc/AM). The Releases page also has `.deb`
+packages for Debian and Ubuntu.
+
+### Windows
+
+Download the installer (`setup.exe`) from the [Releases
+page](https://github.com/Dealer-s-Choice/dealers_choice/releases/latest).
+
+### macOS
+
+Install it with [Homebrew](https://brew.sh/):
+
+```sh
+brew tap dealer-s-choice/dealers_choice https://github.com/Dealer-s-Choice/dealers_choice
+brew trust dealer-s-choice/dealers_choice
+brew install dealers-choice
+```
+
+Homebrew does not load formulas from a third-party tap until you mark the tap
+as trusted. That is what the `brew trust` line does.
 
 ## Libraries
 

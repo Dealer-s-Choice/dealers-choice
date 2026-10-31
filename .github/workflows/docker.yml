@@ -17,6 +17,7 @@ on:
     paths:
     - '**'
     - '!**.md'
+    - '!HomebrewFormula/**'
     - '!**.yml'
     - '!docker/Dockerfile-build-env_**'
     - '**/docker.yml'
