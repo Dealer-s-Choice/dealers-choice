@@ -76,6 +76,14 @@ test locally with simulated lag
   tag (like the AppImage) and attach to the release -- no manual
   workflow_dispatch needed. Confirm they finished and the artifacts attached.
 
+- Bump the Homebrew formula (HomebrewFormula/dealers-choice.rb): set url to
+  the new release tarball and sha256 to the value in its attached
+  .sha256sum. Take the sum from the release asset, not from meson dist --
+  dist-strip-packaging.sh rewrites the tarball. Push; homebrew.yml builds and
+  tests it on macOS. Until then `brew install` keeps installing the old
+  version. Once homebrew-core has canfigger >= 0.3.3, add a head spec back
+  (see the comment in the formula).
+
 - Close milestone (https://github.com/Dealer-s-Choice/dealers_choice/milestones)
 
 ## Slackbuild

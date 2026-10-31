@@ -17,6 +17,7 @@ on:
     paths: &shared_paths
     - '**'
     - '!**.md'
+    - '!HomebrewFormula/**'
     - '!**.yml'
     - '!docker/Dockerfile-build-env_**'
     - 'packaging/appimage/**'

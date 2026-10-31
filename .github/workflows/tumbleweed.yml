@@ -10,6 +10,7 @@ on:
       - '**'
       - '!**.yml'
       - '!**.md'
+      - '!HomebrewFormula/**'
       - '!docker/Dockerfile-build-env_**'
       - '**/tumbleweed.yml'
   pull_request:
